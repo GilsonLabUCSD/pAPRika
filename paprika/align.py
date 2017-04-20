@@ -36,9 +36,9 @@ def align(mask1, mask2, prmtop='test/cb6-but/vac.topo', inpcrd='test/cb6-but/vac
     x     = np.cross(mask2_com, z) / np.linalg.norm(np.cross(mask2_com, z))
     theta = np.arccos(np.dot(mask2_com, z)/(np.linalg.norm(mask2_com) * np.linalg.norm(z)))
     # 3. Find the rotation matrix
-    A = np.array([[0,        -1.0*x[2],    x[1] ], 
-                [ x[2],     0,       -1.0*x[0]], 
-                [-1.0*x[1], x[0],          0] ])
+    A = np.array([[0,        -1.0*x[2],     x[1] ],
+                  [x[2],      0,       -1.0*x[0] ],
+                  [-1.0*x[1], x[0],           0  ]])
 
     R = I + np.dot(np.sin(theta), A) + np.dot((1.0 - np.cos(theta)), np.dot(A,A))
 
