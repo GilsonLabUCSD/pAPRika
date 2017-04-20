@@ -28,9 +28,8 @@ def align(mask1, mask2, prmtop='test/cb6-but/vac.topo', inpcrd='test/cb6-but/vac
     I = np.identity(3)
     # https://math.stackexchange.com/questions/293116/rotating-one-3d-vector-to-another
     # 1. Align mask1 to the origin.
-    inversion = mask1_com * -1.0
-    mask1_com = mask1_com + inversion
-    mask2_com = mask2_com + inversion
+    mask1_com = mask1_com + -1.0 * mask1_com
+    mask2_com = mask2_com + -1.0 * mask1_com
     print('{} should be at the origin: {}'.format(mask1, mask1_com))
 
     # 2. Find axis and angle using cross and dot products.
@@ -42,9 +41,14 @@ def align(mask1, mask2, prmtop='test/cb6-but/vac.topo', inpcrd='test/cb6-but/vac
                 [-1.0*x[1], x[0],          0] ])
 
     R = I + np.dot(np.sin(theta), A) + np.dot((1.0 - np.cos(theta)), np.dot(A,A))
+
+
+    return R
     
-    # for atom in range(len(structure.atoms)):
-    #   structure.coordinates[atom] = np.dot(R, structure.coordinates[atom])
-    # FYI, this will write out HETATM records.
-    # This is not working yet.
-    # structure.write_pdb('tmp.pdb')
+coords = np.empty_like(structure.coordinates)
+for atom in range(len(structure.atoms)):
+    coords[atom] = np.dot(R, structure.coordinates[atom])
+# FYI, this will write out HETATM records.
+# This is not working yet.
+structure.coordinates = coords
+structure.write_pdb('tmp.pdb')
