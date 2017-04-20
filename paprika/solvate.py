@@ -59,12 +59,27 @@ def solvate(tleapfile,pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='TI
                 addion_residues.append(txt)
             else:
                 if str(txt).endswith('m'):
+                    # Figure out number of ions for desired molality
                     addion_values.append(float(txt[:-1])*)
+                elif str(txt).endswith('M'):
+                    # Figure out number of ions for desired molarity
+                else:
+                    # must be integer, add to list
         
         print addion_residues
         print addion_values
 
-    # write new 
+    # write new tleap file with solvate and addion steps
+
+    # start 8.0, go 9.0.  calc the slope and estimate the right value
+
+    # start optimization near correct value
+
+    # do final run and check
+
+    # print statistics
+
+    # return info for bufferwater, etc to keep them the same.
 
     return 'solvated.prmtop'
 
