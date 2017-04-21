@@ -5,7 +5,7 @@ language: python
   - "3.5"
   - "3.6"
 install:
-    - pip install --user parmed
+    - source devtools/travis/install.sh
     - pip install --user .
     - python -c "import paprika; print(paprika.__version__)"
     - source devtools/travis/runtest.sh
