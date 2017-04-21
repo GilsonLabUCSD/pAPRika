@@ -3,9 +3,9 @@ import sys
 import versioneer
 from distutils.core import setup
 
-if sys.version_info < (3, 0):
-    sys.stderr.write('You must have at least Python 3.0 for pAPRika to work '
-                     'correctly.\n')
+if sys.version_info < (2, 7):
+    sys.stderr.write('You must have at least Python 2.7 for pAPRika to work '
+                     'correctly, although we have only tested with Python 3.0.\n')
     sys.exit(1)
 
 from distutils.command.clean import clean as Clean
