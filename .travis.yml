@@ -1,0 +1,11 @@
+language: python
+  - "3.2"
+  - "3.3"
+  - "3.4"
+  - "3.5"
+  - "3.6"
+install:
+    - pip install parmed
+    - pip install .
+    - python -c "import paprika; print(paprika.__version__)"
+    - source devtools/ci/travis/runtest.sh
