@@ -1,7 +1,7 @@
 import numpy as np
 import parmed as pmd
 
-def align(mask1, mask2, prmtop='test/cb6-but/vac.topo', inpcrd='test/cb6-but/vac.crds'):
+def align(mask1, mask2, prmtop='../../test/cb6-but/vac.topo', inpcrd='../../test/cb6-but/vac.crds'):
     """
     Align the mask1 -- mask2 vector to the z axis.
     """
@@ -17,21 +17,15 @@ def align(mask1, mask2, prmtop='test/cb6-but/vac.topo', inpcrd='test/cb6-but/vac
     mask2_com = pmd.geometry.center_of_mass(np.asarray(mask2_coordinates),
                                             np.asarray(mask2_masses))
 
-    print('Aligning {} ({} atoms) and {} ({} atoms) to the z axis.'.format(mask1,
-                                                                           len(mask1_coordinates),
-                                                                           mask2,
-                                                                           len(mask2_coordinates)))
-    print('COM of {} = {}'.format(mask1, mask1_com))
-    print('COM of {} = {}'.format(mask2, mask2_com))
-
+    print('Moving {} ({} atoms) to the origin...'.format(mask1, len(mask1_coordinates)))
+    print('Aligning {} ({} atoms) with the z axis...'.format(mask2, len(mask2_coordinates)))
+    
     z = np.array([0.0, 0.0, 1.0])
     I = np.identity(3)
     # https://math.stackexchange.com/questions/293116/rotating-one-3d-vector-to-another
     # 1. Align mask1 to the origin.
-    mask1_com = mask1_com + -1.0 * mask1_com
     mask2_com = mask2_com + -1.0 * mask1_com
-    print('{} should be at the origin: {}'.format(mask1, mask1_com))
-
+    
     # 2. Find axis and angle using cross and dot products.
     x     = np.cross(mask2_com, z) / np.linalg.norm(np.cross(mask2_com, z))
     theta = np.arccos(np.dot(mask2_com, z)/(np.linalg.norm(mask2_com) * np.linalg.norm(z)))
@@ -40,14 +34,41 @@ def align(mask1, mask2, prmtop='test/cb6-but/vac.topo', inpcrd='test/cb6-but/vac
                   [x[2],      0,       -1.0*x[0] ],
                   [-1.0*x[1], x[0],           0  ]])
 
-    rotation_matrix = I + np.dot(np.sin(theta), A) + np.dot((1.0 - np.cos(theta)), np.dot(A,A))
+    rotation_matrix = I + np.dot(np.sin(theta), A) + np.dot((1.0 - np.cos(theta)), np.dot(A, A))
 
-    return rotation_matrix
+    # This is certainly not the fastest approach, but it is explicit.
+    aligned_coords = np.empty_like(structure.coordinates)
+    for atom in range(len(structure.atoms)):
+        # Re-apply the translation of mask1
+        aligned_coords[atom] = structure.coordinates[atom] + -1.0 * mask1_com
+        aligned_coords[atom] = np.dot(rotation_matrix, aligned_coords[atom])
+    structure.coordinates = aligned_coords
+
+    save = True
+    if save:
+        # This seems to write out HETATM in place of ATOM
+        structure.write_pdb('tmp.pdb')
+
+    return structure
     
-# coords = np.empty_like(structure.coordinates)
-# for atom in range(len(structure.atoms)):
-#     coords[atom] = np.dot(R, structure.coordinates[atom])
-# # FYI, this will write out HETATM records.
-# # This is not working yet.
-# structure.coordinates = coords
-# structure.write_pdb('tmp.pdb')
+def check_coordinates(mask, file='tmp.pdb'):
+    """ 
+    Return the coordinates of an atom selection. 
+    """
+    structure = pmd.load_file(file)
+    mask_coordinates = structure[mask].coordinates
+    mask_masses = [atom.mass for atom in structure[mask].atoms]
+    mask_com = pmd.geometry.center_of_mass(np.asarray(mask_coordinates),
+                                            np.asarray(mask_masses))
+    return mask_com
+
+def offset_structure(structure, offset, file='tmp.pdb'):
+    """
+    Return a structure whose atoms have been translated.
+    """
+    structure = pmd.load_file(file)
+    offset_coords = np.empty_like(structure.coordinates)
+    for atom in range(len(structure.atoms)):
+        offset_coords[atom] = structure.coordinates[atoms] + offset
+    structure.coordinates = offset_coords
+    return structure
