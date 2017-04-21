@@ -3,7 +3,7 @@ Tests the alignment of residues to the z axis.
 """
 
 import unittest
-from paprika import align
+from paprika.setup import align
 
 class TestAlignment(unittest.TestCase):
 
