@@ -90,3 +90,6 @@ ENV/
 
 # pylint settings
 .pylintrc
+
+# vscode
+.vscode

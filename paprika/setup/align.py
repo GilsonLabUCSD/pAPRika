@@ -40,15 +40,14 @@ def align(mask1, mask2, prmtop='test/cb6-but/vac.topo', inpcrd='test/cb6-but/vac
                   [x[2],      0,       -1.0*x[0] ],
                   [-1.0*x[1], x[0],           0  ]])
 
-    R = I + np.dot(np.sin(theta), A) + np.dot((1.0 - np.cos(theta)), np.dot(A,A))
+    rotation_matrix = I + np.dot(np.sin(theta), A) + np.dot((1.0 - np.cos(theta)), np.dot(A,A))
 
-
-    return R
+    return rotation_matrix
     
-coords = np.empty_like(structure.coordinates)
-for atom in range(len(structure.atoms)):
-    coords[atom] = np.dot(R, structure.coordinates[atom])
-# FYI, this will write out HETATM records.
-# This is not working yet.
-structure.coordinates = coords
-structure.write_pdb('tmp.pdb')
+# coords = np.empty_like(structure.coordinates)
+# for atom in range(len(structure.atoms)):
+#     coords[atom] = np.dot(R, structure.coordinates[atom])
+# # FYI, this will write out HETATM records.
+# # This is not working yet.
+# structure.coordinates = coords
+# structure.write_pdb('tmp.pdb')

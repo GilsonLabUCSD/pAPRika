@@ -40,13 +40,8 @@ def solvate(tleapfile,pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='TI
                 unitname = words[0]
             tleaplines.append(line)
    
-    # If bufferwater ends with 'A', meaning it is a buffer distance, we need to get this value
-    if str(bufferwater).endswith('A') or :
-        with open('tleap_apr_solvate.in', 'w') as f:
-        # write a new tleap file with solvation and check results, set integer bufferwater value
-
     # Process Addions List
-    addions = ['Mg+',5, 'Cl-','10m', 'K+','0.050M']
+    #addions = ['Mg+',5, 'Cl-','10m', 'K+','0.050M']
     if addions:
         addion_residues =  []
         addion_values = []
@@ -58,16 +53,34 @@ def solvate(tleapfile,pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='TI
             if i % 2 == 0:
                 addion_residues.append(txt)
             else:
-                if str(txt).endswith('m'):
+                addion_values.append(txt)
+                #if str(txt).endswith('m'):
                     # Figure out number of ions for desired molality
-                    addion_values.append(float(txt[:-1])*)
-                elif str(txt).endswith('M'):
+                    #addion_values.append(float(txt[:-1])*)
+                #elif str(txt).endswith('M'):
                     # Figure out number of ions for desired molarity
-                else:
+                #else:
                     # must be integer, add to list
         
         print addion_residues
         print addion_values
+
+    # If bufferwater ends with 'A', meaning it is a buffer distance, we need to get this value
+    if str(bufferwater).endswith('A') or [check for M in addion_values]:
+        with open('tleap_apr_solvate.in', 'w') as f:
+            for line in tleaplines:
+                if re.search('loadpdb|loadPdb|loadPDB',line):
+                    print unitname+' = loadpdb '+pdbfile
+                # Figure out how to do case insensitive search for below --NMH
+                if not re.search('addions|addIons|addions2|addIons2|addIonsRand|addionsrand\
+                    |quit|solvateBox|solvatebox|solvateCap|solvatecap|solvateDontClip|\
+                    |solvatedontclip|solvateOct|solvateoct|solvateShell|solvateshell',line):
+                    print line
+            print 'quit'
+        # write a new tleap file with solvation and check results, set integer bufferwater value
+
+
+
 
     # write new tleap file with solvate and addion steps
 
