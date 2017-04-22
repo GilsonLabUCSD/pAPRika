@@ -14,4 +14,4 @@ wget https://github.com/ParmEd/ParmEd/archive/2.7.3.tar.gz -O parmed.tar.gz
 tar xvfz parmed.tar.gz
 cd ParmEd-2.7.3
 python setup.py install
-cd ../../
+cd ../
