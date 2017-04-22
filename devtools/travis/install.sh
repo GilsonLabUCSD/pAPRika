@@ -2,7 +2,7 @@ wget http://repo.continuum.io/miniconda/Miniconda3-4.3.11-Linux-x86_64.sh -O min
 
 bash miniconda.sh -b
 
-export PATH=$HOME/miniconda/bin:$PATH
+export PATH=$HOME/miniconda3/bin:$PATH
 conda update conda -y
 conda install --yes conda-build pip numpy scipy pandas coverage
 conda config --add channels omnia
