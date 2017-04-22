@@ -8,9 +8,6 @@ conda install --yes conda-build pip numpy scipy pandas coverage
 conda config --add channels omnia
 conda install --yes openmm
 
-conda create -y -n myenv python=3
-source activate myenv
-
 wget https://github.com/ParmEd/ParmEd/archive/2.7.3.tar.gz -O parmed.tar.gz
 tar xvfz parmed.tar.gz
 cd ParmEd-2.7.3
