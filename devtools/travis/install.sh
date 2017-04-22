@@ -6,6 +6,7 @@ export PATH=$HOME/miniconda3/bin:$PATH
 conda update conda -y
 conda install --yes conda-build pip numpy scipy pandas coverage
 conda config --add channels omnia
+conda install --yes openmm
 
 conda create -y -n myenv python=3
 source activate myenv
