@@ -1,11 +1,9 @@
 sudo: false
 
 language: python
-  - "3.2"
-  - "3.3"
-  - "3.4"
-  - "3.5"
+python:
   - "3.6"
+
 install:
     - source devtools/travis/install.sh
     - echo $PWD
