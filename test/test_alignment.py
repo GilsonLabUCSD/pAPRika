@@ -14,7 +14,7 @@ class TestAlignment(unittest.TestCase):
         cb6 = pmd.load_file('./cb6-but/vac.pdb')
         aligned_cb6 = align(cb6, ':CB6', ':BUT')
         test_coordinates = check_coordinates(aligned_cb6, ':CB6')
-        self.assertTrue(np.all(np.zeros((3) == test_coordinates)),
+        self.assertTrue(np.allclose(test_coordinates, np.zeros(3)),
                         msg='{}'.format(test_coordinates))
 
     def test_alignment_after_offset(self):
@@ -24,7 +24,7 @@ class TestAlignment(unittest.TestCase):
         cb6_offset = offset_structure(cb6, random_coordinates)
         aligned_cb6 = align(cb6_offset, ':CB6', ':BUT')
         test_coordinates = check_coordinates(aligned_cb6, ':CB6')
-        self.assertTrue(np.all(np.zeros((3) == test_coordinates)),
+        self.assertTrue(np.allclose(test_coordinates, np.zeros(3)),
                         msg='{}'.format(test_coordinates))
 
 
