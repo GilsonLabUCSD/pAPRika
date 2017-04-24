@@ -5,7 +5,7 @@ import subprocess as sp
 def write_tleapin(filename='tleap.in', tleaplines=[], unitname='model', pdbfile=None,
                   pbctype=1, bufferval=12.0, waterbox='TIP3PBOX', neutralize=1,
                   countercation='Na+', counteranion='Cl-', addion_residues=None,
-                  addion_values=None, saveprefix=None):
+                  addion_values=None, removewat=None, saveprefix=None):
     # Add argument info .... ugh duplicates solvate
     # Any suggestions for this function?  so. many. arguments.  Put everything in a dict?
     with open(filename, 'w') as f:
@@ -23,24 +23,45 @@ def write_tleapin(filename='tleap.in', tleaplines=[], unitname='model', pdbfile=
             f.write("addionsrand {} {} 0\n".format(unitname,countercation))
             f.write("addionsrand {} {} 0\n".format(unitname,counteranion))
         if addion_residues:
-            for i,res in addion_residues:
+            for i,res in enumerate(addion_residues):
                 f.write("addionsrand {} {} {}\n".format(unitname,res,addion_values[i]))
+        if removewat:
+            for watnum in removewat:
+                f.write("remove {} {}.{}\n".format(unitname,unitname,watnum))
         if saveprefix:
             f.write("savepdb {} {}.pdb\n".format(unitname,saveprefix))
             f.write("saveamberparm {} {}.prmtop {}.rst7\n".format(unitname,saveprefix,saveprefix))
         f.write("desc {}\n".format(unitname))
         f.write("quit\n")
     
-def countwaters(filename='tleap.in'):
+def countresidues(filename='tleap.in', returnlist=None):
+    # Add argument info
     tleapoutput = sp.Popen('tleap -s -f '+filename, stdout=sp.PIPE, stderr=sp.PIPE, shell=True).stdout.read().splitlines()
     wateradded = 0
+    reslist = []
     for line in tleapoutput:
-        if re.search("^R<WAT ",line):
+        r = re.search("^R<WAT (.*)>",line)
+        if r:
             wateradded += 1
-    return wateradded
+            if returnlist == 'WAT':
+                reslist.append(r.group(1))
+    if returnlist == 'ALL':
+        reslist = {}
+        for line in tleapoutput:
+            r = re.search("^R<(.*) (.*)>",line)
+            if r:
+                if r.group(1) not in reslist:
+                    reslist[r.group(1)] = []
+                reslist[r.group(1)].append(r.group(2))
+        return reslist
+    elif returnlist == 'WAT':
+        return reslist
+    else:
+        return wateradded
 
-def solvate(tleapfile,pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='TIP3PBOX', neutralize=1,
-            countercation='Na+', counteranion='Cl-', addions=None):
+
+def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='TIP3PBOX', neutralize=1,
+            countercation='Na+', counteranion='Cl-', addions=None, saveprefix='solvated'):
     """
     This routine solvates a solute system with a specified amount of water/ions.
 
@@ -68,10 +89,10 @@ def solvate(tleapfile,pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='TI
     addion_residues =  []
     addion_values = []
     bufferval = []
-    bufferval.append(0.0)
     bufferval.append(8.0)
     buffer_iterexp = 0
     wat_added = []
+    wat_added.append(0.0)
 
     # Read tleapfile
     tleaplines = []
@@ -92,8 +113,8 @@ def solvate(tleapfile,pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='TI
         bufferval.append(float(bufferwater[:-1]))
         write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
                       pbctype=pbctype, bufferval=bufferval[-1], waterbox=waterbox, neutralize=0, countercation=None,
-                      counteranion=None, addion_residues=None, addion_values=None, saveprefix=None)
-        bufferwater = countwaters(filename='tleap_apr_solvate.in')
+                      counteranion=None, addion_residues=None, addion_values=None, removewat=None, saveprefix=None)
+        bufferwater = countresidues(filename='tleap_apr_solvate.in')
 
     # Process Addions List
     #addions = ['Mg+',5, 'Cl-','10m', 'K+','0.050M']
@@ -112,77 +133,57 @@ def solvate(tleapfile,pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='TI
                 else:
                     addion_values.append(txt)
 
-    buffer_predict=0
-    if buffer_predict == 1:
-        # Do bufferval prediction as conceived by Germano        
-        write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
-                      pbctype=pbctype, bufferval=bufferval[-1], waterbox=waterbox, neutralize=neutralize, countercation=countercation,
-                      counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, saveprefix=None)
-        wat_added.append(countwaters(filename='tleap_apr_solvate.in'))
-        prev_bufferval = bufferval
-        bufferval += 1.0
-        write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
-                      pbctype=pbctype, bufferval=bufferval, waterbox=waterbox, neutralize=neutralize, countercation=countercation,
-                      counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, saveprefix=None)
-        wat_added.append(countwaters(filename='tleap_apr_solvate.in'))
-        cur_bufferval = bufferval
-        slope = ((wat_added[-1] - wat_added[-2])/(cur_bufferval - prev_bufferval))
-        inter = wat_added[-2] - (slope*prev_bufferval)
-        bufferval = (bufferwater - inter)/slope
-        if abs(bufferval - prev_bufferval) > 20:
-            bufferval = prev_bufferval + 20
-        write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
-                      pbctype=pbctype, bufferval=bufferval, waterbox=waterbox, neutralize=neutralize, countercation=countercation,
-                      counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, saveprefix=None)
-        wat_added.append(countwaters(filename='tleap_apr_solvate.in'))
-
-    print bufferval
+    # First adjust wat_added by changing the bufferval
     cycle = 0
     buffer_iter = 0
     while cycle < 50:
         write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
-                      pbctype=pbctype, bufferval=bufferval, waterbox=waterbox, neutralize=neutralize, countercation=countercation,
-                      counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, saveprefix=None) 
-        wat_added.append(countwaters(filename='tleap_apr_solvate.in'))
-        print cycle,buffer_iter,":",bufferwater,':',bufferval,buffer_iterexp,wat_added[-2],wat_added[-1]
+                      pbctype=pbctype, bufferval=bufferval[-1], waterbox=waterbox, neutralize=neutralize, countercation=countercation,
+                      counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, removewat=None, saveprefix=None) 
+        wat_added.append(countresidues(filename='tleap_apr_solvate.in'))
+        print cycle,buffer_iter,":",bufferwater,':',bufferval[-1],buffer_iterexp,wat_added[-2],wat_added[-1]
         cycle += 1
         buffer_iter += 1
         if 0 <= (wat_added[-1] - bufferwater) < 15 or buffer_iterexp < -3:
             print 'Done!'
             break
+        ### Possible location of a switch to adjust the bufferval by polynomial fit approach.
         elif wat_added[-2] > bufferwater and wat_added[-1] > bufferwater:
-            bufferval += -1*(10**buffer_iterexp)
+            bufferval.append(bufferval[-1] + -1*(10**buffer_iterexp))
         elif wat_added[-2] > bufferwater and wat_added[-1] < bufferwater:
             if buffer_iter > 1:
                 buffer_iterexp -= 1
                 buffer_iter = 0
-                bufferval += 5*(10**buffer_iterexp)
+                bufferval.append(bufferval[-1] + 5*(10**buffer_iterexp))
             else:
-                bufferval += 1*(10**buffer_iterexp)
+                bufferval.append(bufferval[-1] + 1*(10**buffer_iterexp))
         elif wat_added[-2] < bufferwater and wat_added[-1] > bufferwater:
             if buffer_iter > 1:
                 buffer_iterexp -= 1
                 buffer_iter = 0
-                bufferval += -5*(10**buffer_iterexp)
+                bufferval.append(bufferval[-1] + -5*(10**buffer_iterexp))
             else:
-                bufferval += -1*(10**buffer_iterexp)
+                bufferval.append(bufferval[-1] + -1*(10**buffer_iterexp))
         elif wat_added[-2] < bufferwater and wat_added[-1] < bufferwater:
-            bufferval += 1*(10**buffer_iterexp)
+            bufferval.append(bufferval[-1] + 1*(10**buffer_iterexp))
         else:
             raise Exception("The bufferval search died due to an unanticipated set of variable values")
       
 
     if cycle >= 50:
-        print "Error message!"
-    
-    
+        raise Exception("Automatic adjustment of the buffer value was unable to converge on a solution with sufficient tolerance")
+    else:
+        watover = 0
+        while wat_added[-1] != bufferwater:
+            watover += wat_added[-1] - bufferwater ### Note I don't think there should be water removal errors, but if so, this loop and '+=' method is an attempt to fix.
+            watlist = countresidues(filename='tleap_apr_solvate.in', returnlist='WAT')
+            write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
+                      pbctype=pbctype, bufferval=bufferval[-1], waterbox=waterbox, neutralize=neutralize, countercation=countercation,
+                      counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, removewat=watlist[-1*watover:], saveprefix=saveprefix)
+            reslist = countresidues(filename='tleap_apr_solvate.in', returnlist='ALL')
+            wat_added.append(len(reslist['WAT']))
+            for key,value in sorted(reslist.items()):
+                print key,len(value)
 
-    # do final run and check
 
-    # print statistics
-
-    # return info for bufferwater, etc to keep them the same.
-
-    #return 'solvated.prmtop'
-
-solvate('tleap.in',bufferwater=15001,pbctype=2)
+solvate('tleap.in',bufferwater=2003,pbctype=1)
