@@ -2,9 +2,6 @@ import re
 import numpy as np
 import subprocess as sp
 
-#def bufferoptimize(bufferwater,wateradded,prev_wateradded,cycles,bufferval,exponent):
-#    if (exponent < -3 and wateradded > bufferwater) or (wateradded - bufferwater < 10
-
 def write_tleapin(filename='tleap.in', tleaplines=[], unitname='model', pdbfile=None,
                   pbctype=1, bufferval=12.0, waterbox='TIP3PBOX', neutralize=1,
                   countercation='Na+', counteranion='Cl-', addion_residues=None,
@@ -70,9 +67,11 @@ def solvate(tleapfile,pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='TI
     unitname = 'model'
     addion_residues =  []
     addion_values = []
-    bufferval = 8.0
+    bufferval = []
+    bufferval.append(0.0)
+    bufferval.append(8.0)
     buffer_iterexp = 0
-    cur_waters = 0
+    wat_added = []
 
     # Read tleapfile
     tleaplines = []
@@ -90,9 +89,9 @@ def solvate(tleapfile,pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='TI
    
     # If bufferwater ends with 'A', meaning it is a buffer distance, we need to get this value.
     if str(bufferwater).endswith('A'):
-        bufferval = float(bufferwater[:-1])
+        bufferval.append(float(bufferwater[:-1]))
         write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
-                      pbctype=pbctype, bufferval=bufferval, waterbox=waterbox, neutralize=0, countercation=None,
+                      pbctype=pbctype, bufferval=bufferval[-1], waterbox=waterbox, neutralize=0, countercation=None,
                       counteranion=None, addion_residues=None, addion_values=None, saveprefix=None)
         bufferwater = countwaters(filename='tleap_apr_solvate.in')
 
@@ -113,59 +112,61 @@ def solvate(tleapfile,pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='TI
                 else:
                     addion_values.append(txt)
 
-    buffer_predict=1
+    buffer_predict=0
     if buffer_predict == 1:
         # Do bufferval prediction as conceived by Germano        
         write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
-                      pbctype=pbctype, bufferval=bufferval, waterbox=waterbox, neutralize=neutralize, countercation=countercation,
+                      pbctype=pbctype, bufferval=bufferval[-1], waterbox=waterbox, neutralize=neutralize, countercation=countercation,
                       counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, saveprefix=None)
-        prev_waters = countwaters(filename='tleap_apr_solvate.in')
+        wat_added.append(countwaters(filename='tleap_apr_solvate.in'))
         prev_bufferval = bufferval
         bufferval += 1.0
         write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
                       pbctype=pbctype, bufferval=bufferval, waterbox=waterbox, neutralize=neutralize, countercation=countercation,
                       counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, saveprefix=None)
-        cur_waters = countwaters(filename='tleap_apr_solvate.in')
+        wat_added.append(countwaters(filename='tleap_apr_solvate.in'))
         cur_bufferval = bufferval
-        slope = ((cur_waters - prev_waters)/(cur_bufferval - prev_bufferval))
-        inter = prev_waters - (slope*prev_bufferval)
+        slope = ((wat_added[-1] - wat_added[-2])/(cur_bufferval - prev_bufferval))
+        inter = wat_added[-2] - (slope*prev_bufferval)
         bufferval = (bufferwater - inter)/slope
-        if abs(bufferval - prev_bufferval) > 10:
-            bufferval = prev_bufferval + 10
-        
+        if abs(bufferval - prev_bufferval) > 20:
+            bufferval = prev_bufferval + 20
+        write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
+                      pbctype=pbctype, bufferval=bufferval, waterbox=waterbox, neutralize=neutralize, countercation=countercation,
+                      counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, saveprefix=None)
+        wat_added.append(countwaters(filename='tleap_apr_solvate.in'))
 
     print bufferval
     cycle = 0
     buffer_iter = 0
     while cycle < 50:
-        prev_waters = cur_waters
         write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
                       pbctype=pbctype, bufferval=bufferval, waterbox=waterbox, neutralize=neutralize, countercation=countercation,
                       counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, saveprefix=None) 
-        cur_waters = countwaters(filename='tleap_apr_solvate.in')
-        print cycle,buffer_iter,":",bufferwater,':',bufferval,buffer_iterexp,prev_waters,cur_waters
+        wat_added.append(countwaters(filename='tleap_apr_solvate.in'))
+        print cycle,buffer_iter,":",bufferwater,':',bufferval,buffer_iterexp,wat_added[-2],wat_added[-1]
         cycle += 1
         buffer_iter += 1
-        if 0 <= (cur_waters - bufferwater) < 3 or buffer_iterexp < -3:
+        if 0 <= (wat_added[-1] - bufferwater) < 15 or buffer_iterexp < -3:
             print 'Done!'
             break
-        elif prev_waters > bufferwater and cur_waters > bufferwater:
+        elif wat_added[-2] > bufferwater and wat_added[-1] > bufferwater:
             bufferval += -1*(10**buffer_iterexp)
-        elif prev_waters > bufferwater and cur_waters < bufferwater:
+        elif wat_added[-2] > bufferwater and wat_added[-1] < bufferwater:
             if buffer_iter > 1:
                 buffer_iterexp -= 1
                 buffer_iter = 0
                 bufferval += 5*(10**buffer_iterexp)
             else:
                 bufferval += 1*(10**buffer_iterexp)
-        elif prev_waters < bufferwater and cur_waters > bufferwater:
+        elif wat_added[-2] < bufferwater and wat_added[-1] > bufferwater:
             if buffer_iter > 1:
                 buffer_iterexp -= 1
                 buffer_iter = 0
                 bufferval += -5*(10**buffer_iterexp)
             else:
                 bufferval += -1*(10**buffer_iterexp)
-        elif prev_waters < bufferwater and cur_waters < bufferwater:
+        elif wat_added[-2] < bufferwater and wat_added[-1] < bufferwater:
             bufferval += 1*(10**buffer_iterexp)
         else:
             raise Exception("The bufferval search died due to an unanticipated set of variable values")

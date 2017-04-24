@@ -13,8 +13,3 @@ check model
 
 
 
-solvateoct model TIP3PBOX 118.65649 iso
-addionsrand model Na+ 0
-addionsrand model Cl- 0
-desc model
-quit
