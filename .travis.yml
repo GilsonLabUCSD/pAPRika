@@ -1,0 +1,13 @@
+sudo: false
+
+language: python
+python:
+  - "3.6"
+
+install:
+    - source devtools/travis/install.sh
+    - echo $PWD
+    - pip install --user .
+    - python -c "import paprika; print(paprika.__version__)"
+script:
+    - source devtools/travis/runtest.sh
