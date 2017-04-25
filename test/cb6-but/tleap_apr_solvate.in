@@ -13,14 +13,16 @@ check model
 
 
 
-solvatebox model TIP3PBOX {10.0 10.0 24.20000}
+solvatebox model TIP3PBOX {10.0 10.0 24.30000}
 addionsrand model Na+ 0
 addionsrand model Cl- 0
-remove model model.2006
-remove model model.2007
-remove model model.2008
-remove model model.2009
-remove model model.2010
+addionsrand model K+ 5
+addionsrand model BR 5
+remove model model.2016
+remove model model.2017
+remove model model.2018
+remove model model.2019
+remove model model.2020
 savepdb model solvated.pdb
 saveamberparm model solvated.prmtop solvated.rst7
 desc model

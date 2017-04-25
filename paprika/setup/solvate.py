@@ -89,8 +89,8 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='T
     addion_residues =  []
     addion_values = []
     bufferval = []
-    bufferval.append(8.0)
-    buffer_iterexp = 0
+    bufferval.append(28.0)
+    buffer_iterexp = 1
     wat_added = []
     wat_added.append(0.0)
 
@@ -144,7 +144,9 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='T
         print cycle,buffer_iter,":",bufferwater,':',bufferval[-1],buffer_iterexp,wat_added[-2],wat_added[-1]
         cycle += 1
         buffer_iter += 1
-        if 0 <= (wat_added[-1] - bufferwater) < 15 or buffer_iterexp < -3:
+        if 0 <= (wat_added[-1] - bufferwater) < 12 or buffer_iterexp < -3:
+            # Possible failure mode: if the tolerance here is very small (0 < () < 1),
+            # the loop can exit with bufferval that adds fewer waters than bufferwater
             print 'Done!'
             break
         ### Possible location of a switch to adjust the bufferval by polynomial fit approach.
@@ -172,18 +174,28 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A', waterbox='T
 
     if cycle >= 50:
         raise Exception("Automatic adjustment of the buffer value was unable to converge on a solution with sufficient tolerance")
+    elif wat_added[-1] - bufferwater < 0:
+        raise Exception("Automatic adjustment of the buffer value resulted in fewer waters added than targeted by bufferwater. Try increasing the tolerance in the above loop")
     else:
         watover = 0
-        while wat_added[-1] != bufferwater:
+        cycle = 0
+        while wat_added[-1] != bufferwater or cycle == 0:
             watover += wat_added[-1] - bufferwater ### Note I don't think there should be water removal errors, but if so, this loop and '+=' method is an attempt to fix.
             watlist = countresidues(filename='tleap_apr_solvate.in', returnlist='WAT')
+            if watover == 0:
+                removewat = None
+            else:
+                removewat = watlist[-1*watover:]
             write_tleapin(filename='tleap_apr_solvate.in', tleaplines=tleaplines, unitname=unitname, pdbfile=pdbfile,
                       pbctype=pbctype, bufferval=bufferval[-1], waterbox=waterbox, neutralize=neutralize, countercation=countercation,
-                      counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, removewat=watlist[-1*watover:], saveprefix=saveprefix)
+                      counteranion=counteranion, addion_residues=addion_residues, addion_values=addion_values, removewat=removewat, saveprefix=saveprefix)
             reslist = countresidues(filename='tleap_apr_solvate.in', returnlist='ALL')
             wat_added.append(len(reslist['WAT']))
             for key,value in sorted(reslist.items()):
                 print key,len(value)
+            cycle += 1
+            if cycle >= 10:
+                raise Exception("Solvation failed due to an unanticipated problem with water removal")
 
 
-solvate('tleap.in',bufferwater=2003,pbctype=1)
+solvate('tleap.in',bufferwater=2003,pbctype=1,addions = ['K+',5,'BR',5])
