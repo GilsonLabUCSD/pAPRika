@@ -8,7 +8,7 @@ import numpy as np
 from paprika.setup.align import *
 
 class TestAlignment(unittest.TestCase):
-    
+
     def test_center_mask(self):
         """ Test that the first mask is centered """
         cb6 = pmd.load_file('./cb6-but/vac.pdb')

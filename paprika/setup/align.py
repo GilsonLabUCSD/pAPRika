@@ -1,5 +1,6 @@
 import numpy as np
 import parmed as pmd
+import logging as log
 
 def align(structure, mask1, mask2, save=False, filename=None):
     """
@@ -16,8 +17,8 @@ def align(structure, mask1, mask2, save=False, filename=None):
     mask2_com = pmd.geometry.center_of_mass(np.asarray(mask2_coordinates),
                                             np.asarray(mask2_masses))
 
-    print('INFO: Moving {} ({} atoms) to the origin...'.format(mask1, len(mask1_coordinates)))
-    print('INFO: Aligning {} ({} atoms) with the z axis...'.format(mask2, len(mask2_coordinates)))
+    log.info('Moving {} ({} atoms) to the origin...'.format(mask1, len(mask1_coordinates)))
+    log.info('Aligning {} ({} atoms) with the z axis...'.format(mask2, len(mask2_coordinates)))
 
     z = np.array([0.0, 0.0, 1.0])
     I = np.identity(3)
@@ -45,9 +46,9 @@ def align(structure, mask1, mask2, save=False, filename=None):
 
     if save:
         if not filename:
-            print('WARNING: Unable to save aligned coordinates (no filename provided)...')
+            log.warning('Unable to save aligned coordinates (no filename provided)...')
         else:
-            print('INFO: Saved aligned coordinates to {}'.format(filename))
+            log.info('Saved aligned coordinates to {}'.format(filename))
             # This seems to write out HETATM in place of ATOM
             # We should offer the option of writing a mol2 file, directly.
             structure.write_pdb(filename)
@@ -72,7 +73,7 @@ def offset_structure(structure, offset):
     for atom in range(len(structure.atoms)):
         offset_coords[atom] = structure.coordinates[atom] + offset
     structure.coordinates = offset_coords
-    print('INFO: Added offset of {} to atomic coordinates...'.format(offset))
+    log.info('Added offset of {} to atomic coordinates...'.format(offset))
     return structure
 
 def return_structure(filename):
@@ -83,7 +84,7 @@ def return_structure(filename):
     # .inpcrd/.prmtop files with the same function call.
     try:
         structure = pmd.load_file(filename)
-        print('INFO: Loaded {}...'.format(filename))
+        log.info('Loaded {}...'.format(filename))
     except:
-        print('ERROR: Unable to load file: {}'.format(filename))
+        log.error('Unable to load file: {}'.format(filename))
     return structure
