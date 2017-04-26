@@ -143,7 +143,7 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
     tleaplines = []
     with open(tleapfile, 'r') as f:
         for line in f.readlines():
-            if re.search('loadpdb', line) and pdbfile is None:
+            if re.search('loadpdb', line):
                 words = line.rstrip().replace('=', ' ').split()
                 if pdbfile is None:
                     pdbfile = words[2]
