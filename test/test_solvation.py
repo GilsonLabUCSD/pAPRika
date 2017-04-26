@@ -18,7 +18,7 @@ class TestSolvate(unittest.TestCase):
         """ Test that we can solvate CB6-BUT using default settings. """
         waters = np.random.randint(1000, 10000)
         # log.debug('Trying to solvate with {} waters...'.format(waters))
-        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='./cb6-but/cb6-but.pdb',
+        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
                 bufferwater=waters)
         self.assertEqual(countresidues(filename='tleap_apr_solvate.in', directory='./cb6-but/', returnlist='WAT'), waters, msg='{}'.format(waters))
 
