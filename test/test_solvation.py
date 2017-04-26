@@ -20,7 +20,7 @@ class TestSolvate(unittest.TestCase):
         # log.debug('Trying to solvate with {} waters...'.format(waters))
         solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
                 bufferwater=waters)
-        self.assertEqual(countresidues(filename='tleap_apr_solvate.in', directory='./cb6-but/', returnlist='WAT'), waters, msg='{}'.format(waters))
+        self.assertEqual(countresidues(filename='tleap_apr_solvate.in', directory='./cb6-but/'), waters, msg='{}'.format(waters))
 
     def test_alignment_workflow(self):
         """ Test that we can solvate CB6-BUT after alignment. """
@@ -30,7 +30,7 @@ class TestSolvate(unittest.TestCase):
         print('Trying to solvate with {} waters...'.format(waters))
         solvate(tleapfile='./cb6-but/tleap.in', pdbfile='tmp.pdb',
                 bufferwater=waters)
-        self.assertEqual(countresidues(filename='tleap_apr_solvate.in', directory='./cb6-but/',returnlist='WAT'), waters, msg='{}'.format(waters))
+        self.assertEqual(countresidues(filename='tleap_apr_solvate.in', directory='./cb6-but/'), waters, msg='{}'.format(waters))
 
 if __name__ == '__main__':
     unittest.main()
