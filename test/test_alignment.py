@@ -5,9 +5,12 @@ Tests the alignment of residues to the z axis.
 import unittest
 import parmed as pmd
 import numpy as np
+import logging as log
 from paprika.setup.align import *
 
 class TestAlignment(unittest.TestCase):
+    
+    log.basicConfig(level=log.DEBUG)
 
     def test_center_mask(self):
         """ Test that the first mask is centered """

@@ -1,6 +1,6 @@
-import numpy as np
 import parmed as pmd
 import logging as log
+import numpy as np
 
 def align(structure, mask1, mask2, save=False, filename=None):
     """
