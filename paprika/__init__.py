@@ -5,6 +5,9 @@ The pAPRika package sets up and performs attach-pull-release calculations.
 from ._version import get_versions
 import argparse as argparse
 import logging as logging
+import parmed as pmd
+from paprika.setup.align import align
+from paprika.setup.solvate import solvate
 
 __version__ = get_versions()['version']
 del get_versions
@@ -28,4 +31,6 @@ parser.add_argument('-v',
                     dest='loglevel',
                     const=logging.INFO)
 args = parser.parse_args()
-logging.basicConfig(level=args.loglevel)
+# logging.basicConfig(level=args.loglevel)
+# logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p',
+#                    level=args.loglevel)
