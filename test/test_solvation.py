@@ -3,6 +3,7 @@ Tests the solvation of the system using `tleap`.
 """
 
 import unittest
+import warnings
 import parmed as pmd
 import numpy as np
 import logging as log
