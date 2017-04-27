@@ -164,7 +164,7 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                       removewat=None,
                       saveprefix=None
                      )
-        log.debug('Getting an itial estimate for how many waters fit in {}...'.format(bufferwater))
+        log.debug('Getting an intial estimate for how many waters fit in {}...'.format(bufferwater))
         bufferwater = countresidues(filename='tleap_apr_solvate.in', directory=dir)
 
     if addions:

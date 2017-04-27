@@ -43,21 +43,11 @@ class TestSolvate(unittest.TestCase):
                                          shell=True)
         self.assertEqual(int(grepped_waters), waters)
 
-    def test_solvation_potassium(self):
-        """ Test that we can solvate CB6-BUT using KCl to neuralize. """
-        waters = np.random.randint(1000, 10000)
-        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
-                bufferwater=waters, counter_cation='K+')
-        potassium = sp.check_output(["grep -oh 'K+' ./cb6-but/solvated.prmtop | wc -w"],
-                             shell=True)
-        self.assertEqual(int(potassium), 6)
-
     def test_solvation_potassium_control(self):
         """ Test there is no potassium by default. A negative control. """
         waters = np.random.randint(1000, 10000)
         solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
                 bufferwater=waters, counter_cation='K+')
-        # This should return 1, because grep will fail.
         potassium = sp.check_output(["grep -oh 'K+' ./cb6-but/solvated.prmtop | wc -w"],
                              shell=True)
         self.assertEqual(int(potassium), 0)
@@ -65,27 +55,31 @@ class TestSolvate(unittest.TestCase):
     def test_solvation_with_additional_ions(self):
         """ Test that we can solvate CB6-BUT with additional ions. """
         waters = np.random.randint(1000, 10000)
-        cations = ['Li+', 'Na+', 'K+', 'Rb+', 'Cs+']
-        anions  = ['F-', 'Cl-', 'Br-', 'I-']
+        cations = ['LI', 'Na+', 'K+', 'RB', 'CS']
+        anions  = ['F', 'Cl-', 'BR', 'IOD']
         n_cations = np.random.randint(1, 10)
         n_anions = np.random.randint(1, 10)
         random_cation = random.choice(cations)
         random_anion = random.choice(anions)
         solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
-                bufferwater=waters, addions=[random_cation, n_cations,
-                                            random_anion, n_anions])
-        cation_present = sp.call(["grep -oh {} ./cb6-but/solvated.prmtop".format(random_cation)],
-                                 shell=True)
-        anion_present = sp.call(["grep -oh {} ./cb6-but/solvated.prmtop".format(random_anion)],
+                bufferwater=waters, neutralize=0,
+                addions=[random_cation, n_cations, random_anion, n_anions])
+        # These should come in the RESIDUE_LABEL region of the prmtop and be before all the water.
+        cation_number = sp.check_output(["grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
+                                         "grep -oh '{}' | wc -w".format(random_cation)],
                                 shell=True)
-        cation_number = sp.check_output(["grep -oh {} ./cb6-but/solvated.prmtop | wc -w".
-                                format(random_cation)],
-                                shell=True)
-        anion_number = sp.check_output(["grep -oh {} ./cb6-but/solvated.prmtop | wc -w".
-                                format(random_anion)],
+        anion_number = sp.check_output(["grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
+                                        "grep -oh '{}' | wc -w".format(random_anion)],
                                 shell=True)
         # Have to think about what to do here...
-        self.assertEqual(int(cation_number), n_cations)
+        log.debug('Expecting...')
+        log.debug('cation = {}\tn_cations={}'.format(random_cation, n_cations))
+        log.debug('anion  = {}\t n_anions={}'.format(random_anion, n_anions))
+        log.debug('Found...')
+        log.debug('             n_cations={}'.format(cation_number))
+        log.debug('              n_anions={}'.format(anion_number))
+
+        self.assertTrue(int(cation_number) == n_cations and int(anion_number) == n_anions)
 
     def test_alignment_workflow(self):
         """ Test that we can solvate CB6-BUT after alignment. """
