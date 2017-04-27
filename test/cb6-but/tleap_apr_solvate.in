@@ -6,10 +6,20 @@ CB6 = loadmol2 cb6.mol2
 loadamberparams but.frcmod
 BUT = loadmol2 but.mol2
 
+model = loadpdb cb6-but.pdb
+
 check model
 
-solvatebox model TIP3PBOX {10.0 10.0 270.00000}
+
+
+
+solvatebox model TIP3PBOX {10.0 10.0 74.80000}
 addionsrand model Na+ 0
 addionsrand model Cl- 0
+addionsrand model Na+ 4
+addionsrand model I- 5
+remove model model.5697
+savepdb model solvated.pdb
+saveamberparm model solvated.prmtop solvated.rst7
 desc model
 quit

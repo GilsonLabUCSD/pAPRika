@@ -5,62 +5,55 @@ import subprocess as sp
 import logging as log
 
 
-def write_tleapin(**kwargs):
+def write_tleapin(
+        filename='tleap.in',
+        directory=None,
+        tleaplines=[],
+        unit='model',
+        pbctype=1,
+        bufferval=12.0,
+        waterbox='TIP3BOX',
+        neutralize=1,
+        counter_cation='Na+',
+        counter_anion='Cl-',
+        addion_residues=None,
+        addion_values=None,
+        removewat=None,
+        saveprefix=None):
     """
     Write a `tleap` input file.
     """
-    # I don't think splitting the arguments into the **kwargs dictionary
-    # simplified anything because we have to manually unpack.
-    # But now that I've done it, I'm going to stick
-    # with it for the time being in the interest of getting a workflow
-    # for align() to solvate().
-    filename = kwargs['filename']
-    directory = kwargs['directory']
-    tleaplines = kwargs['tleaplines']
-    unitname = kwargs['unitname']
-    pdbfile = kwargs['pdbfile']
-    pbctype = kwargs['pbctype']
-    bufferval = kwargs['bufferval']
-    waterbox = kwargs['waterbox']
-    neutralize = kwargs['neutralize']
-    countercation = kwargs['countercation']
-    counteranion = kwargs['counteranion']
-    addion_residues = kwargs['addion_residues']
-    addion_values = kwargs['addion_values']
-    removewat = kwargs['removewat']
-    saveprefix = kwargs['saveprefix']
-    # Yup, that was definitely annoying.
 
     with open(directory + '/' + filename, 'w') as f:
         for line in tleaplines:
             f.write(line)
         if pbctype == 0:
             f.write("solvatebox {} {} {:0.5f} iso\n".format(
-                unitname, waterbox, bufferval))
+                unit, waterbox, bufferval))
         elif pbctype == 1:
             f.write("solvatebox {} {} {{10.0 10.0 {:0.5f}}}\n".format(
-                unitname, waterbox, bufferval))
+                unit, waterbox, bufferval))
         elif pbctype == 2:
             f.write("solvateoct {} {} {:0.5f} iso\n".format(
-                unitname, waterbox, bufferval))
+                unit, waterbox, bufferval))
         else:
             raise Exception("Incorrect pbctype value provided: " +
                             pbctype + ". Only 0, 1, and 2 are valid")
         if neutralize == 1:
-            f.write("addionsrand {} {} 0\n".format(unitname, countercation))
-            f.write("addionsrand {} {} 0\n".format(unitname, counteranion))
+            f.write("addionsrand {} {} 0\n".format(unit, counter_cation))
+            f.write("addionsrand {} {} 0\n".format(unit, counter_anion))
         if addion_residues:
             for i, res in enumerate(addion_residues):
                 f.write("addionsrand {} {} {}\n".format(
-                    unitname, res, addion_values[i]))
+                    unit, res, addion_values[i]))
         if removewat:
             for watnum in removewat:
-                f.write("remove {} {}.{}\n".format(unitname, unitname, watnum))
+                f.write("remove {} {}.{}\n".format(unit, unit, watnum))
         if saveprefix:
-            f.write("savepdb {} {}.pdb\n".format(unitname, saveprefix))
+            f.write("savepdb {} {}.pdb\n".format(unit, saveprefix))
             f.write("saveamberparm {} {}.prmtop {}.rst7\n".format(
-                unitname, saveprefix, saveprefix))
-        f.write("desc {}\n".format(unitname))
+                unit, saveprefix, saveprefix))
+        f.write("desc {}\n".format(unit))
         f.write("quit\n")
 
 
@@ -69,6 +62,7 @@ def countresidues(filename='tleap.in', directory='.', returnlist=None):
     Run and parse `tleap` output and return the number of residues added.
     returnlist can be ALL for all residuse or WAT for waters.
     """
+    # This could probably be replaced with Popen.communicate(), but not sure.
     tleapoutput = sp.Popen('tleap -s -f ' + filename, stdout=sp.PIPE,
                            stderr=sp.PIPE, shell=True, cwd=directory).stdout.read().splitlines()
     wateradded = 0
@@ -98,7 +92,7 @@ def countresidues(filename='tleap.in', directory='.', returnlist=None):
 
 
 def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
-            waterbox='TIP3PBOX', neutralize=1, countercation='Na+', counteranion='Cl-',
+            waterbox='TIP3PBOX', neutralize=1, counter_cation='Na+', counter_anion='Cl-',
             addions=None, saveprefix='solvated'):
     """
     This routine solvates a solute system with a specified amount of water/ions.
@@ -113,27 +107,23 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
 
     waterbox : the water box name to use with the solvatebox/solvateoct command. 
 
-    neutralize : 0 = do not neutralize the system, 1 = neutralize the system. the counterions to be used are specified below with 'countercation' and 'counteranion'.
+    neutralize : 0 = do not neutralize the system, 1 = neutralize the system. the counterions to be used are specified below with 'counter_catio' and 'counter_anion'.
 
-    countercation : a mask to specify neutralizing cations
+    counter_cation : a mask to specify neutralizing cations
 
-    counteranion : a mask to specify neturalizing anions
+    counter_anion : a mask to specify neturalizing anions
 
     addions : a list of residue masks and values which indicate how much additional ions to add. The format for the values is as following: if the value is an integer, then add that exact integer amount of ions; if the value is followed by an 'M', then add that amount in molarity;  if 'm', add by molality.  example: ['Mg+',5, 'Cl-',10, 'K+','0.050M']
 
     """
 
-    unitname = 'model'
+    unit = 'model'
     addion_residues = []
     addion_values = []
-    bufferval = []
-    bufferval.append(0.0)
+    bufferval = [0.0]
     buffer_iterexp = 1
-    wat_added = []
-    wat_added.append(0.0)
+    wat_added = [0.0]
 
-
-    file = os.path.basename(tleapfile)
     dir = os.path.dirname(tleapfile)
     if dir == '':
         dir = '.'
@@ -147,9 +137,9 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                 if pdbfile is None:
                     pdbfile = words[2]
                     log.debug('PDB: {}'.format(pdbfile))
-                unitname = words[0]
+                unit = words[0]
                 tleaplines.append(
-                    "{} = loadpdb {}\n".format(unitname, pdbfile))
+                    "{} = loadpdb {}\n".format(unit, pdbfile))
             if not re.search(r"^\s*addions|^\s*addions2|^\s*addionsrand|^\s*desc|"
                              r"^\s*quit|^\s*solvate|loadpdb|^\s*save", line, re.IGNORECASE):
                 tleaplines.append(line)
@@ -159,24 +149,21 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
         # Let's get a rough value of the number of waters if the buffer value
         # is given as a string.
         bufferval.append(float(bufferwater[:-1]))
-        kwargs = {
-            'filename' : 'tleap_apr_solvate.in',
-            'directory' : dir,
-            'tleaplines' : tleaplines,
-            'unitname' : unitname,
-            'pdbfile' : pdbfile,
-            'pbctype' : pbctype,
-            'bufferval' : bufferval[-1],
-            'waterbox' : waterbox,
-            'neutralize' : 0,
-            'countercation' : None,
-            'counteranion' : None,
-            'addion_residues' : None,
-            'addion_values' : None,
-            'removewat' : None,
-            'saveprefix' : None
-        }
-        write_tleapin(**kwargs)
+        write_tleapin(filename='tleap_apr_solvate.in',
+                      directory=dir,
+                      tleaplines=tleaplines,
+                      unit=unit,
+                      pbctype=pbctype,
+                      bufferval=bufferval[-1],
+                      waterbox=waterbox,
+                      neutralize=0,
+                      counter_cation=None,
+                      counter_anion=None,
+                      addion_residues=None,
+                      addion_values=None,
+                      removewat=None,
+                      saveprefix=None
+                     )
         log.debug('Getting an itial estimate for how many waters fit in {}...'.format(bufferwater))
         bufferwater = countresidues(filename='tleap_apr_solvate.in', directory=dir)
 
@@ -201,25 +188,21 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
     cycle = 0
     buffer_iter = 0
     while cycle < 50:
-        kwargs = {
-            'filename' : 'tleap_apr_solvate.in',
-            'directory' : dir,
-            'tleaplines' : tleaplines,
-            'unitname' : unitname,
-            'pdbfile' : pdbfile,
-            'pbctype' : pbctype,
-            'bufferval' : bufferval[-1],
-            'waterbox' : waterbox,
-            'neutralize' : neutralize,
-            'countercation' : countercation,
-            'counteranion' : counteranion,
-            'addion_residues' : addion_residues,
-            'addion_values' : addion_values,
-            'removewat' : None,
-            'saveprefix' : None
-        }
-        write_tleapin(**kwargs)
-        log.debug('Running tleap...')
+        write_tleapin(filename='tleap_apr_solvate.in',
+                      directory=dir,
+                      tleaplines=tleaplines,
+                      unit=unit,
+                      pbctype=pbctype,
+                      bufferval=bufferval[-1],
+                      waterbox=waterbox,
+                      neutralize=neutralize,
+                      counter_cation=counter_cation,
+                      counter_anion=counter_anion,
+                      addion_residues=addion_residues,
+                      addion_values=addion_values,
+                      removewat=None,
+                      saveprefix=None
+                      )
         wat_added.append(countresidues(filename='tleap_apr_solvate.in', directory=dir))
         print(cycle,buffer_iter,":",bufferwater,':',bufferval[-1],buffer_iterexp,wat_added[-2],wat_added[-1])
         cycle += 1
@@ -276,25 +259,23 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
             else:
                 removewat = watlist[-1 * watover:]
 
-            kwargs = {
-                'filename' : 'tleap_apr_solvate.in',
-                'directory' : dir,
-                'tleaplines' : tleaplines,
-                'unitname' : unitname,
-                'pdbfile' : pdbfile,
-                'pbctype' : pbctype,
-                'bufferval' : bufferval[-1],
-                'waterbox' : waterbox,
-                'neutralize' : neutralize,
-                'countercation' : countercation,
-                'counteranion' : counteranion,
-                'addion_residues' : addion_residues,
-                'addion_values' : addion_values,
-                'removewat' : removewat,
-                'saveprefix' : saveprefix
-            }
-            write_tleapin(**kwargs)
-            reslist = countresidues(filename='tleap_apr_solvate.in', returnlist='ALL', directory=dir)
+            write_tleapin(filename='tleap_apr_solvate.in',
+                          directory=dir,
+                          tleaplines=tleaplines,
+                          unit=unit,
+                          pbctype=pbctype,
+                          bufferval=bufferval[-1],
+                          waterbox=waterbox,
+                          neutralize=neutralize,
+                          counter_cation=counter_cation,
+                          counter_anion=counter_anion,
+                          addion_residues=addion_residues,
+                          addion_values=addion_values,
+                          removewat=removewat,
+                          saveprefix=saveprefix
+                         )
+            reslist = countresidues(filename='tleap_apr_solvate.in',
+                                    returnlist='ALL', directory=dir)
             wat_added.append(len(reslist['WAT']))
             for key, value in sorted(reslist.items()):
                 log.info('{}\t{}'.format(key, len(value)))
@@ -304,4 +285,4 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                     "Solvation failed due to an unanticipated problem with water removal")
 
 
-# solvate('tleap.in', bufferwater=2003, pbctype=1, addions=['K+', 5, 'BR', 5])
+# solvate('../test/cb6-but/tleap.in', bufferwater=2003, pbctype=1, addions=['K+', 5, 'BR', 5])
