@@ -74,7 +74,6 @@ def countresidues(filename='tleap.in', directory='.', returnlist=None):
     wateradded = 0
     reslist = []
 
-    log.debug('Reading output from tleap -s -f {}/{}... '.format(directory, filename))
     for line in tleapoutput:
         line = line.decode('utf-8')
         r = re.search("^R<WAT (.*)>", line)
@@ -88,7 +87,7 @@ def countresidues(filename='tleap.in', directory='.', returnlist=None):
             line = line.decode('utf-8')
             r = re.search("^R<(.*) (.*)>", line)
             if r:
-                if r.group(1) not in reslist:
+                if r.group(1) not in reslist:l
                     reslist[r.group(1)] = []
                 reslist[r.group(1)].append(r.group(2))
         return reslist

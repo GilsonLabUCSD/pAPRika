@@ -6,7 +6,7 @@ import unittest
 import parmed as pmd
 import numpy as np
 import logging as log
-from paprika.setup.align import *
+from paprika.align import *
 
 class TestAlignment(unittest.TestCase):
     

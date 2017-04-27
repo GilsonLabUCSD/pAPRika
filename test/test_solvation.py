@@ -6,8 +6,8 @@ import unittest
 import parmed as pmd
 import numpy as np
 import logging as log
-from paprika.setup.align import *
-from paprika.setup.solvate import *
+from paprika.align import *
+from paprika.solvate import *
 
 class TestSolvate(unittest.TestCase):
     
