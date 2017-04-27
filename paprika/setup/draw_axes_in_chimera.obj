@@ -1,7 +1,0 @@
-.sphere 0 0 0 0.5
-.color 1 0 0
-.arrow 0 0 0 5 0 0 
-.color 1 1 0
-.arrow 0 0 0 0 5 0 
-.color 0 0 1
-.arrow 0 0 0 0 0 5 
