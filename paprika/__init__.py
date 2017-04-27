@@ -6,8 +6,6 @@ from ._version import get_versions
 import argparse as argparse
 import logging as logging
 import parmed as pmd
-from paprika.setup.align import align
-from paprika.setup.solvate import solvate
 
 __version__ = get_versions()['version']
 del get_versions
