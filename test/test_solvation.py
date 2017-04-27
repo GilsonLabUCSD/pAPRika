@@ -66,10 +66,10 @@ class TestSolvate(unittest.TestCase):
                 addions=[random_cation, n_cations, random_anion, n_anions])
         # These should come in the RESIDUE_LABEL region of the prmtop and be before all the water.
         cation_number = sp.check_output(["grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
-                                         "grep -oh '{}' | wc -w".format(random_cation)],
+                                         "grep -oh '{} ' | wc -w".format(random_cation)],
                                 shell=True)
         anion_number = sp.check_output(["grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
-                                        "grep -oh '{}' | wc -w".format(random_anion)],
+                                        "grep -oh '{} ' | wc -w".format(random_anion)],
                                 shell=True)
         # Have to think about what to do here...
         log.debug('Expecting...')
