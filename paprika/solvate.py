@@ -87,7 +87,7 @@ def countresidues(filename='tleap.in', directory='.', returnlist=None):
             line = line.decode('utf-8')
             r = re.search("^R<(.*) (.*)>", line)
             if r:
-                if r.group(1) not in reslist:l
+                if r.group(1) not in reslist:
                     reslist[r.group(1)] = []
                 reslist[r.group(1)].append(r.group(2))
         return reslist
