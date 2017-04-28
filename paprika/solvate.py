@@ -207,7 +207,7 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
         print(cycle,buffer_iter,":",bufferwater,':',bufferval[-1],buffer_iterexp,wat_added[-2],wat_added[-1])
         cycle += 1
         buffer_iter += 1
-        if 0 <= (wat_added[-1] - bufferwater) < 12 or buffer_iterexp < -3:
+        if 0 <= (wat_added[-1] - bufferwater) < 12 or (buffer_iterexp < -3 and (wat_added[-1] - bufferwater) > 0):
             # Possible failure mode: if the tolerance here is very small (0 < () < 1),
             # the loop can exit with bufferval that adds fewer waters than
             # bufferwater
