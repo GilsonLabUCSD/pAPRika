@@ -8,10 +8,10 @@ conda install --yes conda-build pip numpy scipy pandas coverage
 # conda config --add channels omnia
 # conda install --yes openmm
 
-wget https://github.com/ParmEd/ParmEd/archive/2.7.3.tar.gz -O parmed.tar.gz
-tar xvfz parmed.tar.gz
-cd ParmEd-2.7.3
-python setup.py install
-cd ../
+# wget https://github.com/ParmEd/ParmEd/archive/2.7.3.tar.gz -O parmed.tar.gz
+# tar xvfz parmed.tar.gz
+# cd ParmEd-2.7.3
+# python setup.py install
+# cd ../
 
 conda install -y ambertools=17.0 -c http://ambermd.org/downloads/ambertools/conda/
