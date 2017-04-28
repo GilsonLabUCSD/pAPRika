@@ -14,7 +14,7 @@ script:
 cache:
     directories:
         - $HOME/.cache/pip
-        - $HOME/miniconda3
+        # - $HOME/miniconda3
 before_cache:
-    - rm -rf $HOME/miniconda3/conda-bld
-    - rm $HOME/miniconda3/pkgs/*.tar.bz2
+    # - rm -rf $HOME/miniconda3/conda-bld
+    # - rm $HOME/miniconda3/pkgs/*.tar.bz2
