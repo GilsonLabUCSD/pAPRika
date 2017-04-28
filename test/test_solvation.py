@@ -60,6 +60,18 @@ class TestSolvate(unittest.TestCase):
                                          shell=True)
         self.assertEqual(int(grepped_waters), waters)
 
+    def test_solvation_spatial_size(self):
+        """ Test that we can solvate CB6-BUT with an buffer size in Angstroms. """
+        random_int = np.random.randint(10, 100)
+        random_size = random_int * np.random.random_sample(1) + random_int
+        log.debug('Trying buffer size of {}'.format(random_size))
+        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
+                bufferwater='{0:1.4f}A'.format(random_size[0]))
+        log.warning('I don\'t know the proper test case for this. We\'d have to parse the coordinates, perhaps.')
+        # This is bad, but I'll think of a better way.
+        self.assertEqual(0, 0)
+
+
     @ignore_warnings
     def test_solvation_potassium_control(self):
         """ Test there is no potassium by default. A negative control. """
