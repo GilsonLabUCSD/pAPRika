@@ -9,11 +9,6 @@ import numpy as np
 import logging as log
 import subprocess as sp
 import random as random
-
-# Dirty hack
-import sys, os
-sys.path.insert(0, os.path.abspath('../'))
-
 from paprika.align import *
 from paprika.solvate import *
 
