@@ -1,6 +1,6 @@
-wget http://repo.continuum.io/miniconda/Miniconda3-4.3.11-Linux-x86_64.sh -O miniconda.sh
+# wget http://repo.continuum.io/miniconda/Miniconda3-4.3.11-Linux-x86_64.sh -O miniconda.sh
 
-bash miniconda.sh -b
+# bash miniconda.sh -b
 
 export PATH=$HOME/miniconda3/bin:$PATH
 conda update conda -y
