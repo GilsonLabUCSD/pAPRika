@@ -302,4 +302,4 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                     "Solvation failed due to an unanticipated problem with water removal")
 
 
-solvate('../test/cb6-but/tleap.in', bufferwater=2003, pbctype=1, addions=['K+', 5, 'BR', 5])
+#solvate('../test/cb6-but/tleap.in', bufferwater=2003, pbctype=1, addions=['K+', 5, 'BR', 5])
