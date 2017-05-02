@@ -70,7 +70,8 @@ def countresidues(filename='tleap.in', directory='.', choice='water_residues'):
     while p.poll() is None:
         line = p.communicate()[0]
         output.append(line)
-    p.kill()
+    if p.poll() is None:
+        p.kill()
 
     if choice == 'water_residues':
         # Return a list of residue numbers for the waters
@@ -192,9 +193,9 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                 if str(txt).endswith('m') or str(txt).endswith('M'):
                     # Figure out number of ions for desired molality
                     addion_values.append(
-                        float(txt[:-1]) * float(bufferwater) * 0.018)
+                        int(round(float(txt[:-1]) * float(bufferwater) * 0.018)))
                 else:
-                    addion_values.append(txt)
+                    addion_values.append(int(txt))
 
     # First adjust wat_added by changing the bufferval
     cycle = 0
