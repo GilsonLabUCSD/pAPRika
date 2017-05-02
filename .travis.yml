@@ -1,8 +1,11 @@
 sudo: false
 
 language: python
-python:
-  - "3.6"
+
+env:
+   matrix:
+       - PYTHON_VERSION=2.7
+       - PYTHON_VERSION=3.6
 
 script:
     - source devtools/travis/runtest.sh
