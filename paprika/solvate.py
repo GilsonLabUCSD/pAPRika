@@ -193,7 +193,7 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                 if str(txt).endswith('m') or str(txt).endswith('M'):
                     # Figure out number of ions for desired molality
                     addion_values.append(
-                        int(round(float(txt[:-1]) * float(bufferwater) * 0.018)))
+                        int(np.ceil(float(txt[:-1]) * float(bufferwater) * 0.018)))
                 else:
                     addion_values.append(int(txt))
 
