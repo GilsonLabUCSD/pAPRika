@@ -29,6 +29,3 @@ parser.add_argument('-v',
                     dest='loglevel',
                     const=logging.INFO)
 args = parser.parse_args()
-# logging.basicConfig(level=args.loglevel)
-# logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p',
-#                    level=args.loglevel)

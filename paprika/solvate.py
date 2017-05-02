@@ -57,38 +57,50 @@ def write_tleapin(
         f.write("quit\n")
 
 
-def countresidues(filename='tleap.in', directory='.', returnlist=None):
+def countresidues(filename='tleap.in', directory='.', choice='water_residues'):
     """
     Run and parse `tleap` output and return the number of residues added.
-    returnlist can be ALL for all residuse or WAT for waters.
+    The first choice gives a list of water residues. The second choice
+    gives a dictionary of residue names and their number.
     """
-    # This could probably be replaced with Popen.communicate(), but not sure.
-    tleapoutput = sp.Popen('tleap -s -f ' + filename, stdout=sp.PIPE,
-                           stderr=sp.PIPE, shell=True, cwd=directory).stdout.read().splitlines()
-    wateradded = 0
-    reslist = []
 
-    for line in tleapoutput:
-        line = line.decode('utf-8')
-        r = re.search("^R<WAT (.*)>", line)
-        if r:
-            wateradded += 1
-            if returnlist == 'WAT':
-                reslist.append(r.group(1))
-    if returnlist == 'ALL':
-        reslist = {}
-        for line in tleapoutput:
-            line = line.decode('utf-8')
-            r = re.search("^R<(.*) (.*)>", line)
+    p = sp.Popen('tleap -s -f ' + filename, stdout=sp.PIPE, bufsize=1, universal_newlines=True,
+                 cwd=directory, shell=True)
+    output = []
+    while p.poll() is None:
+        line = p.communicate()[0]
+        output.append(line)
+    p.kill()
+
+    if choice == 'water_residues':
+        # Return a list of residue numbers for the waters
+        water_residues = []
+        for line in output[0].splitlines():
+            # Is this line a water?
+            r = re.search("^R<WAT (.*)>", line)
             if r:
-                if r.group(1) not in reslist:
-                    reslist[r.group(1)] = []
-                reslist[r.group(1)].append(r.group(2))
-        return reslist
-    elif returnlist == 'WAT':
-        return reslist
+                water_residues.append(r.group(1))
+        return water_residues
+
+    elif choice == 'residue_dictionary':
+        # Reurn a dictionary of {'RES' : number of RES}
+        residues = {}
+        for line in output[0].splitlines():
+            # Is this line a residue from `desc` command?
+            r = re.search("^R<(.*) ", line)
+            if r:
+                residue_name = r.group(1)
+                # If this residue is not in the dictionary, initialize and
+                # set the count to 1.
+                if residue_name not in residues:
+                    residues[residue_name] = 1
+                # If this residue is in the dictionary, increment the count
+                # each time we find an instance.
+                elif residue_name in residues:
+                    residues[residue_name] += 1
+        return residues
     else:
-        return wateradded
+        raise Exception('Nothing to count.')
 
 
 def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
@@ -102,6 +114,7 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
     tleapfile : a fully functioning tleap file which is capable of preparing the system in gas phase. It should load all parameter files that will be necessary for solvation, including the water model and any custom residues. Assumes the final conformations of the solute are loaded via PDB.
 
     pdbfile : if present, the function will search for any loadpdb commands in the tleapfile and replace whatever is there with pdbfile.  This would be used for cases where we have modified PDBs.
+    returnlist can be ALL for all residuse or WAT for waters.
 
     pbctype : the type of periodic boundary conditions. 0 = cubic, 1 = rectangular, 2 = truncated octahedron.  If rectangular, only the z-axis buffer can be manipulated; the x- and y-axis will use a 10 Ang buffer.
 
@@ -136,7 +149,6 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                 words = line.rstrip().replace('=', ' ').split()
                 if pdbfile is None:
                     pdbfile = words[2]
-                    log.debug('PDB: {}'.format(pdbfile))
                 unit = words[0]
                 tleaplines.append(
                     "{} = loadpdb {}\n".format(unit, pdbfile))
@@ -164,9 +176,9 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                       removewat=None,
                       saveprefix=None
                      )
-        log.debug('Getting an intial estimate for how many waters fit in {}...'.format(bufferwater))
-        bufferwater = countresidues(filename='tleap_apr_solvate.in', directory=dir)
-
+        # Get the number of water residues added...
+        bufferwater = countresidues(filename='tleap_apr_solvate.in', directory=dir,
+                                    choice='residue_dictionary')['WAT']
     if addions:
         if len(addions) % 2 == 1:
             raise Exception("Error: The 'addions' list requires an even number of elements. "
@@ -202,12 +214,16 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                       addion_values=addion_values,
                       removewat=None,
                       saveprefix=None
-                      )
-        wat_added.append(countresidues(filename='tleap_apr_solvate.in', directory=dir))
-        print(cycle,buffer_iter,":",bufferwater,':',bufferval[-1],buffer_iterexp,wat_added[-2],wat_added[-1])
+                     )
+        # Get the number of water residues added...
+        wat_added.append(countresidues(filename='tleap_apr_solvate.in', directory=dir,
+                                       choice='residue_dictionary')['WAT'])
+        print(cycle,buffer_iter,":",bufferwater,':',
+              bufferval[-1],buffer_iterexp,wat_added[-2],wat_added[-1])
         cycle += 1
         buffer_iter += 1
-        if 0 <= (wat_added[-1] - bufferwater) < 12 or (buffer_iterexp < -3 and (wat_added[-1] - bufferwater) > 0):
+        if 0 <= (wat_added[-1] - bufferwater) < 12 or \
+                (buffer_iterexp < -3 and (wat_added[-1] - bufferwater) > 0):
             # Possible failure mode: if the tolerance here is very small (0 < () < 1),
             # the loop can exit with bufferval that adds fewer waters than
             # bufferwater
@@ -253,7 +269,7 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
             # so, this loop and '+=' method is an attempt to fix.
             watover += wat_added[-1] - bufferwater
             watlist = countresidues(
-                filename='tleap_apr_solvate.in', returnlist='WAT', directory=dir)
+                filename='tleap_apr_solvate.in', choice='water_residues', directory=dir)
             if watover == 0:
                 removewat = None
             else:
@@ -274,15 +290,16 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                           removewat=removewat,
                           saveprefix=saveprefix
                          )
+            # Get the full residue dictionary...
             reslist = countresidues(filename='tleap_apr_solvate.in',
-                                    returnlist='ALL', directory=dir)
-            wat_added.append(len(reslist['WAT']))
+                                    choice='residue_dictionary', directory=dir)
+            wat_added.append(reslist['WAT'])
             for key, value in sorted(reslist.items()):
-                log.info('{}\t{}'.format(key, len(value)))
+                log.info('{}\t{}'.format(key, value))
             cycle += 1
             if cycle >= 10:
                 raise Exception(
                     "Solvation failed due to an unanticipated problem with water removal")
 
 
-# solvate('../test/cb6-but/tleap.in', bufferwater=2003, pbctype=1, addions=['K+', 5, 'BR', 5])
+#solvate('../test/cb6-but/tleap.in', bufferwater=2003, pbctype=1, addions=['K+', 5, 'BR', 5])

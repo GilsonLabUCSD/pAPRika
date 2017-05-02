@@ -4,10 +4,28 @@ language: python
 python:
   - "3.6"
 
-install:
-    - source devtools/travis/install.sh
-    - echo $PWD
-    - pip install --user .
-    - python -c "import paprika; print(paprika.__version__)"
 script:
     - source devtools/travis/runtest.sh
+cache:
+    directories:
+        - $HOME/.cache/pip
+        - $HOME/miniconda3
+before_cache:
+    # - rm -rf $HOME/miniconda3/conda-bld
+    # - rm $HOME/miniconda3/pkgs/*.tar.bz2
+install:
+
+    - |
+      echo ""
+      if [ ! -f $HOME/miniconda3/bin/activate ]; then
+          echo "Installing a fresh version of Miniconda."
+          MINICONDA_URL="https://repo.continuum.io/miniconda"
+          MINICONDA_FILE="Miniconda3-latest-Linux-x86_64.sh"
+          curl -L -O "${MINICONDA_URL}/${MINICONDA_FILE}"
+          rm -rf $HOME/miniconda3
+          bash $MINICONDA_FILE -b
+      fi
+    - source devtools/travis/install.sh
+    - pip install --user .
+    - python -c "import paprika; print(paprika.__version__)"
+
