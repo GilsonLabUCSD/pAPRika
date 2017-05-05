@@ -5,10 +5,15 @@ Tests the alignment of residues to the z axis.
 import unittest
 import parmed as pmd
 import numpy as np
-from paprika.setup.align import *
+import logging as log
+from paprika.align import *
 
 class TestAlignment(unittest.TestCase):
     
+    logger = log.getLogger()
+    logger.setLevel(log.DEBUG)
+    log.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
+
     def test_center_mask(self):
         """ Test that the first mask is centered """
         cb6 = pmd.load_file('./cb6-but/vac.pdb')

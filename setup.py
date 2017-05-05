@@ -34,7 +34,7 @@ class CleanCommand(Clean):
         self._clean('./')
 
 # paprika package and all its subpackages
-packages = ['paprika', 'paprika.setup']
+packages = ['paprika']
 
 
 if __name__ == '__main__':
