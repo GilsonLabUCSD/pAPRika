@@ -57,7 +57,8 @@ def write_tleapin(
         f.write("quit\n")
 
 
-def countresidues(filename='tleap.in', directory='.', choice='water_residues'):
+def countresidues(filename='tleap.in', directory='.', choice='water_residues',
+                  volume=False):
     """
     Run and parse `tleap` output and return the number of residues added.
     The first choice gives a list of water residues. The second choice
@@ -99,6 +100,11 @@ def countresidues(filename='tleap.in', directory='.', choice='water_residues'):
                 # each time we find an instance.
                 elif residue_name in residues:
                     residues[residue_name] += 1
+            if volume:
+                r = re.search("Volume(.*)", line)
+                if r:
+                    volume = float(r.group(1)[1:-4])
+                    return volume
         return residues
     else:
         raise Exception('Nothing to count.')
@@ -189,11 +195,21 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
             if i % 2 == 0:
                 addion_residues.append(txt)
             else:
-                # Temporary treat m and M identical
-                if str(txt).endswith('m') or str(txt).endswith('M'):
-                    # Figure out number of ions for desired molality
+                # User specifies molaliy...
+                if str(txt).endswith('m'):
+                    # number to add = (molality) x (number waters) x (0.018 kg/mol per water)
                     addion_values.append(
                         int(np.ceil(float(txt[:-1]) * float(bufferwater) * 0.018)))
+                # User specifies molarity...
+                elif str(txt).endswith('M'):
+                    volume = countresidues(filename='tleap_apr_solvate.in', directory=dir,
+                                    choice='residue_dictionary', volume=True)
+                    N_A = 6.0221409 * 10 **23
+                    angstrom_cubed_to_liters = 1 * 10**-27
+                    number_of_atoms = float(txt[:-1]) * N_A
+                    liters = volume * angstrom_cubed_to_liters
+                    atoms_to_add = number_of_atoms * liters
+                    addion_values.append(np.ceil(atoms_to_add))
                 else:
                     addion_values.append(int(txt))
 
@@ -303,4 +319,4 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                     "Solvation failed due to an unanticipated problem with water removal")
 
 
-#solvate('../test/cb6-but/tleap.in', bufferwater=2003, pbctype=1, addions=['K+', 5, 'BR', 5])
+# solvate('../test/cb6-but/tleap.in', bufferwater=2003, pbctype=1, addions=['K+', 5, 'BR', '1M'])

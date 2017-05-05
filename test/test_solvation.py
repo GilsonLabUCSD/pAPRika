@@ -4,11 +4,11 @@ Tests the solvation of the system using `tleap`.
 
 import unittest
 import warnings
-import parmed as pmd
 import numpy as np
 import logging as log
 import subprocess as sp
 import random as random
+import parmed as pmd
 from paprika.align import *
 from paprika.solvate import *
 
@@ -99,6 +99,39 @@ class TestSolvate(unittest.TestCase):
         # log.debug('              n_anions={}'.format(anion_number))
 
         self.assertTrue(int(cation_number) == n_cations and int(anion_number) == n_anions)
+
+    def test_solvation_by_molarity(self):
+        """ Test that we can solvate CB6-BUT through molarity. """
+        log.debug('Trying 10 A buffer with 150 mM NaCl...')
+        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
+                bufferwater='10A', neutralize=0, pbctype=1, 
+                addions=['Na+', '0.150M', 'Cl-', '0.150M'])
+        cation_number = sp.check_output(["grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
+                                         "grep -oh 'Na+ ' | wc -w"], shell=True)
+        anion_number = sp.check_output(["grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
+                                        "grep -oh 'Cl- ' | wc -w"], shell=True)
+        # Approximate volume of the solvated system in liters
+        volume_in_liters = 4.6766 * 10**-23
+        n_cations = np.ceil((6.022 * 10**23) * (0.150) * volume_in_liters)
+        n_anions = np.ceil((6.022 * 10**23) * (0.150) * volume_in_liters)
+        self.assertTrue(int(cation_number) == n_cations and int(anion_number) == n_anions)
+
+
+    def test_solvation_by_molality(self):
+        """ Test that we can solvate CB6-BUT through molarity. """
+        log.debug('Trying 2000 water buffer with 150 mmol/kg NaCl...')
+        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
+                bufferwater=2000, neutralize=0, pbctype=1, 
+                addions=['Na+', '0.150m', 'Cl-', '0.150m'])
+        cation_number = sp.check_output(["grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
+                                         "grep -oh 'Na+ ' | wc -w"], shell=True)
+        anion_number = sp.check_output(["grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
+                                        "grep -oh 'Cl- ' | wc -w"], shell=True)
+        n_cations = np.ceil(0.150 * 2000 * 0.018)
+        n_anions = np.ceil(0.150 * 2000 * 0.018)
+        self.assertTrue(int(cation_number) == n_cations and int(anion_number) == n_anions)
+
+
 
     def test_alignment_workflow(self):
         """ Test that we can solvate CB6-BUT after alignment. """
