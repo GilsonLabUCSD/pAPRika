@@ -200,15 +200,14 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
                     # number to add = (molality) x (number waters) x (0.018 kg/mol per water)
                     addion_values.append(
                         int(np.ceil(float(txt[:-1]) * float(bufferwater) * 0.018)))
-                    print(addion_values)
                 # User specifies molarity...
                 elif str(txt).endswith('M'):
                     volume = countresidues(filename='tleap_apr_solvate.in', directory=dir,
                                     choice='residue_dictionary', volume=True)
                     N_A = 6.0221409 * 10 **23
-                    angstom_cubed_to_liters = 1 * 10**-27
+                    angstrom_cubed_to_liters = 1 * 10**-27
                     number_of_atoms = float(txt[:-1]) * N_A
-                    liters = volume * angstom_cubed_to_liters
+                    liters = volume * angstrom_cubed_to_liters
                     atoms_to_add = number_of_atoms * liters
                     addion_values.append(np.ceil(atoms_to_add))
                 else:

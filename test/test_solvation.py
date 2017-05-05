@@ -4,11 +4,11 @@ Tests the solvation of the system using `tleap`.
 
 import unittest
 import warnings
-import parmed as pmd
 import numpy as np
 import logging as log
 import subprocess as sp
 import random as random
+import parmed as pmd
 from paprika.align import *
 from paprika.solvate import *
 
