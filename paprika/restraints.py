@@ -54,7 +54,8 @@ class DAT_restraint(object):
         Return the atom indicies, given a mask.
         """
         structure = align.return_structure(self.structure_file)
-        masked = structure[mask]
+        # Use a `view` of the whole object to avoid reindexing each selection.
+        masked = structure.view[mask]
         log.debug('There are {} atoms in the mask...'.format(masked.atoms))
         indices = [i.idx for i in masked]
         log.debug('Found indices {} for mask {}...'.format(indices, mask))
@@ -70,7 +71,7 @@ class DAT_restraint(object):
                                            self.attach['force_final'],
                                            self.attach['force_increment'])
             # Make a list of targets as long as the attachment windows.
-            self.attach_targets = self.attach['target'] * len(self.attach_forces)
+            self.attach_targets = [self.attach['target']] * len(self.attach_forces)
         if not self.pull_forces and self.pull['force_final']:
             # In the pulling phase, the target distance also changes.
             self.pull_targets = np.arange(self.pull['target_initial'],
@@ -88,7 +89,7 @@ class DAT_restraint(object):
                                             self.release['force_final'],
                                             self.release['force_increment'])
             # Make a list of targets as long as the release windows.
-            self.release_targets = self.release['target'] * len(self.release_forces)
+            self.release_targets = [self.release['target']] * len(self.release_forces)
 
         self.phase = {'attach':  {'forces' : self.attach_forces,
                                   'targets' : self.attach_targets
@@ -120,12 +121,23 @@ def return_restraint_line(restraint, phase, window, group=False):
     &rst iat= 3,109, r1= 0.0000, r2= 6.9665, r3= 6.9665, r4= 999.0000,
          rk2= 5.0000000, rk3= 5.0000000, &end
     """
-    # import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
+    atom_list = []
+    atom_list.append([i for i in restraint.index1])
+    atom_list.append([i for i in restraint.index2])
+    if restraint.index3:
+        atom_list.append([i for i in restraint.index3])
+    else:
+        atom_list.append('')
+    if restraint.index4:
+        atom_list.append([i for i in restraint.index4])
+    else:
+        atom_list.append('')
     string = '&rst ' + \
-             '\tiat = {}, {}, {}, {},'.format([i for i in restraint.index1], \
-                                              [i for i in restraint.index2], \
-                                              [i for i in restraint.index3], \
-                                              [i for i in restraint.index4]) + \
+             '\tiat = {}, {}, {}, {},'.format(atom_list[0], \
+                                              atom_list[1], \
+                                              atom_list[2], \
+                                              atom_list[3]) + \
              '\tr1  = {0:4.4f}'.format(0) + \
              '\tr2  = {0:4.4f}'.format(restraint.phase[phase]['targets'][window]) + \
              '\tr3  = {0:4.4f}'.format(restraint.phase[phase]['targets'][window]) + \
