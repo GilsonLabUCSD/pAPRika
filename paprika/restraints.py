@@ -53,7 +53,7 @@ class DAT_restraint(object):
         Return the atom indicies, given a mask.
         """
         structure = align.return_structure(self.structure_file)
-        return structure[mask].number
+        return [i.idx for i in structure[mask]]
 
     def initialize(self):
         """
@@ -104,8 +104,8 @@ def return_restraint_line(restraint, phase, window, group=False):
              '\tr2  = {0:4.4f}'.format(restraint.phase[phase][window]) + \
              '\tr3  = {0:4.4f}'.format(restraint.phase[phase][window]) + \
              '\tr4  = {0:4.4f}'.format(999) + \
-             '\trk2 = {0:4.4f}' + \
-             '\trk3 = {0:4.4f}' + \
+             '\trk2 = {0:4.4f}'.format(restraint.phase[phase] + \
+             '\trk3 = {0:4.4f}'.format(restraint.phase[phase] + \
              '\t&end'
 
     if group:
