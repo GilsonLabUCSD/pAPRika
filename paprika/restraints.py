@@ -47,7 +47,6 @@ class DAT_restraint(object):
         self.attach_forces, self.attach_targets  = [], []
         self.pull_forces, self.pull_targets    = [], []
         self.release_forces, self.release_targets = [], []
-        
 
     def index_from_mask(self, mask):
         """
@@ -56,9 +55,9 @@ class DAT_restraint(object):
         structure = align.return_structure(self.structure_file)
         # Use a `view` of the whole object to avoid reindexing each selection.
         masked = structure.view[mask]
-        log.debug('There are {} atoms in the mask...'.format(masked.atoms))
+        log.debug('There are {} atoms in the mask...'.format(len(masked.atoms)))
         indices = [i.idx for i in masked]
-        log.debug('Found indices {} for mask {}...'.format(indices, mask))
+        # log.debug('Found indices {} for mask {}...'.format(indices, mask))
         return indices
 
     def initialize(self):
@@ -120,39 +119,89 @@ def return_restraint_line(restraint, phase, window, group=False):
     For example:
     &rst iat= 3,109, r1= 0.0000, r2= 6.9665, r3= 6.9665, r4= 999.0000,
          rk2= 5.0000000, rk3= 5.0000000, &end
-    """
-    import pdb; pdb.set_trace()
-    atom_list = []
-    atom_list.append([i for i in restraint.index1])
-    atom_list.append([i for i in restraint.index2])
-    if restraint.index3:
-        atom_list.append([i for i in restraint.index3])
-    else:
-        atom_list.append('')
-    if restraint.index4:
-        atom_list.append([i for i in restraint.index4])
-    else:
-        atom_list.append('')
-    string = '&rst ' + \
-             '\tiat = {}, {}, {}, {},'.format(atom_list[0], \
-                                              atom_list[1], \
-                                              atom_list[2], \
-                                              atom_list[3]) + \
-             '\tr1  = {0:4.4f}'.format(0) + \
-             '\tr2  = {0:4.4f}'.format(restraint.phase[phase]['targets'][window]) + \
-             '\tr3  = {0:4.4f}'.format(restraint.phase[phase]['targets'][window]) + \
-             '\tr4  = {0:4.4f}'.format(999) + \
-             '\trk2 = {0:4.4f}'.format(restraint.phase[phase]['forces'][window]) + \
-             '\trk3 = {0:4.4f}'.format(restraint.phase[phase]['forces'][window]) + \
-             '\t&end'
+    Or:
+    &rst iat= -1,-1, igr1=3,4,7,8,21,22,25,26,39,40,43,44,57,58,61,62,75,76,79,
+    80,93,94,97,98, igr2=109,113,115,119,
+    r1=     0.0000, r2=     5.9665, r3=     5.9665, r4=   999.0000,
+    rk2=   5.0000000, rk3=   5.0000000, &end
 
-    if group:
-        '''
-        # Group Distance Restraint
-        &rst iat= -1,-1, igr1=3,4,7,8,21,22,25,26,39,40,43,44,57,58,61,62,75,76,79,80,93,94,97,98, igr2=109,113,115,119, r1=     0.0000, r2=     5.9665, r3=     5.9665, r4=   999.0000, rk2=   5.0000000, rk3=   5.0000000, &end
-        '''
-        raise Exception('Not yet!')
-    print(string)
+    """
+
+    # This is not very elegant, but it seems to do the trick!
+    if not restraint.index1:
+        iat1 = ' '
+        raise Exception('There must be at least two atoms in a restraint.')
+    elif len(restraint.index1) == 1:
+        group1 = False
+        iat1 = '{} '.format(restraint.index1[0])
+    else:
+        group1 = True
+        iat1 = '-1 '
+        igr1 = ''
+        for index in restraint.index1:
+            igr1 += '{}, '.format(index)
+
+    if not restraint.index2:
+        iat2 = ' '
+        raise Exception('There must be at least two atoms in a restraint.')
+    elif len(restraint.index2) == 1:
+        group2 = False
+        iat2 = '{} '.format(restraint.index2[0])
+    else:
+        group2 = True
+        iat2 = '-1 '
+        igr2 = ''
+        for index in restraint.index2:
+            igr2 += '{}, '.format(index)
+
+    if not restraint.index3:
+        iat3 = ' '
+        group3 = False
+    elif len(restraint.index3) == 1:
+        group3 = False
+        iat3 = '{} '.format(restraint.index3[0])
+    else:
+        group3 = True
+        iat3 = '-1 '
+        igr3 = ''
+        for index in restraint.index3:
+            igr3 += '{}, '.format(index)
+
+    if not restraint.index4:
+        iat4 = ' '
+        group4 = False
+    elif len(restraint.index4) == 1:
+        group4 = False
+        iat4 = '{} '.format(restraint.index4[0])
+    else:
+        group4 = True
+        iat4 = '-1 '
+        igr4 = ''
+        for index in restraint.index4:
+            igr4 += '{}, '.format(index)
+
+    string = '&rst ' + \
+            '\tiat = {}, {}, {}, {},'.format(iat1, \
+                                             iat2, \
+                                             iat3, \
+                                             iat4)
+    if group1:
+        string += 'igr1 = {}'.format(igr1)
+    if group2:
+        string += 'igr2 = {}'.format(igr2)
+    if group3:
+        string += 'igr3 = {}'.format(igr3)
+    if group4:
+        string += 'igr4 = {}'.format(igr4)
+    string += \
+            '\tr1  = {0:4.4f}'.format(0) + \
+            '\tr2  = {0:4.4f}'.format(restraint.phase[phase]['targets'][window]) + \
+            '\tr3  = {0:4.4f}'.format(restraint.phase[phase]['targets'][window]) + \
+            '\tr4  = {0:4.4f}'.format(999) + \
+            '\trk2 = {0:4.4f}'.format(restraint.phase[phase]['forces'][window]) + \
+            '\trk3 = {0:4.4f}'.format(restraint.phase[phase]['forces'][window]) + \
+            '\t&end'
+    return string
 
 
 # Initialize a distance restraint that acts on :BUT and :CB6...
@@ -161,9 +210,6 @@ this.structure_file = '../test/cb6-but/cb6-but.pdb'
 this.mask1 = ':BUT@C3'
 this.mask2 = ':CB6@C10'
 
-# User specifies the windows directly...
-# this.pull_windows = [0, 1.1, 2.4, 3.6]
-# User specifies initial, final, and increment, and we build the list...
 this.pull = {'target_initial'   : 0,  # angstroms (by definition, I guess)
              'target_final'     : 10, # angstroms
              'target_increment' : 1,  # angstroms
@@ -172,10 +218,22 @@ this.pull = {'target_initial'   : 0,  # angstroms (by definition, I guess)
              'force_increment'  : 1   # kcal per mol (but shouldn't matter)
             }
 this.initialize()
-return_restraint_line(this, phase='pull', window=5)
+line = return_restraint_line(this, phase='pull', window=5)
+print(line)
 
-# Generate windows for each
-# for number, window in enumerate(this.pull_windows):
-    # sp.call(['mkdir -p windows/p{}'.format(number)], shell=True)
+# Initialize a distance restraint that acts on :BUT and :CB6...
+this = DAT_restraint()
+this.structure_file = '../test/cb6-but/cb6-but.pdb'
+this.mask1 = ':BUT'
+this.mask2 = ':CB6'
 
-# In each window, write all restraints
+this.pull = {'target_initial'   : 4,  # angstroms (by definition, I guess)
+             'target_final'     : 12, # angstroms
+             'target_increment' : 1,  # angstroms
+             'force_initial'    : 7,  # kcal per mol
+             'force_final'      : 23,  # kcal per mol
+             'force_increment'  : 1   # kcal per mol (but shouldn't matter)
+            }
+this.initialize()
+line = return_restraint_line(this, phase='pull', window=5)
+print(line)
