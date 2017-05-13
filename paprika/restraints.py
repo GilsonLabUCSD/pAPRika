@@ -1,6 +1,7 @@
 import numpy as np
 import subprocess as sp
 import logging as log
+import os as os
 import parmed as pmd
 from paprika import align
 
@@ -111,6 +112,8 @@ class DAT_restraint(object):
             self.index4 = self.index_from_mask(self.mask4)
         else:
             self.index4 = None
+        log.warn('I think we need to make sure the number of targets and \
+        forces are the same!')
 
 
 def return_restraint_line(restraint, phase, window, group=False):
@@ -131,6 +134,7 @@ def return_restraint_line(restraint, phase, window, group=False):
     if not restraint.index1:
         iat1 = ' '
         raise Exception('There must be at least two atoms in a restraint.')
+        # Right?
     elif len(restraint.index1) == 1:
         group1 = False
         iat1 = '{} '.format(restraint.index1[0])
@@ -203,37 +207,64 @@ def return_restraint_line(restraint, phase, window, group=False):
             '\t&end'
     return string
 
+def make_directories():
+    """
+    Make a series of directories to hold the simulation setup files
+    and the data. This function should probably end up in a separate
+    file eventually.
+    """
+    # Here we could check if the directories already exist and prompt
+    # the user or quit or do something else.
+    # If exist_ok is False (the default), an OSError is raised if the target directory already
+    # exists.
 
-# Initialize a distance restraint that acts on :BUT and :CB6...
-this = DAT_restraint()
-this.structure_file = '../test/cb6-but/cb6-but.pdb'
-this.mask1 = ':BUT@C3'
-this.mask2 = ':CB6@C10'
+    for window in attach_windows:
+        os.mkdirs('./windows/a{}', exist_ok=True)
+    for window in pull_windows:
+        os.mkdirs('./windows/p{}')
 
-this.pull = {'target_initial'   : 0,  # angstroms (by definition, I guess)
+def write_restraints_file(restraints, filename='restraints.in'):
+    """
+    Take all the restraints and write them to a file in each window.
+    """
+    for window in attach_windows:
+        for restraint in restraints:
+            ...
+    for window in pull_windows:
+        for restraint in restraints:
+            ...
+
+
+# Initialize a distance restraint that acts on :BUTC3 and :CB6@C10...
+first = DAT_restraint()
+first.structure_file = '../test/cb6-but/cb6-but.pdb'
+first.mask1 = ':BUT@C3'
+first.mask2 = ':CB6@C10'
+first.pull = {'target_initial'   : 0,  # angstroms (by definition, I guess)
              'target_final'     : 10, # angstroms
              'target_increment' : 1,  # angstroms
              'force_initial'    : 5,  # kcal per mol
              'force_final'      : 5,  # kcal per mol
              'force_increment'  : 1   # kcal per mol (but shouldn't matter)
             }
-this.initialize()
-line = return_restraint_line(this, phase='pull', window=5)
-print(line)
+first.initialize()
 
 # Initialize a distance restraint that acts on :BUT and :CB6...
-this = DAT_restraint()
-this.structure_file = '../test/cb6-but/cb6-but.pdb'
-this.mask1 = ':BUT'
-this.mask2 = ':CB6'
-
-this.pull = {'target_initial'   : 4,  # angstroms (by definition, I guess)
+second = DAT_restraint()
+second.structure_file = '../test/cb6-but/cb6-but.pdb'
+second.mask1 = ':BUT'
+second.mask2 = ':CB6'
+second.pull = {'target_initial'   : 4,  # angstroms (by definition, I guess)
              'target_final'     : 12, # angstroms
              'target_increment' : 1,  # angstroms
              'force_initial'    : 7,  # kcal per mol
              'force_final'      : 23,  # kcal per mol
              'force_increment'  : 1   # kcal per mol (but shouldn't matter)
             }
-this.initialize()
-line = return_restraint_line(this, phase='pull', window=5)
-print(line)
+second.initialize()
+
+# Is there a more clever way to keep track of *all* restraints?
+restraints = [first, second]
+# Is there a more clever way of determining all windows?
+# (And enforcing all restraints have the right number of windows?)
+write_restraints_file(restraints)
