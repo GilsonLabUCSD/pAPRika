@@ -27,10 +27,10 @@ class DAT_restraint(object):
         self.index3 = None
         self.index4 = None
 
-        self.attach =  {'target':            None,
-                        'force_initial':     None,
-                        'force_final':       None,
-                        'force_increment':   None
+        self.attach =  {'target_initial':    None,
+                        'target_final':      None,
+                        'target_increment':  None,
+                        'force':             None
                        }
         self.pull =    {'target_initial':    None,
                         'target_final':      None,
@@ -66,12 +66,22 @@ class DAT_restraint(object):
         If the user hasn't already declared the windows list, we will
         construct one from the initial, final, and increment values.
         """
-        if not self.attach_forces and self.attach['force_final']:
-            self.attach_forces = np.arange(self.attach['force_initial'],
-                                           self.attach['force_final'],
-                                           self.attach['force_increment'])
+        log.warn('The restraint ranges are not inclusive of the final element '
+                 'and they should be.')
+        if self.attach_targets and self.attach['force']:
+            log.debug('Building attach force targets from fractions...')
+            self.attach_forces = [self.attach['force'] * i for i in self.attach_targets]
+
+        if not self.attach_targets and self.attach['force']:
+            log.debug('Building attach force targets from a range...')
+            self.attach_forces = np.arange(self.attach['target_initial'],
+                                           self.attach['target_final'],
+                                           self.attach['target_increment'])
             # Make a list of targets as long as the attachment windows.
-            self.attach_targets = [self.attach['target']] * len(self.attach_forces)
+            # I'm not sure the following line is working...
+            log.warn('Investigate!')
+            # self.attach_targets = [self.attach['target']] * len(self.attach_forces)
+
         if not self.pull_forces and self.pull['force_final']:
             # In the pulling phase, the target distance also changes.
             self.pull_targets = np.arange(self.pull['target_initial'],
@@ -112,8 +122,6 @@ class DAT_restraint(object):
             self.index4 = self.index_from_mask(self.mask4)
         else:
             self.index4 = None
-        log.warn('I think we need to make sure the number of targets and \
-        forces are the same!')
 
 
 def return_restraint_line(restraint, phase, window, group=False):
@@ -227,44 +235,27 @@ def write_restraints_file(restraints, filename='restraints.in'):
     """
     Take all the restraints and write them to a file in each window.
     """
-    for window in attach_windows:
+    for window in restraint.attach_windows:
         for restraint in restraints:
-            ...
+            line = return_restraint_line(restraint, phase='attach', window=window)
+            # Print line in the appropriate directory...
+
     for window in pull_windows:
         for restraint in restraints:
-            ...
+            line = return_restraint_line(restraint, phase='pull', window=window)
+            # Print line in the appropriate directory...
 
 
 # Initialize a distance restraint that acts on :BUTC3 and :CB6@C10...
-first = DAT_restraint()
-first.structure_file = '../test/cb6-but/cb6-but.pdb'
-first.mask1 = ':BUT@C3'
-first.mask2 = ':CB6@C10'
-first.pull = {'target_initial'   : 0,  # angstroms (by definition, I guess)
-             'target_final'     : 10, # angstroms
-             'target_increment' : 1,  # angstroms
-             'force_initial'    : 5,  # kcal per mol
-             'force_final'      : 5,  # kcal per mol
-             'force_increment'  : 1   # kcal per mol (but shouldn't matter)
-            }
-first.initialize()
-
-# Initialize a distance restraint that acts on :BUT and :CB6...
-second = DAT_restraint()
-second.structure_file = '../test/cb6-but/cb6-but.pdb'
-second.mask1 = ':BUT'
-second.mask2 = ':CB6'
-second.pull = {'target_initial'   : 4,  # angstroms (by definition, I guess)
-             'target_final'     : 12, # angstroms
-             'target_increment' : 1,  # angstroms
-             'force_initial'    : 7,  # kcal per mol
-             'force_final'      : 23,  # kcal per mol
-             'force_increment'  : 1   # kcal per mol (but shouldn't matter)
-            }
-second.initialize()
-
-# Is there a more clever way to keep track of *all* restraints?
-restraints = [first, second]
-# Is there a more clever way of determining all windows?
-# (And enforcing all restraints have the right number of windows?)
-write_restraints_file(restraints)
+# first = DAT_restraint()
+# first.structure_file = '../test/cb6-but/cb6-but.pdb'
+# first.mask1 = ':BUT@C*'
+# first.mask2 = ':CB6@O*'
+# first.pull = {'target_initial'   : 0, # angstroms
+#              'target_final'     : 10, # angstroms
+#              'target_increment' : 1,  # angstroms
+#              'force_initial'    : 2,  # kcal per mol
+#              'force_final'      : 2,  # kcal per mol
+#              'force_increment'  : 1   # kcal per mol
+#             }
+# first.initialize()
