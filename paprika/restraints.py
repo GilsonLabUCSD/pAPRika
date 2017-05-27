@@ -232,7 +232,7 @@ def make_directories(restraint):
     for window, _ in enumerate(restraint.attach_forces):
         os.makedirs('./windows/a{0:03d}'.format(window), exist_ok=True)
     for window, _ in enumerate(restraint.pull_forces):
-        os.makedirs('./windows/p{0:03d}'.format(window))
+        os.makedirs('./windows/p{0:03d}'.format(window), exist_ok=True)
 
 def write_restraints_file(restraints, filename='restraints.in'):
     """
@@ -241,24 +241,35 @@ def write_restraints_file(restraints, filename='restraints.in'):
     for restraint in restraints:
         for window, _ in enumerate(restraint.attach_forces):
             line = return_restraint_line(restraint, phase='attach', window=window)
-            # Print line in the appropriate directory...
+            # Using append mode is crucial for multiple restraints.
+            directory = './windows/a{0:03d}'.format(window)
+            f = open(directory + '/' + filename, 'a')
+            f.write(line + '\n')
+            f.close()
 
     for restraint in restraints:
         for window, _ in enumerate(restraint.pull_forces):
             line = return_restraint_line(restraint, phase='pull', window=window)
-            # Print line in the appropriate directory...
+            # Using append mode is crucial for multiple restraints.
+            directory = './windows/p{0:03d}'.format(window)
+            f = open(directory + '/' + filename, 'a')
+            f.write(line + '\n')
+            f.close()
 
+def clean_restraints_file(restraints, filename='restraints.in'):
+    """
+    Delete the restraints files for repeated testing.
+    """
+    for restraint in restraints:
+        for window, _ in enumerate(restraint.attach_forces):
+            line = return_restraint_line(restraint, phase='attach', window=window)
+            # Using append mode is crucial for multiple restraints.
+            directory = './windows/a{0:03d}'.format(window)
+            os.remove(directory + '/' + filename)
 
-# Initialize a distance restraint that acts on :BUTC3 and :CB6@C10...
-# first = DAT_restraint()
-# first.structure_file = '../test/cb6-but/cb6-but.pdb'
-# first.mask1 = ':BUT@C*'
-# first.mask2 = ':CB6@O*'
-# first.pull = {'target_initial'   : 0, # angstroms
-#              'target_final'     : 10, # angstroms
-#              'target_increment' : 1,  # angstroms
-#              'force_initial'    : 2,  # kcal per mol
-#              'force_final'      : 2,  # kcal per mol
-#              'force_increment'  : 1   # kcal per mol
-#             }
-# first.initialize()
+    for restraint in restraints:
+        for window, _ in enumerate(restraint.pull_forces):
+            line = return_restraint_line(restraint, phase='pull', window=window)
+            # Using append mode is crucial for multiple restraints.
+            directory = './windows/p{0:03d}'.format(window)
+            os.remove(directory + '/' + filename)
