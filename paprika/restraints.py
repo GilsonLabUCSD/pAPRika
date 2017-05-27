@@ -215,7 +215,7 @@ def return_restraint_line(restraint, phase, window, group=False):
             '\t&end'
     return string
 
-def make_directories():
+def make_directories(restraint):
     """
     Make a series of directories to hold the simulation setup files
     and the data. This function should probably end up in a separate
@@ -226,22 +226,25 @@ def make_directories():
     # If exist_ok is False (the default), an OSError is raised if the target directory already
     # exists.
 
-    for window in attach_windows:
-        os.mkdirs('./windows/a{}', exist_ok=True)
-    for window in pull_windows:
-        os.mkdirs('./windows/p{}')
+    log.debug('We ought to make sure somewhere that all restraints have'
+              ' the same number of windows. Here I am creating directories based '
+              ' on the number of windows in a single restraint.')
+    for window, _ in enumerate(restraint.attach_forces):
+        os.makedirs('./windows/a{0:03d}'.format(window), exist_ok=True)
+    for window, _ in enumerate(restraint.pull_forces):
+        os.makedirs('./windows/p{0:03d}'.format(window))
 
 def write_restraints_file(restraints, filename='restraints.in'):
     """
     Take all the restraints and write them to a file in each window.
     """
-    for window in restraint.attach_windows:
-        for restraint in restraints:
+    for restraint in restraints:
+        for window, _ in enumerate(restraint.attach_forces):
             line = return_restraint_line(restraint, phase='attach', window=window)
             # Print line in the appropriate directory...
 
-    for window in pull_windows:
-        for restraint in restraints:
+    for restraint in restraints:
+        for window, _ in enumerate(restraint.pull_forces):
             line = return_restraint_line(restraint, phase='pull', window=window)
             # Print line in the appropriate directory...
 
