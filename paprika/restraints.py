@@ -198,20 +198,20 @@ def return_restraint_line(restraint, phase, window, group=False):
                                              iat3, \
                                              iat4)
     if group1:
-        string += 'igr1 = {}'.format(igr1)
+        string += 'igr1 = {},'.format(igr1)
     if group2:
-        string += 'igr2 = {}'.format(igr2)
+        string += 'igr2 = {},'.format(igr2)
     if group3:
-        string += 'igr3 = {}'.format(igr3)
+        string += 'igr3 = {},'.format(igr3)
     if group4:
-        string += 'igr4 = {}'.format(igr4)
+        string += 'igr4 = {},'.format(igr4)
     string += \
-            '\tr1  = {0:4.4f}'.format(0) + \
-            '\tr2  = {0:4.4f}'.format(restraint.phase[phase]['targets'][window]) + \
-            '\tr3  = {0:4.4f}'.format(restraint.phase[phase]['targets'][window]) + \
-            '\tr4  = {0:4.4f}'.format(999) + \
-            '\trk2 = {0:4.4f}'.format(restraint.phase[phase]['forces'][window]) + \
-            '\trk3 = {0:4.4f}'.format(restraint.phase[phase]['forces'][window]) + \
+            '\tr1  = {0:4.4f},'.format(0) + \
+            '\tr2  = {0:4.4f},'.format(restraint.phase[phase]['targets'][window]) + \
+            '\tr3  = {0:4.4f},'.format(restraint.phase[phase]['targets'][window]) + \
+            '\tr4  = {0:4.4f},'.format(999) + \
+            '\trk2 = {0:4.4f},'.format(restraint.phase[phase]['forces'][window]) + \
+            '\trk3 = {0:4.4f},'.format(restraint.phase[phase]['forces'][window]) + \
             '\t&end'
     return string
 
@@ -262,14 +262,12 @@ def clean_restraints_file(restraints, filename='restraints.in'):
     """
     for restraint in restraints:
         for window, _ in enumerate(restraint.attach_forces):
-            line = return_restraint_line(restraint, phase='attach', window=window)
-            # Using append mode is crucial for multiple restraints.
+
             directory = './windows/a{0:03d}'.format(window)
             os.remove(directory + '/' + filename)
 
     for restraint in restraints:
         for window, _ in enumerate(restraint.pull_forces):
-            line = return_restraint_line(restraint, phase='pull', window=window)
-            # Using append mode is crucial for multiple restraints.
+
             directory = './windows/p{0:03d}'.format(window)
             os.remove(directory + '/' + filename)
