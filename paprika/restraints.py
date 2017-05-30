@@ -27,27 +27,25 @@ class DAT_restraint(object):
         self.index3 = None
         self.index4 = None
 
-        self.attach =  {'target_initial':    None,
+        self.attach =  {'target_initial':    None, # Percent of force constant
                         'target_final':      None,
                         'target_increment':  None,
-                        'force':             None
+                        'force_constant':    None,
+                        'targets':           None, # List to hold actual target values
+                        'forces':            None  # List to hold actual force values
                        }
-        self.pull =    {'target_initial':    None,
+        self.pull =    {'target_initial':    None, # Distance for restraint
                         'target_final':      None,
                         'target_increment':  None,
-                        'force_initial':     None,
-                        'force_final':       None,
-                        'force_increment':   None
+                        'force_constant' :   None,
+                        'targets':           None,  # List to hold actual target values
+                        'forces':            None   # List to hold actual force values
                        }
         self.release = {'target':            None,
                         'force_initial':     None,
                         'force_final':       None,
                         'force_increment':   None
                        }
-
-        self.attach_forces, self.attach_targets  = [], []
-        self.pull_forces, self.pull_targets    = [], []
-        self.release_forces, self.release_targets = [], []
 
     def index_from_mask(self, mask):
         """
@@ -66,17 +64,32 @@ class DAT_restraint(object):
         If the user hasn't already declared the windows list, we will
         construct one from the initial, final, and increment values.
         """
-        log.warn('The restraint ranges are not inclusive of the final element '
-                 'and they should be.')
-        if self.attach_targets and self.attach['force']:
+        if not self.attach['targets']:
+            log.debug('Building attach targets from fractions...')
+            self.attach['targets'] = np.arange(self.attach['target_initial'],
+                                               self.attach['target_final'] +
+                                               self.attach['target_increment'],
+                                               self.attach['target_increment'])
+        if not self.attach['forces']:
             log.debug('Building attach force targets from fractions...')
-            self.attach_forces = [self.attach['force'] * i for i in self.attach_targets]
+            self.attach['forces'] = [self.attach['force_constant'] * i
+                                     for i in self.attach['targets']]
+
+        if not self.pull['targets']:
+            log.debug('Building pull targets from fractions...')
+            self.pull['targets'] = np.arange(self.pull['target_initial'],
+                                             self.pull['target_final'] +
+                                             self.pull['target_increment'],
+                                             self.pull['target_increment'])
+        if not self.pull['forces']:
+            log.debug('Building pull force targets from fractions...')
+            self.pull['forces'] = [self.pull['force_constant'] * i
+                                     for i in self.pull['targets']]
+
+
 
         if not self.attach_targets and self.attach['force']:
             log.debug('Building attach force targets from a range...')
-            self.attach_forces = np.arange(self.attach['target_initial'],
-                                           self.attach['target_final'],
-                                           self.attach['target_increment'])
             # Make a list of targets as long as the attachment windows.
             # I'm not sure the following line is working...
             log.warn('Investigate!')
@@ -85,18 +98,21 @@ class DAT_restraint(object):
         if not self.pull_forces and self.pull['force_final']:
             # In the pulling phase, the target distance also changes.
             self.pull_targets = np.arange(self.pull['target_initial'],
-                                          self.pull['target_final'],
+                                          self.pull['target_final'] +
+                                          self.pull['target_increment'],
                                           self.pull['target_increment'])
 
             if self.pull['force_initial'] != self.pull['force_final']:
                 self.pull_forces = np.arange(self.pull['force_initial'],
-                                             self.pull['force_final'],
+                                             self.pull['force_final'] +
+                                             self.pull['force_increment'],
                                              self.pull['force_increment'])
             else:
                 self.pull_forces = [self.pull['force_initial']] * len(self.pull_targets)
         if not self.release_forces and self.release['force_final']:
             self.release_forces = np.arange(self.release['force_initial'],
-                                            self.release['force_final'],
+                                            self.release['force_final'] +
+                                            self.release['force_increment'],
                                             self.release['force_increment'])
             # Make a list of targets as long as the release windows.
             self.release_targets = [self.release['target']] * len(self.release_forces)
@@ -198,13 +214,13 @@ def return_restraint_line(restraint, phase, window, group=False):
                                              iat3, \
                                              iat4)
     if group1:
-        string += 'igr1 = {},'.format(igr1)
+        string += 'igr1 = {}'.format(igr1)
     if group2:
-        string += 'igr2 = {},'.format(igr2)
+        string += 'igr2 = {}'.format(igr2)
     if group3:
-        string += 'igr3 = {},'.format(igr3)
+        string += 'igr3 = {}'.format(igr3)
     if group4:
-        string += 'igr4 = {},'.format(igr4)
+        string += 'igr4 = {}'.format(igr4)
     string += \
             '\tr1  = {0:4.4f},'.format(0) + \
             '\tr2  = {0:4.4f},'.format(restraint.phase[phase]['targets'][window]) + \
