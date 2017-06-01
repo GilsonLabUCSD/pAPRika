@@ -28,43 +28,41 @@ class DAT_restraint(object):
         self.index3 = None
         self.index4 = None
 
+        # For attach and release, in most cases the target distance, angle, or torsion value does not change
+        # throughout the windows, but we setup the restraints with flexibility.
         self.attach = {
-            'target_values':    None,  # If the user wants to specify a list...
-            'target_initial':   None,  # Percent of force constant
-            'target_final':     None,
-            'target_increment': None,
-            'force_values':     None,  # If the user wants to specify a list...
-            'force_initial':    None,
-            'force_final':      None,
-            'force_increment':  None
+            'target':             None, # The target value for the restraint (mandatory)
+            'fc_initial':         None, # The initial force constant (optional)
+            'fc_final':           None, # The final force constant (optional)
+            'num_windows':        None, # The number of windows (optional)
+            'fc_increment':       None, # The force constant increment (optional)
+            'fraction_increment': None, # The percentage of the force constant increment (optional)
+            'fraction_list':      None, # The list of force constant percentages (optional)
+            'fc_list':            None  # The list of force constants (will be created if not given)
         }
-
+        # For the pull phase, the target distance changes and usually the force constant does not. But we will be
+        # general and allow the force constant to change as well.
         self.pull = {
-            'target_values':    None,
-            'target_initial':   None,
-            'target_final':     None,
-            'target_increment': None,
-            'force_values':     None,
-            'force_initial':    None,
-            'force_final':      None,
-            'force_increment':  None
+            'fc':                 None, # The force constant for the restraint (mandatory)
+            'target_initial':     None, # The initial target value (optional)
+            'target_final':       None, # The final target value (optional)
+            'num_windows':        None, # The number of windows (optional)
+            'target_increment':   None, # The target value increment (optional)
+            'fraction_increment': None, # The percentage of the target value increment (optional)
+            'fraction_list':      None, # The list of target value percentages (optional)
+            'target_list':        None  # The list of target values (will be created if not given)
         }
 
         self.release = {
-            'target_values':    None,
-            'target_initial':   None,
-            'target_final':     None,
-            'target_increment': None,
-            'force_values':     None,
-            'force_initial':    None,
-            'force_final':      None,
-            'force_increment':  None
+            'target':             None, # The target value for the restraint (mandatory)
+            'fc_initial':         None, # The initial force constant (optional)
+            'fc_final':           None, # The final force constant (optional)
+            'num_windows':        None, # The number of windows (optional)
+            'fc_increment':       None, # The force constant increment (optional)
+            'fraction_increment': None, # The percentage of the force constant increment (optional)
+            'fraction_list':      None, # The list of force constant percentages (optional)
+            'fc_list':            None  # The list of force constants (will be created if not given)
         }
-        log.info("1. Specify a list of values like `restraint.attach['target_values']`")
-        log.info("2. Specify a range of values using `restraint.attach['target_initial]`, "
-                 "`restraint.attach['target_final']` and "
-                 "`restraint.attach['target_increment']` ")
-        log.info("3. Specify a single value like `restraint.attach['force_final']`")
 
     def initialize(self):
         """
@@ -94,87 +92,170 @@ class DAT_restraint(object):
             }
         }
         # ------------------------------------ ATTACH ------------------------------------ #
-        # Either the user specifies a direct list of target values during attachment...
-        if self.attach['target_values']:
-            log.debug('User directly specified list of target values for attachment...')
-            self.phase['attach']['targets'] = self.attach['target_values']
-        # ... or we build a list of targets using a range supplied.
-        elif (self.attach['target_initial'] is not None) and \
-             (self.attach['target_increment'] is not None) and \
-             (self.attach['target_final'] is not None):
-            log.debug('Building attachment targets from fractions...')
-            self.phase['attach']['targets'] = np.arange(self.attach['target_initial'],
-                                                        self.attach['target_final'] +
-                                                        self.attach['target_increment'],
-                                                        self.attach['target_increment'])
-        # After we have the list of targets, we calculate the force constant in each window during
-        # attachment. Either the user specifies the list of force constants
-        # directly...
-        if self.attach['force_values']:
-            log.debug('User directly specified list of force constants for attachment...')
-            self.phase['attach']['force_constants'] = self.attach['force_values']
-        # ...or we find the force constant in each window by multiplying the target fraction
-        # by the final force constant.
-        elif self.attach['force_final']:
-            log.debug('Building attachment force constants from fractions...')
-            self.phase['attach']['force_constants'] = [self.attach['force_final'] * percent
-                                                       for percent in self.phase['attach']['targets']]
+        log.debug('Calculating attach targets and force constants...')
+        if self.attach['target'] is None:
+            log.error('Restraint target cannot be unset.')
 
+        if self.attach['fc_initial'] is not None:
+            # This takes care of choice #1 in issue #14
+            if (self.attach['fc_final'] is not None) and (self.attach['num_windows'] is not None):
+                log.debug('Method #1')
+                self.phase['attach']['force_constants'] = np.linspace(self.attach['fc_initial'],
+                                                                    self.attach['fc_final'],
+                                                                    self.attach['num_windows'])
+                self.phase['attach']['targets'] = [self.attach['target']] * self.attach['num_windows']
+            # This takes care of choice #2 in issue #14
+            elif (self.attach['fc_final'] is not None) and (self.attach['fc_increment'] is not None):
+                log.debug('Method #2')
+                self.phase['attach']['force_constants'] = np.arange(self.attach['fc_initial'],
+                                                                    self.attach['fc_final'] +
+                                                                    self.attach['fc_increment'],
+                                                                    self.attach['fc_increment'])
+                self.phase['attach']['targets'] = [self.attach['target']] * len(self.phase['attach']['force_constants'])
+        if self.attach['fraction_list'] is not None:
+            # This takes care of choice #3 in issue #14
+            if self.attach['fc_final'] is not None:
+                log.debug('Method #3')
+                self.phase['attach']['force_constants'] = [percent * self.attach['fc_final'] for
+                                                           percent in self.attach['fraction_list']]
+                self.phase['attach']['targets'] = [self.attach['target']] * len(self.phase['attach']['force_constants'])
+
+        # This takes care of choice #4 in issue #14
+        if self.attach['fc_list'] is not None:
+            log.debug('Method #4')
+            self.phase['attach']['force_constants'] = self.attach['fc_list']
+            self.phase['attach']['targets'] = [self.attach['target']] * len(self.phase['attach']['force_constants'])
+
+        if self.attach['fc_final'] is not None:
+            # This takes care of #5 in issue #14
+            if self.attach['num_windows'] is not None:
+                log.debug('Method #5')
+                self.phase['attach']['force_constants'] = np.linspace(0,
+                                                                    self.attach['fc_final'],
+                                                                    self.attach['num_windows'])
+                self.phase['attach']['targets'] = [self.attach['target']] * self.attach['num_windows']
+            # This takes care of #6 in issue #14
+            elif self.attach['fraction_increment'] is not None:
+                log.debug('Method #6')
+                fractions = np.arange(0, 1.0 + self.attach['fraction_increment'], self.attach['fraction_increment'])
+                self.phase['attach']['force_constants'] = [percent * self.attach['fc_final'] for
+                                                           percent in fractions]
+                self.phase['attach']['targets'] = [self.attach['target']] * len(self.phase['attach']['force_constants'])
+
+        if self.phase['attach']['force_constants'] is None or self.phase['attach']['targets'] is None:
+            log.error('Unable to set attachment targets and force constants...')
+            log.error('Input:')
+            for k, v in self.attach.items():
+                if v is not None:
+                    log.error('{} = {}'.format(k, v))
         # ------------------------------------ RELEASE ------------------------------------ #
-        # Since release is the inverse of attach, the process is identical.
-        # Either the user specifies a direct list of target values during release...
-        if self.release['target_values']:
-            log.debug('User directly specified list of target values for release...')
-            self.phase['release']['targets'] = self.release['target_values']
-        # ... or we build a list of targets using a range supplied.
-        elif (self.release['target_initial'] is not None) and \
-             (self.release['target_increment'] is not None) and \
-             (self.release['target_final'] is not None):
-            log.debug('Building release targets from fractions...')
-            self.phase['release']['targets'] = np.arange(self.release['target_initial'],
-                                                         self.release['target_final'] +
-                                                         self.release['target_increment'],
-                                                         self.release['target_increment'])
-        # After we have the list of targets, we calculate the force constant in each window during
-        # release. Either the user specifies the list of force constants
-        # directly...
-        if self.release['force_values']:
-            log.debug('User directly specified list of force constants for release...')
-            self.phase['release']['force_constants'] = self.release['force_values']
-        # ...or we find the force constant in each window by multiplying the target fraction
-        # by the final force constant.
-        elif self.release['force_final']:
-            log.debug('Building release force constants from fractions...')
-            self.phase['release']['force_constants'] = [self.release['force_final'] * percent
-                                                        for percent in self.phase['release']['targets']]
+        log.debug('Calculating release targets and force constants...')
+        if self.release['target'] is None:
+            log.error('Restraint target cannot be unset.')
+
+        if self.release['fc_initial'] is not None:
+            # This takes care of choice #1 in issue #14
+            if (self.release['fc_final'] is not None) and (self.release['num_windows'] is not None):
+                log.debug('Method #1')
+                self.phase['release']['force_constants'] = np.linspace(self.release['fc_initial'],
+                                                                      self.release['fc_final'],
+                                                                      self.release['num_windows'])
+                self.phase['release']['targets'] = [self.release['target']] * self.release['num_windows']
+            # This takes care of choice #2 in issue #14
+            elif (self.release['fc_final'] is not None) and (self.release['fc_increment'] is not None):
+                log.debug('Method #2')
+                self.phase['release']['force_constants'] = np.arange(self.release['fc_initial'],
+                                                                    self.release['fc_final'] +
+                                                                    self.release['fc_increment'],
+                                                                    self.release['fc_increment'])
+                self.phase['release']['targets'] = [self.release['target']] * len(
+                        self.phase['release']['force_constants'])
+        if self.release['fraction_list'] is not None:
+            # This takes care of choice #3 in issue #14
+            if self.release['fc_final'] is not None:
+                log.debug('Method #3')
+                self.phase['release']['force_constants'] = [percent * self.release['fc_final'] for
+                                                           percent in self.release['fraction_list']]
+                self.phase['release']['targets'] = [self.release['target']] * len(self.phase['release']['force_constants'])
+        # This takes care of choice #4 in issue #14
+        if self.release['fc_list'] is not None:
+            log.debug('Method #4')
+            self.phase['release']['force_constants'] = self.release['fc_list']
+            self.phase['release']['targets'] = [self.release['target']] * len(self.phase['release']['force_constants'])
+
+        if self.release['fc_final'] is not None:
+            # This takes care of #5 in issue #14
+            if self.release['num_windows'] is not None:
+                log.debug('Method #5')
+                self.phase['release']['force_constants'] = np.linspace(0,
+                                                                      self.release['fc_final'],
+                                                                      self.release['num_windows'])
+                self.phase['release']['targets'] = [self.release['target']] * self.release['num_windows']
+            # This takes care of #6 in issue #14
+            elif self.release['fraction_increment'] is not None:
+                log.debug('Method #6')
+                fractions = np.arange(0, 1.0 + self.release['fraction_increment'], self.release['fraction_increment'])
+                self.phase['release']['force_constants'] = [percent * self.release['fc_final'] for
+                                                           percent in fractions]
+                self.phase['release']['targets'] = [self.release['target']] * len(self.phase['release']['force_constants'])
+
+        if self.phase['release']['force_constants'] is None or self.phase['release']['targets'] is None:
+            log.error('Unable to set release targets and force constants...')
+            log.error('Input:')
+            for k, v in self.release.items():
+                if v is not None:
+                    log.error('{} = {}'.format(k, v))
 
         # ------------------------------------ PULL ------------------------------------ #
-        # Either the user specifies a direct list of target values for puling...
-        if self.pull['target_values']:
-            log.debug('User directly specified a list of target values for pulling...')
-            self.phase['pull']['targets'] = self.pull['target_values']
-        # ...or we build a list of targets using a range supplied.
-        elif (self.pull['target_initial'] is not None) and \
-             (self.pull['target_increment'] is not None) and \
-             (self.pull['target_final'] is not None):
-            log.debug('Building pull targets from fractions...')
-            self.phase['pull']['targets'] = np.arange(self.pull['target_initial'],
-                                                      self.pull['target_final'] +
-                                                      self.pull['target_increment'],
-                                                      self.pull['target_increment'])
+        log.debug('Calculating pull targets and force constants...')
+        if self.pull['fc'] is None:
+            log.error('Restraint force constant cannot be unset.')
 
-        # After we have the list of targets, we calculate the force constant in each window during
-        # release. Either the user specifies the list of force constants
-        # directly...
-        if self.pull['force_values']:
-            log.debug('User directly specified list of force constants for pull...')
-            self.phase['pull']['force_constants'] = self.pull['force_values']
-        # ...or we find the force constant in each window by multiplying the target fraction
-        # by the final force constant.
-        elif self.pull['force_final']:
-            log.debug('Building pull force constants from fractions...')
-            self.phase['pull']['force_constants'] = [self.pull['force_final'] * percent
-                                                     for percent in self.phase['pull']['targets']]
+        if self.pull['target_initial'] is not None:
+            if (self.pull['target_final'] is not None) and (self.pull['num_windows'] is not None):
+                log.debug('Method #1')
+                self.phase['pull']['targets'] = np.linspace(self.pull['target_initial'],
+                                                            self.pull['target_final'],
+                                                            self.pull['num_windows'])
+                self.phase['pull']['force_constants'] = [self.pull['fc']] * self.pull['num_windows']
+            elif (self.pull['target_final'] is not None) and (self.pull['target_increment'] is not None):
+                log.debug('Method #2')
+                self.phase['pull']['targets'] = np.arange(self.pull['target_initial'],
+                                                          self.pull['target_final'] +
+                                                          self.pull['target_increment'],
+                                                          self.pull['target_increment'])
+                self.phase['pull']['force_constants'] = [self.pull['fc']] * len(self.phase['pull']['targets'])
+        if self.pull['fraction_list'] is not None:
+            if self.pull['target_final'] is not None:
+                log.debug('Method #3')
+                self.phase['pull']['targets'] = [percent * self.pull['target_final'] for
+                                                 percent in self.pull['fraction_list']]
+                self.phase['pull']['force_constants'] = [self.pull['fc']] * len(self.phase['pull']['targets'])
+        if self.pull['target_list'] is not None:
+            log.debug('Method #4')
+            self.phase['pull']['targets'] = self.pull['target_list']
+            self.phase['pull']['force_constants'] = [self.pull['fc']] * len(self.phase['pull']['targets'])
+
+        if self.pull['target_final'] is not None:
+            if self.pull['num_windows'] is not None:
+                log.debug('Method #5')
+                self.phase['pull']['targets'] = np.linspace(0,
+                                                            self.pull['target_final'],
+                                                            self.pull['num_windows'])
+                self.phase['pull']['force_constants'] = [self.pull['fc']] * self.pull['num_windows']
+            elif self.pull['fraction_increment'] is not None:
+                log.debug('Method #6')
+                fractions = np.arange(0, 1.0 + self.pull['fraction_increment'], self.pull['fraction_increment'])
+                self.phase['pull']['targets'] = [percent * self.pull['target_final'] for
+                                                 percent in fractions]
+                self.phase['pull']['force_constants'] = [self.pull['fc']] * len(self.phase['pull']['targets'])
+
+        if self.phase['pull']['force_constants'] is None or self.phase['pull']['targets'] is None:
+            log.error('Unable to set pull targets and force constants...')
+            log.error('Input:')
+            for k, v in self.pull.items():
+                if v is not None:
+                    log.error('{} = {}'.format(k, v))
 
         # ---------------------------------- ATOM MASKS ---------------------------------- #
         self.index1 = self.index_from_mask(self.mask1)
