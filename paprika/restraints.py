@@ -257,6 +257,10 @@ class DAT_restraint(object):
                 if v is not None:
                     log.error('{} = {}'.format(k, v))
 
+        log.debug('Number of attachment windows = {}'.format(len(self.phase['attach']['force_constants'])))
+        # log.debug('Number of release windows = {}'.format(len(self.phase['release']['force_constants'])))
+        log.debug('Number of pulling windows = {}'.format(len(self.phase['pull']['targets'])))
+
         # ---------------------------------- ATOM MASKS ---------------------------------- #
         self.index1 = self.index_from_mask(self.mask1)
         self.index2 = self.index_from_mask(self.mask2)
@@ -388,9 +392,9 @@ def make_directories(restraint):
     log.debug('We ought to make sure somewhere that all restraints have'
               ' the same number of windows. Here I am creating directories based '
               ' on the number of windows in a single restraint.')
-    for window, _ in enumerate(restraint.attach_forces):
+    for window, _ in enumerate(restraint.phase['attach']['force_constants']):
         os.makedirs('./windows/a{0:03d}'.format(window), exist_ok=True)
-    for window, _ in enumerate(restraint.pull_forces):
+    for window, _ in enumerate(restraint.phase['pull']['targets']):
         os.makedirs('./windows/p{0:03d}'.format(window), exist_ok=True)
 
 
@@ -399,7 +403,7 @@ def write_restraints_file(restraints, filename='restraints.in'):
     Take all the restraints and write them to a file in each window.
     """
     for restraint in restraints:
-        for window, _ in enumerate(restraint.attach_forces):
+        for window, _ in enumerate(restraint.phase['attach']['force_constants']):
             line = return_restraint_line(
                     restraint, phase='attach', window=window)
             # Using append mode is crucial for multiple restraints.
@@ -409,7 +413,7 @@ def write_restraints_file(restraints, filename='restraints.in'):
             f.close()
 
     for restraint in restraints:
-        for window, _ in enumerate(restraint.pull_forces):
+        for window, _ in enumerate(restraint.phase['pull']['targets']):
             line = return_restraint_line(
                     restraint, phase='pull', window=window)
             # Using append mode is crucial for multiple restraints.
@@ -424,11 +428,11 @@ def clean_restraints_file(restraints, filename='restraints.in'):
     Delete the restraints files for repeated testing.
     """
     for restraint in restraints:
-        for window, _ in enumerate(restraint.attach_forces):
+        for window, _ in enumerate(restraint.phase['attach']['force_constants']):
             directory = './windows/a{0:03d}'.format(window)
             os.remove(directory + '/' + filename)
 
     for restraint in restraints:
-        for window, _ in enumerate(restraint.pull_forces):
+        for window, _ in enumerate(restraint.phase['attach']['targets']):
             directory = './windows/p{0:03d}'.format(window)
             os.remove(directory + '/' + filename)
