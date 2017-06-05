@@ -28,4 +28,4 @@ parser.add_argument('-v',
                     action='store_const',
                     dest='loglevel',
                     const=logging.INFO)
-args = parser.parse_args()
+# args = parser.parse_args()
