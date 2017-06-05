@@ -386,16 +386,16 @@ def make_directories(restraint):
     """
     # Here we could check if the directories already exist and prompt
     # the user or quit or do something else.
-    # If exist_ok is False (the default), an OSError is raised if the target directory already
-    # exists.
 
     log.debug('We ought to make sure somewhere that all restraints have'
               ' the same number of windows. Here I am creating directories based '
               ' on the number of windows in a single restraint.')
     for window, _ in enumerate(restraint.phase['attach']['force_constants']):
-        os.makedirs('./windows/a{0:03d}'.format(window), exist_ok=True)
+        if not os.path.exists('./windows/a{0:03d}'.format(window)):
+            os.makedirs('./windows/a{0:03d}'.format(window))
     for window, _ in enumerate(restraint.phase['pull']['targets']):
-        os.makedirs('./windows/p{0:03d}'.format(window), exist_ok=True)
+        if not os.path.exists('./windows/p{0:03d}'.format(window)):
+            os.makedirs('./windows/p{0:03d}'.format(window))
 
 
 def write_restraints_file(restraints, filename='restraints.in'):

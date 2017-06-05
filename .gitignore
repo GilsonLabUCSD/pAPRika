@@ -96,3 +96,9 @@ ENV/
 
 # pAPRika windows (for local testing)
 windows/
+
+# Local testing in jupyter-notebooks
+*.ipynb
+
+# pycharm
+.idea/
