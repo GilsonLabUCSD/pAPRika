@@ -3,6 +3,7 @@ import subprocess as sp
 import logging as log
 import os as os
 import parmed as pmd
+import weakref as weakref
 from paprika import align
 
 logger = log.getLogger()
@@ -10,9 +11,20 @@ logger.setLevel(log.DEBUG)
 log.basicConfig(format='%(asctime)s %(message)s',
                 datefmt='%Y-%m-%d %I:%M:%S %p')
 
+# https://stackoverflow.com/questions/328851/printing-all-instances-of-a-class
+class KeepRefs(object):
+    __refs__ = defaultdict(list)
+    def __init__(self):
+        self.__refs__[self.__class__].append(weakref.ref(self))
 
-# Page 379 of Amber 7 manual has mask specifications
-class DAT_restraint(object):
+    @classmethod
+    def get_instances(cls):
+        for inst_ref in cls.__refs__[cls]:
+            inst = inst_ref()
+            if inst is not None:
+                yield inst
+
+class DAT_restraint(KeepRefs):
     """
     Distance or angle or torsion restraints.
     """
@@ -63,6 +75,7 @@ class DAT_restraint(object):
             'fraction_list':      None, # The list of force constant percentages (optional)
             'fc_list':            None  # The list of force constants (will be created if not given)
         }
+        super(DAT_restraint, self).__init__()
 
     def initialize(self):
         """
@@ -378,24 +391,6 @@ def return_restraint_line(restraint, phase, window, group=False):
     return string
 
 
-def make_directories(restraint):
-    """
-    Make a series of directories to hold the simulation setup files
-    and the data. This function should probably end up in a separate
-    file eventually.
-    """
-    # Here we could check if the directories already exist and prompt
-    # the user or quit or do something else.
-
-    log.debug('We ought to make sure somewhere that all restraints have'
-              ' the same number of windows. Here I am creating directories based '
-              ' on the number of windows in a single restraint.')
-    for window, _ in enumerate(restraint.phase['attach']['force_constants']):
-        if not os.path.exists('./windows/a{0:03d}'.format(window)):
-            os.makedirs('./windows/a{0:03d}'.format(window))
-    for window, _ in enumerate(restraint.phase['pull']['targets']):
-        if not os.path.exists('./windows/p{0:03d}'.format(window)):
-            os.makedirs('./windows/p{0:03d}'.format(window))
 
 
 def write_restraints_file(restraints, filename='restraints.in'):
