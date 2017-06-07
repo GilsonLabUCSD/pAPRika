@@ -4,6 +4,7 @@ import logging as log
 import os as os
 import parmed as pmd
 import weakref as weakref
+from collections import defaultdict
 from paprika import align
 
 logger = log.getLogger()
@@ -14,6 +15,7 @@ log.basicConfig(format='%(asctime)s %(message)s',
 # https://stackoverflow.com/questions/328851/printing-all-instances-of-a-class
 class KeepRefs(object):
     __refs__ = defaultdict(list)
+
     def __init__(self):
         self.__refs__[self.__class__].append(weakref.ref(self))
 
@@ -23,6 +25,7 @@ class KeepRefs(object):
             inst = inst_ref()
             if inst is not None:
                 yield inst
+
 
 class DAT_restraint(KeepRefs):
     """
@@ -431,3 +434,6 @@ def clean_restraints_file(restraints, filename='restraints.in'):
         for window, _ in enumerate(restraint.phase['attach']['targets']):
             directory = './windows/p{0:03d}'.format(window)
             os.remove(directory + '/' + filename)
+
+def error_checking():
+    pass
