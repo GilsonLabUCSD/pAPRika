@@ -12,37 +12,40 @@ def check_restraint_windows():
     Check that all restraints have the same number of attach, pull, and
     release windows.
     """
-    attach_windows = []
-    pull_windows = []
-    release_windows = []
+
+    phases = 'attach pull release'.split()
+    windows = {}
+    for phase in phases:
+        windows[phase] = []
+    # For each restraint, for each phase, if it exists, count the windows and add to a list
     for restraint in DAT_restraint.get_instances():
-        attach_windows.append(len(restraint.phase['attach']['targets']))
-        pull_windows.append(len(restraint.phase['pull']['targets']))
-        release_windows.append(len(restraint.phase['release']['targets']))
+        for phase in phases:
+            if restraint.phase[phase]['targets'] is not None:
+                windows[phase].append(len(restraint.phase[phase]['targets']))
 
-    if not attach_windows.count(attach_windows[0]) == len(attach_windows):
-        log.error('Restraints have unequal number of windows during the attachment phase.')
-        log.info(attach_windows)
-    if not pull_windows.count(pull_windows[0]) == len(pull_windows):
-        log.error('Restraints have unequal number of windows during the pulling phase.')
-        log.info(pull_windows)
-    if not release_windows.count(release_windows[0]) == len(release_windows):
-        log.error('Restraints have unequal number of windows during the release phase.')
-        log.info(release_windows)
+    # Take the window count for the first restraint, add up how many total restraints 
+    # have the same number, does that total equal the restraint total?
+    for phase in phases:
+        if windows[phase]:
+            if not windows[phase].count(windows[phase][0]) == len(windows[phase]):
+                log.error('Restraints have unequal number of windows during the {} phase.'.format(phase))
+                log.info(windows[phase])
+            log.debug('Passed {} check. There are {} windows.'.format(phase,windows[phase][0]))
+        else:
+            log.debug('There are no {} windows.'.format(phase))
 
-def make_directories(num_attach_windows, num_pull_windows, num_release_windows):
+
+def make_directories(restraint):
     """
     Make a series of directories to hold the simulation setup files
     and the data. Here we could check if the directories already exist and prompt
     the user or quit or do something else.
     """
 
-    for window in range(num_attach_windows):
-        if not os.path.exists('./windows/a{0:03d}'.format(window)):
-            os.makedirs('./windows/a{0:03d}'.format(window))
-    for window in range(num_pull_windows):
-        if not os.path.exists('./windows/p{0:03d}'.format(window)):
-            os.makedirs('./windows/p{0:03d}'.format(window))
-    for window in range(num_release_windows):
-        if not os.path.exists('./windows/r{0:03d}'.format(window)):
-            os.makedirs('./windows/r{0:03d}'.format(window))
+    for phase in 'attach pull release'.split():
+        if restraint.phase[phase]['targets'] is not None:
+            for window in range(len(restraint.phase[phase]['targets'])):
+                if not os.path.exists('./windows/{0:1s}{1:03d}'.format(phase[0:1],window)):
+                    os.makedirs('./windows/{0:1s}{1:03d}'.format(phase[0:1],window))
+
+

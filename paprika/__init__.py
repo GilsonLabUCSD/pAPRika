@@ -29,3 +29,5 @@ parser.add_argument('-v',
                     dest='loglevel',
                     const=logging.INFO)
 # args = parser.parse_args()
+
+import align,conformation_prep,restraints,solvate,version
