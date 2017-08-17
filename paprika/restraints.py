@@ -253,7 +253,7 @@ class DAT_restraint(KeepRefs):
             self.phase['pull']['force_constants'] = [self.pull['fc']] * len(self.phase['pull']['targets'])
 
         if self.pull['target_final'] is not None:
-            if self.pull['num_windows'] is not None:
+            if (self.pull['target_initial'] is None) and (self.pull['num_windows'] is not None):
                 log.debug('Method #5')
                 self.phase['pull']['targets'] = np.linspace(0,
                                                             self.pull['target_final'],
@@ -323,58 +323,55 @@ def return_restraint_line(restraint, phase, window, group=False):
         # Right?
     elif len(restraint.index1) == 1:
         group1 = False
-        iat1 = '{} '.format(restraint.index1[0])
+        iat1 = '{},'.format(restraint.index1[0])
     else:
         group1 = True
-        iat1 = '-1 '
+        iat1 = '-1,'
         igr1 = ''
         for index in restraint.index1:
-            igr1 += '{}, '.format(index)
+            igr1 += '{},'.format(index)
 
     if not restraint.index2:
         iat2 = ' '
         raise Exception('There must be at least two atoms in a restraint.')
     elif len(restraint.index2) == 1:
         group2 = False
-        iat2 = '{} '.format(restraint.index2[0])
+        iat2 = '{},'.format(restraint.index2[0])
     else:
         group2 = True
-        iat2 = '-1 '
+        iat2 = '-1,'
         igr2 = ''
         for index in restraint.index2:
-            igr2 += '{}, '.format(index)
+            igr2 += '{},'.format(index)
 
     if not restraint.index3:
-        iat3 = ' '
+        iat3 = ''
         group3 = False
     elif len(restraint.index3) == 1:
         group3 = False
-        iat3 = '{} '.format(restraint.index3[0])
+        iat3 = '{},'.format(restraint.index3[0])
     else:
         group3 = True
-        iat3 = '-1 '
+        iat3 = '-1,'
         igr3 = ''
         for index in restraint.index3:
-            igr3 += '{}, '.format(index)
+            igr3 += '{},'.format(index)
 
     if not restraint.index4:
-        iat4 = ' '
+        iat4 = ''
         group4 = False
     elif len(restraint.index4) == 1:
         group4 = False
-        iat4 = '{} '.format(restraint.index4[0])
+        iat4 = '{},'.format(restraint.index4[0])
     else:
         group4 = True
-        iat4 = '-1 '
+        iat4 = '-1,'
         igr4 = ''
         for index in restraint.index4:
-            igr4 += '{}, '.format(index)
+            igr4 += '{},'.format(index)
 
     string = '&rst ' + \
-             '\tiat = {}, {}, {}, {},'.format(iat1,
-                                              iat2,
-                                              iat3,
-                                              iat4)
+             '\tiat = {}{}{}{}'.format(iat1,iat2,iat3,iat4)
     if group1:
         string += 'igr1 = {}'.format(igr1)
     if group2:
@@ -400,6 +397,7 @@ def write_restraints_file(restraints, filename='restraints.in'):
     """
     Take all the restraints and write them to a file in each window.
     """
+    ### NMH: Should we just do `for restraint in DAT_restraint.get_instances():`?
     for restraint in restraints:
         for window, _ in enumerate(restraint.phase['attach']['force_constants']):
             line = return_restraint_line(
