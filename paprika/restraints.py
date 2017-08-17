@@ -334,7 +334,6 @@ class DAT_restraint(KeepRefs):
         # log.debug('Found indices {} for mask {}...'.format(indices, mask))
         return indices
 
-### NMMH
 
 def return_restraint_line(restraint, phase, window, group=False):
     """
