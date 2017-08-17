@@ -30,4 +30,5 @@ parser.add_argument('-v',
                     const=logging.INFO)
 # args = parser.parse_args()
 
-import align,conformation_prep,restraints,solvate,version
+### NMH I want `import paprika` to import everything ...
+#import align,conformation_prep,restraints,solvate,version
