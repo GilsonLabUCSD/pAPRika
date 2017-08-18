@@ -13,7 +13,7 @@ def check_restraint_windows():
     release windows.
     """
 
-    phases = 'attach pull release'.split()
+    phases = ['attach', 'pull', 'release']
     windows = {}
     for phase in phases:
         windows[phase] = []
@@ -42,7 +42,7 @@ def make_directories(restraint):
     the user or quit or do something else.
     """
 
-    for phase in 'attach pull release'.split():
+    for phase in ['attach', 'pull', 'release']:
         if restraint.phase[phase]['targets'] is not None:
             for window in range(len(restraint.phase[phase]['targets'])):
                 if not os.path.exists('./windows/{0:1s}{1:03d}'.format(phase[0:1],window)):

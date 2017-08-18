@@ -32,7 +32,19 @@ class DAT_restraint(KeepRefs):
     Distance or angle or torsion restraints.
     """
 
+    # Global lists to keep track of restraints and window counts.
+    # This is helpful because I can do `max(DAT_restraint.window_counts['attach'])`
+    # to get the expected number of attach windows.  Some individual restraints may
+    # not have attach windows, but this ensures I can check all of them.  see write_restraints_file
+    restraint_list = []
+    window_counts = {'attach': [], 'pull': [], 'release': []}
+
     def __init__(self):
+        # This is sorta wild, but it will be handy for getting a list of restraints. 
+        # There are probably better approaches ....
+        # https://stackoverflow.com/questions/3484019/python-list-to-store-class-instance
+        DAT_restraint.restraint_list.append(self)
+
         self.structure_file = None
         self.mask1 = None
         self.mask2 = None
@@ -301,12 +313,15 @@ class DAT_restraint(KeepRefs):
                 log.error('{} = {}'.format(k, v))
             ### PROBABLY SHOULD RAISE AN EXCEPTION HERE
 
-        # ----------------------------------- DEBUG -------------------------------------- #
+        # ----------------------------------- WINDOWS ------------------------------------ #
 
-        for phase in 'attach pull release'.split():
+        for phase in ['attach', 'pull', 'release']:
             if self.phase[phase]['targets'] is not None:
-                log.debug('Number of {} windows = {}'.format(phase,len(self.phase[phase]['targets'])))
+                window_count = len(self.phase[phase]['targets'])
+                DAT_restraint.window_counts[phase].append(window_count)
+                log.debug('Number of {} windows = {}'.format(phase,window_count))
             else:
+                DAT_restraint.window_counts[phase].append(0)
                 log.debug('This restraint will be skipped in the {} phase'.format(phase))
 
         # ---------------------------------- ATOM MASKS ---------------------------------- #
@@ -415,42 +430,31 @@ def return_restraint_line(restraint, phase, window, group=False):
         string += ' igr4 = {}'.format(igr4)
     ### If angle or torsion, need to get correct endpoints, not 0 - 999
     string += \
-        '\tr1 = {0:4.4f},'.format(0) + \
-        '\tr2 = {0:4.4f},'.format(restraint.phase[phase]['targets'][window]) + \
-        '\tr3 = {0:4.4f},'.format(restraint.phase[phase]['targets'][window]) + \
-        '\tr4 = {0:4.4f},'.format(999) + \
-        '\trk2 = {0:4.4f},'.format(restraint.phase[phase]['force_constants'][window]) + \
-        '\trk3 = {0:4.4f},'.format(restraint.phase[phase]['force_constants'][window]) + \
-        '\t&end'
+        ' r1 = {0:4.4f},'.format(0) + \
+        ' r2 = {0:4.4f},'.format(restraint.phase[phase]['targets'][window]) + \
+        ' r3 = {0:4.4f},'.format(restraint.phase[phase]['targets'][window]) + \
+        ' r4 = {0:4.4f},'.format(999) + \
+        ' rk2 = {0:4.4f},'.format(restraint.phase[phase]['force_constants'][window]) + \
+        ' rk3 = {0:4.4f},'.format(restraint.phase[phase]['force_constants'][window]) + \
+        ' &end'
     return string
 
 
 
 
-def write_restraints_file(restraints, filename='restraints.in'):
+def write_restraints_file(filename='restraints.in'):
     """
     Take all the restraints and write them to a file in each window.
     """
-    ### NMH: Should we just do `for restraint in DAT_restraint.get_instances():`?
-    for restraint in restraints:
-        for window, _ in enumerate(restraint.phase['attach']['force_constants']):
-            line = return_restraint_line(
-                    restraint, phase='attach', window=window)
-            # Using append mode is crucial for multiple restraints.
-            directory = './windows/a{0:03d}'.format(window)
-            f = open(directory + '/' + filename, 'a')
-            f.write(line + '\n')
-            f.close()
 
-    for restraint in restraints:
-        for window, _ in enumerate(restraint.phase['pull']['targets']):
-            line = return_restraint_line(
-                    restraint, phase='pull', window=window)
-            # Using append mode is crucial for multiple restraints.
-            directory = './windows/p{0:03d}'.format(window)
-            f = open(directory + '/' + filename, 'a')
-            f.write(line + '\n')
-            f.close()
+    for phase in ['attach', 'pull', 'release']:
+        for window in range(max(DAT_restraint.window_counts[phase])):
+            directory = './windows/{:s}{:03d}'.format(str(phase[0:1]),window)
+            with open(directory + '/' + filename, 'w') as f:
+                for restraint in DAT_restraint.restraint_list:
+                    if restraint.phase[phase]['force_constants'] is not None:
+                        line = return_restraint_line(restraint, phase=phase, window=window)
+                        f.write(line + '\n')
 
 
 def clean_restraints_file(restraints, filename='restraints.in'):
