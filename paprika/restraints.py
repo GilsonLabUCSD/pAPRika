@@ -352,19 +352,18 @@ class DAT_restraint(KeepRefs):
         else:
             self.index4 = None
 
-    def index_from_mask(self, mask):
+    def index_from_mask(self, mask, index_offset=1):
         """
-        Return the atom indicies, given a mask.
+        Return the atom indicies for a given mask.
+        The index_offset keyword sets the index offset, commonly 0 or 1.
         """
 
         ### NMH: Should this go somewhere else?  Seems kinda general
 
         structure = align.return_structure(self.structure_file)
-        # Use a `view` of the whole object to avoid reindexing each selection.
-        masked = structure.view[mask]
-        log.debug('There are {} atoms in the mask {}  ...'.format(len(masked.atoms),mask))
-        indices = [i.idx for i in masked]
-        # log.debug('Found indices {} for mask {}...'.format(indices, mask))
+        # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
+        indices = [i+index_offset for i in pmd.amber.mask.AmberMask(structure,mask).Selected()]
+        log.debug('There are {} atoms in the mask {}  ...'.format(len(indices),mask))
         return indices
 
 

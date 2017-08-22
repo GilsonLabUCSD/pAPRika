@@ -60,7 +60,7 @@ Minimizing in GB.
   ntx = 1, 
   ntpr = 100,
   maxcyc = 1000,
-  ncyc = 100,
+  ncyc = 250,
   ntxo = 1,
   irest = 0,
   ntf = 1,
