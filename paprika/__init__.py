@@ -29,3 +29,6 @@ parser.add_argument('-v',
                     dest='loglevel',
                     const=logging.INFO)
 # args = parser.parse_args()
+
+__all__ = ["align", "build", "restraints", "simulate"]
+
