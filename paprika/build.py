@@ -9,11 +9,9 @@ def read_tleaplines(tleapfile, pdbfile=None, skip_solvate=True):
     """
     Read a functional tleap file and return a list containing each line of instruction
     
-    tleapfile : A functioning tleap input file which properly builds your system
-
-    pdbfile : If specified, replace the loadpdb target with that specified by pdbfile. Default=None.
-
-    skip_solvate : If True, skip over solvatebox or addion type statements. Default=True.
+        tleapfile : A functioning tleap input file which properly builds your system
+        pdbfile : If specified, replace the loadpdb target with that specified by pdbfile. Default=None.
+        skip_solvate : If True, skip over solvatebox or addion type statements. Default=True.
     """
 
     # Read tleapfile
@@ -187,7 +185,7 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
 
     waterbox : the water box name to use with the solvatebox/solvateoct command. 
 
-    neutralize : False = do not neutralize the system, True = neutralize the system. the counterions to be used are specified below with 'counter_catio' and 'counter_anion'.
+    neutralize : False = do not neutralize the system, True = neutralize the system. the counterions to be used are specified below with 'counter_cation' and 'counter_anion'.
 
     counter_cation : a mask to specify neutralizing cations
 
