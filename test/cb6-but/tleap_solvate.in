@@ -1,0 +1,24 @@
+source leaprc.protein.ff14SB
+source leaprc.water.tip3p
+source leaprc.gaff
+loadamberparams cb6.frcmod
+CB6 = loadmol2 cb6.mol2
+loadamberparams but.frcmod
+BUT = loadmol2 but.mol2
+
+model = loadpdb cb6-but.pdb
+
+check model
+savepdb model vac.pdb
+saveamberparm model vac.topo vac.crds
+
+solvatebox model TIP3PBOX {10.0 10.0 16.6}
+addionsrand model Na+ 0
+addionsrand model Cl- 0
+
+savepdb model full.pdb
+saveamberparm model full.topo full.crds
+
+desc model
+
+quit

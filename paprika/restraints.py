@@ -482,6 +482,7 @@ def write_restraint_files(window_list,filename='restraints.in'):
     phase_dict = {'a': 'attach', 'p': 'pull', 'r': 'release'}
 
     for window in window_list:
+        log.debug('Writing windows/{}/{} ...'.format(window,filename))
         with open('./windows/'+window+'/'+filename, 'w') as f:
             for restraint in DAT_restraint.restraint_list:
                 if restraint.phase[phase_dict[window[0]]]['force_constants'] is not None:

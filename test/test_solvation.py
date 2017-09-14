@@ -10,7 +10,7 @@ import subprocess as sp
 import random as random
 import parmed as pmd
 from paprika.align import *
-from paprika.solvate import *
+from paprika.build import *
 
 class TestSolvate(unittest.TestCase):
     
@@ -22,7 +22,7 @@ class TestSolvate(unittest.TestCase):
         """ Test that we can solvate CB6-BUT using default settings. """
         waters = np.random.randint(1000, 10000)
         log.debug('Trying {} waters with default settings...'.format(waters))
-        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
+        solvate(tleapfile='./cb6-but/tleap_solvate.in', pdbfile='cb6-but.pdb',
                 bufferwater=waters)
         grepped_waters = sp.check_output(["grep -oh 'WAT' ./cb6-but/solvated.prmtop | wc -w"],
                                          shell=True)
@@ -32,7 +32,7 @@ class TestSolvate(unittest.TestCase):
         """ Test that we can solvate CB6-BUT with a truncated octahedron. """
         waters = np.random.randint(1000, 10000)
         log.debug('Trying {} waters in a truncated octahedron...'.format(waters))
-        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
+        solvate(tleapfile='./cb6-but/tleap_solvate.in', pdbfile='cb6-but.pdb',
                 bufferwater=waters, pbctype=2)
         grepped_waters = sp.check_output(["grep -oh 'WAT' ./cb6-but/solvated.prmtop | wc -w"],
                                          shell=True)
@@ -42,7 +42,7 @@ class TestSolvate(unittest.TestCase):
         """ Test that we can solvate CB6-BUT with an isometric box. """
         waters = np.random.randint(1000, 10000)
         log.debug('Trying {} waters in an isometric box...'.format(waters))
-        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
+        solvate(tleapfile='./cb6-but/tleap_solvate.in', pdbfile='cb6-but.pdb',
                 bufferwater=waters, pbctype=0)
         grepped_waters = sp.check_output(["grep -oh 'WAT' ./cb6-but/solvated.prmtop | wc -w"],
                                          shell=True)
@@ -53,7 +53,7 @@ class TestSolvate(unittest.TestCase):
         random_int = np.random.randint(10, 100)
         random_size = random_int * np.random.random_sample(1) + random_int
         log.debug('Trying buffer size of {} A...'.format(random_size[0]))
-        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
+        solvate(tleapfile='./cb6-but/tleap_solvate.in', pdbfile='cb6-but.pdb',
                 bufferwater='{0:1.4f}A'.format(random_size[0]))
         log.warning('I don\'t know the proper test case for this. \
                      We\'d have to parse the coordinates, perhaps.')
@@ -64,7 +64,7 @@ class TestSolvate(unittest.TestCase):
         """ Test there is no potassium by default. A negative control. """
         waters = np.random.randint(1000, 10000)
         log.debug('Trying {} waters with potassium...'.format(waters))
-        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
+        solvate(tleapfile='./cb6-but/tleap_solvate.in', pdbfile='cb6-but.pdb',
                 bufferwater=waters, counter_cation='K+')
         potassium = sp.check_output(["grep -oh 'K+' ./cb6-but/solvated.prmtop | wc -w"],
                                     shell=True)
@@ -80,8 +80,8 @@ class TestSolvate(unittest.TestCase):
         random_cation = random.choice(cations)
         random_anion = random.choice(anions)
         log.debug('Trying {} waters with additional ions...'.format(waters))
-        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
-                bufferwater=waters, neutralize=0,
+        solvate(tleapfile='./cb6-but/tleap_solvate.in', pdbfile='cb6-but.pdb',
+                bufferwater=waters, neutralize=False,
                 addions=[random_cation, n_cations, random_anion, n_anions])
         # These should come in the RESIDUE_LABEL region of the prmtop and be before all the water.
         cation_number = sp.check_output(["grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
@@ -103,8 +103,8 @@ class TestSolvate(unittest.TestCase):
     def test_solvation_by_molarity(self):
         """ Test that we can solvate CB6-BUT through molarity. """
         log.debug('Trying 10 A buffer with 150 mM NaCl...')
-        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
-                bufferwater='10A', neutralize=0, pbctype=1, 
+        solvate(tleapfile='./cb6-but/tleap_solvate.in', pdbfile='cb6-but.pdb',
+                bufferwater='10A', neutralize=False, pbctype=1, 
                 addions=['Na+', '0.150M', 'Cl-', '0.150M'])
         cation_number = sp.check_output(["grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
                                          "grep -oh 'Na+ ' | wc -w"], shell=True)
@@ -120,8 +120,8 @@ class TestSolvate(unittest.TestCase):
     def test_solvation_by_molality(self):
         """ Test that we can solvate CB6-BUT through molarity. """
         log.debug('Trying 2000 water buffer with 150 mmol/kg NaCl...')
-        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='cb6-but.pdb',
-                bufferwater=2000, neutralize=0, pbctype=1, 
+        solvate(tleapfile='./cb6-but/tleap_solvate.in', pdbfile='cb6-but.pdb',
+                bufferwater=2000, neutralize=False, pbctype=1, 
                 addions=['Na+', '0.150m', 'Cl-', '0.150m'])
         cation_number = sp.check_output(["grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
                                          "grep -oh 'Na+ ' | wc -w"], shell=True)
@@ -139,7 +139,7 @@ class TestSolvate(unittest.TestCase):
         align(cb6, ':CB6', ':BUT', save=True, filename='./cb6-but/tmp.pdb')
         waters = np.random.randint(1000, 10000)
         log.debug('Trying {} waters after alignment...'.format(waters))
-        solvate(tleapfile='./cb6-but/tleap.in', pdbfile='tmp.pdb',
+        solvate(tleapfile='./cb6-but/tleap_solvate.in', pdbfile='tmp.pdb',
                 bufferwater=waters)
         grepped_waters = sp.check_output(["grep -oh 'WAT' ./cb6-but/solvated.prmtop | wc -w"],
                                          shell=True)
