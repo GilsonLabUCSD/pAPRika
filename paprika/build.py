@@ -10,8 +10,8 @@ def read_tleaplines(tleapfile, pdbfile=None, skip_solvate=True):
     Read a functional tleap file and return a list containing each line of instruction
     
         tleapfile : A functioning tleap input file which properly builds your system
-        pdbfile : If specified, replace the loadpdb target with that specified by pdbfile. Default=None.
-        skip_solvate : If True, skip over solvatebox or addion type statements. Default=True.
+        pdbfile : If specified, replace the loadpdb target with that specified by pdbfile.
+        skip_solvate : If True, skip over solvatebox or addion type statements.
     """
 
     # Read tleapfile
@@ -379,5 +379,3 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
             if cycle >= 10:
                 raise Exception(
                     "Solvation failed due to an unanticipated problem with water removal")
-
-
