@@ -24,5 +24,6 @@ def make_window_dirs(window_list):
 
     for window in window_list:
         # It seems unprudent to use '.' for CWD here.
-        if not os.path.exists('./windows/'+window):
-            os.makedirs('./windows/'+window)
+        directory = os.getcwd()
+        if not os.path.exists(directory + '/windows/' + window):
+            os.makedirs(directory + '/windows/' + window)
