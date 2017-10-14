@@ -1,11 +1,13 @@
-import numpy as np
-import subprocess as sp
 import logging as log
+import numpy as np
 import os as os
 import parmed as pmd
+import subprocess as sp
 import weakref as weakref
+
 from collections import defaultdict
 from paprika import align
+from papriak import utils
 
 logger = log.getLogger()
 logger.setLevel(log.DEBUG)
@@ -34,8 +36,9 @@ class DAT_restraint(KeepRefs):
 
     # Global lists to keep track of restraints and window counts.
     # This is helpful because I can do `max(DAT_restraint.window_counts['attach'])`
-    # to get the expected number of attach windows.  Some individual restraints may
-    # not have attach windows, but this ensures I can check all of them.  see write_restraints_file
+    # to get the expected number of attach windows. Some individual restraints may
+    # not have attach windows, but this ensures I can check all of them.
+    # see write_restraints_file
     restraint_list = []
     window_counts = {'attach': [], 'pull': [], 'release': []}
 
@@ -341,30 +344,16 @@ class DAT_restraint(KeepRefs):
 
         # ---------------------------------- ATOM MASKS ---------------------------------- #
         log.debug('Assigning atom indices ...')
-        self.index1 = self.index_from_mask(self.mask1)
-        self.index2 = self.index_from_mask(self.mask2)
+        self.index1 = utils.index_from_mask(self.structure_file, self.mask1)
+        self.index2 = utils.index_from_mask(self.structure_file, self.mask2)
         if self.mask3:
-            self.index3 = self.index_from_mask(self.mask3)
+            self.index3 = utils.index_from_mask(self.structure_file, self.mask3)
         else:
             self.index3 = None
         if self.mask4:
-            self.index4 = self.index_from_mask(self.mask4)
+            self.index4 = utils.index_from_mask(self.structure_file, self.mask4)
         else:
             self.index4 = None
-
-    def index_from_mask(self, mask, index_offset=1):
-        """
-        Return the atom indicies for a given mask.
-        The index_offset keyword sets the index offset, commonly 0 or 1.
-        """
-
-        ### NMH: Should this go somewhere else?  Seems kinda general
-
-        structure = align.return_structure(self.structure_file)
-        # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
-        indices = [i+index_offset for i in pmd.amber.mask.AmberMask(structure,mask).Selected()]
-        log.debug('There are {} atoms in the mask {}  ...'.format(len(indices),mask))
-        return indices
 
 
 def return_restraint_line(restraint, phase, window, group=False):
@@ -497,8 +486,6 @@ def create_window_list():
     release windows; Check that all restraints have consistent continuous_apr
     settings.  Return a list of the window names.
     """
-
-    ### NMH: Move to restraints.py?
 
     ### Check if we are doing continuous apr (first window of pull is last of attach, etc)
     restraints = DAT_restraint.get_instances()

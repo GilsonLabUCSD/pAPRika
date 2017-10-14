@@ -1,8 +1,9 @@
-import numpy as np
-import subprocess as sp
 import logging as log
+import numpy as np
 import os as os
 import parmed as pmd
+import subprocess as sp
+
 from collections import OrderedDict
 
 

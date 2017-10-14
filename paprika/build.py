@@ -1,8 +1,8 @@
-import re as re
-import os as os
-import numpy as np
-import subprocess as sp
 import logging as log
+import numpy as np
+import os as os
+import re as re
+import subprocess as sp
 
 
 def read_tleaplines(tleapfile, pdbfile=None, skip_solvate=True):
@@ -176,22 +176,38 @@ def solvate(tleapfile, pdbfile=None, pbctype=1, bufferwater='12.0A',
 
     ARGUMENTS
 
-    tleapfile : a fully functioning tleap file which is capable of preparing the system in gas phase. It should load all parameter files that will be necessary for solvation, including the water model and any custom residues. Assumes the final conformations of the solute are loaded via PDB.
+    tleapfile : a fully functioning tleap file which is capable of preparing
+    the system in gas phase. It should load all parameter files that will be
+    necessary for solvation, including the water model and any custom
+    residues. Assumes the final conformations of the solute are loaded via
+    PDB.
 
-    pdbfile : if present, the function will search for any loadpdb commands in the tleapfile and replace whatever is there with pdbfile.  This would be used for cases where we have modified PDBs.
-    returnlist can be ALL for all residuse or WAT for waters.
+    pdbfile : if present, the function will search for any loadpdb commands in
+    the tleapfile and replace whatever is there with pdbfile.  This would be
+    used for cases where we have modified PDBs. returnlist can be ALL for all
+    residuse or WAT for waters.
 
-    pbctype : the type of periodic boundary conditions. 0 = cubic, 1 = rectangular, 2 = truncated octahedron, None = no solvation.  If rectangular, only the z-axis buffer can be manipulated; the x- and y-axis will use a 10 Ang buffer.
+    pbctype : the type of periodic boundary conditions. 0 = cubic, 1 =
+    rectangular, 2 = truncated octahedron, None = no solvation.  If
+    rectangular, only the z-axis buffer can be manipulated; the x- and y-axis
+    will use a 10 Ang buffer.
 
-    waterbox : the water box name to use with the solvatebox/solvateoct command. 
+    waterbox : the water box name to use with the solvatebox/solvateoct
+    command.
 
-    neutralize : False = do not neutralize the system, True = neutralize the system. the counterions to be used are specified below with 'counter_cation' and 'counter_anion'.
+    neutralize : False = do not neutralize the system, True = neutralize the
+    system. the counterions to be used are specified below with
+    'counter_cation' and 'counter_anion'.
 
     counter_cation : a mask to specify neutralizing cations
 
     counter_anion : a mask to specify neturalizing anions
 
-    addions : a list of residue masks and values which indicate how much additional ions to add. The format for the values is as following: if the value is an integer, then add that exact integer amount of ions; if the value is followed by an 'M', then add that amount in molarity;  if 'm', add by molality.  example: ['Mg+',5, 'Cl-',10, 'K+','0.050M']
+    addions : a list of residue masks and values which indicate how much
+    additional ions to add. The format for the values is as following: if the
+    value is an integer, then add that exact integer amount of ions; if the
+    value is followed by an 'M', then add that amount in molarity;  if 'm',
+    add by molality.  example: ['Mg+',5, 'Cl-',10, 'K+','0.050M']
 
     """
 
