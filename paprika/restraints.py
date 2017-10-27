@@ -1,21 +1,22 @@
 import logging as log
 import numpy as np
 import os as os
+import sys as sys
 import parmed as pmd
 import subprocess as sp
 import weakref as weakref
 
 from collections import defaultdict
 from paprika import align
-from papriak import utils
+from paprika import utils
 
 logger = log.getLogger()
 logger.setLevel(log.DEBUG)
 log.basicConfig(format='%(asctime)s %(message)s',
                 datefmt='%Y-%m-%d %I:%M:%S %p')
 
-# https://stackoverflow.com/questions/328851/printing-all-instances-of-a-class
 class KeepRefs(object):
+    # https://stackoverflow.com/questions/328851/printing-all-instances-of-a-class
     __refs__ = defaultdict(list)
 
     def __init__(self):
@@ -31,39 +32,31 @@ class KeepRefs(object):
 
 class DAT_restraint(KeepRefs):
     """
-    Distance or angle or torsion restraints.
+    Distance or angle or torsion restraints on atoms in the simulation.
     """
-
     # Global lists to keep track of restraints and window counts.
     # This is helpful because I can do `max(DAT_restraint.window_counts['attach'])`
     # to get the expected number of attach windows. Some individual restraints may
     # not have attach windows, but this ensures I can check all of them.
-    # see write_restraints_file
     restraint_list = []
     window_counts = {'attach': [], 'pull': [], 'release': []}
 
     def __init__(self):
-        # This is sorta wild, but it will be handy for getting a list of restraints. 
-        # There are probably better approaches ....
         # https://stackoverflow.com/questions/3484019/python-list-to-store-class-instance
         DAT_restraint.restraint_list.append(self)
 
         self.structure_file = None
-        self.mask1 = None
-        self.mask2 = None
-        self.mask3 = None
-        self.mask4 = None
-        self.index1 = None
-        self.index2 = None
-        self.index3 = None
-        self.index4 = None
-        self.auto_apr = True            # If true, sets some pull and release values automatically
-        self.continuous_apr = True      # If true, the first window of pull is re-used as last window of attach
-                                        # and last window of pull is re-used as first window of release
+        self.mask1          = None
+        self.mask2          = None
+        self.mask3          = None
+        self.mask4          = None
+        self.index1         = None
+        self.index2         = None
+        self.index3         = None
+        self.index4         = None
+        self.auto_apr       = True  # If True, sets some pull and release values automatically.
+        self.continuous_apr = True  # If True, the first window of pull is re-used as last window of attach and the last window of pull is re-used as first window of release.
 
-        # For attach and release, in most cases the target distance, angle, or torsion value does not change
-        # throughout the windows, but we setup the restraints with flexibility.
-        # NMH: target can't change ... it's just one value
         self.attach = {
             'target':             None, # The target value for the restraint (mandatory)
             'fc_initial':         None, # The initial force constant (optional)
@@ -74,9 +67,7 @@ class DAT_restraint(KeepRefs):
             'fraction_list':      None, # The list of force constant percentages (optional)
             'fc_list':            None  # The list of force constants (will be created if not given)
         }
-        # For the pull phase, the target distance changes and usually the force constant does not. But we will be
-        # general and allow the force constant to change as well.  
-        # NMH: uh what?  I don't think we allow the fc to change.
+
         self.pull = {
             'fc':                 None, # The force constant for the restraint (mandatory)
             'target_initial':     None, # The initial target value (optional)
@@ -185,13 +176,10 @@ class DAT_restraint(KeepRefs):
             log.debug('No restraint info set for this phase! Skipping ...')
 
         else: 
-            log.error('ERROR: Restraint input did not match one of the supported methods ...')
-            log.error('Input:')
+            log.error('Restraint input did not match one of the supported methods ...')
             for k, v in self.attach.items():
-                #if v is not None: <-- NMH: Just print 'em all right?
-                log.error('{} = {}'.format(k, v))
-            ### PROBABLY SHOULD RAISE AN EXCEPTION HERE
-
+                log.debug('{} = {}'.format(k, v))
+            sys.exit(1)
         # ------------------------------------ PULL ------------------------------------ #
         log.debug('Calculating pull targets and force constants...')
 
@@ -236,7 +224,7 @@ class DAT_restraint(KeepRefs):
                                              fraction in self.pull['fraction_list']]
             self.phase['pull']['force_constants'] = [self.pull['fc']] * len(self.phase['pull']['targets'])
 
-        elif self.pull['fraction_increment'] is not None  and  self.pull['target_final'] is not None:
+        elif self.pull['fraction_increment'] is not None and self.pull['target_final'] is not None:
             ### METHOD 4 ###
             log.debug('Method #4')
             fractions = np.arange(0, 1.0 + self.pull['fraction_increment'], self.pull['fraction_increment'])
@@ -253,12 +241,10 @@ class DAT_restraint(KeepRefs):
             log.debug('No restraint info set for this phase! Skipping ...')
 
         else:
-            log.error('ERROR: Restraint input did not match one of the supported methods ...')
-            log.error('Input:')
+            log.error('Restraint input did not match one of the supported methods ...')
             for k, v in self.pull.items():
-                #if v is not None: <-- NMH: Just print 'em all right?
-                log.error('{} = {}'.format(k, v))
-            ### PROBABLY SHOULD RAISE AN EXCEPTION HERE
+                log.debug('{} = {}'.format(k, v))
+            sys.exit(1)
 
         # ------------------------------------ RELEASE ------------------------------------ #
         log.debug('Calculating release targets and force constants...')
@@ -324,12 +310,10 @@ class DAT_restraint(KeepRefs):
             log.debug('No restraint info set for this phase! Skipping ...')
 
         else:
-            log.error('ERROR: Restraint input did not match one of the supported methods ...')
-            log.error('Input:')
+            log.error('Restraint input did not match one of the supported methods ...')
             for k, v in self.release.items():
-                #if v is not None: <-- NMH: Just print 'em all right?
-                log.error('{} = {}'.format(k, v))
-            ### PROBABLY SHOULD RAISE AN EXCEPTION HERE
+                log.debug('{} = {}'.format(k, v))
+            sys.exit(1)
 
         # ----------------------------------- WINDOWS ------------------------------------ #
 
@@ -374,7 +358,6 @@ def return_restraint_line(restraint, phase, window, group=False):
     if not restraint.index1:
         iat1 = ' '
         raise Exception('There must be at least two atoms in a restraint.')
-        # Right?
     elif len(restraint.index1) == 1:
         group1 = False
         iat1 = '{},'.format(restraint.index1[0])
@@ -435,7 +418,7 @@ def return_restraint_line(restraint, phase, window, group=False):
         lower_bound = restraint.phase[phase]['targets'][window] - 180.0
         upper_bound = restraint.phase[phase]['targets'][window] + 180.0
 
-    # Prepare Amber NMR-style restraint
+    # Prepare AMBER NMR-style restraint
     string = '&rst iat = {:6s}{:6s}{:6s}{:6s} '.format(iat1,iat2,iat3,iat4)
     string += \
          ' r1 = {0:10.5f},'.format(lower_bound) + \
@@ -457,13 +440,9 @@ def return_restraint_line(restraint, phase, window, group=False):
             string += ' igr4 = {}'.format(igr4)
 
     string += '  &end'
-
     return string
 
-
-
-
-def write_restraint_files(window_list,filename='restraints.in'):
+def write_restraint_files(window_list, filename='restraints.in'):
     """
     Take all the restraints and write them to a file in each window.
     """
@@ -471,14 +450,13 @@ def write_restraint_files(window_list,filename='restraints.in'):
     phase_dict = {'a': 'attach', 'p': 'pull', 'r': 'release'}
 
     for window in window_list:
-        log.debug('Writing windows/{}/{} ...'.format(window,filename))
-        with open('./windows/'+window+'/'+filename, 'w') as f:
+        log.debug('Writing windows/{}/{} ...'.format(window, filename))
+        with open('./windows/' + window + '/' + filename, 'w') as f:
             for restraint in DAT_restraint.restraint_list:
                 if restraint.phase[phase_dict[window[0]]]['force_constants'] is not None:
-                    # Split the window name (e.g. a001) into 'a' and 1, then use accordingly
-                    line = return_restraint_line(restraint, phase=phase_dict[window[0]], window=int(window[1:]))
+                    line = return_restraint_line(restraint,
+                        phase=phase_dict[window[0]], window=int(window[1:]))
                     f.write(line + "\n")
-
 
 def create_window_list():
     """
@@ -496,8 +474,8 @@ def create_window_list():
         log.debug('All restraints are not "continuous_apr" style.')
         continuous_apr = False
     else:
-        log.error('ERROR: Some restraints are "continuous_apr" and some are not.')
-        # NMH: Should raise exception
+        log.error('Some restraints are "continuous_apr" and some are not.')
+        sys.exit(1)
 
     ### Check that all restraints have the same window count, create window_list
     window_list = []
@@ -512,33 +490,18 @@ def create_window_list():
                     max_count -= 1
                 window_list += [phase[0] + str('{:03.0f}'.format(val)) for val in np.arange(0,max_count,1)]
             else:
-                log.error('ERROR: Restraints have unequal number of windows during the {} phase.'.format(phase))
-                log.error('       Window counts for each restraint are as follows:')
-                log.error(DAT_restraint.window_counts[phase])
-                # NMH: Should raise exception
-
+                log.error('Restraints have unequal number of windows during the {} phase.'.format(phase))
+                log.debug('Window counts for each restraint are as follows:')
+                log.debug(DAT_restraint.window_counts[phase])
+                sys.exit(1)
     return window_list
-
-
-def make_window_dirs(window_list):
-    """
-    Make a series of directories to hold the simulation setup files
-    and the data. Here we could check if the directories already exist and prompt
-    the user or quit or do something else.
-    """
-
-    for window in window_list:
-        if not os.path.exists('./windows/'+window):
-            os.makedirs('./windows/'+window)
-
 
 def clean_restraints_file(restraints, filename='restraints.in'):
     """
     Delete the restraints files for repeated testing.
     """
 
-    ### NMH: HAS NOT BEEN UPDATED OR TESTED YET
-
+    print('This needs to be tested.')
     for restraint in restraints:
         for window, _ in enumerate(restraint.phase['attach']['force_constants']):
             directory = './windows/a{0:03d}'.format(window)
@@ -550,5 +513,5 @@ def clean_restraints_file(restraints, filename='restraints.in'):
             os.remove(directory + '/' + filename)
 
 def error_checking():
+    print('Error checking needs to be implemented.')
     pass
-
