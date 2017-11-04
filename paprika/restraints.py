@@ -97,13 +97,6 @@ class DAT_restraint(KeepRefs):
         construct one from the initial, final, and increment values.
         """
 
-        # Create the container to hold the actual target and force values that
-        # are computed from the class lists. This is a roundabout way of keeping track
-        # of the data we need to calculate the work done by the restraints while allowing
-        # flexibility in how the user specifies the targets and force constants using the
-        # __init__ method. There is probably a more elegant way of keeping track of this, but
-        # this should work for now.
-
         self.phase = {
             'attach':  {
                 'force_constants': None,

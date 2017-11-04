@@ -15,6 +15,7 @@ def index_from_mask(structure_file, mask, index_offset=1):
     log.debug('There are {} atoms in the mask {}  ...'.format(len(indices), mask))
     return indices
 
+
 def make_window_dirs(window_list):
     """
     Make a series of directories to hold the simulation setup files

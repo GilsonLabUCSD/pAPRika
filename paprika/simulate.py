@@ -208,10 +208,16 @@ class gb_simulation():
         dihedral_restraint.addPerTorsionParameter('k')
         dihedral_restraint.addPerTorsionParameter('theta_0')
 
+        # Maybe we can move this section somewhere else and create the restraints before the 
+        # OpenMM system is defined.
         system.addForce(positional_restraint)
         system.addForce(bond_restraint)
         system.addForce(angle_restraint)
         system.addForce(dihedral_restraint)
+
+        # Have to figure out if group restraint...
+
+        if restraint.mask1 is group:
 
         if restraint.mask1 is not None and restraint.mask2 is not None and \
         restraint.mask3 is None and restraint.mask4 is None:
