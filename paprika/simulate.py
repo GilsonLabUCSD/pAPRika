@@ -183,57 +183,60 @@ class gb_simulation():
         Add particle restraints with OpenMM.
         This should probably go into `restraints.py`.
         """
-        if restraints is None:
-            log.error('Restraints requested but unable to setup restraints in OpenMM.')
-            sys.exit(1)
+        
         # http://docs.openmm.org/7.1.0/api-c++/generated/OpenMM.CustomExternalForce.html
         # It's possible we might need to use `periodicdistance`.
-        positional_restraint = mm.CustomExternalForce('k * ((x - x_0)**2 + (y - y_0)**2 + ' \
-                                                      '(z - z_0)**2)')
-        bond_restraint       = mm.CustomBondForce('k * (r - r_0)**2')
-        angle_restraint      = mm.CustomAngleForce('k * (theta - theta_0)**2')
-        dihedral_restraint   = mm.CustomTorsionForce('k * (theta - theta_0**2')
-
-        positional_restraint.addPerParticleParameter('k')
-        positional_restraint.addPerParticleParameter('x_0')
-        positional_restraint.addPerParticleParameter('y_0')
-        positional_restraint.addPerParticleParameter('z_0')
         
-        bond_restraint.addPerBondParameter('k')
-        bond_restraint.addPerBondParameter('r_0')
+        if restraint.mask1 is not None and restraint.mask2 is not None and 
+            restraint.mask3 is None and restraint.mask4 is None:
+            if not group:
+                bond_restraint       = mm.CustomBondForce('k * (r - r_0)**2')
+                bond_restraint.addPerBondParameter('k')
+                bond_restraint.addPerBondParameter('r_0')
+                system.addForce(bond_restraint)
+                bond_restraint.addBond(restraint.index1, restraint.index2, 
+                                        [restraint.phase[phase]['force_constants'][window],
+                                        [restraint.phase[phase]['targets'][window]]])
+            else:
+                # Stopped here...
+                bond_restraint = mm.CustomCentroidBondForce()
 
-        angle_restraint.addPerAngleParameter('k')
-        angle_restraint.addPerAngleParameter('theta_0')
-
-        dihedral_restraint.addPerTorsionParameter('k')
-        dihedral_restraint.addPerTorsionParameter('theta_0')
-
-        # Maybe we can move this section somewhere else and create the restraints before the 
-        # OpenMM system is defined.
-        system.addForce(positional_restraint)
-        system.addForce(bond_restraint)
-        system.addForce(angle_restraint)
-        system.addForce(dihedral_restraint)
-
-        # Have to figure out if group restraint...
-
-        if restraint.mask1 is group:
-
-        if restraint.mask1 is not None and restraint.mask2 is not None and \
-        restraint.mask3 is None and restraint.mask4 is None:
-            bond_restraint = True
         if restraint.mask1 is not None and restraint.mask2 is not None and \
             restraint.mask3 is not None and restraint.mask4 is None:
-            angle_restraint = True
-        if restraint.mask1 is not None and restraint.mask2 is not None and \
+            angle_restraint      = mm.CustomAngleForce('k * (theta - theta_0)**2')
+            angle_restraint.addPerAngleParameter('k')
+            angle_restraint.addPerAngleParameter('theta_0')
+            system.addForce(angle_restraint)
+            angle_restraint.addAngle(restraint.index1, restraint.index2, restraint.index3,
+                                    [restraint.phase[phase]['force_constants'][window],
+                                    [restraint.phase[phase]['targets'][window])
+                
+         if restraint.mask1 is not None and restraint.mask2 is not None and \
             restraint.mask3 is not None and restraint.mask4 is not None:
-            torsion_restraint = True
+            dihedral_restraint   = mm.CustomTorsionForce('k * (theta - theta_0**2')
+            positional_restraint.addPerParticleParameter('x_0')
+            positional_restraint.addPerParticleParameter('y_0')
+            positional_restraint.addPerParticleParameter('z_0')
+            dihedral_restraint.addPerTorsionParameter('k')
+            dihedral_restraint.addPerTorsionParameter('theta_0')
+            system.addForce(dihedral_restraint)
+            dihedral_restraint.addTorsion(restraint.index1, restraint.index2, restraint.index3, 
+                                        restraint.index4,
+                                        [restraint.phase[phase]['force_constants'][window],
+                                        [restraint.phase[phase]['targets'][window])
+
+
+ 
+
+        # positional_restraint = mm.CustomExternalForce('k * ((x - x_0)**2 + (y - y_0)**2 + ' \
+        #                                               '(z - z_0)**2)')
         
-        if bond_restraint:
-            bond_restraint.addBond(restraint.index1, restraint.index2, 
-                                   [restraint.phase[phase]['force_constants'][window],
-                                   [restraint.phase[phase]['targets'][window]]])
-        
+        # positional_restraint.addPerParticleParameter('k')
+        # We need some way to detect a positional restraint and distinguish it from DAT restraints.
+                # Maybe we can move this section somewhere else and create the restraints before the 
+        # OpenMM system is defined.
+        system.addForce(positional_restraint)
+
 
     def minimize_openmm(self, soft=False):
         """
