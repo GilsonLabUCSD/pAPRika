@@ -36,9 +36,9 @@ class OpenMM_GB_simulation():
 
         self.min = dict(coordinates=self.coordinates,
                         prefix='minimize',
-                        output=self.path + self.min['prefix'] + '.pdb',
                         forcefield=None,
                         platform='CUDA',
+                        devices='1',
                         precision='mixed',
                         max_iterations=5000,
                         reporter_frequency=1000,
@@ -52,14 +52,14 @@ class OpenMM_GB_simulation():
                         friction=1.0 / unit.picoseconds,
                         timestep=2.0 * unit.femtoseconds,
                         soft=False)
+        self.min['output'] = self.path + self.min['prefix'] + '.pdb'
 
         self.md = dict(coordinates=self.coordinates,
                        minimized_coordinates=None,
                        prefix='md',
-                       output=self.path + self.md['prefix'] + '.nc',
-                       data=self.path + self.md['prefix'] + '.csv',
                        forcefield=None,
                        platform='CUDA',
+                       devices='1',
                        precision='mixed',
                        reporter_frequency=1000,
                        solvent=app.HCT,
@@ -71,6 +71,8 @@ class OpenMM_GB_simulation():
                        friction=1.0 / unit.picoseconds,
                        timestep=2.0 * unit.femtoseconds,
                        steps=10000)
+        self.md['output'] = self.path + self.md['prefix'] + '.nc'
+        self.md['data'] = self.path + self.md['prefix'] + '.csv'
 
     def turn_on_interactions_slowly(self, system, simulation):
             # Phase 1: minimize with nonbonded interactions disabled.
@@ -124,7 +126,7 @@ class OpenMM_GB_simulation():
         """
         Run MD with OpenMM.
         """
-        prmtop = pmd.load_file(self.toplogy, self.min['coordinates'])
+        prmtop = pmd.load_file(self.topology, self.min['coordinates'])
         # I'm not sure why we need an integrator for minimization!
         integrator = mm.LangevinIntegrator(
             self.min['temperature'],
@@ -133,30 +135,29 @@ class OpenMM_GB_simulation():
         )
         platform = mm.Platform.getPlatformByName(self.min['platform'])
         if self.min['platform'] == 'CUDA':
-            prop = dict(CudaPrecision=self.min['precision'])
+            prop = dict(CudaPrecision=self.min['precision'],
+                        CudaDeviceIndex=self.min['devices'])
         else:
             prop = None
 
-        if self.min['forcfield'] is not None:
+        if self.min['forcefield'] is not None:
             log.warning('We haven\'t tested running OpenMM with an external force field yet.')
             forcefield = app.ForceField(self.min['forcefield'])
             log.warning('Probably need to load a separate topology here...')
             system = forcefield.createSystem(
                 nonbondedMethod=self.min['nonbonded_method'],
                 implicitSolvent=self.min['solvent'],
-                implicitSolventSaltConc=self.min['salt_conc'],
-                constraints=self.min['constraints'],
-                platform=platform,
-                prop=prop)
+                implicitSolventSaltConc=self.min['salt'],
+                constraints=self.min['constraints']
+               )
         else:
             system = prmtop.createSystem(
                 nonbondedMethod=self.min['nonbonded_method'],
                 implicitSolvent=self.min['solvent'],
-                implicitSolventSaltConc=self.min['salt_conc'],
-                constraints=self.min['constraints'],
-                platform=platform,
-                prop=prop)
-        simulation = app.Simulation(prmtop.topology, system)
+                implicitSolventSaltConc=self.min['salt'],
+                constraints=self.min['constraints']
+                )
+        simulation = app.Simulation(prmtop.topology, system, integrator, platform, prop)
         simulation.context.setPositions(prmtop.positions)
         system = self.add_openmm_restraints(system)
         log.info('Running OpenMM minimization...')
@@ -188,7 +189,8 @@ class OpenMM_GB_simulation():
         )
         platform = mm.Platform.getPlatformByName(self.md['platform'])
         if self.md['platform'] == 'CUDA':
-            prop = dict(CudaPrecision=self.md['precision'])
+            prop = dict(CudaPrecision=self.min['precision'],
+                        CudaDeviceIndex=self.min['devices'])
         else:
             prop = None
 
@@ -199,19 +201,18 @@ class OpenMM_GB_simulation():
             system = forcefield.createSystem(
                 nonbondedMethod=self.md['nonbonded_method'],
                 implicitSolvent=self.md['solvent'],
-                implicitSolventSaltConc=self.md['salt_conc'],
-                constraints=self.md['constraints'],
-                platform=platform,
-                prop=prop)
+                implicitSolventSaltConc=self.md['salt'],
+                constraints=self.md['constraints']
+            )
         else:
-            system = prmtop.createSystem(
-                nonbondedMethod=self.md['nonbonded_method'],
-                implicitSolvent=self.md['solvent'],
-                implicitSolventSaltConc=self.md['salt_conc'],
-                constraints=self.md['constraints'],
-                platform=platform,
-                prop=prop)
-        simulation = app.Simulation(prmtop.topology, system)
+            pass
+        system = prmtop.createSystem(
+            nonbondedMethod=self.md['nonbonded_method'],
+            implicitSolvent=self.md['solvent'],
+            implicitSolventSaltConc=self.md['salt'],
+            constraints=self.md['constraints']
+            )
+        simulation = app.Simulation(prmtop.topology, system, integrator, platform, prop)
         simulation.context.setPositions(prmtop.positions)
         system = self.add_openmm_restraints(system)
 

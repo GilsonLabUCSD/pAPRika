@@ -45,7 +45,7 @@ def _amber_write_input_file(filename, dictionary, title='Input.'):
 
 
 
-class AMBER_GB_simulation(phase=None, window=None):
+class AMBER_GB_simulation():
     """
     """
 
@@ -54,6 +54,9 @@ class AMBER_GB_simulation(phase=None, window=None):
         # Setup simulation directory and files
         self.path = './'
         self.amber_executable = 'pmemd'
+        self.phase = None
+        self.window = None
+
         self.topology = self.path + 'prmtop'
         self.restraints = self.path + 'restraints.in'
 
