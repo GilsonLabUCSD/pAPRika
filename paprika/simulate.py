@@ -5,9 +5,9 @@ from collections import OrderedDict
 
 import numpy as np
 import parmed as pmd
+from paprika.restraints import *
 
 try:
-    # OpenMM Imports
     import simtk.openmm as mm
     import simtk.openmm.app as app
     import simtk.unit as unit
@@ -16,7 +16,7 @@ except:
     log.debug('OpenMM support: No')
 
 
-def _write_input_file(filename, input_dict, title='Input.'):
+def _amber_write_input_file(filename, input_dict, title='Input.'):
     """
     Process a dictionary to generate a pmemd input file.
     """
@@ -24,24 +24,24 @@ def _write_input_file(filename, input_dict, title='Input.'):
     log.debug('Writing {}'.format(filename))
     with open(filename, 'w') as f:
         f.write("{}\n".format(title))
-        for namelist in ['cntrl','ewald']:
+        for namelist in ['cntrl', 'ewald']:
             if input_dict[namelist] is not None:
                 f.write(" &{}\n".format(namelist))
-                for key,val in input_dict[namelist].items():
+                for key, val in input_dict[namelist].items():
                     if val is not None:
-                        f.write("  {:15s} {:s},\n".format(key+' =',str(val)))
+                        f.write("  {:15s} {:s},\n".format(
+                            key + ' =', str(val)))
                 f.write(" /\n")
-        if input_dict['cntrl']['nmropt'] == 1:          ### Need to check if this exists first!!
+        if input_dict['cntrl']['nmropt'] == 1:
             if input_dict['wt'] is not None:
-                for line in  input_dict['wt']:
-                    f.write(" "+line+"\n")
+                for line in input_dict['wt']:
+                    f.write(" " + line + "\n")
             f.write(" &wt type = 'END', /\n")
             if input_dict['DISANG'] is not None:
                 f.write("DISANG = {}\n".format(input_dict['DISANG']))
                 f.write("LISTOUT = POUT\n\n")
         if input_dict['GROUP'] is not None:
             f.write("{:s}".format(input_dict['GROUP']))
-
 
 
 class pme_simulation():
@@ -53,7 +53,7 @@ class pme_simulation():
         self.todo = 'todo'
 
 
-class gb_simulation():
+class gb_simulation(self, phase=None, window=None):
     """
     All GB simulation methods.
     """
@@ -61,304 +61,467 @@ class gb_simulation():
     def __init__(self):
 
         # Setup simulation directory and files
-        self.path = '.'
-        self.toplogy = 'prmtop'
-        self.coordinates = 'inpcrd'
-        self.restraints = 'restraints.in'
-        self.pdb = None
+        self.path = './'
+        self.amber_executable = 'pmemd'
+        self.toplogy = self.path + 'prmtop'
+        self.restraints = self.path + 'restraints.in'
 
-        # See AMBER manual for definitions
-        # I'm not really pleased with the format here, but I want to keep
-        # the order of the keys, so I have to go line by line for the
-        # OrderedDict.  If I make the dict all at once, it won't be in order.
-        # This format should allow flexible editing of the input files
-        
         self.amber = {}
-        # Minimization input file settings
-        self.amber['minimization'] = {}
-        self.amber['minimization']['cntrl'] =                     OrderedDict()
+        self.amber['min'] = {}
+        self.amber['min']['prefix'] = 'minimize'
+        self.amber['min']['input'] = self.path + self.amber['min']['prefix'] + '.in'
+        self.amber['min']['output'] = self.path + self.amber['min']['prefix'] '.out'
+        self.amber['min']['restart'] = self.path + self.amber['min']['prefix'] + '.rst'
+        self.amber['min']['info'] = self.path + self.amber['min']['prefix'] + '.inf'
+        self.amber['min']['coords'] = self.path + self.amber['min']['prefix'] + '.inpcrd'
+
+        self.amber['min']['cntrl'] = OrderedDict()
         # Minimize
-        self.amber['minimization']['cntrl']['imin'] =             1 
+        self.amber['min']['cntrl']['imin'] = 1
         # Coordinates will be read
-        self.amber['minimization']['cntrl']['ntx'] =              1
+        self.amber['min']['cntrl']['ntx'] = 1
         # Not a restart
-        self.amber['minimization']['cntrl']['irest'] =            0
+        self.amber['min']['cntrl']['irest'] = 0
         # Maximum number of cycles
-        self.amber['minimization']['cntrl']['maxcyc'] =           5000
+        self.amber['min']['cntrl']['maxcyc'] = 5000
         # Number of steps until switching from SD to CG
-        self.amber['minimization']['cntrl']['ncyc'] =             1000
+        self.amber['min']['cntrl']['ncyc'] = 1000
         # Number of steps to output human-readable energy
-        self.amber['minimization']['cntrl']['ntpr'] =             100
+        self.amber['min']['cntrl']['ntpr'] = 100
         # Output format
-        self.amber['minimization']['cntrl']['ntxo'] =             1
+        self.amber['min']['cntrl']['ntxo'] = 1
         # Whether all interactions are calculated
-        self.amber['minimization']['cntrl']['ntf'] =              1
+        self.amber['min']['cntrl']['ntf'] = 1
         # Whether SHAKE is performed
-        self.amber['minimization']['cntrl']['ntc'] =              1
+        self.amber['min']['cntrl']['ntc'] = 1
         # Nonbonded cutoff
-        self.amber['minimization']['cntrl']['cut'] =              999.0
+        self.amber['min']['cntrl']['cut'] = 999.0
         # Flag for generalized Born
-        self.amber['minimization']['cntrl']['igb'] =              1
-        self.amber['minimization']['cntrl']['ntr'] =              None
-        self.amber['minimization']['cntrl']['restraint_wt'] =     None
-        self.amber['minimization']['cntrl']['restraintmask'] =    None
-        self.amber['minimization']['cntrl']['nmropt'] =           1
-        self.amber['minimization']['cntrl']['pencut'] =           -1
-        self.amber['minimization']['ewald'] =                     None    # or OrderedDict() (Add the other namelists?)
-        self.amber['minimization']['wt'] =                        None    # or []
-        self.amber['minimization']['DISANG'] =                    self.restraints
-        self.amber['minimization']['GROUP'] =                     None    # or []
+        self.amber['min']['cntrl']['igb'] = 1
+        self.amber['min']['cntrl']['ntr'] = None
+        self.amber['min']['cntrl']['restraint_wt'] = None
+        self.amber['min']['cntrl']['restraintmask'] = None
+        self.amber['min']['cntrl']['nmropt'] = 1
+        self.amber['min']['cntrl']['pencut'] = -1
 
-        # Production input file settings
+        self.amber['min']['ewald'] = None
+        self.amber['min']['wt'] = None    # or []
+        self.amber['min']['DISANG'] = self.restraints
+        self.amber['min']['GROUP'] = None    # or []
+
         self.amber['md'] = {}
-        self.amber['md']['cntrl'] =                       OrderedDict()
-        self.amber['md']['cntrl']['imin'] =               0
-        self.amber['md']['cntrl']['ntx'] =                1
-        self.amber['md']['cntrl']['irest'] =              0
-        self.amber['md']['cntrl']['dt'] =                 0.002
-        self.amber['md']['cntrl']['nstlim'] =             5000
-        self.amber['md']['cntrl']['ntpr'] =               500
-        self.amber['md']['cntrl']['ntwe'] =               0
-        self.amber['md']['cntrl']['ntwr'] =               5000
-        self.amber['md']['cntrl']['ntxo'] =               1
-        self.amber['md']['cntrl']['ntwx'] =               500
-        self.amber['md']['cntrl']['ioutfm'] =             1
-        self.amber['md']['cntrl']['ntf'] =                2
-        self.amber['md']['cntrl']['ntc'] =                2
-        self.amber['md']['cntrl']['igb'] =                1
-        self.amber['md']['cntrl']['cut'] =                999.0
-        self.amber['md']['cntrl']['ntt'] =                3
-        self.amber['md']['cntrl']['gamma_ln'] =           1.0
-        self.amber['md']['cntrl']['ig'] =                 -1
-        self.amber['md']['cntrl']['temp0'] =              298.15
-        self.amber['md']['cntrl']['ntr'] =                None
-        self.amber['md']['cntrl']['restraint_wt'] =       None
-        self.amber['md']['cntrl']['restraintmask'] =      None
-        self.amber['md']['cntrl']['nmropt'] =             1
-        self.amber['md']['cntrl']['pencut'] =             -1
-        self.amber['md']['ewald'] =                       None    # or OrderedDict() (Add the other namelists?)
-        self.amber['md']['wt'] =                          None
-        self.amber['md']['DISANG'] =                      self.restraints
-        self.amber['md']['GROUP'] =                       None
+        self.amber['md']['prefix'] = 'md'
+        self.amber['md']['input'] = self.path + \
+            self.amber['md']['prefix'] + '.in'
+        self.amber['md']['output'] = self.path + self.amber['md']['prefix'] '.out'
+        self.amber['md']['restart'] = self.path + \
+            self.amber['md']['prefix'] + '.rst'
+        self.amber['md']['info'] = self.path + \
+            self.amber['md']['prefix'] + '.inf'
+        self.amber['md']['coords'] = self.path + \
+            self.amber['md']['prefix'] + '.inpcrd'
+        self.amber['md']['ref_coords'] = None
 
-        self.openmm                                       = {}
-        self.openmm['forcfield']                          = None
-        self.openmm['minimization']                       = {}
-        # Define the platform to use: CUDA, OpenCL, CPU, or Reference.
-        self.openmm['minimization']['platform']           = 'CUDA'
-        self.openmm['minimization']['max_iterations']     = 5000
-        self.openmm['minimization']['reporter_frequency'] = 1000
-        self.openmm['minimization']['tolerance']          = 1
-        self.openmm['minimization']['solvent']            = app.HCT  # Hawkins-Cramer-Truhlar (igb = 1 in AMBER)
-        self.openmm['minimization']['nonbonded_method']   = app.NoCutoff
-        self.openmm['minimization']['nonbonded_cutoff']   = None
-        self.openmm['minimization']['constraints']        = app.HBonds
+        self.amber['md']['cntrl'] = OrderedDict()
+        self.amber['md']['cntrl']['imin'] = 0
+        self.amber['md']['cntrl']['ntx'] = 1
+        self.amber['md']['cntrl']['irest'] = 0
+        self.amber['md']['cntrl']['dt'] = 0.002
+        self.amber['md']['cntrl']['nstlim'] = 5000
+        self.amber['md']['cntrl']['ntpr'] = 500
+        self.amber['md']['cntrl']['ntwe'] = 0
+        self.amber['md']['cntrl']['ntwr'] = 5000
+        self.amber['md']['cntrl']['ntxo'] = 1
+        self.amber['md']['cntrl']['ntwx'] = 500
+        self.amber['md']['cntrl']['ioutfm'] = 1
+        self.amber['md']['cntrl']['ntf'] = 2
+        self.amber['md']['cntrl']['ntc'] = 2
+        self.amber['md']['cntrl']['igb'] = 1
+        self.amber['md']['cntrl']['cut'] = 999.0
+        self.amber['md']['cntrl']['ntt'] = 3
+        self.amber['md']['cntrl']['gamma_ln'] = 1.0
+        self.amber['md']['cntrl']['ig'] = -1
+        self.amber['md']['cntrl']['temp0'] = 298.15
+        self.amber['md']['cntrl']['ntr'] = None
+        self.amber['md']['cntrl']['restraint_wt'] = None
+        self.amber['md']['cntrl']['restraintmask'] = None
+        self.amber['md']['cntrl']['nmropt'] = 1
+        self.amber['md']['cntrl']['pencut'] = -1
 
-        #self.print_time = 1.0 #ps.  Figure out a way to update dicts if this is reset by user. 
-        # offer way for user to just provide the input file?
+        self.amber['md']['ewald'] = None
+        self.amber['md']['wt'] = None
+        self.amber['md']['DISANG'] = self.restraints
+        self.amber['md']['GROUP'] = None
 
-    def minimize(self, soft=False):
+        self.openmm = {}
+        self.openmm['forcfield'] = None
+        self.openmm['min'] = {}
+        self.openmm['min']['coords'] = self.amber['min']['coords']
+        self.openmm['min']['prefix'] = 'minimize'
+        self.openmm['min']['output'] = self.path + \
+            self.openmm['min']['prefix'] + '.pdb'
+        self.openmm['min']['positions'] = None
+        self.openmm['min']['platform'] = 'CUDA'  # CUDA, OpenCL, CPU, Reference
+        self.openmm['min']['precision'] = 'mixed'
+        self.openmm['min']['max_iterations'] = 5000
+        self.openmm['min']['reporter_frequency'] = 1000
+        self.openmm['min']['tolerance'] = 1
+        # Hawkins-Cramer-Truhlar (igb = 1 in AMBER)
+        self.openmm['min']['solvent'] = app.HCT
+        self.openmm['min']['salt_conc'] = 0.1 * unit.mole / unit.liter
+        self.openmm['min']['nonbonded_method'] = app.NoCutoff
+        self.openmm['min']['nonbonded_cutoff'] = None
+        self.openmm['min']['constraints'] = app.HBonds
+        self.openmm['min']['temperature'] = 300 * unit.kelvin
+        self.openmm['min']['friction'] = 1.0 / unit.picoseconds
+        self.openmm['min']['timestep'] = 2.0 * unit.femtoseconds
+
+        self.openmm['md'] = {}
+        self.openmm['md']['coords'] = self.amber['md']['coords']
+        self.openmm['md']['prefix'] = 'md'
+        self.openmm['md']['output'] = self.path + \
+            self.openmm['md']['prefix'] + '.nc'
+        self.openmm['md']['data'] = self.path + \
+            self.openmm['md']['prefix'] + '.csv'
+
+        self.openmm['md']['platform'] = 'CUDA'
+        self.openmm['md']['precision'] = 'mixed'
+        self.openmm['md']['reporter_frequency'] = 1000
+        self.openmm['md']['solvent'] = app.HCT
+        self.openmm['md']['salt_conc'] = 0.1 * unit.mole / unit.liter
+        self.openmm['md']['nonbonded_method'] = app.NoCutoff
+        self.openmm['md']['nonbonded_cutoff'] = None
+        self.openmm['md']['constraints'] = app.HBonds
+        self.openmm['md']['temperature'] = 300 * unit.kelvin
+        self.openmm['md']['friction'] = 1.0 / unit.picoseconds
+        self.openmm['md']['timestep'] = 2.0 * unit.femtoseconds
+        self.openmm['md']['steps'] = 10000
+
+    def minimize_with_amber(self, soft=False):
         """
         Minimize the system.
 
-            If soft=True, slowly turn on non-bonded interactions during minimization
-            so that the restraints get enforced first.
+        If soft=True, slowly turn on non-bonded interactions during minimization
+        so that the restraints get enforced first.
 
         """
 
         if soft:
-            self.amber['minimization']['wt'] = [ "&wt type = 'NB', istep1=0, istep2=2000, value1 = 0.0, value2=0.0, IINC=50, /",
-                                                "&wt type = 'NB', istep1=2000, istep2=4000, value1 = 0.0, value2=1.0, IINC=50, /" ]
+            self.amber['min']['wt'] = ["&wt type = 'NB', istep1=0, istep2=2000, value1 = 0.0, value2=0.0, IINC=50, /",
+                                                "&wt type = 'NB', istep1=2000, istep2=4000, value1 = 0.0, value2=1.0, IINC=50, /"]
+        _amber_write_input_file(
+            self.amber['min']['input'], self.amber['min'], title='GB Minimization.')
 
-        _write_input_file(self.path+'/gb_minimize.in', self.amber['minimization'], title='GB Minimization.')
+        log.info('Running GB Minimization at {}'.format(self.path))
+        sp.call("{6} -O -p {0} -c {1} -ref {1} -i {2}\
+                 -o {3} -r {4} -inf {5}"
+                 .format(self.toplogy, self.amber['min']['coords'], self.amber['min']['input']],
+                 self.amber['min']['output'], self.amber['min']['restart'], self.amber['min']['info'],
+                 self.amber_executable), cwd=self.path, shell=True)
+        log.debug('TODO: Does the above command need `shell=True` ...?')
+        log.debug('TODO: Catch errors here...')
 
-        ### ToDo: Use nice error catching method dave figured out.
-        log.debug('Running GB Minimization at {}'.format(self.path))
-        sp.call("pmemd -O -p {0} -c {1} -ref {1} -i gb_minimize.in\
-                 -o mdout.gb_minimize -r rst.gb_minimize -inf mdinfo.gb_minimize".format(self.prmtop,
-                 self.coordinates), cwd=self.path, shell=True)
 
-    def setup_openmm_restraints(self, system, restraint, phase, window):
+    def run_md_with_amber(self):
         """
-        Add particle restraints with OpenMM.
-        This should probably go into `restraints.py`.
+        Run MD with AMBER.
         """
-        
-        # http://docs.openmm.org/7.1.0/api-c++/generated/OpenMM.CustomExternalForce.html
-        # It's possible we might need to use `periodicdistance`.
-        
-        if restraint.mask1 is not None and restraint.mask2 is not None and 
-            restraint.mask3 is None and restraint.mask4 is None:
-            if not group:
-                bond_restraint       = mm.CustomBondForce('k * (r - r_0)**2')
-                bond_restraint.addPerBondParameter('k')
-                bond_restraint.addPerBondParameter('r_0')
-                system.addForce(bond_restraint)
-                bond_restraint.addBond(restraint.index1, restraint.index2, 
-                                        [restraint.phase[phase]['force_constants'][window],
-                                        [restraint.phase[phase]['targets'][window]]])
-            else:
-                # Stopped here...
-                bond_restraint = mm.CustomCentroidBondForce()
 
-        if restraint.mask1 is not None and restraint.mask2 is not None and \
-            restraint.mask3 is not None and restraint.mask4 is None:
-            angle_restraint      = mm.CustomAngleForce('k * (theta - theta_0)**2')
-            angle_restraint.addPerAngleParameter('k')
-            angle_restraint.addPerAngleParameter('theta_0')
-            system.addForce(angle_restraint)
-            angle_restraint.addAngle(restraint.index1, restraint.index2, restraint.index3,
-                                    [restraint.phase[phase]['force_constants'][window],
-                                    [restraint.phase[phase]['targets'][window])
-                
-         if restraint.mask1 is not None and restraint.mask2 is not None and \
-            restraint.mask3 is not None and restraint.mask4 is not None:
-            dihedral_restraint   = mm.CustomTorsionForce('k * (theta - theta_0**2')
-            positional_restraint.addPerParticleParameter('x_0')
-            positional_restraint.addPerParticleParameter('y_0')
-            positional_restraint.addPerParticleParameter('z_0')
-            dihedral_restraint.addPerTorsionParameter('k')
-            dihedral_restraint.addPerTorsionParameter('theta_0')
-            system.addForce(dihedral_restraint)
-            dihedral_restraint.addTorsion(restraint.index1, restraint.index2, restraint.index3, 
-                                        restraint.index4,
-                                        [restraint.phase[phase]['force_constants'][window],
-                                        [restraint.phase[phase]['targets'][window])
+        _amber_write_input_file(
+            self.amber['md']['input'], self.amber['md'], title = 'MD.')
+        log.info('Running AMBER MD at {}'.format(self.path))
 
+        if self.amber['md']['ref_coords']:
+            log.warn(
+                'Check the specificiation of reference coordinates is correct.')
+            execution_string="{6} -O -p {0} -c {1} -ref {7} -i {2}\
+                     -o {3} -r {4} -inf {5}"
+                     .format(self.toplogy, self.amber['md']['coords'], self.amber['md']['input'],
+                     self.amber['md']['output'], self.amber['md']['restart'], self.amber['md']['restart'],
+                     self.amber_executable, self.amber['md']['ref_coords'])
 
- 
+            log.debug(execution_string)
+            sp.call(execution_string), cwd=self.path)
 
-        # positional_restraint = mm.CustomExternalForce('k * ((x - x_0)**2 + (y - y_0)**2 + ' \
-        #                                               '(z - z_0)**2)')
-        
-        # positional_restraint.addPerParticleParameter('k')
-        # We need some way to detect a positional restraint and distinguish it from DAT restraints.
-                # Maybe we can move this section somewhere else and create the restraints before the 
-        # OpenMM system is defined.
-        system.addForce(positional_restraint)
+        else:
+            execution_string="{6} -O -p {0} -c {1} -i {2}\
+                     -o {3} -r {4} -inf {5}"
+                     .format(self.toplogy, self.amber['md']['coords'], self.amber['md']['input'],
+                     self.amber['md']['output'], self.amber['md']['restart'], self.amber['md']['restart'],
+                     self.amber_executable)
 
+            log.debug(execution_string)
+            sp.call(execution_string), cwd=self.path)
+        log.info('Minimization completed...')
 
-    def minimize_openmm(self, soft=False):
+    def minimize_with_openmm(self, soft=False):
         """
         Run MD with OpenMM.
         (The `soft` option can probably be folded into a class variable to tidy this up.)
         """
-        prmtop = app.AmberPrmtopFile(self.toplogy)
-        inpcrd = app.AmberInpcrdFile(self.coordinates)
-        platform = mm.Platform.getPlatformByName(self.openmm['minimization']['platform'])
-        prop = dict(CudaPrecision='mixed')
-
-
-        # Call setup_openmm_restraints?
-
-
+        prmtop=pmd.load_file(self.toplogy, self.openmm['min']['coords'])
+        # I'm not sure if I need an integrator for minimization!
+        integrator=mm.LangevinIntegrator(
+            self.openmm['min']['temperature'],
+            self.openmm['min']['friction'],
+            self.openmm['min']['timestep']
+        )
+        platform=mm.Platform.getPlatformByName(self.openmm['min']['platform'])
+        if self.openmm['min']['platform'] == 'CUDA':
+            prop=dict(CudaPrecision=self.openmm['min']['precision'])
+        else:
+            prop=None
 
         if self.openmm['forcfield'] is not None:
-            # In this case, it may be easier to not go through AMBER file types, but for now
-            # using an alternative file still uses the AMBER file types as intermediaries.
-            log.warn('We haven\'t tested running OpenMM with an external force field yet.')
-            forcefield = app.ForceField(self.opennmm['forcefield'])
+            log.warn(
+                'We haven\'t tested running OpenMM with an external force field yet.')
+            forcefield=app.ForceField(self.opennmm['forcefield'])
             log.warn('Probably need to load a separate topology here...')
-            system = forcefield.createSystem(
-                implicitSolvent=self.openmm['minimization']['solvent'],
-                nonbondedMethod=self.openmm['minimization']['nonbonded_method'],
-                constraints=self.openmm['minimization']['constraints'],
+            system=forcefield.createSystem(
+                nonbondedMethod=self.openmm['min']['nonbonded_method'],
+                implicitSolvent=self.openmm['min']['solvent'],
+                implicitSolventSaltConc=self.openmm['min']['salt_conc'],
+                nonbondedMethod=self.openmm['min']['nonbonded_method'],
+                constraints=self.openmm['min']['constraints'],
                 platform=platform,
                 prop=prop)
-        else:    
-            system = prmtop.createSystem(
-                implicitSolvent=self.openmm['minimization']['solvent'],
-                nonbondedMethod=self.openmm['minimization']['nonbonded_method'],
-                constraints=self.openmm['minimization']['constraints'],
+        else:
+            system=prmtop.createSystem(
+                nonbondedMethod=self.openmm['min']['nonbonded_method'],
+                implicitSolvent=self.openmm['min']['solvent'],
+                implicitSolventSaltConc=self.openmm['min']['salt_conc'],
+                nonbondedMethod=self.openmm['min']['nonbonded_method'],
+                constraints=self.openmm['min']['constraints'],
                 platform=platform,
                 prop=prop)
-        simulation = app.Simulation(prmtop.topology, system)
-        simulation.context.setPositions(inpcrd)
+        simulation=app.Simulation(prmtop.topology, system)
+        simulation.context.setPositions(prmtop.positions)
+        add_openmm_restraints(system)
+        log.info('Running OpenMM minimization...')
 
         if soft:
             # Phase 1: minimize with nonbonded interactions disabled.
             # This is the first 40% of the maximum iterations.
             log.debug('Minimization phase 1 for {} steps.'
-                .format(int(0.4 * self.openmm['minimization']['max_iterations'])))
+                .format(int(0.4 * self.openmm['min']['max_iterations'])))
             simulation.minimizeEnergy(
-                maxIterations=int(0.4 * self.openmm['minimization']['max_iterations']),
-                tolerance=self.openmm['minimization']['tolerance']*unit.kilojoule/unit.mole
+                maxIterations=int(0.4 * self.openmm['min']['max_iterations']),
+                tolerance=self.openmm['min']['tolerance'] * \
+                    unit.kilojoule / unit.mole
                 )
             # Phase 2: slowly turn on the nonbonded interactions.
             # This is the next 40% of the maximum iterations.
             # This increases the nonbonded interactions linearly, which is not
             # the same as using `IINC` in AMBER.
             log.debug('Minimization phase 2 for {} steps.'
-                .format(int(0.4 * self.openmm['minimization']['max_iterations'])))
-            for scale in np.linspace(0, 1.0, int(0.4 * self.openmm['minimization']['max_iterations'])):
-                log.debug('Scaling NB interactions to {0:0.4f} / 1.0'.format(scale))
+                .format(int(0.4 * self.openmm['min']['max_iterations'])))
+            for scale in np.linspace(0, 1.0, int(0.4 * self.openmm['min']['max_iterations'])):
+                log.debug(
+                    'Scaling NB interactions to {0:0.4f} / 1.0'.format(scale))
                 for particle in range(system.getNumParticles()):
-                    [charge, sigma, epsilon] = mm.NonbondedForce.getParticleParameters(particle)
-                    mm.NonbondedForce.setParticleParameters(particle, charge * scale, sigma, epsilon * scale)
+                    [charge, sigma, epsilon]=mm.NonbondedForce.getParticleParameters(
+                        particle)
+                    mm.NonbondedForce.setParticleParameters(
+                        particle, charge * scale, sigma, epsilon * scale)
                 simulation.minimizeEnergy(
                     maxIterations=1,
-                    tolerance=self.openmm['minimization']['tolerance']*unit.kilojoule/unit.mole
+                    tolerance=self.openmm['min']['tolerance'] * \
+                        unit.kilojoule / unit.mole
                 )
             # Phase 3: minimize with nonbonded interactions at full strength.
             # This is the last 20% of the maximum iterations.
             log.debug('Minimization phase 3 for {} steps.'
-                .format(int(0.2 * self.openmm['minimization']['max_iterations'])))
+                .format(int(0.2 * self.openmm['min']['max_iterations'])))
             simulation.minimizeEnergy(
-                maxIterations=int(0.2 * self.openmm['minimization']['max_iterations']),
-                tolerance=self.openmm['minimization']['tolerance']*unit.kilojoule/unit.mole
+                maxIterations=int(0.2 * self.openmm['min']['max_iterations']),
+                tolerance=self.openmm['min']['tolerance'] * \
+                    unit.kilojoule / unit.mole
                 )
-            state = simulation.context.getState(getEnergy=True, getPositions=True)
+            state=simulation.context.getState(
+                getEnergy=True, getPositions=True)
         else:
             simulation.minimizeEnergy(
-                maxIterations=self.openmm['minimization']['max_iterations'],
-                tolerance=self.openmm['minimization']['tolerance']*unit.kilojoule/unit.mole
+                maxIterations=self.openmm['min']['max_iterations'],
+                tolerance=self.openmm['min']['tolerance'] * \
+                    unit.kilojoule / unit.mole
                 )
+        self.openmm['min']['positions']=simulation.context.getState(
+            getPositions=True).getPositions()
+        app.PDBFile.writeFile(simulation.topology, self.openmm['min']['positions'], open(
+            self.openmm['min']['output'], 'w'))
+        log.info('Minimization completed...')
 
-
-
-    def run_md(self, input_file, input_crds, output_suffix, ref_crds=None):
-        """
-        Run MD.
-        """
-
-        _write_input_file(self.path+'/'+input_file, self.amber['md'], title='MD.')
-
-        if ref_crds is None:
-            ref_crds = input_crds
-
-        ### ToDo: Use nice error catching method dave figured out.
-        ### ToDo: Is this the best way to do file naming?
-        log.debug('Running MD at {}'.format(self.path))
-        sp.call("pmemd -O -p {0} -c {1} -ref {2} -i {3} -o mdout.{4} -r rst.{4} -x traj.{4} -e mden.{4} -inf mdinfo.{4}\
-                ".format(self.toplogy,self.coordinates,ref_crds,input_file,output_suffix), cwd=self.path, shell=True)
-
-
-    def run_md_openmm(self):
+    def run_md_with_openmm(self):
         """
         Run MD with OpenMM.
         """
-        if restraints:
-            # Figure out if there are restraints.
-            pass
-
+        prmtop=pmd.load_file(self.toplogy, self.['openmm']['md']['coords'])
+        # I'm not sure if I need an integrator for minimization!
+        integrator=mm.LangevinIntegrator(
+            self.openmm['md']['temperature'],
+            self.openmm['md']['friction'],
+            self.openmm['md']['timestep']
+        )
+        platform=mm.Platform.getPlatformByName(self.openmm['md']['platform'])
+        if self.openmm['md']['platform'] == 'CUDA':
+            prop=dict(CudaPrecision=self.openmm['md']['precision'])
         else:
-            openmm = pmd.load_file(self.toplogy, self.coordinates)
-            system = openmm.createSystem(
-                nonbondedMethod=app.PME,
-                constraints=app.HBonds
-            )
-            integrator = mm.Langevin
+            prop=None
+        if self.openmm['forcfield'] is not None:
+            log.warn(
+                'We haven\'t tested running OpenMM with an external force field yet.')
+            forcefield=app.ForceField(self.opennmm['forcefield'])
+            log.warn('Probably need to load a separate topology here...')
+            system=forcefield.createSystem(
+                nonbondedMethod=self.openmm['md']['nonbonded_method'],
+                implicitSolvent=self.openmm['md']['solvent'],
+                implicitSolventSaltConc=self.openmm['md']['salt_conc'],
+                nonbondedMethod=self.openmm['md']['nonbonded_method'],
+                constraints=self.openmm['md']['constraints'],
+                platform=platform,
+                prop=prop)
+        else:
+            system=prmtop.createSystem(
+                nonbondedMethod=self.openmm['md']['nonbonded_method'],
+                implicitSolvent=self.openmm['md']['solvent'],
+                implicitSolventSaltConc=self.openmm['md']['salt_conc'],
+                nonbondedMethod=self.openmm['md']['nonbonded_method'],
+                constraints=self.openmm['md']['constraints'],
+                platform=platform,
+                prop=prop)
+        simulation=app.Simulation(prmtop.topology, system)
+        add_openmm_restraints(system)
 
-    def amber_to_pdb(self):
-        
-        # To run with the SMIRNOFF force field, we must use PDB as an intermediary format.
-        # This will print CONECT records between H1 and H2, if using TIP3P. Possibly others.
-        self.pdb = '.'.join(self.toplogy.split('.')[0:-1]) + '.pdb'
-        pdb_input = '.'.join(self.toplogy.split('.')[0:-1]) + '.in'
-        log.info('Converting AMBER coordinates and topology to PDB format.')
-        log.debug('Calling `cpptraj`...')
-        with open(pdb_input, 'w') as file:
-            file.write('parm {}\n'.format(self.toplogy))
-            file.write('trajin {}\n'.format(self.coordinates))
-            file.write('trajout {} conect\n'.format(self.pdb))
-        sp.check_call(['cpptraj', '-i', pdb_input])
+        if self.openmm['min']['positions']:
+            simulation.context.setPositions(self.openmm['min']['positions'])
+        else:
+            simulation.context.setPositions(prmtop.positions)
+        simulation.context.setVelocitiesToTemperature(
+            self.openmm['md']['temperature'] * unit.kelvin)
+        reporter=mm.NetCDFReporter(
+            self.openmm['md']['output'], self.openmm['md']['reporter_frequency'])
+        simulation.reporters.append(reporter)
+        simulation.reporters.append(app.StateDataReporter(self.openmm['md']['data'],
+                                    self.openmm['md']['reporter_frequency'],
+                                    step=True,
+                                    potentialEnergy=True,
+                                    temperature=True,
+                                    density=True))
+
+        log.info('Running OpenMM MD...')
+        simulation.step(self.openmm['md']['steps'])
+        log.info('MD completed...')
+        reporter.close()
+
+    def add_openmm_restraints(system):
+        for i, restraint in enumerate(DAT_restraint.get_instances()):
+            log.debug('Setting up restraint number {} in phase {} and window {}...'.format(
+                i, self.phase, self.window))
+            setup_openmm_restraints(system, restraint, phase, window)
+
+
+    def setup_openmm_restraints(system, restraint, phase, window):
+        """
+        Add particle restraints with OpenMM.
+        This should probably go into `restraints.py`.
+        """
+
+        # http://docs.openmm.org/7.1.0/api-c++/generated/OpenMM.CustomExternalForce.html
+        # It's possible we might need to use `periodicdistance`.
+
+        if restraint.mask1 is not None and \
+           restraint.mask2 is not None and \
+           restraint.mask3 is None and \
+           restraint.mask4 is None:
+
+            if restraint.group1 is False and restraint.group2 is False:
+                bond_restraint=mm.CustomBondForce('k * (r - r_0)**2')
+                bond_restraint.addPerBondParameter('k')
+                bond_restraint.addPerBondParameter('r_0')
+
+                r_0=restraint.phase[phase]['targets'][window] * \
+                    0.1 * unit.nanometers
+                k=restraint.phase[phase]['force_constants'][window] / \
+                    0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers**2
+                bond_restraint.addBond(restraint.index1[0], restraint.index2[0],
+                                       [k, r_0])
+                system.addForce(bond_restraint)
+            elif restraint.group1 is True or restraint.group2 is True:
+                # http://docs.openmm.org/7.0.0/api-python/generated/simtk.openmm.openmm.CustomManyParticleForce.html
+                # http://getyank.org/development/_modules/yank/restraints.html
+                bond_restraint=mm.CustomCentroidBondForce(
+                    2, 'k * (distance(g1, g2) - r_0)^2')
+                bond_restraint.addPerBondParameter('k')
+                bond_restraint.addPerBondParameter('r_0')
+
+                r_0=restraint.phase[phase]['targets'][window] * \
+                    0.1 * unit.nanometers
+                k=restraint.phase[phase]['force_constants'][window] / \
+                    0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers**2
+                g1=bond_restraint.addGroup(rest1.index1)
+                g2=bond_restraint.addGroup(rest1.index2)
+                bond_restraint.addBond([g1, g2],
+                                       [k, r_0])
+                system.addForce(bond_restraint)
+
+            else:
+                log.error('Unable to add bond restraint...')
+                log.debug('restraint.index1 = {}'.format(restraint.index1))
+                log.debug('restraint.index2 = {}'.format(restraint.index2))
+                sys.exit(1)
+
+        if restraint.mask1 is not None and \
+           restraint.mask2 is not None and \
+           restraint.mask3 is not None and \
+           restraint.mask4 is None:
+            if restraint.group1 is not False and \
+               restraint.group2 is not False and \
+               restraint.group3 is not False:
+                log.error('Unable to add a group angle restraint...')
+                log.debug('restraint.index1 = {}'.format(restraint.index1))
+                log.debug('restraint.index2 = {}'.format(restraint.index2))
+                log.debug('restraint.index3 = {}'.format(restraint.index3))
+                sys.exit(1)
+
+            angle_restraint=mm.CustomAngleForce('k * (theta - theta_0)**2')
+            angle_restraint.addPerAngleParameter('k')
+            angle_restraint.addPerAngleParameter('theta_0')
+
+            log.debug('Setting an angle restraint in degrees using a '
+                     'force constant in kcal per mol rad**2...')
+            theta_0=restraint.phase[phase]['targets'][window] * unit.degrees
+            k=restraint.phase[phase]['force_constants'][window] * \
+                unit.kilocalorie_per_mole / unit.radian**2
+            angle_restraint.addAngle(restraint.index1[0], restraint.index2[0], restraint.index3[0],
+                                    [k, theta_0])
+            system.addForce(angle_restraint)
+
+        if restraint.mask1 is not None and \
+           restraint.mask2 is not None and \
+           restraint.mask3 is not None and \
+           restraint.mask4 is not None:
+            if restraint.group1 is not False and \
+               restraint.group2 is not False and \
+               restraint.group3 is not False and
+               restraint.group4 is not False:
+                log.error('Unable to add a group dihedral restraint...')
+                log.debug('restraint.index1 = {}'.format(restraint.index1))
+                log.debug('restraint.index2 = {}'.format(restraint.index2))
+                log.debug('restraint.index3 = {}'.format(restraint.index3))
+                log.debug('restraint.index4 = {}'.format(restraint.index4))
+                sys.exit(1)
+
+            dihedral_restraint=mm.CustomTorsionForce(
+                'k * (theta - theta_0)**2')
+            dihedral_restraint.addPerTorsionParameter('k')
+            dihedral_restraint.addPerTorsionParameter('theta_0')
+
+            log.debug('Setting a torsion restraint in degrees using a '
+                     'force constant in kcal per mol rad**2...')
+            theta_0=restraint.phase[phase]['targets'][window] * unit.degrees
+            k=restraint.phase[phase]['force_constants'][window] * \
+                unit.kilocalorie_per_mole / unit.radian**2
+            dihedral_restraint.addTorsion(restraint.index1[0], restraint.index2[0],
+                                          restraint.index3[0], restraint.index4[0],
+                                          [k, theta_0])
+            system.addForce(dihedral_restraint)

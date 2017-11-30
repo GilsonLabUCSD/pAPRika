@@ -151,7 +151,7 @@ class DAT_restraint(KeepRefs):
             self.phase['attach']['force_constants'] = [fraction * self.attach['fc_final'] for
                                                        fraction in self.attach['fraction_list']]
             self.phase['attach']['targets'] = [self.attach['target']] * len(self.phase['attach']['force_constants'])
-            
+
         elif self.attach['fraction_increment'] is not None  and  self.attach['fc_final'] is not None:
             ### METHOD 4 ###
             log.debug('Method #4')
@@ -166,10 +166,10 @@ class DAT_restraint(KeepRefs):
             self.phase['attach']['targets'] = [self.attach['target']] * len(self.phase['attach']['force_constants'])
 
         elif all(v is None for k, v in self.attach.items()):
-            log.debug('No restraint info set for this phase! Skipping ...')
+            log.debug('No restraint info set for this phase! Skipping...')
 
-        else: 
-            log.error('Restraint input did not match one of the supported methods ...')
+        else:
+            log.error('Restraint input did not match one of the supported methods...')
             for k, v in self.attach.items():
                 log.debug('{} = {}'.format(k, v))
             sys.exit(1)
@@ -231,10 +231,10 @@ class DAT_restraint(KeepRefs):
             self.phase['pull']['force_constants'] = [self.pull['fc']] * len(self.phase['pull']['targets'])
 
         elif all(v is None for k, v in self.pull.items()):
-            log.debug('No restraint info set for this phase! Skipping ...')
+            log.debug('No restraint info set for this phase! Skipping...')
 
         else:
-            log.error('Restraint input did not match one of the supported methods ...')
+            log.error('Restraint input did not match one of the supported methods...')
             for k, v in self.pull.items():
                 log.debug('{} = {}'.format(k, v))
             sys.exit(1)
@@ -246,7 +246,7 @@ class DAT_restraint(KeepRefs):
             self.release['target'] = self.phase['pull']['targets'][-1]
             for key in ['fc_final', 'fc_initial', 'num_windows', 'fraction_increment', 'fraction_list', 'fc_list']:
                 if self.attach[key] is not None and self.release[key] is None:
-                    self.release[key] = self.attach[key] 
+                    self.release[key] = self.attach[key]
 
         if self.release['num_windows'] is not None  and  self.release['fc_final'] is not None:
             if self.release['fc_initial'] is not None:
@@ -300,10 +300,10 @@ class DAT_restraint(KeepRefs):
             self.phase['release']['targets'] = [self.release['target']] * len(self.phase['release']['force_constants'])
 
         elif all(v is None for k, v in self.release.items()):
-            log.debug('No restraint info set for this phase! Skipping ...')
+            log.debug('No restraint info set for this phase! Skipping...')
 
         else:
-            log.error('Restraint input did not match one of the supported methods ...')
+            log.error('Restraint input did not match one of the supported methods...')
             for k, v in self.release.items():
                 log.debug('{} = {}'.format(k, v))
             sys.exit(1)
@@ -320,7 +320,7 @@ class DAT_restraint(KeepRefs):
                 log.debug('This restraint will be skipped in the {} phase'.format(phase))
 
         # ---------------------------------- ATOM MASKS ---------------------------------- #
-        log.debug('Assigning atom indices ...')
+        log.debug('Assigning atom indices...')
         self.index1 = utils.index_from_mask(self.structure_file, self.mask1)
         self.index2 = utils.index_from_mask(self.structure_file, self.mask2)
         if self.mask3:
@@ -331,6 +331,23 @@ class DAT_restraint(KeepRefs):
             self.index4 = utils.index_from_mask(self.structure_file, self.mask4)
         else:
             self.index4 = None
+        # If any `index` has more than one atom, mark it as a group restraint.
+        if self.mask1 and len(self.index1) == 1:
+            self.group1 = False
+        else:
+            self.group1 = True
+        if self.mask2 and len(self.index2) == 1:
+           self.group2 = False
+        else:
+           self.group2 = True
+        if self.mask3 and len(self.index3) == 1:
+            self.group3 = False
+        else:
+            self.group3 = True
+        if self.mask4 and len(self.index4) == 1:
+            self.group4 = False
+        else:
+            self.group4 = True
 
 
 def return_restraint_line(restraint, phase, window, group=False):
@@ -347,15 +364,12 @@ def return_restraint_line(restraint, phase, window, group=False):
 
     """
 
-    # This is not very elegant, but it seems to do the trick!
     if not restraint.index1:
         iat1 = ' '
         raise Exception('There must be at least two atoms in a restraint.')
-    elif len(restraint.index1) == 1:
-        group1 = False
+    elif not restraint.group1:
         iat1 = '{},'.format(restraint.index1[0])
     else:
-        group1 = True
         iat1 = '-1,'
         igr1 = ''
         for index in restraint.index1:
@@ -364,11 +378,9 @@ def return_restraint_line(restraint, phase, window, group=False):
     if not restraint.index2:
         iat2 = ' '
         raise Exception('There must be at least two atoms in a restraint.')
-    elif len(restraint.index2) == 1:
-        group2 = False
+    elif not restraint.group2:
         iat2 = '{},'.format(restraint.index2[0])
     else:
-        group2 = True
         iat2 = '-1,'
         igr2 = ''
         for index in restraint.index2:
@@ -376,12 +388,9 @@ def return_restraint_line(restraint, phase, window, group=False):
 
     if not restraint.index3:
         iat3 = ''
-        group3 = False
-    elif len(restraint.index3) == 1:
-        group3 = False
+    elif not restraint.group3:
         iat3 = '{},'.format(restraint.index3[0])
     else:
-        group3 = True
         iat3 = '-1,'
         igr3 = ''
         for index in restraint.index3:
@@ -389,12 +398,9 @@ def return_restraint_line(restraint, phase, window, group=False):
 
     if not restraint.index4:
         iat4 = ''
-        group4 = False
-    elif len(restraint.index4) == 1:
-        group4 = False
+    elif not restraint.group4:
         iat4 = '{},'.format(restraint.index4[0])
     else:
-        group4 = True
         iat4 = '-1,'
         igr4 = ''
         for index in restraint.index4:
@@ -420,16 +426,16 @@ def return_restraint_line(restraint, phase, window, group=False):
          ' r4 = {0:10.5f},'.format(upper_bound) + \
         ' rk2 = {0:10.5f},'.format(restraint.phase[phase]['force_constants'][window]) + \
         ' rk3 = {0:10.5f},'.format(restraint.phase[phase]['force_constants'][window])
-    
-    if any([group1, group2, group3, group4]):
-        string += '\n    ' 
-        if group1:
+
+    if any([self.group1, self.group2, self.group3, self.group4]):
+        string += '\n    '
+        if self.group1:
             string += ' igr1 = {}'.format(igr1)
-        if group2:
+        if self.group2:
             string += ' igr2 = {}'.format(igr2)
-        if group3:
+        if self.group3:
             string += ' igr3 = {}'.format(igr3)
-        if group4:
+        if self.group4:
             string += ' igr4 = {}'.format(igr4)
 
     string += '  &end'
