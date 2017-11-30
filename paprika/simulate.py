@@ -1,5 +1,4 @@
 import logging as log
-import os as os
 import subprocess as sp
 from collections import OrderedDict
 
@@ -53,7 +52,7 @@ class pme_simulation():
         self.todo = 'todo'
 
 
-class gb_simulation(self, phase=None, window=None):
+class gb_simulation(phase=None, window=None):
     """
     All GB simulation methods.
     """
@@ -70,7 +69,7 @@ class gb_simulation(self, phase=None, window=None):
         self.amber['min'] = {}
         self.amber['min']['prefix'] = 'minimize'
         self.amber['min']['input'] = self.path + self.amber['min']['prefix'] + '.in'
-        self.amber['min']['output'] = self.path + self.amber['min']['prefix'] '.out'
+        self.amber['min']['output'] = self.path +  self.amber['min']['prefix'] + '.out'
         self.amber['min']['restart'] = self.path + self.amber['min']['prefix'] + '.rst'
         self.amber['min']['info'] = self.path + self.amber['min']['prefix'] + '.inf'
         self.amber['min']['coords'] = self.path + self.amber['min']['prefix'] + '.inpcrd'
@@ -111,15 +110,11 @@ class gb_simulation(self, phase=None, window=None):
 
         self.amber['md'] = {}
         self.amber['md']['prefix'] = 'md'
-        self.amber['md']['input'] = self.path + \
-            self.amber['md']['prefix'] + '.in'
-        self.amber['md']['output'] = self.path + self.amber['md']['prefix'] '.out'
-        self.amber['md']['restart'] = self.path + \
-            self.amber['md']['prefix'] + '.rst'
-        self.amber['md']['info'] = self.path + \
-            self.amber['md']['prefix'] + '.inf'
-        self.amber['md']['coords'] = self.path + \
-            self.amber['md']['prefix'] + '.inpcrd'
+        self.amber['md']['input'] = self.path + self.amber['md']['prefix'] + '.in'
+        self.amber['md']['output'] = self.path + self.amber['md']['prefix'] + '.out'
+        self.amber['md']['restart'] = self.path + self.amber['md']['prefix'] + '.rst'
+        self.amber['md']['info'] = self.path + self.amber['md']['prefix'] + '.inf'
+        self.amber['md']['coords'] = self.path + self.amber['md']['prefix'] + '.inpcrd'
         self.amber['md']['ref_coords'] = None
 
         self.amber['md']['cntrl'] = OrderedDict()
@@ -179,10 +174,8 @@ class gb_simulation(self, phase=None, window=None):
         self.openmm['md'] = {}
         self.openmm['md']['coords'] = self.amber['md']['coords']
         self.openmm['md']['prefix'] = 'md'
-        self.openmm['md']['output'] = self.path + \
-            self.openmm['md']['prefix'] + '.nc'
-        self.openmm['md']['data'] = self.path + \
-            self.openmm['md']['prefix'] + '.csv'
+        self.openmm['md']['output'] = self.path + self.openmm['md']['prefix'] + '.nc'
+        self.openmm['md']['data'] = self.path + self.openmm['md']['prefix'] + '.csv'
 
         self.openmm['md']['platform'] = 'CUDA'
         self.openmm['md']['precision'] = 'mixed'
@@ -208,19 +201,18 @@ class gb_simulation(self, phase=None, window=None):
 
         if soft:
             self.amber['min']['wt'] = ["&wt type = 'NB', istep1=0, istep2=2000, value1 = 0.0, value2=0.0, IINC=50, /",
-                                                "&wt type = 'NB', istep1=2000, istep2=4000, value1 = 0.0, value2=1.0, IINC=50, /"]
+                                       "&wt type = 'NB', istep1=2000, istep2=4000, value1 = 0.0, value2=1.0, IINC=50, /"]
         _amber_write_input_file(
             self.amber['min']['input'], self.amber['min'], title='GB Minimization.')
 
         log.info('Running GB Minimization at {}'.format(self.path))
         sp.call("{6} -O -p {0} -c {1} -ref {1} -i {2}\
                  -o {3} -r {4} -inf {5}"
-                 .format(self.toplogy, self.amber['min']['coords'], self.amber['min']['input']],
-                 self.amber['min']['output'], self.amber['min']['restart'], self.amber['min']['info'],
-                 self.amber_executable), cwd=self.path, shell=True)
+                .format(self.toplogy, self.amber['min']['coords'], self.amber['min']['input'],
+                        self.amber['min']['output'], self.amber['min']['restart'], self.amber['min']['info'],
+                        self.amber_executable), cwd=self.path, shell=True)
         log.debug('TODO: Does the above command need `shell=True` ...?')
         log.debug('TODO: Catch errors here...')
-
 
     def run_md_with_amber(self):
         """
@@ -228,30 +220,28 @@ class gb_simulation(self, phase=None, window=None):
         """
 
         _amber_write_input_file(
-            self.amber['md']['input'], self.amber['md'], title = 'MD.')
+            self.amber['md']['input'], self.amber['md'], title='MD.')
         log.info('Running AMBER MD at {}'.format(self.path))
 
         if self.amber['md']['ref_coords']:
             log.warn(
                 'Check the specificiation of reference coordinates is correct.')
-            execution_string="{6} -O -p {0} -c {1} -ref {7} -i {2}\
-                     -o {3} -r {4} -inf {5}"
-                     .format(self.toplogy, self.amber['md']['coords'], self.amber['md']['input'],
-                     self.amber['md']['output'], self.amber['md']['restart'], self.amber['md']['restart'],
-                     self.amber_executable, self.amber['md']['ref_coords'])
+            execution_string = "{6} -O -p {0} -c {1} -ref {7} -i {2}\
+                     -o {3} -r {4} -inf {5}".format(self.toplogy, self.amber['md']['coords'], self.amber['md']['input'],
+                                                    self.amber['md']['output'], self.amber['md']['restart'], self.amber['md']['restart'],
+                                                    self.amber_executable, self.amber['md']['ref_coords'])
 
             log.debug(execution_string)
-            sp.call(execution_string), cwd=self.path)
+            sp.call(execution_string, cwd=self.path)
 
         else:
-            execution_string="{6} -O -p {0} -c {1} -i {2}\
-                     -o {3} -r {4} -inf {5}"
-                     .format(self.toplogy, self.amber['md']['coords'], self.amber['md']['input'],
-                     self.amber['md']['output'], self.amber['md']['restart'], self.amber['md']['restart'],
-                     self.amber_executable)
+            execution_string = "{6} -O -p {0} -c {1} -i {2}\
+                     -o {3} -r {4} -inf {5}".format(self.toplogy, self.amber['md']['coords'], self.amber['md']['input'],
+                                                    self.amber['md']['output'], self.amber['md']['restart'], self.amber['md']['restart'],
+                                                    self.amber_executable)
 
             log.debug(execution_string)
-            sp.call(execution_string), cwd=self.path)
+            sp.call(execution_string, cwd=self.path)
         log.info('Minimization completed...')
 
     def minimize_with_openmm(self, soft=False):
@@ -259,93 +249,92 @@ class gb_simulation(self, phase=None, window=None):
         Run MD with OpenMM.
         (The `soft` option can probably be folded into a class variable to tidy this up.)
         """
-        prmtop=pmd.load_file(self.toplogy, self.openmm['min']['coords'])
+        prmtop = pmd.load_file(self.toplogy, self.openmm['min']['coords'])
         # I'm not sure if I need an integrator for minimization!
-        integrator=mm.LangevinIntegrator(
+        integrator = mm.LangevinIntegrator(
             self.openmm['min']['temperature'],
             self.openmm['min']['friction'],
             self.openmm['min']['timestep']
         )
-        platform=mm.Platform.getPlatformByName(self.openmm['min']['platform'])
+        platform = mm.Platform.getPlatformByName(
+            self.openmm['min']['platform'])
         if self.openmm['min']['platform'] == 'CUDA':
-            prop=dict(CudaPrecision=self.openmm['min']['precision'])
+            prop = dict(CudaPrecision=self.openmm['min']['precision'])
         else:
-            prop=None
+            prop = None
 
         if self.openmm['forcfield'] is not None:
             log.warn(
                 'We haven\'t tested running OpenMM with an external force field yet.')
-            forcefield=app.ForceField(self.opennmm['forcefield'])
+            forcefield = app.ForceField(self.opennmm['forcefield'])
             log.warn('Probably need to load a separate topology here...')
-            system=forcefield.createSystem(
+            system = forcefield.createSystem(
                 nonbondedMethod=self.openmm['min']['nonbonded_method'],
                 implicitSolvent=self.openmm['min']['solvent'],
                 implicitSolventSaltConc=self.openmm['min']['salt_conc'],
-                nonbondedMethod=self.openmm['min']['nonbonded_method'],
                 constraints=self.openmm['min']['constraints'],
                 platform=platform,
                 prop=prop)
         else:
-            system=prmtop.createSystem(
+            system = prmtop.createSystem(
                 nonbondedMethod=self.openmm['min']['nonbonded_method'],
                 implicitSolvent=self.openmm['min']['solvent'],
                 implicitSolventSaltConc=self.openmm['min']['salt_conc'],
-                nonbondedMethod=self.openmm['min']['nonbonded_method'],
                 constraints=self.openmm['min']['constraints'],
                 platform=platform,
                 prop=prop)
-        simulation=app.Simulation(prmtop.topology, system)
+        simulation = app.Simulation(prmtop.topology, system)
         simulation.context.setPositions(prmtop.positions)
-        add_openmm_restraints(system)
+        self.add_openmm_restraints(system)
         log.info('Running OpenMM minimization...')
 
         if soft:
             # Phase 1: minimize with nonbonded interactions disabled.
             # This is the first 40% of the maximum iterations.
             log.debug('Minimization phase 1 for {} steps.'
-                .format(int(0.4 * self.openmm['min']['max_iterations'])))
+                      .format(int(0.4 * self.openmm['min']['max_iterations'])))
             simulation.minimizeEnergy(
                 maxIterations=int(0.4 * self.openmm['min']['max_iterations']),
-                tolerance=self.openmm['min']['tolerance'] * \
-                    unit.kilojoule / unit.mole
-                )
+                tolerance=self.openmm['min']['tolerance'] *
+                unit.kilojoule / unit.mole
+            )
             # Phase 2: slowly turn on the nonbonded interactions.
             # This is the next 40% of the maximum iterations.
             # This increases the nonbonded interactions linearly, which is not
             # the same as using `IINC` in AMBER.
             log.debug('Minimization phase 2 for {} steps.'
-                .format(int(0.4 * self.openmm['min']['max_iterations'])))
+                      .format(int(0.4 * self.openmm['min']['max_iterations'])))
             for scale in np.linspace(0, 1.0, int(0.4 * self.openmm['min']['max_iterations'])):
                 log.debug(
                     'Scaling NB interactions to {0:0.4f} / 1.0'.format(scale))
                 for particle in range(system.getNumParticles()):
-                    [charge, sigma, epsilon]=mm.NonbondedForce.getParticleParameters(
+                    [charge, sigma, epsilon] = mm.NonbondedForce.getParticleParameters(
                         particle)
                     mm.NonbondedForce.setParticleParameters(
                         particle, charge * scale, sigma, epsilon * scale)
                 simulation.minimizeEnergy(
                     maxIterations=1,
-                    tolerance=self.openmm['min']['tolerance'] * \
-                        unit.kilojoule / unit.mole
+                    tolerance=self.openmm['min']['tolerance'] *
+                    unit.kilojoule / unit.mole
                 )
             # Phase 3: minimize with nonbonded interactions at full strength.
             # This is the last 20% of the maximum iterations.
             log.debug('Minimization phase 3 for {} steps.'
-                .format(int(0.2 * self.openmm['min']['max_iterations'])))
+                      .format(int(0.2 * self.openmm['min']['max_iterations'])))
             simulation.minimizeEnergy(
                 maxIterations=int(0.2 * self.openmm['min']['max_iterations']),
-                tolerance=self.openmm['min']['tolerance'] * \
-                    unit.kilojoule / unit.mole
-                )
-            state=simulation.context.getState(
+                tolerance=self.openmm['min']['tolerance'] *
+                unit.kilojoule / unit.mole
+            )
+            state = simulation.context.getState(
                 getEnergy=True, getPositions=True)
         else:
             simulation.minimizeEnergy(
                 maxIterations=self.openmm['min']['max_iterations'],
-                tolerance=self.openmm['min']['tolerance'] * \
-                    unit.kilojoule / unit.mole
-                )
-        self.openmm['min']['positions']=simulation.context.getState(
+                tolerance=self.openmm['min']['tolerance'] *
+                unit.kilojoule / unit.mole
+            )
+        self.openmm['min']['positions'] = simulation.context.getState(
             getPositions=True).getPositions()
         app.PDBFile.writeFile(simulation.topology, self.openmm['min']['positions'], open(
             self.openmm['min']['output'], 'w'))
@@ -355,42 +344,40 @@ class gb_simulation(self, phase=None, window=None):
         """
         Run MD with OpenMM.
         """
-        prmtop=pmd.load_file(self.toplogy, self.['openmm']['md']['coords'])
+        prmtop = pmd.load_file(self.toplogy, self.openmm['md']['coords'])
         # I'm not sure if I need an integrator for minimization!
-        integrator=mm.LangevinIntegrator(
+        integrator = mm.LangevinIntegrator(
             self.openmm['md']['temperature'],
             self.openmm['md']['friction'],
             self.openmm['md']['timestep']
         )
-        platform=mm.Platform.getPlatformByName(self.openmm['md']['platform'])
+        platform = mm.Platform.getPlatformByName(self.openmm['md']['platform'])
         if self.openmm['md']['platform'] == 'CUDA':
-            prop=dict(CudaPrecision=self.openmm['md']['precision'])
+            prop = dict(CudaPrecision=self.openmm['md']['precision'])
         else:
-            prop=None
+            prop = None
         if self.openmm['forcfield'] is not None:
             log.warn(
                 'We haven\'t tested running OpenMM with an external force field yet.')
-            forcefield=app.ForceField(self.opennmm['forcefield'])
+            forcefield = app.ForceField(self.openmm['forcefield'])
             log.warn('Probably need to load a separate topology here...')
-            system=forcefield.createSystem(
+            system = forcefield.createSystem(
                 nonbondedMethod=self.openmm['md']['nonbonded_method'],
                 implicitSolvent=self.openmm['md']['solvent'],
                 implicitSolventSaltConc=self.openmm['md']['salt_conc'],
-                nonbondedMethod=self.openmm['md']['nonbonded_method'],
                 constraints=self.openmm['md']['constraints'],
                 platform=platform,
                 prop=prop)
         else:
-            system=prmtop.createSystem(
+            system = prmtop.createSystem(
                 nonbondedMethod=self.openmm['md']['nonbonded_method'],
                 implicitSolvent=self.openmm['md']['solvent'],
                 implicitSolventSaltConc=self.openmm['md']['salt_conc'],
-                nonbondedMethod=self.openmm['md']['nonbonded_method'],
                 constraints=self.openmm['md']['constraints'],
                 platform=platform,
                 prop=prop)
-        simulation=app.Simulation(prmtop.topology, system)
-        add_openmm_restraints(system)
+        simulation = app.Simulation(prmtop.topology, system)
+        self.add_openmm_restraints(system)
 
         if self.openmm['min']['positions']:
             simulation.context.setPositions(self.openmm['min']['positions'])
@@ -398,29 +385,28 @@ class gb_simulation(self, phase=None, window=None):
             simulation.context.setPositions(prmtop.positions)
         simulation.context.setVelocitiesToTemperature(
             self.openmm['md']['temperature'] * unit.kelvin)
-        reporter=mm.NetCDFReporter(
+        reporter = mm.NetCDFReporter(
             self.openmm['md']['output'], self.openmm['md']['reporter_frequency'])
         simulation.reporters.append(reporter)
         simulation.reporters.append(app.StateDataReporter(self.openmm['md']['data'],
-                                    self.openmm['md']['reporter_frequency'],
-                                    step=True,
-                                    potentialEnergy=True,
-                                    temperature=True,
-                                    density=True))
+                                                          self.openmm['md']['reporter_frequency'],
+                                                          step=True,
+                                                          potentialEnergy=True,
+                                                          temperature=True,
+                                                          density=True))
 
         log.info('Running OpenMM MD...')
         simulation.step(self.openmm['md']['steps'])
         log.info('MD completed...')
         reporter.close()
 
-    def add_openmm_restraints(system):
+    def add_openmm_restraints(self, system):
         for i, restraint in enumerate(DAT_restraint.get_instances()):
             log.debug('Setting up restraint number {} in phase {} and window {}...'.format(
                 i, self.phase, self.window))
-            setup_openmm_restraints(system, restraint, phase, window)
+            self.setup_openmm_restraints(system, restraint, self.phase, self.window)
 
-
-    def setup_openmm_restraints(system, restraint, phase, window):
+    def setup_openmm_restraints(self, system, restraint, phase, window):
         """
         Add particle restraints with OpenMM.
         This should probably go into `restraints.py`.
@@ -435,13 +421,13 @@ class gb_simulation(self, phase=None, window=None):
            restraint.mask4 is None:
 
             if restraint.group1 is False and restraint.group2 is False:
-                bond_restraint=mm.CustomBondForce('k * (r - r_0)**2')
+                bond_restraint = mm.CustomBondForce('k * (r - r_0)**2')
                 bond_restraint.addPerBondParameter('k')
                 bond_restraint.addPerBondParameter('r_0')
 
-                r_0=restraint.phase[phase]['targets'][window] * \
+                r_0 = restraint.phase[phase]['targets'][window] * \
                     0.1 * unit.nanometers
-                k=restraint.phase[phase]['force_constants'][window] / \
+                k = restraint.phase[phase]['force_constants'][window] / \
                     0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers**2
                 bond_restraint.addBond(restraint.index1[0], restraint.index2[0],
                                        [k, r_0])
@@ -449,17 +435,17 @@ class gb_simulation(self, phase=None, window=None):
             elif restraint.group1 is True or restraint.group2 is True:
                 # http://docs.openmm.org/7.0.0/api-python/generated/simtk.openmm.openmm.CustomManyParticleForce.html
                 # http://getyank.org/development/_modules/yank/restraints.html
-                bond_restraint=mm.CustomCentroidBondForce(
+                bond_restraint = mm.CustomCentroidBondForce(
                     2, 'k * (distance(g1, g2) - r_0)^2')
                 bond_restraint.addPerBondParameter('k')
                 bond_restraint.addPerBondParameter('r_0')
 
-                r_0=restraint.phase[phase]['targets'][window] * \
+                r_0 = restraint.phase[phase]['targets'][window] * \
                     0.1 * unit.nanometers
-                k=restraint.phase[phase]['force_constants'][window] / \
+                k = restraint.phase[phase]['force_constants'][window] / \
                     0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers**2
-                g1=bond_restraint.addGroup(rest1.index1)
-                g2=bond_restraint.addGroup(rest1.index2)
+                g1 = bond_restraint.addGroup(restraint.index1)
+                g2 = bond_restraint.addGroup(restraint.index2)
                 bond_restraint.addBond([g1, g2],
                                        [k, r_0])
                 system.addForce(bond_restraint)
@@ -483,17 +469,17 @@ class gb_simulation(self, phase=None, window=None):
                 log.debug('restraint.index3 = {}'.format(restraint.index3))
                 sys.exit(1)
 
-            angle_restraint=mm.CustomAngleForce('k * (theta - theta_0)**2')
+            angle_restraint = mm.CustomAngleForce('k * (theta - theta_0)**2')
             angle_restraint.addPerAngleParameter('k')
             angle_restraint.addPerAngleParameter('theta_0')
 
             log.debug('Setting an angle restraint in degrees using a '
-                     'force constant in kcal per mol rad**2...')
-            theta_0=restraint.phase[phase]['targets'][window] * unit.degrees
-            k=restraint.phase[phase]['force_constants'][window] * \
+                      'force constant in kcal per mol rad**2...')
+            theta_0 = restraint.phase[phase]['targets'][window] * unit.degrees
+            k = restraint.phase[phase]['force_constants'][window] * \
                 unit.kilocalorie_per_mole / unit.radian**2
             angle_restraint.addAngle(restraint.index1[0], restraint.index2[0], restraint.index3[0],
-                                    [k, theta_0])
+                                     [k, theta_0])
             system.addForce(angle_restraint)
 
         if restraint.mask1 is not None and \
@@ -502,24 +488,23 @@ class gb_simulation(self, phase=None, window=None):
            restraint.mask4 is not None:
             if restraint.group1 is not False and \
                restraint.group2 is not False and \
-               restraint.group3 is not False and
+               restraint.group3 is not False and \
                restraint.group4 is not False:
-                log.error('Unable to add a group dihedral restraint...')
-                log.debug('restraint.index1 = {}'.format(restraint.index1))
-                log.debug('restraint.index2 = {}'.format(restraint.index2))
-                log.debug('restraint.index3 = {}'.format(restraint.index3))
-                log.debug('restraint.index4 = {}'.format(restraint.index4))
-                sys.exit(1)
+                    log.error('Unable to add a group dihedral restraint...')
+                    log.debug('restraint.index1 = {}'.format(restraint.index1))
+                    log.debug('restraint.index2 = {}'.format(restraint.index2))
+                    log.debug('restraint.index3 = {}'.format(restraint.index3))
+                    log.debug('restraint.index4 = {}'.format(restraint.index4))
+                    sys.exit(1)
 
-            dihedral_restraint=mm.CustomTorsionForce(
-                'k * (theta - theta_0)**2')
+            dihedral_restraint = mm.CustomTorsionForce('k * (theta - theta_0)**2')
             dihedral_restraint.addPerTorsionParameter('k')
             dihedral_restraint.addPerTorsionParameter('theta_0')
 
             log.debug('Setting a torsion restraint in degrees using a '
-                     'force constant in kcal per mol rad**2...')
-            theta_0=restraint.phase[phase]['targets'][window] * unit.degrees
-            k=restraint.phase[phase]['force_constants'][window] * \
+                      'force constant in kcal per mol rad**2...')
+            theta_0 = restraint.phase[phase]['targets'][window] * unit.degrees
+            k = restraint.phase[phase]['force_constants'][window] * \
                 unit.kilocalorie_per_mole / unit.radian**2
             dihedral_restraint.addTorsion(restraint.index1[0], restraint.index2[0],
                                           restraint.index3[0], restraint.index4[0],
