@@ -15,7 +15,7 @@ except:
     log.debug('OpenMM support: No')
 
 
-def _amber_write_input_file(filename, input_dict, title='Input.'):
+def _amber_write_input_file(filename, dictionary, title='Input.'):
     """
     Process a dictionary to generate a pmemd input file.
     """
@@ -24,24 +24,38 @@ def _amber_write_input_file(filename, input_dict, title='Input.'):
     with open(filename, 'w') as f:
         f.write("{}\n".format(title))
         for namelist in ['cntrl', 'ewald']:
-            if input_dict[namelist] is not None:
+            if dictionary[namelist] is not None:
                 f.write(" &{}\n".format(namelist))
-                for key, val in input_dict[namelist].items():
+                for key, val in dictionary[namelist].items():
                     if val is not None:
                         f.write("  {:15s} {:s},\n".format(
                             key + ' =', str(val)))
                 f.write(" /\n")
-        if input_dict['cntrl']['nmropt'] == 1:
-            if input_dict['wt'] is not None:
-                for line in input_dict['wt']:
+        if dictionary['cntrl']['nmropt'] == 1:
+            if dictionary['wt'] is not None:
+                for line in dictionary['wt']:
                     f.write(" " + line + "\n")
             f.write(" &wt type = 'END', /\n")
-            if input_dict['DISANG'] is not None:
-                f.write("DISANG = {}\n".format(input_dict['DISANG']))
+            if dictionary['DISANG'] is not None:
+                f.write("DISANG = {}\n".format(dictionary['DISANG']))
                 f.write("LISTOUT = POUT\n\n")
-        if input_dict['GROUP'] is not None:
-            f.write("{:s}".format(input_dict['GROUP']))
+        if dictionary['GROUP'] is not None:
+            f.write("{:s}".format(dictionary['GROUP']))
 
+
+def _apply_openmm_restraints(system):
+         """
+        Loop through the instances of `DAT_restraint`, after an OpenMM `system` has been created and
+        call the function to apply the restraint for a given phase and window of the calculation.
+        Parameters
+        ----------
+        restraint: a `DAT_restraint` object
+        system: OpenMM System Class
+        """
+        for i, restraint in enumerate(DAT_restraint.get_instances()):
+            log.debug('Setting up restraint number {} in phase {} and window {}...'.format(
+                i, self.phase, self.window))
+            # self.setup_openmm_restraints(system, restraint, self.phase, self.window)
 
 class pme_simulation():
     """
@@ -53,8 +67,12 @@ class pme_simulation():
 
 
 class gb_simulation(phase=None, window=None):
-    """
-    All GB simulation methods.
+    """Setup and run a GB simulation in AMBER or OpenMM.
+
+    Parameters
+    ----------
+    phase: phase of the calculation used to specify the value of the restraints, should be "attach", "pull" or "release".
+    window: window of the calculation used to specify the value of the restraints, should be numeric.
     """
 
     def __init__(self):
@@ -69,7 +87,7 @@ class gb_simulation(phase=None, window=None):
         self.amber['min'] = {}
         self.amber['min']['prefix'] = 'minimize'
         self.amber['min']['input'] = self.path + self.amber['min']['prefix'] + '.in'
-        self.amber['min']['output'] = self.path +  self.amber['min']['prefix'] + '.out'
+        self.amber['min']['output'] = self.path + self.amber['min']['prefix'] + '.out'
         self.amber['min']['restart'] = self.path + self.amber['min']['prefix'] + '.rst'
         self.amber['min']['info'] = self.path + self.amber['min']['prefix'] + '.inf'
         self.amber['min']['coords'] = self.path + self.amber['min']['prefix'] + '.inpcrd'
@@ -153,8 +171,7 @@ class gb_simulation(phase=None, window=None):
         self.openmm['min'] = {}
         self.openmm['min']['coords'] = self.amber['min']['coords']
         self.openmm['min']['prefix'] = 'minimize'
-        self.openmm['min']['output'] = self.path + \
-            self.openmm['min']['prefix'] + '.pdb'
+        self.openmm['min']['output'] = self.path + self.openmm['min']['prefix'] + '.pdb'
         self.openmm['min']['positions'] = None
         self.openmm['min']['platform'] = 'CUDA'  # CUDA, OpenCL, CPU, Reference
         self.openmm['min']['precision'] = 'mixed'
@@ -200,8 +217,9 @@ class gb_simulation(phase=None, window=None):
         """
 
         if soft:
-            self.amber['min']['wt'] = ["&wt type = 'NB', istep1=0, istep2=2000, value1 = 0.0, value2=0.0, IINC=50, /",
-                                       "&wt type = 'NB', istep1=2000, istep2=4000, value1 = 0.0, value2=1.0, IINC=50, /"]
+            self.amber['min']['wt'] = [
+                "&wt type = 'NB', istep1=0, istep2=2000, value1 = 0.0, value2=0.0, IINC=50, /",
+                "&wt type = 'NB', istep1=2000, istep2=4000, value1 = 0.0, value2=1.0, IINC=50, /"]
         _amber_write_input_file(
             self.amber['min']['input'], self.amber['min'], title='GB Minimization.')
 
@@ -209,8 +227,7 @@ class gb_simulation(phase=None, window=None):
         sp.call("{6} -O -p {0} -c {1} -ref {1} -i {2}\
                  -o {3} -r {4} -inf {5}"
                 .format(self.toplogy, self.amber['min']['coords'], self.amber['min']['input'],
-                        self.amber['min']['output'], self.amber['min']['restart'], self.amber['min']['info'],
-                        self.amber_executable), cwd=self.path, shell=True)
+                        self.amber['min']['output'], self.amber['min']['restart'], self.amber['min']['info'], self.amber_executable), cwd=self.path, shell=True)
         log.debug('TODO: Does the above command need `shell=True` ...?')
         log.debug('TODO: Catch errors here...')
 
@@ -219,16 +236,15 @@ class gb_simulation(phase=None, window=None):
         Run MD with AMBER.
         """
 
-        _amber_write_input_file(
-            self.amber['md']['input'], self.amber['md'], title='MD.')
+        _amber_write_input_file(self.amber['md']['input'], self.amber['md'], title='MD.')
         log.info('Running AMBER MD at {}'.format(self.path))
 
         if self.amber['md']['ref_coords']:
-            log.warn(
-                'Check the specificiation of reference coordinates is correct.')
+            log.warn('Check the specificiation of reference coordinates is correct.')
             execution_string = "{6} -O -p {0} -c {1} -ref {7} -i {2}\
                      -o {3} -r {4} -inf {5}".format(self.toplogy, self.amber['md']['coords'], self.amber['md']['input'],
-                                                    self.amber['md']['output'], self.amber['md']['restart'], self.amber['md']['restart'],
+                                                    self.amber['md']['output'], self.amber['md'][
+                                                        'restart'], self.amber['md']['restart'],
                                                     self.amber_executable, self.amber['md']['ref_coords'])
 
             log.debug(execution_string)
@@ -237,7 +253,8 @@ class gb_simulation(phase=None, window=None):
         else:
             execution_string = "{6} -O -p {0} -c {1} -i {2}\
                      -o {3} -r {4} -inf {5}".format(self.toplogy, self.amber['md']['coords'], self.amber['md']['input'],
-                                                    self.amber['md']['output'], self.amber['md']['restart'], self.amber['md']['restart'],
+                                                    self.amber['md']['output'], self.amber['md'][
+                                                        'restart'], self.amber['md']['restart'],
                                                     self.amber_executable)
 
             log.debug(execution_string)
@@ -400,113 +417,4 @@ class gb_simulation(phase=None, window=None):
         log.info('MD completed...')
         reporter.close()
 
-    def add_openmm_restraints(self, system):
-        for i, restraint in enumerate(DAT_restraint.get_instances()):
-            log.debug('Setting up restraint number {} in phase {} and window {}...'.format(
-                i, self.phase, self.window))
-            self.setup_openmm_restraints(system, restraint, self.phase, self.window)
-
-    def setup_openmm_restraints(self, system, restraint, phase, window):
-        """
-        Add particle restraints with OpenMM.
-        This should probably go into `restraints.py`.
-        """
-
-        # http://docs.openmm.org/7.1.0/api-c++/generated/OpenMM.CustomExternalForce.html
-        # It's possible we might need to use `periodicdistance`.
-
-        if restraint.mask1 is not None and \
-           restraint.mask2 is not None and \
-           restraint.mask3 is None and \
-           restraint.mask4 is None:
-
-            if restraint.group1 is False and restraint.group2 is False:
-                bond_restraint = mm.CustomBondForce('k * (r - r_0)**2')
-                bond_restraint.addPerBondParameter('k')
-                bond_restraint.addPerBondParameter('r_0')
-
-                r_0 = restraint.phase[phase]['targets'][window] * \
-                    0.1 * unit.nanometers
-                k = restraint.phase[phase]['force_constants'][window] / \
-                    0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers**2
-                bond_restraint.addBond(restraint.index1[0], restraint.index2[0],
-                                       [k, r_0])
-                system.addForce(bond_restraint)
-            elif restraint.group1 is True or restraint.group2 is True:
-                # http://docs.openmm.org/7.0.0/api-python/generated/simtk.openmm.openmm.CustomManyParticleForce.html
-                # http://getyank.org/development/_modules/yank/restraints.html
-                bond_restraint = mm.CustomCentroidBondForce(
-                    2, 'k * (distance(g1, g2) - r_0)^2')
-                bond_restraint.addPerBondParameter('k')
-                bond_restraint.addPerBondParameter('r_0')
-
-                r_0 = restraint.phase[phase]['targets'][window] * \
-                    0.1 * unit.nanometers
-                k = restraint.phase[phase]['force_constants'][window] / \
-                    0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers**2
-                g1 = bond_restraint.addGroup(restraint.index1)
-                g2 = bond_restraint.addGroup(restraint.index2)
-                bond_restraint.addBond([g1, g2],
-                                       [k, r_0])
-                system.addForce(bond_restraint)
-
-            else:
-                log.error('Unable to add bond restraint...')
-                log.debug('restraint.index1 = {}'.format(restraint.index1))
-                log.debug('restraint.index2 = {}'.format(restraint.index2))
-                sys.exit(1)
-
-        if restraint.mask1 is not None and \
-           restraint.mask2 is not None and \
-           restraint.mask3 is not None and \
-           restraint.mask4 is None:
-            if restraint.group1 is not False and \
-               restraint.group2 is not False and \
-               restraint.group3 is not False:
-                log.error('Unable to add a group angle restraint...')
-                log.debug('restraint.index1 = {}'.format(restraint.index1))
-                log.debug('restraint.index2 = {}'.format(restraint.index2))
-                log.debug('restraint.index3 = {}'.format(restraint.index3))
-                sys.exit(1)
-
-            angle_restraint = mm.CustomAngleForce('k * (theta - theta_0)**2')
-            angle_restraint.addPerAngleParameter('k')
-            angle_restraint.addPerAngleParameter('theta_0')
-
-            log.debug('Setting an angle restraint in degrees using a '
-                      'force constant in kcal per mol rad**2...')
-            theta_0 = restraint.phase[phase]['targets'][window] * unit.degrees
-            k = restraint.phase[phase]['force_constants'][window] * \
-                unit.kilocalorie_per_mole / unit.radian**2
-            angle_restraint.addAngle(restraint.index1[0], restraint.index2[0], restraint.index3[0],
-                                     [k, theta_0])
-            system.addForce(angle_restraint)
-
-        if restraint.mask1 is not None and \
-           restraint.mask2 is not None and \
-           restraint.mask3 is not None and \
-           restraint.mask4 is not None:
-            if restraint.group1 is not False and \
-               restraint.group2 is not False and \
-               restraint.group3 is not False and \
-               restraint.group4 is not False:
-                    log.error('Unable to add a group dihedral restraint...')
-                    log.debug('restraint.index1 = {}'.format(restraint.index1))
-                    log.debug('restraint.index2 = {}'.format(restraint.index2))
-                    log.debug('restraint.index3 = {}'.format(restraint.index3))
-                    log.debug('restraint.index4 = {}'.format(restraint.index4))
-                    sys.exit(1)
-
-            dihedral_restraint = mm.CustomTorsionForce('k * (theta - theta_0)**2')
-            dihedral_restraint.addPerTorsionParameter('k')
-            dihedral_restraint.addPerTorsionParameter('theta_0')
-
-            log.debug('Setting a torsion restraint in degrees using a '
-                      'force constant in kcal per mol rad**2...')
-            theta_0 = restraint.phase[phase]['targets'][window] * unit.degrees
-            k = restraint.phase[phase]['force_constants'][window] * \
-                unit.kilocalorie_per_mole / unit.radian**2
-            dihedral_restraint.addTorsion(restraint.index1[0], restraint.index2[0],
-                                          restraint.index3[0], restraint.index4[0],
-                                          [k, theta_0])
-            system.addForce(dihedral_restraint)
+    
