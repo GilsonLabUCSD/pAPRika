@@ -10,6 +10,7 @@ try:
     import simtk.openmm as mm
     import simtk.openmm.app as app
     import simtk.unit as unit
+    from mdtraj.reporters import NetCDFReporter
     log.debug('OpenMM support: Yes')
 except:
     log.debug('OpenMM support: No')
@@ -114,12 +115,13 @@ class OpenMM_GB_simulation():
         Loop through the instances of `DAT_restraint`, after an OpenMM `system` has been created and
         call the function to apply the restraint for a given phase and window of the calculation.
         """
-
-        for i, restraint in enumerate(DAT_restraint.get_instances()):
+        for i, restraint in enumerate(DAT_restraint.restraint_list):
             log.debug('Setting up restraint number {} in phase {} and window {}...'.format(i,
                                                                                            self.phase,
                                                                                            self.window))
-            system = setup_openmm_restraints(system, self.phase, self.window)
+            print(system)
+            system = setup_openmm_restraints(system, restraint, self.phase, self.window)
+            print(system)
             return system
 
     def minimize(self):
@@ -162,7 +164,7 @@ class OpenMM_GB_simulation():
         system = self.add_openmm_restraints(system)
         log.info('Running OpenMM minimization...')
 
-        if self.soft:
+        if self.min['soft']:
             simulation = self.turn_on_interactions_slowly(system, simulation)
         else:
             simulation.minimizeEnergy(
@@ -170,17 +172,16 @@ class OpenMM_GB_simulation():
                 tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole
             )
 
-
         self.md['minimized_coordinates'] = simulation.context.getState(getPositions=True).getPositions()
         app.PDBFile.writeFile(simulation.topology, self.md['minimized_coordinates'],
                               open(self.min['output'], 'w'))
-        log.info('Minimization completed...')
+        log.info('Minimization completed.')
 
     def run_md(self):
         """
         Run MD with OpenMM.
         """
-        prmtop = pmd.load_file(self.toplogy, self.md['coordinates'])
+        prmtop = pmd.load_file(self.topology, self.md['coordinates'])
         # I'm not sure why we need an integrator for minimization!
         integrator = mm.LangevinIntegrator(
             self.md['temperature'],
@@ -194,7 +195,7 @@ class OpenMM_GB_simulation():
         else:
             prop = None
 
-        if self.min['forcfield'] is not None:
+        if self.min['forcefield'] is not None:
             log.warning('We haven\'t tested running OpenMM with an external force field yet.')
             forcefield = app.ForceField(self.md['forcefield'])
             log.warning('Probably need to load a separate topology here...')
@@ -205,15 +206,13 @@ class OpenMM_GB_simulation():
                 constraints=self.md['constraints']
             )
         else:
-            pass
-        system = prmtop.createSystem(
-            nonbondedMethod=self.md['nonbonded_method'],
-            implicitSolvent=self.md['solvent'],
-            implicitSolventSaltConc=self.md['salt'],
-            constraints=self.md['constraints']
-            )
+            system = prmtop.createSystem(
+                nonbondedMethod=self.md['nonbonded_method'],
+                implicitSolvent=self.md['solvent'],
+                implicitSolventSaltConc=self.md['salt'],
+                constraints=self.md['constraints']
+                )
         simulation = app.Simulation(prmtop.topology, system, integrator, platform, prop)
-        simulation.context.setPositions(prmtop.positions)
         system = self.add_openmm_restraints(system)
 
         if self.md['minimized_coordinates']:
@@ -221,7 +220,7 @@ class OpenMM_GB_simulation():
         else:
             simulation.context.setPositions(prmtop.positions)
         simulation.context.setVelocitiesToTemperature(self.md['temperature'] * unit.kelvin)
-        reporter = mm.NetCDFReporter(self.md['output'], self.md['reporter_frequency'])
+        reporter = NetCDFReporter(self.md['output'], self.md['reporter_frequency'])
         simulation.reporters.append(reporter)
         simulation.reporters.append(app.StateDataReporter(self.md['data'],
                                                           self.md['reporter_frequency'],

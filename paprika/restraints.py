@@ -7,8 +7,13 @@ import subprocess as sp
 import weakref as weakref
 
 from collections import defaultdict
-from paprika import align
 from paprika import utils
+
+try:
+    import simtk.openmm as mm
+    import simtk.unit as unit
+except:
+    pass
 
 logger = log.getLogger()
 logger.setLevel(log.DEBUG)
@@ -89,7 +94,8 @@ class DAT_restraint(KeepRefs):
             'fc_increment':       None,  # The force constant increment (optional)
             'fraction_increment': None,  # The percentage of the force constant increment (optional)
             'fraction_list':      None,  # The list of force constant percentages (optional)
-            'fc_list':            None  # The list of force constants (will be created if not given)
+            'fc_list':            None  # The list of force constants (will be created if not
+            # given)
         }
         super(DAT_restraint, self).__init__()
 
@@ -98,7 +104,7 @@ class DAT_restraint(KeepRefs):
         If the user hasn't already declared the windows list, we will
         construct one from the initial, final, and increment values.
         """
-
+        log.error('Something is wrong with setting the targets and force constants!')
         self.phase = {
             'attach':  {
                 'force_constants': None,
@@ -314,8 +320,7 @@ class DAT_restraint(KeepRefs):
                 self.release['fraction_increment'])
             self.phase['release']['force_constants'] = [
                 fraction * self.release['fc_final'] for fraction in fractions]
-            self.phase['release']['targets'] = [self.release['target']
-                ] * len(self.phase['release']['force_constants'])
+            self.phase['release']['targets'] = [self.release['target']] * len(self.phase['release']['force_constants'])
 
         elif self.release['fc_list'] is not None:
             ### METHOD 5 ###
@@ -375,7 +380,7 @@ class DAT_restraint(KeepRefs):
             self.group4 = True
 
 
-def return_restraint_line(restraint, phase, window, group=False):
+def amber_restraint_line(restraint, phase, window, group=False):
     """
     Write the restraints to a file for each window.
     For example:
@@ -435,10 +440,10 @@ def return_restraint_line(restraint, phase, window, group=False):
     lower_bound = 0.0
     upper_bound = 999.0
 
-    if group3 and not group4:
+    if restraint.group3 and not restraint.group4:
         upper_bound = 180.0
 
-    if group3 and group4:
+    if restraint.group3 and restraint.group4:
         lower_bound = restraint.phase[phase]['targets'][window] - 180.0
         upper_bound = restraint.phase[phase]['targets'][window] + 180.0
 
@@ -452,207 +457,144 @@ def return_restraint_line(restraint, phase, window, group=False):
         ' rk2 = {0:10.5f},'.format(restraint.phase[phase]['force_constants'][window]) + \
         ' rk3 = {0:10.5f},'.format(restraint.phase[phase]['force_constants'][window])
 
-    if any([self.group1, self.group2, self.group3, self.group4]):
+    if any([restraint.group1, restraint.group2, restraint.group3, restraint.group4]):
         string += '\n    '
-        if self.group1:
+        if restraint.group1:
             string += ' igr1 = {}'.format(igr1)
-        if self.group2:
+        if restraint.group2:
             string += ' igr2 = {}'.format(igr2)
-        if self.group3:
+        if restraint.group3:
             string += ' igr3 = {}'.format(igr3)
-        if self.group4:
+        if restraint.group4:
             string += ' igr4 = {}'.format(igr4)
 
     string += '  &end'
     return string
 
+def setup_openmm_restraints(system, restraint, phase, window):
 
-def write_restraint_files(window_list, filename='restraints.in'):
     """
-    Take all the restraints and write them to a file in each window.
-    """
-
-    phase_dict = {'a': 'attach', 'p': 'pull', 'r': 'release'}
-
-    for window in window_list:
-        log.debug('Writing windows/{}/{} ...'.format(window, filename))
-        with open('./windows/' + window + '/' + filename, 'w') as f:
-            for restraint in DAT_restraint.restraint_list:
-                if restraint.phase[phase_dict[window[0]]]['force_constants'] is not None:
-                    line = return_restraint_line(restraint,
-                        phase=phase_dict[window[0]], window=int(window[1:]))
-                    f.write(line + "\n")
-
-
-def add_openmm_restraints(self, system):
-         """
-        Loop through the instances of `DAT_restraint`, after an OpenMM `system` has been created and
-        call the function to apply the restraint for a given phase and window of the calculation.
-        Parameters
-        ----------
-        system: OpenMM System Class
-        """
-        for i, restraint in enumerate(DAT_restraint.get_instances()):
-            log.debug('Setting up restraint number {} in phase {} and window {}...'.format(
-                i, self.phase, self.window))
-            self.setup_openmm_restraints(system, restraint, self.phase, self.window)
-
-    def setup_openmm_restraints(self, system, restraint, phase, window):
-        """
-        Add particle restraints with OpenMM.
-        This should probably go into `restraints.py`.
-        """
-
-        # http://docs.openmm.org/7.1.0/api-c++/generated/OpenMM.CustomExternalForce.html
-        # It's possible we might need to use `periodicdistance`.
-
-        if restraint.mask1 is not None and \
-           restraint.mask2 is not None and \
-           restraint.mask3 is None and \
-           restraint.mask4 is None:
-
-            if restraint.group1 is False and restraint.group2 is False:
-                bond_restraint = mm.CustomBondForce('k * (r - r_0)**2')
-                bond_restraint.addPerBondParameter('k')
-                bond_restraint.addPerBondParameter('r_0')
-
-                r_0 = restraint.phase[phase]['targets'][window] * \
-                    0.1 * unit.nanometers
-                k = restraint.phase[phase]['force_constants'][window] / \
-                    0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers**2
-                bond_restraint.addBond(restraint.index1[0], restraint.index2[0],
-                                       [k, r_0])
-                system.addForce(bond_restraint)
-            elif restraint.group1 is True or restraint.group2 is True:
-                # http://docs.openmm.org/7.0.0/api-python/generated/simtk.openmm.openmm.CustomManyParticleForce.html
-                # http://getyank.org/development/_modules/yank/restraints.html
-                bond_restraint = mm.CustomCentroidBondForce(
-                    2, 'k * (distance(g1, g2) - r_0)^2')
-                bond_restraint.addPerBondParameter('k')
-                bond_restraint.addPerBondParameter('r_0')
-
-                r_0 = restraint.phase[phase]['targets'][window] * \
-                    0.1 * unit.nanometers
-                k = restraint.phase[phase]['force_constants'][window] / \
-                    0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers**2
-                g1 = bond_restraint.addGroup(restraint.index1)
-                g2 = bond_restraint.addGroup(restraint.index2)
-                bond_restraint.addBond([g1, g2],
-                                       [k, r_0])
-                system.addForce(bond_restraint)
-
-            else:
-                log.error('Unable to add bond restraint...')
-                log.debug('restraint.index1 = {}'.format(restraint.index1))
-                log.debug('restraint.index2 = {}'.format(restraint.index2))
-                sys.exit(1)
-
-        if restraint.mask1 is not None and \
-           restraint.mask2 is not None and \
-           restraint.mask3 is not None and \
-           restraint.mask4 is None:
-            if restraint.group1 is not False and \
-               restraint.group2 is not False and \
-               restraint.group3 is not False:
-                log.error('Unable to add a group angle restraint...')
-                log.debug('restraint.index1 = {}'.format(restraint.index1))
-                log.debug('restraint.index2 = {}'.format(restraint.index2))
-                log.debug('restraint.index3 = {}'.format(restraint.index3))
-                sys.exit(1)
-
-            angle_restraint = mm.CustomAngleForce('k * (theta - theta_0)**2')
-            angle_restraint.addPerAngleParameter('k')
-            angle_restraint.addPerAngleParameter('theta_0')
-
-            log.debug('Setting an angle restraint in degrees using a '
-                      'force constant in kcal per mol rad**2...')
-            theta_0 = restraint.phase[phase]['targets'][window] * unit.degrees
-            k = restraint.phase[phase]['force_constants'][window] * \
-                unit.kilocalorie_per_mole / unit.radian**2
-            angle_restraint.addAngle(restraint.index1[0], restraint.index2[0], restraint.index3[0],
-                                     [k, theta_0])
-            system.addForce(angle_restraint)
-
-        if restraint.mask1 is not None and \
-           restraint.mask2 is not None and \
-           restraint.mask3 is not None and \
-           restraint.mask4 is not None:
-            if restraint.group1 is not False and \
-               restraint.group2 is not False and \
-               restraint.group3 is not False and \
-               restraint.group4 is not False:
-                    log.error('Unable to add a group dihedral restraint...')
-                    log.debug('restraint.index1 = {}'.format(restraint.index1))
-                    log.debug('restraint.index2 = {}'.format(restraint.index2))
-                    log.debug('restraint.index3 = {}'.format(restraint.index3))
-                    log.debug('restraint.index4 = {}'.format(restraint.index4))
-                    sys.exit(1)
-
-            dihedral_restraint = mm.CustomTorsionForce('k * (theta - theta_0)**2')
-            dihedral_restraint.addPerTorsionParameter('k')
-            dihedral_restraint.addPerTorsionParameter('theta_0')
-
-            log.debug('Setting a torsion restraint in degrees using a '
-                      'force constant in kcal per mol rad**2...')
-            theta_0 = restraint.phase[phase]['targets'][window] * unit.degrees
-            k = restraint.phase[phase]['force_constants'][window] * \
-                unit.kilocalorie_per_mole / unit.radian**2
-            dihedral_restraint.addTorsion(restraint.index1[0], restraint.index2[0],
-                                          restraint.index3[0], restraint.index4[0],
-                                          [k, theta_0])
-            system.addForce(dihedral_restraint)
-
-
-
-
-
-
-
-
-def create_window_list():
-    """
-    Check that all restraints have the same number of attach, pull, and
-    release windows; Check that all restraints have consistent continuous_apr
-    settings.  Return a list of the window names.
+    Add particle restraints with OpenMM.
     """
 
-    # Check if we are doing continuous apr (first window of pull is last of attach, etc)
-    restraints = DAT_restraint.get_instances()
-    if all(restraint.continuous_apr is True for restraint in restraints):
-        log.debug('All restraints are "continuous_apr" style.')
-        continuous_apr = True
-    elif all(restraint.continuous_apr is False for restraint in restraints):
-        log.debug('All restraints are not "continuous_apr" style.')
-        continuous_apr = False
+    # http://docs.openmm.org/7.1.0/api-c++/generated/OpenMM.CustomExternalForce.html
+    # It's possible we might need to use `periodicdistance`.
+
+    if restraint.mask1 is not None and \
+                    restraint.mask2 is not None and \
+                    restraint.mask3 is None and \
+                    restraint.mask4 is None:
+
+        if restraint.group1 is False and restraint.group2 is False:
+            bond_restraint = mm.CustomBondForce('k * (r - r_0)**2')
+            bond_restraint.addPerBondParameter('k')
+            bond_restraint.addPerBondParameter('r_0')
+
+            r_0 = restraint.phase[phase]['targets'][window] * \
+                  0.1 * unit.nanometers
+            k = restraint.phase[phase]['force_constants'][window] / \
+                0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers ** 2
+            bond_restraint.addBond(restraint.index1[0], restraint.index2[0],
+                                   [k, r_0])
+            system.addForce(bond_restraint)
+            log.debug('Added bond restraint between {} and {} with target value = '
+                      '{} and force constant = {}'.format(restraint.mask1,
+                                                          restraint.mask2,
+                                                          r_0, k))
+        elif restraint.group1 is True or restraint.group2 is True:
+            # http://docs.openmm.org/7.0.0/api-python/generated/simtk.openmm.openmm.CustomManyParticleForce.html
+            # http://getyank.org/development/_modules/yank/restraints.html
+            bond_restraint = mm.CustomCentroidBondForce(
+                2, 'k * (distance(g1, g2) - r_0)^2')
+            bond_restraint.addPerBondParameter('k')
+            bond_restraint.addPerBondParameter('r_0')
+
+            r_0 = restraint.phase[phase]['targets'][window] * \
+                  0.1 * unit.nanometers
+            k = restraint.phase[phase]['force_constants'][window] / \
+                0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers ** 2
+            g1 = bond_restraint.addGroup(restraint.index1)
+            g2 = bond_restraint.addGroup(restraint.index2)
+            bond_restraint.addBond([g1, g2],
+                                   [k, r_0])
+            system.addForce(bond_restraint)
+            log.debug('Added bond restraint between {} and {} with target value = '
+                      '{} and force constant = {}'.format(restraint.mask1,
+                                                          restraint.mask2,
+                                                          r_0, k))
     else:
-        log.error('Some restraints are "continuous_apr" and some are not.')
+        log.error('Unable to add bond restraint...')
+        log.debug('restraint.index1 = {}'.format(restraint.index1))
+        log.debug('restraint.index2 = {}'.format(restraint.index2))
         sys.exit(1)
 
-    # Check that all restraints have the same window count, create window_list
-    window_list = []
-    phases = ['attach', 'pull', 'release']
-    for phase in phases:
-        if DAT_restraint.window_counts[phase]:
-            max_count = max(DAT_restraint.window_counts[phase])
-            if all(count is None or count == max_count for count in DAT_restraint.window_counts[phase]):
-                # If continuous_apr, it means that last window of attach/release are not explicit,
-                # implicitly use pull
-                if continuous_apr and (phase == 'attach' or phase == 'release'):
-                    max_count -= 1
-                window_list += [phase[0] + str('{:03.0f}'.format(val)) for val in np.arange(0,max_count,1)]
-            else:
-                log.error('Restraints have unequal number of windows during the {} phase.'.format(phase))
-                log.debug('Window counts for each restraint are as follows:')
-                log.debug(DAT_restraint.window_counts[phase])
-                sys.exit(1)
-    return window_list
+    if restraint.mask1 is not None and \
+       restraint.mask2 is not None and \
+       restraint.mask3 is not None and \
+       restraint.mask4 is None:
+        if restraint.group1 is not False and \
+           restraint.group2 is not False and \
+           restraint.group3 is not False:
+            log.error('Unable to add a group angle restraint...')
+            log.debug('restraint.index1 = {}'.format(restraint.index1))
+            log.debug('restraint.index2 = {}'.format(restraint.index2))
+            log.debug('restraint.index3 = {}'.format(restraint.index3))
+            sys.exit(1)
+
+        angle_restraint = mm.CustomAngleForce('k * (theta - theta_0)**2')
+        angle_restraint.addPerAngleParameter('k')
+        angle_restraint.addPerAngleParameter('theta_0')
+
+        log.debug('Setting an angle restraint in degrees using a '
+                  'force constant in kcal per mol rad**2...')
+        theta_0 = restraint.phase[phase]['targets'][window] * unit.degrees
+        k = restraint.phase[phase]['force_constants'][window] * \
+            unit.kilocalorie_per_mole / unit.radian ** 2
+        angle_restraint.addAngle(restraint.index1[0], restraint.index2[0], restraint.index3[0],
+                                 [k, theta_0])
+        system.addForce(angle_restraint)
+
+    if restraint.mask1 is not None and \
+       restraint.mask2 is not None and \
+       restraint.mask3 is not None and \
+       restraint.mask4 is not None:
+        if restraint.group1 is not False and \
+           restraint.group2 is not False and \
+           restraint.group3 is not False and \
+           restraint.group4 is not False:
+            log.error('Unable to add a group dihedral restraint...')
+            log.debug('restraint.index1 = {}'.format(restraint.index1))
+            log.debug('restraint.index2 = {}'.format(restraint.index2))
+            log.debug('restraint.index3 = {}'.format(restraint.index3))
+            log.debug('restraint.index4 = {}'.format(restraint.index4))
+            sys.exit(1)
+
+        dihedral_restraint = mm.CustomTorsionForce('k * (theta - theta_0)**2')
+        dihedral_restraint.addPerTorsionParameter('k')
+        dihedral_restraint.addPerTorsionParameter('theta_0')
+
+        log.debug('Setting a torsion restraint in degrees using a '
+                  'force constant in kcal per mol rad**2...')
+        theta_0 = restraint.phase[phase]['targets'][window] * unit.degrees
+        k = restraint.phase[phase]['force_constants'][window] * \
+            unit.kilocalorie_per_mole / unit.radian ** 2
+        dihedral_restraint.addTorsion(restraint.index1[0], restraint.index2[0],
+                                      restraint.index3[0], restraint.index4[0],
+                                      [k, theta_0])
+        system.addForce(dihedral_restraint)
+
+    return system
 
 def clean_restraints_file(restraints, filename='restraints.in'):
     """
     Delete the restraints files for repeated testing.
+
+    Parameters
+    ----------
+    restraints : object
     """
 
-    print('This needs to be tested.')
+    log.warning('`clean_restraints_file()` needs to be tested.')
     for restraint in restraints:
         for window, _ in enumerate(restraint.phase['attach']['force_constants']):
             directory = './windows/a{0:03d}'.format(window)
