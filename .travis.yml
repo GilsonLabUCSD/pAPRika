@@ -13,6 +13,7 @@ matrix:
 
 script:
     - source devtools/travis/runtest.sh
+    - codecov
 cache:
     directories:
         - $HOME/.cache/pip
@@ -35,4 +36,3 @@ install:
     - source devtools/travis/install.sh
     - pip install --user .
     - python -c "import paprika; print(paprika.__version__)"
-
