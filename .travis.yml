@@ -25,6 +25,7 @@ install:
 
 script:
     - source devtools/travis/runtest.sh
+    - codecov
 cache:
     directories:
         - $HOME/.cache/pip

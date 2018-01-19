@@ -11,5 +11,7 @@ conda install -y -n myenv \
 conda install -y -n myenv \
       ambertools=17.0 -c http://ambermd.org/downloads/ambertools/conda/
 
+pip install codecov
+
 source activate myenv
 python --version
