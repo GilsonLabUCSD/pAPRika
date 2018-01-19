@@ -2,4 +2,4 @@
 set -ex
 
 echo "Simplest possible testing regimen"
-pytest --cov=test/
+cd test && pytest --cov=paprika .
