@@ -1,0 +1,3 @@
+parm /home/dslochower/data/projects/pAPRika/test/cb6-but/full.topo
+trajin /home/dslochower/data/projects/pAPRika/test/cb6-but/full.crds
+trajout /home/dslochower/data/projects/pAPRika/test/cb6-but/full.pdb conect
