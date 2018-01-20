@@ -10,24 +10,23 @@ import subprocess as sp
 import random as random
 import parmed as pmd
 import paprika
-from paprika.align import *
-from paprika.build import *
+from paprika.openmm_simulate import *
 
 
 class TestOpenMM(unittest.TestCase):
-    def test_solvation_simple(self):
-        """ Test that we can solvate CB6-BUT using default settings. """
-        waters = np.random.randint(1000, 10000)
-        log.debug('Trying {} waters with default settings...'.format(waters))
-        solvate(
-            tleapfile='./cb6-but/tleap_solvate.in',
-            pdbfile='cb6-but.pdb',
-            bufferwater=waters)
-        grepped_waters = sp.check_output(
-            ["grep -oh 'WAT' ./cb6-but/solvated.prmtop | wc -w"], shell=True)
-        self.assertEqual(int(grepped_waters), waters)
+    def test_minimization_finishes(self):
+        """ Test that we can minimize CB6-BUT with OpenMM. """
+
+        simulation = OpenMM_GB_simulation()
+        simulation.topology = '../test/cb6-but/vac.topo'
+        simulation.min['platform'] = 'CPU'
+        simulation.min['coordinates'] = '../test/cb6-but/vac.crds'
+        result = simulation.minimize(save=False)
+        state = result.context.getState(getEnergy=True)
+        energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
+        self.assertAlmostEqual(energy, -827.9, places=1)
 
 
 if __name__ == '__main__':
-    log.debug(f'{paprika.__version__}')
+    log.debug('{}'.format(paprika.__version__))
     unittest.main()

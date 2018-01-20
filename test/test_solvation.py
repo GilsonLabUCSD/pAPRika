@@ -193,5 +193,5 @@ class TestSolvate(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    log.debug(f'{paprika.__version__}')
+    log.debug('{}'.format(paprika.__version__))
     unittest.main()
