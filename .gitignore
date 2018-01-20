@@ -103,3 +103,7 @@ local/
 
 # pycharm
 .idea/
+
+# antechamber-generated files
+*ANTECHAMBER*
+*ATOMTYPE*
