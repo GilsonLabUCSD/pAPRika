@@ -115,14 +115,11 @@ class OpenMM_GB_simulation():
             print(system)
             return system
 
-    def minimize(self):
+    def minimize(self, save=True):
         """
         Run MD with OpenMM.
         """
         prmtop = pmd.load_file(self.topology, self.min['coordinates'])
-
-        for keys, values in self.min.items():
-            log.debug('{} {}'.format(keys, values))
 
         # I'm not sure why we need an integrator for minimization!
         integrator = mm.LangevinIntegrator(self.min['temperature'], self.min['friction'], self.min['timestep'])
@@ -158,9 +155,10 @@ class OpenMM_GB_simulation():
             simulation.minimizeEnergy(
                 maxIterations=self.min['max_iterations'], tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
 
-        self.md['minimized_coordinates'] = simulation.context.getState(getPositions=True).getPositions()
-        app.PDBFile.writeFile(simulation.topology, self.md['minimized_coordinates'], open(self.min['output'], 'w'))
-        log.info('Minimization completed.')
+        if save:
+            self.md['minimized_coordinates'] = simulation.context.getState(getPositions=True).getPositions()
+            app.PDBFile.writeFile(simulation.topology, self.md['minimized_coordinates'], open(self.min['output'], 'w'))
+        return simulation
 
     def run_md(self):
         """
