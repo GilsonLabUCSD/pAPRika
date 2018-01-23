@@ -110,9 +110,12 @@ class OpenMM_GB_simulation():
         """
         for i, restraint in enumerate(DAT_restraint.restraint_list):
             log.debug('Setting up restraint number {} in phase {} and window {}...'.format(i, self.phase, self.window))
-            print(system)
+
+            # Curious if this is going to fail if there are restraints
+            # that should be excluded from certain phases.
+
             system = setup_openmm_restraints(system, restraint, self.phase, self.window)
-            print(system)
+
             return system
 
     def minimize(self, save=True):
@@ -144,10 +147,13 @@ class OpenMM_GB_simulation():
                 implicitSolvent=self.min['solvent'],
                 implicitSolventSaltConc=self.min['salt'],
                 constraints=self.min['constraints'])
+
         simulation = app.Simulation(prmtop.topology, system, integrator, platform, prop)
         simulation.context.setPositions(prmtop.positions)
         system = self.add_openmm_restraints(system)
         log.info('Running OpenMM minimization...')
+
+        log.debug(pmd.openmm.energy_decomposition(prmtop, simulation.context))
 
         if self.min['soft']:
             simulation = self.turn_on_interactions_slowly(system, simulation)
@@ -155,10 +161,13 @@ class OpenMM_GB_simulation():
             simulation.minimizeEnergy(
                 maxIterations=self.min['max_iterations'], tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
 
+        log.debug('Testing getForces...')
+        log.debug(pmd.openmm.energy_decomposition(prmtop, simulation.context))
+
         if save:
             self.md['minimized_coordinates'] = simulation.context.getState(getPositions=True).getPositions()
             app.PDBFile.writeFile(simulation.topology, self.md['minimized_coordinates'], open(self.min['output'], 'w'))
-        return simulation
+        return simulation, system
 
     def run_md(self):
         """

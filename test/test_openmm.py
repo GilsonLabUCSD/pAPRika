@@ -21,9 +21,10 @@ class TestOpenMM(unittest.TestCase):
         simulation.topology = '../test/cb6-but/vac.topo'
         simulation.min['platform'] = 'CPU'
         simulation.min['coordinates'] = '../test/cb6-but/vac.crds'
-        result = simulation.minimize(save=False)
+        result, system = simulation.minimize(save=False)
         state = result.context.getState(getEnergy=True)
         energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
+
         self.assertAlmostEqual(energy, -827.9, places=1)
 
 
