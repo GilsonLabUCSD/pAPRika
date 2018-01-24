@@ -26,7 +26,7 @@ cache:
         - $HOME/miniconda
 before_cache:
     - rm -rf $HOME/miniconda/conda-bld
-    - rm $HOME/miniconda/pkgs/*.tar.bz2
+    - rm -f $HOME/miniconda/pkgs/*.tar.bz2
     - rm -f $HOME/.cache/pip/log/debug.log
 
 after_success:
