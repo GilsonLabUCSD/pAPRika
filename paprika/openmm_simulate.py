@@ -80,7 +80,8 @@ class OpenMM_GB_simulation():
     def turn_on_interactions_slowly(self, system, simulation):
         # Phase 1: minimize with nonbonded interactions disabled.
         # This is the first 40% of the maximum iterations.
-        log.debug('Minimization phase 1 for {} steps.'.format(int(0.4 * self.min['max_iterations'])))
+        log.debug('Minimization phase 1 for {} steps.'.format(
+            int(0.4 * self.min['max_iterations'])))
         simulation.minimizeEnergy(
             maxIterations=int(0.4 * self['min']['max_iterations']),
             tolerance=self['min']['tolerance'] * unit.kilojoule / unit.mole)
@@ -88,16 +89,24 @@ class OpenMM_GB_simulation():
         # This is the next 40% of the maximum iterations.
         # This increases the nonbonded interactions linearly, which is not
         # the same as using `IINC` in AMBER.
-        log.debug('Minimization phase 2 for {} steps.'.format(int(0.4 * self.min['max_iterations'])))
-        for scale in np.linspace(0, 1.0, int(0.4 * self.min['max_iterations'])):
-            log.debug('Scaling NB interactions to {0:0.4f} / 1.0'.format(scale))
+        log.debug('Minimization phase 2 for {} steps.'.format(
+            int(0.4 * self.min['max_iterations'])))
+        for scale in np.linspace(0, 1.0,
+                                 int(0.4 * self.min['max_iterations'])):
+            log.debug(
+                'Scaling NB interactions to {0:0.4f} / 1.0'.format(scale))
             for particle in range(system.getNumParticles()):
-                [charge, sigma, epsilon] = mm.NonbondedForce.getParticleParameters(particle)
-                mm.NonbondedForce.setParticleParameters(particle, charge * scale, sigma, epsilon * scale)
-            simulation.minimizeEnergy(maxIterations=1, tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
+                [charge, sigma,
+                 epsilon] = mm.NonbondedForce.getParticleParameters(particle)
+                mm.NonbondedForce.setParticleParameters(
+                    particle, charge * scale, sigma, epsilon * scale)
+            simulation.minimizeEnergy(
+                maxIterations=1,
+                tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
         # Phase 3: minimize with nonbonded interactions at full strength.
         # This is the last 20% of the maximum iterations.
-        log.debug('Minimization phase 3 for {} steps.'.format(int(0.2 * self.min['max_iterations'])))
+        log.debug('Minimization phase 3 for {} steps.'.format(
+            int(0.2 * self.min['max_iterations'])))
         simulation.minimizeEnergy(
             maxIterations=int(0.2 * self.min['max_iterations']),
             tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
@@ -109,12 +118,15 @@ class OpenMM_GB_simulation():
         call the function to apply the restraint for a given phase and window of the calculation.
         """
         for i, restraint in enumerate(DAT_restraint.restraint_list):
-            log.debug('Setting up restraint number {} in phase {} and window {}...'.format(i, self.phase, self.window))
+            log.debug(
+                'Setting up restraint number {} in phase {} and window {}...'.
+                format(i, self.phase, self.window))
 
             # Curious if this is going to fail if there are restraints
             # that should be excluded from certain phases.
 
-            system = setup_openmm_restraints(system, restraint, self.phase, self.window)
+            system = setup_openmm_restraints(system, restraint, self.phase,
+                                             self.window)
 
             return system
 
@@ -125,15 +137,21 @@ class OpenMM_GB_simulation():
         prmtop = pmd.load_file(self.topology, self.min['coordinates'])
 
         # I'm not sure why we need an integrator for minimization!
-        integrator = mm.LangevinIntegrator(self.min['temperature'], self.min['friction'], self.min['timestep'])
+        integrator = mm.LangevinIntegrator(self.min['temperature'],
+                                           self.min['friction'],
+                                           self.min['timestep'])
         platform = mm.Platform.getPlatformByName(self.min['platform'])
         if self.min['platform'] == 'CUDA':
-            prop = dict(CudaPrecision=self.min['precision'], CudaDeviceIndex=self.min['devices'])
+            prop = dict(
+                CudaPrecision=self.min['precision'],
+                CudaDeviceIndex=self.min['devices'])
         else:
             prop = None
 
         if self.min['forcefield'] is not None:
-            log.warning('We haven\'t tested running OpenMM with an external force field yet.')
+            log.warning(
+                'We haven\'t tested running OpenMM with an external force field yet.'
+            )
             forcefield = app.ForceField(self.min['forcefield'])
             log.warning('Probably need to load a separate topology here...')
             system = forcefield.createSystem(
@@ -148,25 +166,25 @@ class OpenMM_GB_simulation():
                 implicitSolventSaltConc=self.min['salt'],
                 constraints=self.min['constraints'])
 
-        simulation = app.Simulation(prmtop.topology, system, integrator, platform, prop)
+        simulation = app.Simulation(prmtop.topology, system, integrator,
+                                    platform, prop)
         simulation.context.setPositions(prmtop.positions)
         system = self.add_openmm_restraints(system)
         log.info('Running OpenMM minimization...')
-
-        log.debug(pmd.openmm.energy_decomposition(prmtop, simulation.context))
 
         if self.min['soft']:
             simulation = self.turn_on_interactions_slowly(system, simulation)
         else:
             simulation.minimizeEnergy(
-                maxIterations=self.min['max_iterations'], tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
-
-        log.debug('Testing getForces...')
-        log.debug(pmd.openmm.energy_decomposition(prmtop, simulation.context))
+                maxIterations=self.min['max_iterations'],
+                tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
 
         if save:
-            self.md['minimized_coordinates'] = simulation.context.getState(getPositions=True).getPositions()
-            app.PDBFile.writeFile(simulation.topology, self.md['minimized_coordinates'], open(self.min['output'], 'w'))
+            self.md['minimized_coordinates'] = simulation.context.getState(
+                getPositions=True).getPositions()
+            app.PDBFile.writeFile(simulation.topology,
+                                  self.md['minimized_coordinates'],
+                                  open(self.min['output'], 'w'))
         return simulation, system
 
     def run_md(self):
@@ -175,15 +193,20 @@ class OpenMM_GB_simulation():
         """
         prmtop = pmd.load_file(self.topology, self.md['coordinates'])
         # I'm not sure why we need an integrator for minimization!
-        integrator = mm.LangevinIntegrator(self.md['temperature'], self.md['friction'], self.md['timestep'])
+        integrator = mm.LangevinIntegrator(
+            self.md['temperature'], self.md['friction'], self.md['timestep'])
         platform = mm.Platform.getPlatformByName(self.md['platform'])
         if self.md['platform'] == 'CUDA':
-            prop = dict(CudaPrecision=self.min['precision'], CudaDeviceIndex=self.min['devices'])
+            prop = dict(
+                CudaPrecision=self.min['precision'],
+                CudaDeviceIndex=self.min['devices'])
         else:
             prop = None
 
         if self.min['forcefield'] is not None:
-            log.warning('We haven\'t tested running OpenMM with an external force field yet.')
+            log.warning(
+                'We haven\'t tested running OpenMM with an external force field yet.'
+            )
             forcefield = app.ForceField(self.md['forcefield'])
             log.warning('Probably need to load a separate topology here...')
             system = forcefield.createSystem(
@@ -197,15 +220,18 @@ class OpenMM_GB_simulation():
                 implicitSolvent=self.md['solvent'],
                 implicitSolventSaltConc=self.md['salt'],
                 constraints=self.md['constraints'])
-        simulation = app.Simulation(prmtop.topology, system, integrator, platform, prop)
+        simulation = app.Simulation(prmtop.topology, system, integrator,
+                                    platform, prop)
         system = self.add_openmm_restraints(system)
 
         if self.md['minimized_coordinates']:
             simulation.context.setPositions(self.md['minimized_coordinates'])
         else:
             simulation.context.setPositions(prmtop.positions)
-        simulation.context.setVelocitiesToTemperature(self.md['temperature'] * unit.kelvin)
-        reporter = NetCDFReporter(self.md['output'], self.md['reporter_frequency'])
+        simulation.context.setVelocitiesToTemperature(
+            self.md['temperature'] * unit.kelvin)
+        reporter = NetCDFReporter(self.md['output'],
+                                  self.md['reporter_frequency'])
         simulation.reporters.append(reporter)
         simulation.reporters.append(
             app.StateDataReporter(

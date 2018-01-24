@@ -5,6 +5,15 @@ import subprocess as sp
 import parmed as pmd
 from paprika import align
 
+global HAS_OPENMM
+try:
+    import simtk.openmm as mm
+    import simtk.openmm.app as app
+    import simtk.unit as unit
+    HAS_OPENMM = True
+except ImportError:
+    HAS_OPENMM = False
+
 
 def index_from_mask(structure_file, mask, index_offset=1):
     """
@@ -15,8 +24,11 @@ def index_from_mask(structure_file, mask, index_offset=1):
     structure = align.return_structure(structure_file)
     # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
     indices = [
-        i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()]
-    log.debug('There are {} atoms in the mask {}  ...'.format(len(indices), mask))
+        i + index_offset
+        for i in pmd.amber.mask.AmberMask(structure, mask).Selected()
+    ]
+    log.debug('There are {} atoms in the mask {}  ...'.format(
+        len(indices), mask))
     return indices
 
 
@@ -50,3 +62,17 @@ def amber_to_pdb(topology, coordinates):
         file.write('trajin {}\n'.format(coordinates))
         file.write('trajout {} conect\n'.format(pdb))
     sp.check_call(['cpptraj', '-i', pdb_input])
+
+
+# def decompose_openmm_energy(structure, context)
+#     """Provide a summary of the energy terms.
+
+#     Arguments:
+#         structure {[type]} -- [description]
+#         context {[type]} -- [description]
+
+#     Returns:
+#         [type] -- [description]
+#     """
+
+#     return pmd.openmm.energy_decomposition(structure, context)
