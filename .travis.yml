@@ -19,10 +19,10 @@ install:
 script:
     - source devtools/travis/runtest.sh
     - codecov
-cache:
-    directories:
-        - $HOME/.cache/pip
-        - $HOME/miniconda
+# cache:
+#     directories:
+#         - $HOME/.cache/pip
+#         - $HOME/miniconda
 before_cache:
     - rm -rf $HOME/miniconda/conda-bld
     - rm $HOME/miniconda/pkgs/*.tar.bz2
