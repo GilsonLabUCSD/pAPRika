@@ -3,11 +3,24 @@ The pAPRika package sets up and performs attach-pull-release calculations.
 """
 
 import logging as log
-import parmed as pmd
+import subprocess as sp
+import re as re
 
 logger = log.getLogger()
 logger.setLevel(log.DEBUG)
 log.basicConfig(
     format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
 
-__all__ = ["align", "build", "restraints", "simulate"]
+__all__ = [
+    "align", "build", "restraints", "amber_simulate", "openmm_simulate",
+    "utils"
+]
+
+__version__ = '0.0.3'
+try:
+    # Try to use git to find current commit.
+    git_describe = sp.check_output(["git", "describe",
+                                    "--always"]).decode("utf-8").strip()
+    __version__ = re.sub('-g[0-9a-f]*$', '', git_describe)
+except:
+    pass
