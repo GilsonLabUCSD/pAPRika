@@ -28,4 +28,4 @@ if __name__ == '__main__':
         author_email='',
         url='',
         license='',
-        packages='paprika')
+        packages=['paprika'])
