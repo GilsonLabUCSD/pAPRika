@@ -1,5 +1,6 @@
 
 if [ -d "$HOME/miniconda" ]; then
+      export PATH="$HOME/miniconda/bin:$PATH"
       conda list
       pip list
 else
