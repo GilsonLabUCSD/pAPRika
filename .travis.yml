@@ -12,13 +12,6 @@ matrix:
            env: PYTHON_VERSION=3.6
 
 install:
-    - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-        wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
-      else
-        wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-      fi    
-    - bash miniconda.sh -b -p $HOME/miniconda
-    - export PATH="$HOME/miniconda/bin:$PATH"
     - source devtools/travis/install.sh
     - pip install --user .
     - python -c "import paprika; print(paprika.__version__)"
@@ -29,10 +22,11 @@ script:
 cache:
     directories:
         - $HOME/.cache/pip
-        - $HOME/miniconda3
+        - $HOME/miniconda
 before_cache:
-    # - rm -rf $HOME/miniconda3/conda-bld
-    # - rm $HOME/miniconda3/pkgs/*.tar.bz2
+    - rm -rf $HOME/miniconda/conda-bld
+    - rm $HOME/miniconda/pkgs/*.tar.bz2
+    - rm -f $HOME/.cache/pip/log/debug.log
 
 after_success:
     - codecov
