@@ -15,12 +15,6 @@ try:
 except:
     pass
 
-logger = log.getLogger()
-logger.setLevel(log.DEBUG)
-log.basicConfig(format='%(asctime)s %(message)s',
-                datefmt='%Y-%m-%d %I:%M:%S %p')
-
-
 class KeepRefs(object):
     # https://stackoverflow.com/questions/328851/printing-all-instances-of-a-class
     __refs__ = defaultdict(list)
@@ -604,7 +598,3 @@ def clean_restraints_file(restraints, filename='restraints.in'):
         for window, _ in enumerate(restraint.phase['attach']['targets']):
             directory = './windows/p{0:03d}'.format(window)
             os.remove(directory + '/' + filename)
-
-def error_checking():
-    print('Error checking needs to be implemented.')
-    pass

@@ -11,6 +11,7 @@ import random as random
 import parmed as pmd
 import paprika
 from paprika.openmm_simulate import *
+from paprika.restraints import *
 from paprika.utils import HAS_OPENMM
 
 
@@ -27,6 +28,40 @@ class TestOpenMM(unittest.TestCase):
         state = result.context.getState(getEnergy=True)
         energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
         self.assertAlmostEqual(energy, -827.9, places=1)
+
+    def test_soft_minimization(self):
+        """ Test that we can minimize CB6-BUT with OpenMM, turning on interactions slowly. """
+
+        simulation = OpenMM_GB_simulation()
+        simulation.topology = '../test/cb6-but/vac.topo'
+        simulation.min['platform'] = 'CPU'
+        simulation.min['coordinates'] = '../test/cb6-but/vac.crds'\
+        # Need to add a way to get a basic system here, I think.
+
+        result, system = simulation.turn_on_interactions_slowly(
+            system, simulation)
+        state = result.context.getState(getEnergy=True)
+        energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
+        self.assertAlmostEqual(energy, -827.9, places=1)
+
+    # def test_openmm_restraint(self):
+    #     """ Test that we can impose restraints with OpenMM. """
+    #     simulation = OpenMM_GB_simulation()
+    #     simulation.topology = '../test/cb6-but/vac.topo'
+    #     simulation.md['platform'] = 'CPU'
+    #     simulation.md['coordinates'] = '../test/cb6-but/vac.crds'
+    #     simulation.md['steps'] = 100
+
+    #     restraint = DAT_restraint()
+    #     restraint.mask1 = ':BUT'
+    #     # Need a way to get the system here...
+    #     # setup_openmm_restraints(system?, restraint, phase='a', window=0)
+
+    #     result, system = simulation.run_md(save=False)
+    #     state = result.context.getState(getEnergy=True)
+    #     energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
+    #     print(energy)
+    #     # self.assertAlmostEqual(energy, -827.9, places=1)
 
 
 if __name__ == '__main__':

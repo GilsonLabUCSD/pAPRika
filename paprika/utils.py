@@ -23,12 +23,8 @@ def index_from_mask(structure_file, mask, index_offset=1):
 
     structure = align.return_structure(structure_file)
     # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
-    indices = [
-        i + index_offset
-        for i in pmd.amber.mask.AmberMask(structure, mask).Selected()
-    ]
-    log.debug('There are {} atoms in the mask {}  ...'.format(
-        len(indices), mask))
+    indices = [i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()]
+    log.debug('There are {} atoms in the mask {}  ...'.format(len(indices), mask))
     return indices
 
 
@@ -64,15 +60,19 @@ def amber_to_pdb(topology, coordinates):
     sp.check_call(['cpptraj', '-i', pdb_input])
 
 
-# def decompose_openmm_energy(structure, context)
-#     """Provide a summary of the energy terms.
+def decompose_openmm_energy(structure, context):
+    """Return individual energy components.
+    
+    Parameters:
+    ----------
+    structure : {}
+        ParmEd structure
+    context : {}
+        OpenMM context
+    Returns
+    -------
+    dict
+        Dictionary containing energy values.
+    """
 
-#     Arguments:
-#         structure {[type]} -- [description]
-#         context {[type]} -- [description]
-
-#     Returns:
-#         [type] -- [description]
-#     """
-
-#     return pmd.openmm.energy_decomposition(structure, context)
+    return pmd.openmm.energy_decomposition(structure, context)

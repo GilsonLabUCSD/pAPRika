@@ -77,6 +77,43 @@ class OpenMM_GB_simulation():
         self.md['output'] = self.path + self.md['prefix'] + '.nc'
         self.md['data'] = self.path + self.md['prefix'] + '.csv'
 
+    def setup_system(self, structure, phase, custom_forcefield=None):
+        """Create an OpenMM system that can be used for minimization, production MD,
+        or further manipulation.
+        
+        Parameters:
+        ----------
+        phase : str
+            Either 'min' or 'md' `OpenMM_GB_simulation` simulation modes.
+
+        Returns:
+        -------
+        system : OpenMM system
+        """
+
+        if custom_forcefield:
+            log.warning('`custom_forcefield` is entirely untested.')
+            forcefield = app.ForceField(self.md['forcefield'])
+            # Probably need to load a separate topology here!
+            system = forcefield.createSystem(
+                nonbondedMethod=self.md['nonbonded_method'],
+                implicitSolvent=self.md['solvent'],
+                implicitSolventSaltConc=self.md['salt'],
+                constraints=self.md['constraints'])
+        else:
+            system = structure.createSystem(
+                nonbondedMethod=self.md['nonbonded_method'],
+                implicitSolvent=self.md['solvent'],
+                implicitSolventSaltConc=self.md['salt'],
+                constraints=self.md['constraints'])
+
+
+
+
+        if self.min['forcefield'] is not None:
+        else:
+        return system
+
     def turn_on_interactions_slowly(self, system, simulation):
         # Phase 1: minimize with nonbonded interactions disabled.
         # This is the first 40% of the maximum iterations.
@@ -110,7 +147,7 @@ class OpenMM_GB_simulation():
         simulation.minimizeEnergy(
             maxIterations=int(0.2 * self.min['max_iterations']),
             tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
-        return simulation
+        return simulation, system
 
     def add_openmm_restraints(self, system):
         """
@@ -187,7 +224,7 @@ class OpenMM_GB_simulation():
                                   open(self.min['output'], 'w'))
         return simulation, system
 
-    def run_md(self):
+    def run_md(self, save=True):
         """
         Run MD with OpenMM.
         """
@@ -203,23 +240,8 @@ class OpenMM_GB_simulation():
         else:
             prop = None
 
-        if self.min['forcefield'] is not None:
-            log.warning(
-                'We haven\'t tested running OpenMM with an external force field yet.'
-            )
-            forcefield = app.ForceField(self.md['forcefield'])
-            log.warning('Probably need to load a separate topology here...')
-            system = forcefield.createSystem(
-                nonbondedMethod=self.md['nonbonded_method'],
-                implicitSolvent=self.md['solvent'],
-                implicitSolventSaltConc=self.md['salt'],
-                constraints=self.md['constraints'])
-        else:
-            system = prmtop.createSystem(
-                nonbondedMethod=self.md['nonbonded_method'],
-                implicitSolvent=self.md['solvent'],
-                implicitSolventSaltConc=self.md['salt'],
-                constraints=self.md['constraints'])
+        # Add system here
+
         simulation = app.Simulation(prmtop.topology, system, integrator,
                                     platform, prop)
         system = self.add_openmm_restraints(system)
@@ -230,19 +252,23 @@ class OpenMM_GB_simulation():
             simulation.context.setPositions(prmtop.positions)
         simulation.context.setVelocitiesToTemperature(
             self.md['temperature'] * unit.kelvin)
-        reporter = NetCDFReporter(self.md['output'],
-                                  self.md['reporter_frequency'])
-        simulation.reporters.append(reporter)
-        simulation.reporters.append(
-            app.StateDataReporter(
-                self.md['data'],
-                self.md['reporter_frequency'],
-                step=True,
-                potentialEnergy=True,
-                temperature=True,
-                density=True))
+
+        if save:
+            reporter = NetCDFReporter(self.md['output'],
+                                      self.md['reporter_frequency'])
+            simulation.reporters.append(reporter)
+            simulation.reporters.append(
+                app.StateDataReporter(
+                    self.md['data'],
+                    self.md['reporter_frequency'],
+                    step=True,
+                    potentialEnergy=True,
+                    temperature=True,
+                    density=True))
 
         log.info('Running OpenMM MD...')
         simulation.step(self.md['steps'])
         log.info('MD completed.')
-        reporter.close()
+        if save:
+            reporter.close()
+        return simulation, system
