@@ -77,7 +77,7 @@ class OpenMM_GB_simulation():
         self.md['output'] = self.path + self.md['prefix'] + '.nc'
         self.md['data'] = self.path + self.md['prefix'] + '.csv'
 
-    def setup_system(self, structure, phase, custom_forcefield=None):
+    def setup_system(self, phase):
         """Create an OpenMM system that can be used for minimization, production MD,
         or further manipulation.
         
@@ -91,27 +91,32 @@ class OpenMM_GB_simulation():
         system : OpenMM system
         """
 
-        if custom_forcefield:
-            log.warning('`custom_forcefield` is entirely untested.')
-            forcefield = app.ForceField(self.md['forcefield'])
+        if phase == 'min':
+            dictionary = self.min
+        elif phase == 'md':
+            dictionary = self.md
+        else:
+            log.error(
+                'Unable to determine simulation parameters while setting up an OpenMM `system` object.'
+            )
+        # This logic seems clunky, but I don't see a clear way around it to get the modularity we desire.
+        if dictionary['forcefield'] is None:
+            system = structure.createSystem(
+                nonbondedMethod=dictionary['nonbonded_method'],
+                implicitSolvent=dictionary['solvent'],
+                implicitSolventSaltConc=dictionary['salt'],
+                constraints=dictionary['constraints'])
+        else:
+            log.warning(
+                'Creating an OpenMM system with a custom force field is entirely untested.'
+            )
+            forcefield = app.ForceField(dictionary['forcefield'])
             # Probably need to load a separate topology here!
             system = forcefield.createSystem(
-                nonbondedMethod=self.md['nonbonded_method'],
-                implicitSolvent=self.md['solvent'],
-                implicitSolventSaltConc=self.md['salt'],
-                constraints=self.md['constraints'])
-        else:
-            system = structure.createSystem(
-                nonbondedMethod=self.md['nonbonded_method'],
-                implicitSolvent=self.md['solvent'],
-                implicitSolventSaltConc=self.md['salt'],
-                constraints=self.md['constraints'])
-
-
-
-
-        if self.min['forcefield'] is not None:
-        else:
+                nonbondedMethod=dictionary['nonbonded_method'],
+                implicitSolvent=dictionary['solvent'],
+                implicitSolventSaltConc=dictionary['salt'],
+                constraints=dictionary['constraints'])
         return system
 
     def turn_on_interactions_slowly(self, system, simulation):
