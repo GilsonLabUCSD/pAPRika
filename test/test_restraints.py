@@ -32,6 +32,7 @@ def test_DAT_restraint():
     assert rest1.phase['attach']['force_constants'] == [0.0, 0.2, 0.905, 2.48, 5.0]
     assert rest1.phase['attach']['targets'] == [3.0, 3.0, 3.0, 3.0, 3.0]
     assert rest1.phase['pull']['force_constants'] == [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
-    assert rest1.phase['pull']['targets'] == [  3.    3.7   4.4   5.1   5.8   6.5   7.2   7.9   8.6   9.3  10. ]
-    assert rest1.phase['release']['force_constants'] == [ 5.  5.  5.  5.  5.]
+    ### Note, the following two come out as numpy arrays ... not sure if that is bad
+    assert rest1.phase['pull']['targets'] == np.asarray("3.    3.7   4.4   5.1   5.8   6.5   7.2   7.9   8.6   9.3  10.".split())
+    assert rest1.phase['release']['force_constants'] == np.asarray(" 5.  5.  5.  5.  5.".split())
     assert rest1.phase['release']['targets'] == [3.0, 3.0, 3.0, 3.0, 3.0]
