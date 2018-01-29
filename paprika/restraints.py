@@ -104,7 +104,6 @@ class DAT_restraint(KeepRefs):
         If the user hasn't already declared the windows list, we will
         construct one from the initial, final, and increment values.
         """
-        log.error('Something is wrong with setting the targets and force constants!')
         self.phase = {
             'attach':  {
                 'force_constants': None,
@@ -378,6 +377,58 @@ class DAT_restraint(KeepRefs):
             self.group4 = False
         else:
             self.group4 = True
+
+
+def check_restraints(restraint_list, create_window_list=False):
+    """
+    Do basic tests to ensure a list of DAT_restraints are consistent.
+    We're gonna create the window list here too, because it needs the same code.
+    """
+
+    if all(restraint.continuous_apr is True for restraint in restraint_list):
+        log.debug('All restraints are "continuous_apr" style.')
+        all_continuous_apr = True
+    elif all(restraint.continuous_apr is False for restraint in restraint_list):
+        log.debug('All restraints are not "continuous_apr" style.')
+        all_continuous_apr = False
+    else:
+        log.error('All restraints must have the same setting for .continuous_apr')
+        ### Should we do the following?
+        raise Exception('All restraints must have the same setting for .continuous_apr')
+
+    window_list = []
+    phases = ['attach', 'pull', 'release']
+    for phase in phases:
+        win_counts = []
+        for restraint in restraint_list:
+            if restraint.phase[phase]['targets'] is not None:
+                win_counts.append(len(restraint.phase[phase]['targets']))
+        max_count = max(win_counts)
+        if all(count is None or count == max_count for count in win_counts):
+            if all_continuous_apr and phase in ('attach', 'release'):
+                max_count -= 1
+            if max_count > 999:
+                log.info('Window name zero padding only applied for windows 0 - 999')
+            window_list += [phase[0] + str('{:03.0f}'.format(val)) for val in np.arange(0,max_count,1)]
+        else:
+            log.error('Restraints have unequal number of windows during the {} phase.'.format(phase))
+            log.debug('Window counts for each restraint are as follows:')
+            log.debug(DAT_restraint.window_counts[phase])
+            raise Exception('Restraints have unequal number of windows during the {} phase.'.format(phase))
+
+    log.info('Restraints appear to be consistent')
+
+    if create_window_list:
+        return window_list
+
+
+def create_window_list(restraint_list):
+    """
+    Create list of APR windows. Runs everything through check_restraints because
+    we need to do that.
+    """
+
+    return check_restraints(restraint_list, create_window_list=True)
 
 
 def amber_restraint_line(restraint, phase, window, group=False):
