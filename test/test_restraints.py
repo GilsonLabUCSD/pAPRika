@@ -40,4 +40,6 @@ def test_DAT_restraint():
     assert np.allclose(rest1.phase['pull']['targets'], np.asarray([3.0, 3.7, 4.4, 5.1, 5.8, 6.5, 7.2, 7.9, 8.6, 9.3, 10.0]))
     assert np.allclose(rest1.phase['release']['force_constants'], np.asarray([5.0, 5.0, 5.0, 5.0, 5.0]))
     assert rest1.phase['release']['targets'] == [10.0, 10.0, 10.0, 10.0, 10.0]
+    window_list = create_window_list([rest1])
+    assert window_list == ['a000', 'a001', 'a002', 'a003', 'p000', 'p001', 'p002', 'p003', 'p004', 'p005', 'p006', 'p007', 'p008', 'p009', 'p010', 'r000', 'r001', 'r002', 'r003']
 
