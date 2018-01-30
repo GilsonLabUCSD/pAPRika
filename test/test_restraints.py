@@ -13,9 +13,9 @@ import paprika
 from paprika.restraints import *
 
 def test_DAT_restraint():
-    rest1 = restraints.DAT_restraint()
+    rest1 = DAT_restraint()
     rest1.continuous_apr = True
-    rest1.structure_file = '../cb6-but/cb6-but-notcentered.pdb'
+    rest1.structure_file = './cb6-but/cb6-but-notcentered.pdb'
     rest1.mask1 = ':CB6@O,O2,O4,O6,O8,O10'
     rest1.mask2 = ':BUT@C*'
     rest1.attach['target'] = 3.0
@@ -25,6 +25,10 @@ def test_DAT_restraint():
     rest1.pull['target_initial'] = rest1.attach['target']
     rest1.pull['target_final'] = 10.0
     rest1.pull['num_windows'] = 11
+    rest1.release['target'] = rest1.pull['target_final']
+    rest1.release['num_windows'] = len(rest1.attach['fraction_list'])
+    rest1.release['fc_initial'] = rest1.attach['fc_final']
+    rest1.release['fc_final'] = rest1.attach['fc_final']
     rest1.initialize()
 
     assert rest1.index1 == [13, 31, 49, 67, 85, 103]
@@ -33,6 +37,7 @@ def test_DAT_restraint():
     assert rest1.phase['attach']['targets'] == [3.0, 3.0, 3.0, 3.0, 3.0]
     assert rest1.phase['pull']['force_constants'] == [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
     ### Note, the following two come out as numpy arrays ... not sure if that is bad
-    assert rest1.phase['pull']['targets'] == np.asarray("3.    3.7   4.4   5.1   5.8   6.5   7.2   7.9   8.6   9.3  10.".split())
-    assert rest1.phase['release']['force_constants'] == np.asarray(" 5.  5.  5.  5.  5.".split())
-    assert rest1.phase['release']['targets'] == [3.0, 3.0, 3.0, 3.0, 3.0]
+    assert np.allclose(rest1.phase['pull']['targets'], np.asarray([3.0, 3.7, 4.4, 5.1, 5.8, 6.5, 7.2, 7.9, 8.6, 9.3, 10.0]))
+    assert np.allclose(rest1.phase['release']['force_constants'], np.asarray([5.0, 5.0, 5.0, 5.0, 5.0]))
+    assert rest1.phase['release']['targets'] == [10.0, 10.0, 10.0, 10.0, 10.0]
+
