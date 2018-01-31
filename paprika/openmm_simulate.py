@@ -124,8 +124,9 @@ class OpenMM_GB_simulation():
 
             # Curious if this is going to fail if there are restraints
             # that should be excluded from certain phases.
-
-            system = setup_openmm_restraints(system, restraint, self.phase,
+            # NMH: Yes it appears to fail .... possibly because the targets and
+            #      force_constants are now numpy arrays ...?   
+            #system = setup_openmm_restraints(system, restraint, self.phase,
                                              self.window)
 
             return system
