@@ -127,9 +127,9 @@ class OpenMM_GB_simulation():
             # NMH: Yes it appears to fail .... possibly because the targets and
             #      force_constants are now numpy arrays ...?   
             #system = setup_openmm_restraints(system, restraint, self.phase,
-                                             self.window)
+            #                                 self.window)
 
-            return system
+        return system
 
     def minimize(self, save=True):
         """
