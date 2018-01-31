@@ -13,6 +13,7 @@ import paprika
 from paprika.restraints import *
 
 def test_DAT_restraint():
+    #1
     rest1 = DAT_restraint()
     rest1.continuous_apr = False
     rest1.auto_apr = False
@@ -44,7 +45,8 @@ def test_DAT_restraint():
     assert np.allclose(rest1.phase['release']['targets'], np.array( [6.0, 6.0, 6.0, 6.0] ))
     window_list = create_window_list([rest1])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'p000', 'p001', 'p002', 'p003', 'r000', 'r001', 'r002', 'r003']
-    
+
+    #1a    
     rest2 = DAT_restraint()
     rest2.continuous_apr = False
     rest2.auto_apr = False
@@ -75,6 +77,7 @@ def test_DAT_restraint():
     window_list = create_window_list([rest2])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'p000', 'p001', 'p002', 'p003', 'r000', 'r001', 'r002', 'r003']
     
+    #2
     rest3 = DAT_restraint()
     rest3.continuous_apr = False
     rest3.auto_apr = True
@@ -109,6 +112,7 @@ def test_DAT_restraint():
     window_list = create_window_list([rest3])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'p000', 'p001', 'p002', 'p003', 'r000', 'r001', 'r002', 'r003']
 
+    #2a
     rest4 = DAT_restraint()
     rest4.continuous_apr = False
     rest4.auto_apr = False
@@ -140,7 +144,7 @@ def test_DAT_restraint():
     window_list = create_window_list([rest4])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'p000', 'p001', 'p002', 'p003', 'r000', 'r001', 'r002', 'r003']
 
-
+    #3
     rest5 = DAT_restraint()
     rest5.continuous_apr = False
     rest5.auto_apr = False
@@ -170,6 +174,7 @@ def test_DAT_restraint():
     window_list = create_window_list([rest5])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'p000', 'p001', 'p002', 'r000', 'r001', 'r002', 'r003']
 
+    #4
     rest6 = DAT_restraint()
     rest6.continuous_apr = False
     rest6.auto_apr = False
@@ -200,6 +205,7 @@ def test_DAT_restraint():
     window_list = create_window_list([rest6])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'a004', 'p000', 'p001', 'p002', 'r000', 'r001', 'r002', 'r003', 'r004']
 
+    #5
     rest7 = DAT_restraint()
     rest7.continuous_apr = True
     rest7.auto_apr = False
@@ -227,5 +233,5 @@ def test_DAT_restraint():
     assert window_list == ['a000', 'a001', 'a002', 'p000', 'p001', 'p002', 'p003', 'r000', 'r001', 'r002']
 
 
-#test_DAT_restraint()
+test_DAT_restraint()
 
