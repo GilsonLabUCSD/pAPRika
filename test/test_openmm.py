@@ -15,7 +15,7 @@ from paprika.restraints import *
 from paprika.utils import HAS_OPENMM
 
 
-@unittest.skipUnless(HAS_OPENMM, 'Cannot test without OpenMM')
+@unittest.skipUnless(HAS_OPENMM, 'Cannot run OpenMM tests without OpenMM installed.')
 class TestOpenMM(unittest.TestCase):
     def test_minimization_finishes(self):
         """ Test that we can minimize CB6-BUT with OpenMM. """
@@ -32,17 +32,19 @@ class TestOpenMM(unittest.TestCase):
     def test_soft_minimization(self):
         """ Test that we can minimize CB6-BUT with OpenMM, turning on interactions slowly. """
 
-        simulation = OpenMM_GB_simulation()
-        simulation.topology = '../test/cb6-but/vac.topo'
-        simulation.min['platform'] = 'CPU'
-        simulation.min['coordinates'] = '../test/cb6-but/vac.crds'\
-        # Need to add a way to get a basic system here, I think.
+        sim = OpenMM_GB_simulation()
+        sim.topology = '../test/cb6-but/vac.topo'
+        sim.min['platform'] = 'CPU'
+        sim.min['coordinates'] = '../test/cb6-but/vac.crds'
 
-        result, system = simulation.turn_on_interactions_slowly(
-            system, simulation)
+        simulation, system = sim.setup_system(sim.min)
+
+        result = sim.turn_on_interactions_slowly(simulation, system)
         state = result.context.getState(getEnergy=True)
         energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
         self.assertAlmostEqual(energy, -827.9, places=1)
+
+        # How do we get all CustomExternalForces?
 
     # def test_openmm_restraint(self):
     #     """ Test that we can impose restraints with OpenMM. """
@@ -55,6 +57,9 @@ class TestOpenMM(unittest.TestCase):
     #     restraint = DAT_restraint()
     #     restraint.mask1 = ':BUT'
     #     # Need a way to get the system here...
+
+    #  restrraint could/should be a list
+
     #     # setup_openmm_restraints(system?, restraint, phase='a', window=0)
 
     #     result, system = simulation.run_md(save=False)

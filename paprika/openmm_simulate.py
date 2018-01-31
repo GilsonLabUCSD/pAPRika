@@ -6,26 +6,14 @@ import numpy as np
 import parmed as pmd
 from paprika.restraints import *
 
-try:
-    import simtk.openmm as mm
-    import simtk.openmm.app as app
-    import simtk.unit as unit
-    from mdtraj.reporters import NetCDFReporter
-    log.debug('OpenMM support: Yes')
-except:
-    log.debug('OpenMM support: No')
+import simtk.openmm as mm
+import simtk.openmm.app as app
+import simtk.unit as unit
+from mdtraj.reporters import NetCDFReporter
 
 
 class OpenMM_GB_simulation():
-    """Setup and run a GB simulation in AMBER or OpenMM.
-
-    Parameters
-    ----------
-    phase : phase of the calculation used to specify the value of the restraints, should be
-    "attach", "pull" or "release".
-    window : window of the calculation used to specify the value of the restraints, should be
-    numeric.
-    """
+    """Setup and run a GB simulation in OpenMM."""
 
     def __init__(self):
 
@@ -77,156 +65,150 @@ class OpenMM_GB_simulation():
         self.md['output'] = self.path + self.md['prefix'] + '.nc'
         self.md['data'] = self.path + self.md['prefix'] + '.csv'
 
-    def setup_system(self, phase):
-        """Create an OpenMM system that can be used for minimization, production MD,
-        or further manipulation.
-        
-        Parameters:
-        ----------
-        phase : str
-            Either 'min' or 'md' `OpenMM_GB_simulation` simulation modes.
+    def setup_system(self, settings):
+        """
+        Provide a way to create an OpenMM system object with minimization or MD settings.
 
-        Returns:
+        Parameters
+        ----------
+        settings : dict
+            A dictionary containing simulation settings.
+
+        Returns
         -------
-        system : OpenMM system
+        simulation : simtk.openmm.app.Simulation
+            The simulation object.
+        system : simtk.openmm.System
+            The system object.
         """
 
-        if phase == 'min':
-            dictionary = self.min
-        elif phase == 'md':
-            dictionary = self.md
-        else:
-            log.error(
-                'Unable to determine simulation parameters while setting up an OpenMM `system` object.'
-            )
-        # This logic seems clunky, but I don't see a clear way around it to get the modularity we desire.
-        if dictionary['forcefield'] is None:
-            system = structure.createSystem(
-                nonbondedMethod=dictionary['nonbonded_method'],
-                implicitSolvent=dictionary['solvent'],
-                implicitSolventSaltConc=dictionary['salt'],
-                constraints=dictionary['constraints'])
-        else:
-            log.warning(
-                'Creating an OpenMM system with a custom force field is entirely untested.'
-            )
-            forcefield = app.ForceField(dictionary['forcefield'])
-            # Probably need to load a separate topology here!
-            system = forcefield.createSystem(
-                nonbondedMethod=dictionary['nonbonded_method'],
-                implicitSolvent=dictionary['solvent'],
-                implicitSolventSaltConc=dictionary['salt'],
-                constraints=dictionary['constraints'])
-        return system
+        prmtop = pmd.load_file(self.topology, settings['coordinates'])
+        integrator = mm.LangevinIntegrator(settings['temperature'], settings['friction'], settings['timestep'])
 
-    def turn_on_interactions_slowly(self, system, simulation):
+        platform, prop = self.setup_platform(settings)
+        system = prmtop.createSystem(
+            nonbondedMethod=settings['nonbonded_method'],
+            implicitSolvent=settings['solvent'],
+            implicitSolventSaltConc=settings['salt'],
+            constraints=settings['constraints'])
+
+        simulation = app.Simulation(prmtop.topology, system, integrator, platform, prop)
+        simulation.context.setPositions(prmtop.positions)
+        return simulation, system
+
+    def setup_platform(self, settings):
+        """
+        Set whether CPU or GPU should be used for OpenMM simulations, split off for readability.
+
+        Parameters
+        ----------
+        settings : dict
+            A dictionary containing simulation settings.
+
+        Returns
+        -------
+        platform : simtk.openmm.mm.Platform
+            The platform object.
+        properties : dict
+            The simulation settings for GPUs.
+
+        """
+        platform = mm.Platform.getPlatformByName(settings['platform'])
+        if settings['platform'] == 'CUDA':
+            properties = dict(CudaPrecision=settings['precision'], CudaDeviceIndex=settings['devices'])
+        else:
+            properties = None
+
+        return platform, properties
+
+    def turn_on_interactions_slowly(self, simulation, system):
+        """
+        Provide an interface to slowly turn on the nonbonded parameters.
+
+        Parameters
+        ----------
+        simulation : simtk.openmm.app.Simulation
+            The simulation object.
+        system : simtk.openmm.System
+            The system object.
+
+        Returns
+        -------
+        simulation : simtk.openmm.app.Simulation
+            The simulation (after minimization).
+        """
         # Phase 1: minimize with nonbonded interactions disabled.
         # This is the first 40% of the maximum iterations.
-        log.debug('Minimization phase 1 for {} steps.'.format(
-            int(0.4 * self.min['max_iterations'])))
+        log.debug('Minimization phase 1 for {} steps.'.format(int(0.4 * self.min['max_iterations'])))
         simulation.minimizeEnergy(
-            maxIterations=int(0.4 * self['min']['max_iterations']),
-            tolerance=self['min']['tolerance'] * unit.kilojoule / unit.mole)
+            maxIterations=int(0.4 * self.min['max_iterations']),
+            tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
         # Phase 2: slowly turn on the nonbonded interactions.
         # This is the next 40% of the maximum iterations.
         # This increases the nonbonded interactions linearly, which is not
         # the same as using `IINC` in AMBER.
-        log.debug('Minimization phase 2 for {} steps.'.format(
-            int(0.4 * self.min['max_iterations'])))
-        for scale in np.linspace(0, 1.0,
-                                 int(0.4 * self.min['max_iterations'])):
-            log.debug(
-                'Scaling NB interactions to {0:0.4f} / 1.0'.format(scale))
-            for particle in range(system.getNumParticles()):
-                [charge, sigma,
-                 epsilon] = mm.NonbondedForce.getParticleParameters(particle)
-                mm.NonbondedForce.setParticleParameters(
-                    particle, charge * scale, sigma, epsilon * scale)
-            simulation.minimizeEnergy(
-                maxIterations=1,
-                tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
+        log.debug('Minimization phase 2 for {} steps.'.format(int(0.4 * self.min['max_iterations'])))
+        forces = {force.__class__.__name__: force for force in system.getForces()}
+        nb_force = forces['NonbondedForce']
+        for scale in np.linspace(0, 1.0, int(0.4 * self.min['max_iterations'])):
+            for particle in range(nb_force.getNumParticles()):
+                [charge, sigma, epsilon] = nb_force.getParticleParameters(particle)
+                nb_force.setParticleParameters(particle, charge * scale, sigma, epsilon * scale)
+            simulation.minimizeEnergy(maxIterations=1, tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
         # Phase 3: minimize with nonbonded interactions at full strength.
         # This is the last 20% of the maximum iterations.
-        log.debug('Minimization phase 3 for {} steps.'.format(
-            int(0.2 * self.min['max_iterations'])))
+        log.debug('Minimization phase 3 for {} steps.'.format(int(0.2 * self.min['max_iterations'])))
         simulation.minimizeEnergy(
             maxIterations=int(0.2 * self.min['max_iterations']),
             tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
-        return simulation, system
+        return simulation
 
-    def add_openmm_restraints(self, system):
+    def add_openmm_restraints(self, system, restraints, phase, window):
         """
         Loop through the instances of `DAT_restraint`, after an OpenMM `system` has been created and
         call the function to apply the restraint for a given phase and window of the calculation.
+
+        Parameters
+        ----------
+        system : simtk.openmm.System
+            The system object.
+        restraints : list
+            A list of restraints to be applied.
+        phase : str
+            The phase of the simulation, used with the window, to determine the restraint
+            target value and strength.
+        window : int
+            The window of the simulation, used with the phase, to determine the restraint target
+            value and strength.
+
+        Returns
+        -------
+        system: simtk.openmm.System
+            The same system object, with restraints applied.
+
         """
-        for i, restraint in enumerate(DAT_restraint.restraint_list):
-            log.debug(
-                'Setting up restraint number {} in phase {} and window {}...'.
-                format(i, self.phase, self.window))
 
-            # Curious if this is going to fail if there are restraints
-            # that should be excluded from certain phases.
+        for i, restraint in enumerate(restraints):
+            system = setup_openmm_restraints(system, restraint, phase, window)
 
-            system = setup_openmm_restraints(system, restraint, self.phase,
-                                             self.window)
+        return system
 
-            return system
-
-    def minimize(self, save=True):
+    def minimize(self, simulation, save=True):
         """
         Run MD with OpenMM.
         """
-        prmtop = pmd.load_file(self.topology, self.min['coordinates'])
 
-        # I'm not sure why we need an integrator for minimization!
-        integrator = mm.LangevinIntegrator(self.min['temperature'],
-                                           self.min['friction'],
-                                           self.min['timestep'])
-        platform = mm.Platform.getPlatformByName(self.min['platform'])
-        if self.min['platform'] == 'CUDA':
-            prop = dict(
-                CudaPrecision=self.min['precision'],
-                CudaDeviceIndex=self.min['devices'])
-        else:
-            prop = None
-
-        if self.min['forcefield'] is not None:
-            log.warning(
-                'We haven\'t tested running OpenMM with an external force field yet.'
-            )
-            forcefield = app.ForceField(self.min['forcefield'])
-            log.warning('Probably need to load a separate topology here...')
-            system = forcefield.createSystem(
-                nonbondedMethod=self.min['nonbonded_method'],
-                implicitSolvent=self.min['solvent'],
-                implicitSolventSaltConc=self.min['salt'],
-                constraints=self.min['constraints'])
-        else:
-            system = prmtop.createSystem(
-                nonbondedMethod=self.min['nonbonded_method'],
-                implicitSolvent=self.min['solvent'],
-                implicitSolventSaltConc=self.min['salt'],
-                constraints=self.min['constraints'])
-
-        simulation = app.Simulation(prmtop.topology, system, integrator,
-                                    platform, prop)
-        simulation.context.setPositions(prmtop.positions)
-        system = self.add_openmm_restraints(system)
         log.info('Running OpenMM minimization...')
 
         if self.min['soft']:
             simulation = self.turn_on_interactions_slowly(system, simulation)
         else:
             simulation.minimizeEnergy(
-                maxIterations=self.min['max_iterations'],
-                tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
+                maxIterations=self.min['max_iterations'], tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
 
         if save:
-            self.md['minimized_coordinates'] = simulation.context.getState(
-                getPositions=True).getPositions()
-            app.PDBFile.writeFile(simulation.topology,
-                                  self.md['minimized_coordinates'],
-                                  open(self.min['output'], 'w'))
+            self.md['minimized_coordinates'] = simulation.context.getState(getPositions=True).getPositions()
+            app.PDBFile.writeFile(simulation.topology, self.md['minimized_coordinates'], open(self.min['output'], 'w'))
         return simulation, system
 
     def run_md(self, save=True):
@@ -235,32 +217,26 @@ class OpenMM_GB_simulation():
         """
         prmtop = pmd.load_file(self.topology, self.md['coordinates'])
         # I'm not sure why we need an integrator for minimization!
-        integrator = mm.LangevinIntegrator(
-            self.md['temperature'], self.md['friction'], self.md['timestep'])
+        integrator = mm.LangevinIntegrator(self.md['temperature'], self.md['friction'], self.md['timestep'])
         platform = mm.Platform.getPlatformByName(self.md['platform'])
         if self.md['platform'] == 'CUDA':
-            prop = dict(
-                CudaPrecision=self.min['precision'],
-                CudaDeviceIndex=self.min['devices'])
+            prop = dict(CudaPrecision=self.min['precision'], CudaDeviceIndex=self.min['devices'])
         else:
             prop = None
 
         # Add system here
 
-        simulation = app.Simulation(prmtop.topology, system, integrator,
-                                    platform, prop)
+        simulation = app.Simulation(prmtop.topology, system, integrator, platform, prop)
         system = self.add_openmm_restraints(system)
 
         if self.md['minimized_coordinates']:
             simulation.context.setPositions(self.md['minimized_coordinates'])
         else:
             simulation.context.setPositions(prmtop.positions)
-        simulation.context.setVelocitiesToTemperature(
-            self.md['temperature'] * unit.kelvin)
+        simulation.context.setVelocitiesToTemperature(self.md['temperature'] * unit.kelvin)
 
         if save:
-            reporter = NetCDFReporter(self.md['output'],
-                                      self.md['reporter_frequency'])
+            reporter = NetCDFReporter(self.md['output'], self.md['reporter_frequency'])
             simulation.reporters.append(reporter)
             simulation.reporters.append(
                 app.StateDataReporter(

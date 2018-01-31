@@ -10,8 +10,10 @@ try:
     import simtk.openmm as mm
     import simtk.openmm.app as app
     import simtk.unit as unit
+    log.debug('OpenMM support: Yes')
     HAS_OPENMM = True
 except ImportError:
+    log.debug('OpenMM support: No')
     HAS_OPENMM = False
 
 
