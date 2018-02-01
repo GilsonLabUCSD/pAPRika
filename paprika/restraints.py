@@ -98,7 +98,6 @@ class DAT_restraint(KeepRefs):
         If the user hasn't already declared the windows list, we will
         construct one from the initial, final, and increment values.
         """
-        log.error('Something is wrong with setting the targets and force constants!')
         self.phase = {
             'attach':  {
                 'force_constants': None,
@@ -128,7 +127,7 @@ class DAT_restraint(KeepRefs):
                 log.debug('Method #1a')
                 self.phase['attach']['force_constants'] = np.linspace(0.0, self.attach['fc_final'],
                                                                       self.attach['num_windows'])
-            self.phase['attach']['targets'] = [self.attach['target']] * self.attach['num_windows']
+            self.phase['attach']['targets'] = np.asarray([self.attach['target']] * self.attach['num_windows'])
 
         elif self.attach['fc_increment'] is not None and self.attach['fc_final'] is not None:
             if self.attach['fc_initial'] is not None:
@@ -145,16 +144,16 @@ class DAT_restraint(KeepRefs):
                                                                     self.attach['fc_final'] +
                                                                     self.attach['fc_increment'],
                                                                     self.attach['fc_increment'])
-            self.phase['attach']['targets'] = [self.attach['target']
-                ] * len(self.phase['attach']['force_constants'])
+            self.phase['attach']['targets'] = np.asarray([self.attach['target']
+                ] * len(self.phase['attach']['force_constants']))
 
         elif self.attach['fraction_list'] is not None and self.attach['fc_final'] is not None:
             ### METHOD 3 ###
             log.debug('Method #3')
-            self.phase['attach']['force_constants'] = [fraction * self.attach['fc_final'] for
-                                                       fraction in self.attach['fraction_list']]
-            self.phase['attach']['targets'] = [self.attach['target']
-                ] * len(self.phase['attach']['force_constants'])
+            self.phase['attach']['force_constants'] = np.asarray([fraction * self.attach['fc_final'] for
+                                                       fraction in self.attach['fraction_list']])
+            self.phase['attach']['targets'] = np.asarray([self.attach['target']
+                ] * len(self.phase['attach']['force_constants']))
 
         elif self.attach['fraction_increment'] is not None and self.attach['fc_final'] is not None:
             ### METHOD 4 ###
@@ -162,17 +161,17 @@ class DAT_restraint(KeepRefs):
             fractions = np.arange(
                 0, 1.0 + self.attach['fraction_increment'],
                 self.attach['fraction_increment'])
-            self.phase['attach']['force_constants'] = [fraction * self.attach['fc_final']
-                for fraction in fractions]
-            self.phase['attach']['targets'] = [self.attach['target']
-                ] * len(self.phase['attach']['force_constants'])
+            self.phase['attach']['force_constants'] = np.asarray([fraction * self.attach['fc_final']
+                for fraction in fractions])
+            self.phase['attach']['targets'] = np.asarray([self.attach['target']
+                ] * len(self.phase['attach']['force_constants']))
 
         elif self.attach['fc_list'] is not None:
             ### METHOD 5 ###
             log.debug('Method #5')
-            self.phase['attach']['force_constants'] = self.attach['fc_list']
-            self.phase['attach']['targets'] = [self.attach['target']
-                ] * len(self.phase['attach']['force_constants'])
+            self.phase['attach']['force_constants'] = np.asarray(self.attach['fc_list'])
+            self.phase['attach']['targets'] = np.asarray([self.attach['target']
+                ] * len(self.phase['attach']['force_constants']))
 
         elif all(v is None for k, v in self.attach.items()):
             log.debug('No restraint info set for this phase! Skipping...')
@@ -201,7 +200,7 @@ class DAT_restraint(KeepRefs):
                 log.debug('Method #1a')
                 self.phase['pull']['targets'] = np.linspace(0.0, self.pull['target_final'],
                                                             self.pull['num_windows'])
-            self.phase['pull']['force_constants'] = [self.pull['fc']] * self.pull['num_windows']
+            self.phase['pull']['force_constants'] = np.asarray([self.pull['fc']] * self.pull['num_windows'])
 
         elif self.pull['target_increment'] is not None and self.pull['target_final'] is not None:
             if self.pull['target_initial'] is not None:
@@ -217,16 +216,15 @@ class DAT_restraint(KeepRefs):
                 self.phase['pull']['targets'] = np.arange(0.0, self.pull['target_final'] +
                                                           self.pull['target_increment'],
                                                           self.pull['target_increment'])
-            self.phase['pull']['force_constants'] = [
-                self.pull['fc']] * len(self.phase['pull']['targets'])
+            self.phase['pull']['force_constants'] = np.asarray([self.pull['fc']] * len(self.phase['pull']['targets']))
 
         elif self.pull['fraction_list'] is not None and self.pull['target_final'] is not None:
             ### METHOD 3 ###
             log.debug('Method #3')
-            self.phase['pull']['targets'] = [fraction * self.pull['target_final'] for
-                                             fraction in self.pull['fraction_list']]
-            self.phase['pull']['force_constants'] = [
-                self.pull['fc']] * len(self.phase['pull']['targets'])
+            self.phase['pull']['targets'] = np.asarray([fraction * self.pull['target_final'] for
+                                             fraction in self.pull['fraction_list']])
+            self.phase['pull']['force_constants'] = np.asarray([
+                self.pull['fc']] * len(self.phase['pull']['targets']))
 
         elif self.pull['fraction_increment'] is not None and self.pull['target_final'] is not None:
             ### METHOD 4 ###
@@ -234,17 +232,17 @@ class DAT_restraint(KeepRefs):
             fractions = np.arange(
                 0, 1.0 + self.pull['fraction_increment'],
                 self.pull['fraction_increment'])
-            self.phase['pull']['targets'] = [fraction * self.pull['target_final']
-                for fraction in fractions]
-            self.phase['pull']['force_constants'] = [
-                self.pull['fc']] * len(self.phase['pull']['targets'])
+            self.phase['pull']['targets'] = np.asarray([fraction * self.pull['target_final']
+                for fraction in fractions])
+            self.phase['pull']['force_constants'] = np.asarray([
+                self.pull['fc']] * len(self.phase['pull']['targets']))
 
         elif self.pull['target_list'] is not None:
             ### METHOD 5 ###
             log.debug('Method #5')
-            self.phase['pull']['targets'] = self.pull['fc_list']
-            self.phase['pull']['force_constants'] = [
-                self.pull['fc']] * len(self.phase['pull']['targets'])
+            self.phase['pull']['targets'] = np.asarray(self.pull['target_list'])
+            self.phase['pull']['force_constants'] = np.asarray([
+                self.pull['fc']] * len(self.phase['pull']['targets']))
 
         elif all(v is None for k, v in self.pull.items()):
             log.debug('No restraint info set for this phase! Skipping...')
@@ -260,7 +258,7 @@ class DAT_restraint(KeepRefs):
 
         if self.auto_apr:
             self.release['target'] = self.phase['pull']['targets'][-1]
-            for key in ['fc_final', 'fc_initial', 'num_windows', 'fraction_increment',
+            for key in ['fc_final', 'fc_initial', 'num_windows', 'fc_increment', 'fraction_increment',
                         'fraction_list', 'fc_list']:
                 if self.attach[key] is not None and self.release[key] is None:
                     self.release[key] = self.attach[key]
@@ -277,8 +275,8 @@ class DAT_restraint(KeepRefs):
                 log.debug('Method #1a')
                 self.phase['release']['force_constants'] = np.linspace(0.0, self.release['fc_final'],
                                                                        self.release['num_windows'])
-            self.phase['release']['targets'] = [
-                self.release['target']] * self.release['num_windows']
+            self.phase['release']['targets'] = np.asarray([
+                self.release['target']] * self.release['num_windows'])
 
         elif self.release['fc_increment'] is not None and self.release['fc_final'] is not None:
             if self.release['fc_initial'] is not None:
@@ -295,16 +293,16 @@ class DAT_restraint(KeepRefs):
                                                                      self.release['fc_final'] +
                                                                      self.release['fc_increment'],
                                                                      self.release['fc_increment'])
-            self.phase['release']['targets'] = [self.release['target']
-                ] * len(self.phase['release']['force_constants'])
+            self.phase['release']['targets'] = np.asarray([self.release['target']
+                ] * len(self.phase['release']['force_constants']))
 
         elif self.release['fraction_list'] is not None and self.release['fc_final'] is not None:
             ### METHOD 3 ###
             log.debug('Method #3')
-            self.phase['release']['force_constants'] = [fraction * self.release['fc_final'] for
-                                                        fraction in self.release['fraction_list']]
-            self.phase['release']['targets'] = [self.release['target']
-                ] * len(self.phase['release']['force_constants'])
+            self.phase['release']['force_constants'] = np.asarray([fraction * self.release['fc_final'] for
+                                                        fraction in self.release['fraction_list']])
+            self.phase['release']['targets'] = np.asarray([self.release['target']
+                ] * len(self.phase['release']['force_constants']))
 
         elif self.release['fraction_increment'] is not None and self.release['fc_final'] is not None:
             ### METHOD 4 ###
@@ -312,16 +310,16 @@ class DAT_restraint(KeepRefs):
             fractions = np.arange(
                 0, 1.0 + self.release['fraction_increment'],
                 self.release['fraction_increment'])
-            self.phase['release']['force_constants'] = [
-                fraction * self.release['fc_final'] for fraction in fractions]
-            self.phase['release']['targets'] = [self.release['target']] * len(self.phase['release']['force_constants'])
+            self.phase['release']['force_constants'] = np.asarray([
+                fraction * self.release['fc_final'] for fraction in fractions])
+            self.phase['release']['targets'] = np.asarray([self.release['target']] * len(self.phase['release']['force_constants']))
 
         elif self.release['fc_list'] is not None:
             ### METHOD 5 ###
             log.debug('Method #5')
-            self.phase['release']['force_constants'] = self.release['fc_list']
-            self.phase['release']['targets'] = [self.release['target']
-                ] * len(self.phase['release']['force_constants'])
+            self.phase['release']['force_constants'] = np.asarray(self.release['fc_list'])
+            self.phase['release']['targets'] = np.asarray([self.release['target']
+                ] * len(self.phase['release']['force_constants']))
 
         elif all(v is None for k, v in self.release.items()):
             log.debug('No restraint info set for this phase! Skipping...')
@@ -372,6 +370,58 @@ class DAT_restraint(KeepRefs):
             self.group4 = False
         else:
             self.group4 = True
+
+
+def check_restraints(restraint_list, create_window_list=False):
+    """
+    Do basic tests to ensure a list of DAT_restraints are consistent.
+    We're gonna create the window list here too, because it needs the same code.
+    """
+
+    if all(restraint.continuous_apr is True for restraint in restraint_list):
+        log.debug('All restraints are "continuous_apr" style.')
+        all_continuous_apr = True
+    elif all(restraint.continuous_apr is False for restraint in restraint_list):
+        log.debug('All restraints are not "continuous_apr" style.')
+        all_continuous_apr = False
+    else:
+        log.error('All restraints must have the same setting for .continuous_apr')
+        ### Should we do the following?
+        raise Exception('All restraints must have the same setting for .continuous_apr')
+
+    window_list = []
+    phases = ['attach', 'pull', 'release']
+    for phase in phases:
+        win_counts = []
+        for restraint in restraint_list:
+            if restraint.phase[phase]['targets'] is not None:
+                win_counts.append(len(restraint.phase[phase]['targets']))
+        max_count = max(win_counts)
+        if all(count is None or count == max_count for count in win_counts):
+            if all_continuous_apr and phase in ('attach', 'release'):
+                max_count -= 1
+            if max_count > 999:
+                log.info('Window name zero padding only applied for windows 0 - 999')
+            window_list += [phase[0] + str('{:03.0f}'.format(val)) for val in np.arange(0,max_count,1)]
+        else:
+            log.error('Restraints have unequal number of windows during the {} phase.'.format(phase))
+            log.debug('Window counts for each restraint are as follows:')
+            log.debug(DAT_restraint.window_counts[phase])
+            raise Exception('Restraints have unequal number of windows during the {} phase.'.format(phase))
+
+    log.info('Restraints appear to be consistent')
+
+    if create_window_list:
+        return window_list
+
+
+def create_window_list(restraint_list):
+    """
+    Create list of APR windows. Runs everything through check_restraints because
+    we need to do that.
+    """
+
+    return check_restraints(restraint_list, create_window_list=True)
 
 
 def amber_restraint_line(restraint, phase, window, group=False):
@@ -598,3 +648,7 @@ def clean_restraints_file(restraints, filename='restraints.in'):
         for window, _ in enumerate(restraint.phase['attach']['targets']):
             directory = './windows/p{0:03d}'.format(window)
             os.remove(directory + '/' + filename)
+
+def error_checking():
+    print('Error checking needs to be implemented.')
+    pass

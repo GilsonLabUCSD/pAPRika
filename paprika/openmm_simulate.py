@@ -250,6 +250,7 @@ class OpenMM_GB_simulation():
         log.info('Running OpenMM MD...')
         simulation.step(self.md['steps'])
         log.info('MD completed.')
+
         if save:
             reporter.close()
         return simulation, system
