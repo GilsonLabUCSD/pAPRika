@@ -15,11 +15,6 @@ try:
 except:
     pass
 
-logger = log.getLogger()
-logger.setLevel(log.DEBUG)
-log.basicConfig(format='%(asctime)s %(message)s',
-                datefmt='%Y-%m-%d %I:%M:%S %p')
-
 
 class KeepRefs(object):
     # https://stackoverflow.com/questions/328851/printing-all-instances-of-a-class
@@ -65,36 +60,36 @@ class DAT_restraint(KeepRefs):
         self.continuous_apr = True
 
         self.attach = {
-            'target':             None,  # The target value for the restraint (mandatory)
-            'fc_initial':         None,  # The initial force constant (optional)
-            'fc_final':           None,  # The final force constant (optional)
-            'num_windows':        None,  # The number of windows (optional)
-            'fc_increment':       None,  # The force constant increment (optional)
+            'target': None,  # The target value for the restraint (mandatory)
+            'fc_initial': None,  # The initial force constant (optional)
+            'fc_final': None,  # The final force constant (optional)
+            'num_windows': None,  # The number of windows (optional)
+            'fc_increment': None,  # The force constant increment (optional)
             'fraction_increment': None,  # The percentage of the force constant increment (optional)
-            'fraction_list':      None,  # The list of force constant percentages (optional)
-            'fc_list':            None  # The list of force constants (will be created if not given)
+            'fraction_list': None,  # The list of force constant percentages (optional)
+            'fc_list': None  # The list of force constants (will be created if not given)
         }
 
         self.pull = {
-            'fc':                 None,  # The force constant for the restraint (mandatory)
-            'target_initial':     None,  # The initial target value (optional)
-            'target_final':       None,  # The final target value (optional)
-            'num_windows':        None,  # The number of windows (optional)
-            'target_increment':   None,  # The target value increment (optional)
+            'fc': None,  # The force constant for the restraint (mandatory)
+            'target_initial': None,  # The initial target value (optional)
+            'target_final': None,  # The final target value (optional)
+            'num_windows': None,  # The number of windows (optional)
+            'target_increment': None,  # The target value increment (optional)
             'fraction_increment': None,  # The percentage of the target value increment (optional)
-            'fraction_list':      None,  # The list of target value percentages (optional)
-            'target_list':        None  # The list of target values (will be created if not given)
+            'fraction_list': None,  # The list of target value percentages (optional)
+            'target_list': None  # The list of target values (will be created if not given)
         }
 
         self.release = {
-            'target':             None,  # The target value for the restraint (mandatory)
-            'fc_initial':         None,  # The initial force constant (optional)
-            'fc_final':           None,  # The final force constant (optional)
-            'num_windows':        None,  # The number of windows (optional)
-            'fc_increment':       None,  # The force constant increment (optional)
+            'target': None,  # The target value for the restraint (mandatory)
+            'fc_initial': None,  # The initial force constant (optional)
+            'fc_final': None,  # The final force constant (optional)
+            'num_windows': None,  # The number of windows (optional)
+            'fc_increment': None,  # The force constant increment (optional)
             'fraction_increment': None,  # The percentage of the force constant increment (optional)
-            'fraction_list':      None,  # The list of force constant percentages (optional)
-            'fc_list':            None  # The list of force constants (will be created if not
+            'fraction_list': None,  # The list of force constant percentages (optional)
+            'fc_list': None  # The list of force constants (will be created if not
             # given)
         }
         super(DAT_restraint, self).__init__()
@@ -105,17 +100,17 @@ class DAT_restraint(KeepRefs):
         construct one from the initial, final, and increment values.
         """
         self.phase = {
-            'attach':  {
+            'attach': {
                 'force_constants': None,
-                'targets':         None
+                'targets': None
             },
-            'pull':    {
+            'pull': {
                 'force_constants': None,
-                'targets':         None
+                'targets': None
             },
             'release': {
                 'force_constants': None,
-                'targets':         None
+                'targets': None
             }
         }
         # ------------------------------------ ATTACH ------------------------------------ #
@@ -125,9 +120,8 @@ class DAT_restraint(KeepRefs):
             if self.attach['fc_initial'] is not None:
                 ### METHOD 1 ###
                 log.debug('Method #1')
-                self.phase['attach']['force_constants'] = np.linspace(self.attach['fc_initial'],
-                                                                      self.attach['fc_final'],
-                                                                      self.attach['num_windows'])
+                self.phase['attach']['force_constants'] = np.linspace(
+                    self.attach['fc_initial'], self.attach['fc_final'], self.attach['num_windows'])
             else:
                 ### METHOD 1a ###
                 log.debug('Method #1a')
@@ -139,10 +133,9 @@ class DAT_restraint(KeepRefs):
             if self.attach['fc_initial'] is not None:
                 ### METHOD 2 ###
                 log.debug('Method #2')
-                self.phase['attach']['force_constants'] = np.arange(self.attach['fc_initial'],
-                                                                    self.attach['fc_final'] +
-                                                                    self.attach['fc_increment'],
-                                                                    self.attach['fc_increment'])
+                self.phase['attach']['force_constants'] = np.arange(
+                    self.attach['fc_initial'], self.attach['fc_final'] + self.attach['fc_increment'],
+                    self.attach['fc_increment'])
             else:
                 ### METHOD 2a ###
                 log.debug('Method #2a')
@@ -198,8 +191,7 @@ class DAT_restraint(KeepRefs):
             if self.pull['target_initial'] is not None:
                 ### METHOD 1 ###
                 log.debug('Method #1')
-                self.phase['pull']['targets'] = np.linspace(self.pull['target_initial'],
-                                                            self.pull['target_final'],
+                self.phase['pull']['targets'] = np.linspace(self.pull['target_initial'], self.pull['target_final'],
                                                             self.pull['num_windows'])
             else:
                 ### METHOD 1a ###
@@ -213,8 +205,7 @@ class DAT_restraint(KeepRefs):
                 ### METHOD 2 ###
                 log.debug('Method #2')
                 self.phase['pull']['targets'] = np.arange(self.pull['target_initial'],
-                                                          self.pull['target_final'] +
-                                                          self.pull['target_increment'],
+                                                          self.pull['target_final'] + self.pull['target_increment'],
                                                           self.pull['target_increment'])
             else:
                 ### METHOD 2a ###
@@ -273,9 +264,8 @@ class DAT_restraint(KeepRefs):
             if self.release['fc_initial'] is not None:
                 ### METHOD 1 ###
                 log.debug('Method #1')
-                self.phase['release']['force_constants'] = np.linspace(self.release['fc_initial'],
-                                                                       self.release['fc_final'],
-                                                                       self.release['num_windows'])
+                self.phase['release']['force_constants'] = np.linspace(
+                    self.release['fc_initial'], self.release['fc_final'], self.release['num_windows'])
             else:
                 ### METHOD 1a ###
                 log.debug('Method #1a')
@@ -288,10 +278,9 @@ class DAT_restraint(KeepRefs):
             if self.release['fc_initial'] is not None:
                 ### METHOD 2 ###
                 log.debug('Method #2')
-                self.phase['release']['force_constants'] = np.arange(self.release['fc_initial'],
-                                                                     self.release['fc_final'] +
-                                                                     self.release['fc_increment'],
-                                                                     self.release['fc_increment'])
+                self.phase['release']['force_constants'] = np.arange(
+                    self.release['fc_initial'], self.release['fc_final'] + self.release['fc_increment'],
+                    self.release['fc_increment'])
             else:
                 ### METHOD 2a ###
                 log.debug('Method #2a')
@@ -365,9 +354,9 @@ class DAT_restraint(KeepRefs):
         else:
             self.group1 = True
         if self.mask2 and len(self.index2) == 1:
-           self.group2 = False
+            self.group2 = False
         else:
-           self.group2 = True
+            self.group2 = True
         if self.mask3 and len(self.index3) == 1:
             self.group3 = False
         else:
@@ -521,8 +510,8 @@ def amber_restraint_line(restraint, phase, window, group=False):
     string += '  &end'
     return string
 
-def setup_openmm_restraints(system, restraint, phase, window):
 
+def setup_openmm_restraints(system, restraint, phase, window):
     """
     Add particle restraints with OpenMM.
     """
@@ -544,18 +533,14 @@ def setup_openmm_restraints(system, restraint, phase, window):
                   0.1 * unit.nanometers
             k = restraint.phase[phase]['force_constants'][window] / \
                 0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers ** 2
-            bond_restraint.addBond(restraint.index1[0], restraint.index2[0],
-                                   [k, r_0])
+            bond_restraint.addBond(restraint.index1[0], restraint.index2[0], [k, r_0])
             system.addForce(bond_restraint)
             log.debug('Added bond restraint between {} and {} with target value = '
-                      '{} and force constant = {}'.format(restraint.mask1,
-                                                          restraint.mask2,
-                                                          r_0, k))
+                      '{} and force constant = {}'.format(restraint.mask1, restraint.mask2, r_0, k))
         elif restraint.group1 is True or restraint.group2 is True:
             # http://docs.openmm.org/7.0.0/api-python/generated/simtk.openmm.openmm.CustomManyParticleForce.html
             # http://getyank.org/development/_modules/yank/restraints.html
-            bond_restraint = mm.CustomCentroidBondForce(
-                2, 'k * (distance(g1, g2) - r_0)^2')
+            bond_restraint = mm.CustomCentroidBondForce(2, 'k * (distance(g1, g2) - r_0)^2')
             bond_restraint.addPerBondParameter('k')
             bond_restraint.addPerBondParameter('r_0')
 
@@ -565,13 +550,10 @@ def setup_openmm_restraints(system, restraint, phase, window):
                 0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers ** 2
             g1 = bond_restraint.addGroup(restraint.index1)
             g2 = bond_restraint.addGroup(restraint.index2)
-            bond_restraint.addBond([g1, g2],
-                                   [k, r_0])
+            bond_restraint.addBond([g1, g2], [k, r_0])
             system.addForce(bond_restraint)
             log.debug('Added bond restraint between {} and {} with target value = '
-                      '{} and force constant = {}'.format(restraint.mask1,
-                                                          restraint.mask2,
-                                                          r_0, k))
+                      '{} and force constant = {}'.format(restraint.mask1, restraint.mask2, r_0, k))
     else:
         log.error('Unable to add bond restraint...')
         log.debug('restraint.index1 = {}'.format(restraint.index1))
@@ -595,13 +577,11 @@ def setup_openmm_restraints(system, restraint, phase, window):
         angle_restraint.addPerAngleParameter('k')
         angle_restraint.addPerAngleParameter('theta_0')
 
-        log.debug('Setting an angle restraint in degrees using a '
-                  'force constant in kcal per mol rad**2...')
+        log.debug('Setting an angle restraint in degrees using a ' 'force constant in kcal per mol rad**2...')
         theta_0 = restraint.phase[phase]['targets'][window] * unit.degrees
         k = restraint.phase[phase]['force_constants'][window] * \
             unit.kilocalorie_per_mole / unit.radian ** 2
-        angle_restraint.addAngle(restraint.index1[0], restraint.index2[0], restraint.index3[0],
-                                 [k, theta_0])
+        angle_restraint.addAngle(restraint.index1[0], restraint.index2[0], restraint.index3[0], [k, theta_0])
         system.addForce(angle_restraint)
 
     if restraint.mask1 is not None and \
@@ -623,17 +603,16 @@ def setup_openmm_restraints(system, restraint, phase, window):
         dihedral_restraint.addPerTorsionParameter('k')
         dihedral_restraint.addPerTorsionParameter('theta_0')
 
-        log.debug('Setting a torsion restraint in degrees using a '
-                  'force constant in kcal per mol rad**2...')
+        log.debug('Setting a torsion restraint in degrees using a ' 'force constant in kcal per mol rad**2...')
         theta_0 = restraint.phase[phase]['targets'][window] * unit.degrees
         k = restraint.phase[phase]['force_constants'][window] * \
             unit.kilocalorie_per_mole / unit.radian ** 2
-        dihedral_restraint.addTorsion(restraint.index1[0], restraint.index2[0],
-                                      restraint.index3[0], restraint.index4[0],
-                                      [k, theta_0])
+        dihedral_restraint.addTorsion(restraint.index1[0], restraint.index2[0], restraint.index3[0],
+                                      restraint.index4[0], [k, theta_0])
         system.addForce(dihedral_restraint)
 
     return system
+
 
 def clean_restraints_file(restraints, filename='restraints.in'):
     """
