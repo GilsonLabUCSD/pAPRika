@@ -55,7 +55,7 @@ class DAT_restraint(KeepRefs):
         self.index2 = None
         self.index3 = None
         self.index4 = None
-        self.auto_apr = True  # If True, sets some pull and release values automatically.
+        self.auto_apr = False  # If True, sets some pull and release values automatically.
         # If True, the first window of pull is re-used as last window of attach and the last window of pull is re-used as first window of release.
         self.continuous_apr = True
 
@@ -391,7 +391,9 @@ def check_restraints(restraint_list, create_window_list=False):
         for restraint in restraint_list:
             if restraint.phase[phase]['targets'] is not None:
                 win_counts.append(len(restraint.phase[phase]['targets']))
-        max_count = max(win_counts)
+            else:
+                win_counts.append(None)
+        max_count = np.max(win_counts)
         if all(count is None or count == max_count for count in win_counts):
             if all_continuous_apr and phase in ('attach', 'release'):
                 max_count -= 1
