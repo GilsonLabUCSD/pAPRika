@@ -76,7 +76,7 @@ class TestOpenMM(unittest.TestCase):
         result = my_simulation.run_md(simulation, seed=42, save=False)
         state = result.context.getState(getEnergy=True)
         energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
-        self.assertAlmostEqual(energy, -750.0, places=1)
+        self.assertAlmostEqual(energy, -723.6, places=1)
 
 
 if __name__ == '__main__':
