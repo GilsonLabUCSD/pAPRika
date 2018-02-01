@@ -395,11 +395,12 @@ def check_restraints(restraint_list, create_window_list=False):
                 win_counts.append(None)
         max_count = np.max(win_counts)
         if all(count is None or count == max_count for count in win_counts):
-            if all_continuous_apr and phase in ('attach', 'release'):
-                max_count -= 1
-            if max_count > 999:
-                log.info('Window name zero padding only applied for windows 0 - 999')
-            window_list += [phase[0] + str('{:03.0f}'.format(val)) for val in np.arange(0,max_count,1)]
+            if max_count is not None:
+                if all_continuous_apr and phase in ('attach', 'release'):
+                    max_count -= 1
+                if max_count > 999:
+                    log.info('Window name zero padding only applied for windows 0 - 999')
+                window_list += [phase[0] + str('{:03.0f}'.format(val)) for val in np.arange(0,max_count,1)]
         else:
             log.error('Restraints have unequal number of windows during the {} phase.'.format(phase))
             log.debug('Window counts for each restraint are as follows:')
