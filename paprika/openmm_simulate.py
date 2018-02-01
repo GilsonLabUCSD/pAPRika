@@ -65,7 +65,7 @@ class OpenMM_GB_simulation():
         self.md['output'] = self.path + self.md['prefix'] + '.nc'
         self.md['data'] = self.path + self.md['prefix'] + '.csv'
 
-    def setup_system(self, settings):
+    def setup_system(self, settings, seed=None):
         """
         Provide a way to create an OpenMM system object with minimization or MD settings.
 
@@ -85,6 +85,12 @@ class OpenMM_GB_simulation():
         prmtop = pmd.load_file(self.topology, settings['coordinates'])
         integrator = mm.LangevinIntegrator(settings['temperature'], settings['friction'], settings['timestep'])
 
+        if seed is not None:
+            integrator.setRandomNumberSeed(seed)
+        try:
+            log.debug('Integrator random number seed: {}'.format(integrator.getRandomNumberSeed()))
+        except AttributeError:
+            pass
         platform, prop = self.setup_platform(settings)
         system = prmtop.createSystem(
             nonbondedMethod=settings['nonbonded_method'],
@@ -114,8 +120,10 @@ class OpenMM_GB_simulation():
 
         """
         platform = mm.Platform.getPlatformByName(settings['platform'])
+        log.debug('Platform: {}'.format(settings['platform']))
         if settings['platform'] == 'CUDA':
             properties = dict(CudaPrecision=settings['precision'], CudaDeviceIndex=settings['devices'])
+            log.debug(properties)
         else:
             properties = None
 
@@ -195,7 +203,7 @@ class OpenMM_GB_simulation():
 
     def minimize(self, simulation, save=True):
         """
-        Run MD with OpenMM.
+        Minimize with OpenMM.
         """
 
         log.info('Running OpenMM minimization...')
@@ -209,31 +217,21 @@ class OpenMM_GB_simulation():
         if save:
             self.md['minimized_coordinates'] = simulation.context.getState(getPositions=True).getPositions()
             app.PDBFile.writeFile(simulation.topology, self.md['minimized_coordinates'], open(self.min['output'], 'w'))
-        return simulation, system
+        return simulation
 
-    def run_md(self, save=True):
+    def run_md(self, simulation, seed=None, save=True):
         """
         Run MD with OpenMM.
         """
-        prmtop = pmd.load_file(self.topology, self.md['coordinates'])
-        # I'm not sure why we need an integrator for minimization!
-        integrator = mm.LangevinIntegrator(self.md['temperature'], self.md['friction'], self.md['timestep'])
-        platform = mm.Platform.getPlatformByName(self.md['platform'])
-        if self.md['platform'] == 'CUDA':
-            prop = dict(CudaPrecision=self.min['precision'], CudaDeviceIndex=self.min['devices'])
-        else:
-            prop = None
-
-        # Add system here
-
-        simulation = app.Simulation(prmtop.topology, system, integrator, platform, prop)
-        system = self.add_openmm_restraints(system)
 
         if self.md['minimized_coordinates']:
             simulation.context.setPositions(self.md['minimized_coordinates'])
+        if seed is not None:
+            log.debug('Velocity random number seed: {}'.format(seed))
+            simulation.context.setVelocitiesToTemperature(self.md['temperature'] * unit.kelvin, seed)
+
         else:
-            simulation.context.setPositions(prmtop.positions)
-        simulation.context.setVelocitiesToTemperature(self.md['temperature'] * unit.kelvin)
+            simulation.context.setVelocitiesToTemperature(self.md['temperature'] * unit.kelvin)
 
         if save:
             reporter = NetCDFReporter(self.md['output'], self.md['reporter_frequency'])
@@ -253,4 +251,4 @@ class OpenMM_GB_simulation():
 
         if save:
             reporter.close()
-        return simulation, system
+        return simulation
