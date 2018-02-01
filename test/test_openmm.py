@@ -52,7 +52,7 @@ class TestOpenMM(unittest.TestCase):
         """ Test that we can impose restraints with OpenMM. """
         my_simulation = OpenMM_GB_simulation()
         my_simulation.topology = '../test/cb6-but/vac.topo'
-        my_simulation.md['platform'] = 'CPU'
+        my_simulation.md['platform'] = 'Reference'
         my_simulation.md['coordinates'] = '../test/cb6-but/vac.crds'
         my_simulation.md['steps'] = 1000
 
