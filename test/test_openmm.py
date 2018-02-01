@@ -33,20 +33,20 @@ class TestOpenMM(unittest.TestCase):
         energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
         self.assertAlmostEqual(energy, -827.9, places=1)
 
-    def test_soft_minimization(self):
-        """ Test that we can minimize CB6-BUT with OpenMM, turning on interactions slowly. """
+    # def test_soft_minimization(self):
+    #     """ Test that we can minimize CB6-BUT with OpenMM, turning on interactions slowly. """
 
-        my_simulation = OpenMM_GB_simulation()
-        my_simulation.topology = '../test/cb6-but/vac.topo'
-        my_simulation.min['platform'] = 'CPU'
-        my_simulation.min['coordinates'] = '../test/cb6-but/vac.crds'
+    #     my_simulation = OpenMM_GB_simulation()
+    #     my_simulation.topology = '../test/cb6-but/vac.topo'
+    #     my_simulation.min['platform'] = 'CPU'
+    #     my_simulation.min['coordinates'] = '../test/cb6-but/vac.crds'
 
-        simulation, system = my_simulation.setup_system(my_simulation.min)
+    #     simulation, system = my_simulation.setup_system(my_simulation.min)
 
-        result = my_simulation.turn_on_interactions_slowly(simulation, system)
-        state = result.context.getState(getEnergy=True)
-        energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
-        self.assertAlmostEqual(energy, -827.9, places=1)
+    #     result = my_simulation.turn_on_interactions_slowly(simulation, system)
+    #     state = result.context.getState(getEnergy=True)
+    #     energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
+    #     self.assertAlmostEqual(energy, -827.9, places=1)
 
     def test_openmm_single_restraint(self):
         """ Test that we can impose restraints with OpenMM. """
