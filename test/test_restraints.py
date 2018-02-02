@@ -13,7 +13,8 @@ import paprika
 from paprika.restraints import *
 
 def test_DAT_restraint():
-    #1
+    # Method 1
+    log.info('### Testing restraint 1, Method 1')
     rest1 = DAT_restraint()
     rest1.continuous_apr = False
     rest1.auto_apr = False
@@ -46,7 +47,8 @@ def test_DAT_restraint():
     window_list = create_window_list([rest1])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'p000', 'p001', 'p002', 'p003', 'r000', 'r001', 'r002', 'r003']
 
-    #1a    
+    # Method 1a    
+    log.info('### Testing restraint 2, Method 1a')
     rest2 = DAT_restraint()
     rest2.continuous_apr = False
     rest2.auto_apr = False
@@ -77,7 +79,8 @@ def test_DAT_restraint():
     window_list = create_window_list([rest2])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'p000', 'p001', 'p002', 'p003', 'r000', 'r001', 'r002', 'r003']
     
-    #2 (Note auto_apr = True)
+    # Method 2 (Note auto_apr = True)
+    log.info('### Testing restraint 3, Method 2')
     rest3 = DAT_restraint()
     rest3.continuous_apr = False
     rest3.auto_apr = True
@@ -106,7 +109,8 @@ def test_DAT_restraint():
     window_list = create_window_list([rest3])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'p000', 'p001', 'p002', 'p003', 'r000', 'r001', 'r002', 'r003']
 
-    #2a
+    # Method 2a
+    log.info('### Testing restraint 4, Method 2a')
     rest4 = DAT_restraint()
     rest4.continuous_apr = False
     rest4.auto_apr = False
@@ -138,7 +142,8 @@ def test_DAT_restraint():
     window_list = create_window_list([rest4])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'p000', 'p001', 'p002', 'p003', 'r000', 'r001', 'r002', 'r003']
 
-    #3
+    #Method 3
+    log.info('### Testing restraint 5, Method 3')
     rest5 = DAT_restraint()
     rest5.continuous_apr = False
     rest5.auto_apr = False
@@ -168,7 +173,8 @@ def test_DAT_restraint():
     window_list = create_window_list([rest5])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'p000', 'p001', 'p002', 'r000', 'r001', 'r002', 'r003']
 
-    #4
+    # Method 4
+    log.info('### Testing restraint 6, Method 4')
     rest6 = DAT_restraint()
     rest6.continuous_apr = False
     rest6.auto_apr = False
@@ -199,7 +205,8 @@ def test_DAT_restraint():
     window_list = create_window_list([rest6])
     assert window_list == ['a000', 'a001', 'a002', 'a003', 'a004', 'p000', 'p001', 'p002', 'r000', 'r001', 'r002', 'r003', 'r004']
 
-    #5 (Note continuous_apr = True)
+    # Method 5 (Note continuous_apr = True)
+    log.info('### Testing restraint 7, Method 5')
     rest7 = DAT_restraint()
     rest7.continuous_apr = True
     rest7.auto_apr = False
@@ -227,6 +234,7 @@ def test_DAT_restraint():
     assert window_list == ['a000', 'a001', 'a002', 'p000', 'p001', 'p002', 'p003', 'r000', 'r001', 'r002']
 
     # Just Attach
+    log.info('### Testing restraint 8, just attach')
     rest8 = DAT_restraint()
     rest8.continuous_apr = False
     rest8.auto_apr = False
@@ -252,6 +260,7 @@ def test_DAT_restraint():
     assert window_list == ['a000', 'a001', 'a002', 'a003']
 
     # Just Pull
+    log.info('### Testing restraint 9, just pull')
     rest9 = DAT_restraint()
     rest9.continuous_apr = False
     rest9.auto_apr = False
@@ -277,6 +286,7 @@ def test_DAT_restraint():
     assert window_list == ['p000', 'p001', 'p002', 'p003']
 
     # Just Release
+    log.info('### Testing restraint 10, just release')
     rest10 = DAT_restraint()
     rest10.continuous_apr = False
     rest10.auto_apr = False
@@ -284,9 +294,9 @@ def test_DAT_restraint():
     rest10.mask1 = ':CB6@O'
     rest10.mask2 = ':BUT@C3'
     rest10.release['target'] = 0.0
-    rest10.release['num_windows'] = 4
+    rest10.release['num_windows'] = 3
     rest10.release['fc_initial'] = 0.0
-    rest10.release['fc_final'] = 3.0
+    rest10.release['fc_final'] = 2.0
     rest10.initialize()
     assert rest10.index1 == [13]
     assert rest10.index2 == [119]
@@ -296,12 +306,18 @@ def test_DAT_restraint():
     assert rest10.phase['attach']['targets'] == None
     assert rest10.phase['pull']['force_constants'] == None
     assert rest10.phase['pull']['targets'] == None
-    assert np.allclose(rest10.phase['release']['force_constants'], np.array( [0.0, 1.0, 2.0, 3.0] ))
-    assert np.allclose(rest10.phase['release']['targets'], np.array( [0.0, 0.0, 0.0, 0.0] ))
+    assert np.allclose(rest10.phase['release']['force_constants'], np.array( [0.0, 1.0, 2.0,] ))
+    assert np.allclose(rest10.phase['release']['targets'], np.array( [0.0, 0.0, 0.0,] ))
     window_list = create_window_list([rest10])
-    assert window_list == ['r000', 'r001', 'r002', 'r003']
+    assert window_list == ['r000', 'r001', 'r002']
 
-    
+    # Test inconsistent continuous_apr:
+    with pytest.raises(Exception) as e_info:
+        window_list = create_window_list([rest7,rest8])
+
+    # Test inconsistent windows:
+    with pytest.raises(Exception) as e_info:
+        window_list = create_window_list([rest1,rest10])
 
 #test_DAT_restraint()
 
