@@ -47,6 +47,7 @@ class OpenMM_GB_simulation():
         self.md = dict(
             coordinates=self.coordinates,
             minimized_coordinates=None,
+            integrator=None,
             prefix='md',
             forcefield=None,
             platform='CUDA',
@@ -82,25 +83,37 @@ class OpenMM_GB_simulation():
             The system object.
         """
 
-        prmtop = pmd.load_file(self.topology, settings['coordinates'])
-        integrator = mm.LangevinIntegrator(settings['temperature'], settings['friction'], settings['timestep'])
+        prmtop = app.AmberPrmtopFile(self.topology)
+        inpcrd = app.AmberInpcrdFile(settings['coordinates'])
+        self.integrator = mm.LangevinIntegrator(settings['temperature'],
+                                                settings['friction'],
+                                                settings['timestep'])
 
         if seed is not None:
-            integrator.setRandomNumberSeed(seed)
+            self.integrator.setRandomNumberSeed(seed)
         try:
-            log.debug('Integrator random number seed: {}'.format(integrator.getRandomNumberSeed()))
+            log.debug('Integrator random number seed: {}'.format(
+                self.integrator.getRandomNumberSeed()))
         except AttributeError:
             pass
-        platform, prop = self.setup_platform(settings)
         system = prmtop.createSystem(
             nonbondedMethod=settings['nonbonded_method'],
             implicitSolvent=settings['solvent'],
             implicitSolventSaltConc=settings['salt'],
             constraints=settings['constraints'])
 
-        simulation = app.Simulation(prmtop.topology, system, integrator, platform, prop)
-        simulation.context.setPositions(prmtop.positions)
-        return simulation, system
+        # simulation = app.Simulation(prmtop.topology, system, integrator,
+        #                             platform, prop)
+        # simulation.context.setPositions(inpcrd.positions)
+        return system
+
+    def setup_simulation(self, system, settings):
+        inpcrd = app.AmberInpcrdFile(settings['coordinates'])
+        platform, prop = self.setup_platform(settings)
+        simulation = app.Simulation(self.topology, system, self.integrator,
+                                    platform, prop)
+        simulation.context.setPositions(inpcrd.positions)
+        return simulation
 
     def setup_platform(self, settings):
         """
@@ -122,7 +135,9 @@ class OpenMM_GB_simulation():
         platform = mm.Platform.getPlatformByName(settings['platform'])
         log.debug('Platform: {}'.format(settings['platform']))
         if settings['platform'] == 'CUDA':
-            properties = dict(CudaPrecision=settings['precision'], CudaDeviceIndex=settings['devices'])
+            properties = dict(
+                CudaPrecision=settings['precision'],
+                CudaDeviceIndex=settings['devices'])
             log.debug(properties)
         else:
             properties = None
@@ -147,7 +162,8 @@ class OpenMM_GB_simulation():
         """
         # Phase 1: minimize with nonbonded interactions disabled.
         # This is the first 40% of the maximum iterations.
-        log.debug('Minimization phase 1 for {} steps.'.format(int(0.4 * self.min['max_iterations'])))
+        log.debug('Minimization phase 1 for {} steps.'.format(
+            int(0.4 * self.min['max_iterations'])))
         simulation.minimizeEnergy(
             maxIterations=int(0.4 * self.min['max_iterations']),
             tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
@@ -155,17 +171,27 @@ class OpenMM_GB_simulation():
         # This is the next 40% of the maximum iterations.
         # This increases the nonbonded interactions linearly, which is not
         # the same as using `IINC` in AMBER.
-        log.debug('Minimization phase 2 for {} steps.'.format(int(0.4 * self.min['max_iterations'])))
-        forces = {force.__class__.__name__: force for force in system.getForces()}
+        log.debug('Minimization phase 2 for {} steps.'.format(
+            int(0.4 * self.min['max_iterations'])))
+        forces = {
+            force.__class__.__name__: force
+            for force in system.getForces()
+        }
         nb_force = forces['NonbondedForce']
-        for scale in np.linspace(0, 1.0, int(0.4 * self.min['max_iterations'])):
+        for scale in np.linspace(0, 1.0,
+                                 int(0.4 * self.min['max_iterations'])):
             for particle in range(nb_force.getNumParticles()):
-                [charge, sigma, epsilon] = nb_force.getParticleParameters(particle)
-                nb_force.setParticleParameters(particle, charge * scale, sigma, epsilon * scale)
-            simulation.minimizeEnergy(maxIterations=1, tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
+                [charge, sigma,
+                 epsilon] = nb_force.getParticleParameters(particle)
+                nb_force.setParticleParameters(particle, charge * scale, sigma,
+                                               epsilon * scale)
+            simulation.minimizeEnergy(
+                maxIterations=1,
+                tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
         # Phase 3: minimize with nonbonded interactions at full strength.
         # This is the last 20% of the maximum iterations.
-        log.debug('Minimization phase 3 for {} steps.'.format(int(0.2 * self.min['max_iterations'])))
+        log.debug('Minimization phase 3 for {} steps.'.format(
+            int(0.2 * self.min['max_iterations'])))
         simulation.minimizeEnergy(
             maxIterations=int(0.2 * self.min['max_iterations']),
             tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
@@ -195,9 +221,10 @@ class OpenMM_GB_simulation():
             The same system object, with restraints applied.
 
         """
-
         for i, restraint in enumerate(restraints):
+            # log.debug(system.getForces())
             system = setup_openmm_restraints(system, restraint, phase, window)
+            # log.debug(system.getForces())
 
         return system
 
@@ -212,11 +239,15 @@ class OpenMM_GB_simulation():
             simulation = self.turn_on_interactions_slowly(system, simulation)
         else:
             simulation.minimizeEnergy(
-                maxIterations=self.min['max_iterations'], tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
+                maxIterations=self.min['max_iterations'],
+                tolerance=self.min['tolerance'] * unit.kilojoule / unit.mole)
 
         if save:
-            self.md['minimized_coordinates'] = simulation.context.getState(getPositions=True).getPositions()
-            app.PDBFile.writeFile(simulation.topology, self.md['minimized_coordinates'], open(self.min['output'], 'w'))
+            self.md['minimized_coordinates'] = simulation.context.getState(
+                getPositions=True).getPositions()
+            app.PDBFile.writeFile(simulation.topology,
+                                  self.md['minimized_coordinates'],
+                                  open(self.min['output'], 'w'))
         return simulation
 
     def run_md(self, simulation, seed=None, save=True):
@@ -228,13 +259,16 @@ class OpenMM_GB_simulation():
             simulation.context.setPositions(self.md['minimized_coordinates'])
         if seed is not None:
             log.debug('Velocity random number seed: {}'.format(seed))
-            simulation.context.setVelocitiesToTemperature(self.md['temperature'] * unit.kelvin, seed)
+            simulation.context.setVelocitiesToTemperature(
+                self.md['temperature'] * unit.kelvin, seed)
 
         else:
-            simulation.context.setVelocitiesToTemperature(self.md['temperature'] * unit.kelvin)
+            simulation.context.setVelocitiesToTemperature(
+                self.md['temperature'] * unit.kelvin)
 
         if save:
-            reporter = NetCDFReporter(self.md['output'], self.md['reporter_frequency'])
+            reporter = NetCDFReporter(self.md['output'],
+                                      self.md['reporter_frequency'])
             simulation.reporters.append(reporter)
             simulation.reporters.append(
                 app.StateDataReporter(
