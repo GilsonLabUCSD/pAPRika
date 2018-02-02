@@ -26,12 +26,13 @@ class TestOpenMM(unittest.TestCase):
         my_simulation.min['platform'] = 'CPU'
         my_simulation.min['coordinates'] = '../test/cb6-but/vac.crds'
 
-        simulation, _ = my_simulation.setup_system(my_simulation.min)
+        system = my_simulation.setup_system(my_simulation.min, seed=42)
+        simulation = my_simulation.setup_simulation(system, my_simulation.min)
 
         result = my_simulation.minimize(simulation, save=False)
         state = result.context.getState(getEnergy=True)
         energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
-        self.assertAlmostEqual(energy, -827.9, places=1)
+        self.assertAlmostEqual(energy, -821.3, places=1)
 
     def test_soft_minimization(self):
         """ Test that we can minimize CB6-BUT with OpenMM, turning on interactions slowly. """
@@ -42,12 +43,13 @@ class TestOpenMM(unittest.TestCase):
         my_simulation.min['coordinates'] = '../test/cb6-but/vac.crds'
         my_simulation.min['max_iterations'] = 100
 
-        simulation, system = my_simulation.setup_system(my_simulation.min)
+        system = my_simulation.setup_system(my_simulation.min)
+        simulation = my_simulation.setup_simulation(system, my_simulation.min)
 
         result = my_simulation.turn_on_interactions_slowly(simulation, system)
         state = result.context.getState(getEnergy=True)
         energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
-        self.assertAlmostEqual(energy, -827.9, places=1)
+        self.assertAlmostEqual(energy, -821.3, places=1)
 
     def test_openmm_single_restraint(self):
         """ Test that we can impose restraints with OpenMM. """
@@ -57,8 +59,7 @@ class TestOpenMM(unittest.TestCase):
         my_simulation.md['coordinates'] = '../test/cb6-but/vac.crds'
         my_simulation.md['steps'] = 1000
 
-        simulation, system = my_simulation.setup_system(
-            my_simulation.md, seed=42)
+        system = my_simulation.setup_system(my_simulation.md, seed=42)
 
         restraint = DAT_restraint()
         restraint.structure_file = my_simulation.topology
@@ -74,10 +75,12 @@ class TestOpenMM(unittest.TestCase):
         my_simulation.add_openmm_restraints(
             system, [restraint], phase='attach', window=3)
 
+        simulation = my_simulation.setup_simulation(system, my_simulation.md)
+
         result = my_simulation.run_md(simulation, seed=42, save=False)
         state = result.context.getState(getEnergy=True)
         energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
-        self.assertAlmostEqual(energy, -723.6, places=1)
+        self.assertAlmostEqual(energy, -705.9, places=1)
 
 
 if __name__ == '__main__':
