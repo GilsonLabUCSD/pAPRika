@@ -80,7 +80,7 @@ class TestOpenMM(unittest.TestCase):
         result = my_simulation.run_md(simulation, seed=42, save=False)
         state = result.context.getState(getEnergy=True)
         energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
-        self.assertAlmostEqual(energy, -705.9, places=1)
+        self.assertAlmostEqual(energy, -707.6, places=1)
 
     def test_openmm_two_restraints(self):
         """ Test that we can impose restraints with OpenMM. """
@@ -88,7 +88,7 @@ class TestOpenMM(unittest.TestCase):
         my_simulation.topology = '../test/cb6-but/vac.topo'
         my_simulation.md['platform'] = 'Reference'
         my_simulation.md['coordinates'] = '../test/cb6-but/vac.crds'
-        my_simulation.md['steps'] = 10000
+        my_simulation.md['steps'] = 1000
 
         system = my_simulation.setup_system(my_simulation.md, seed=42)
 
@@ -136,7 +136,7 @@ class TestOpenMM(unittest.TestCase):
         log.debug(restraint_energy)
         log.debug(non_restraint_energy)
 
-        self.assertAlmostEqual(energy, -704.3, places=1)
+        self.assertAlmostEqual(energy, -709.6, places=1)
 
 
 if __name__ == '__main__':
