@@ -16,35 +16,12 @@ except:
     pass
 
 
-#class KeepRefs(object):
-#    # https://stackoverflow.com/questions/328851/printing-all-instances-of-a-class
-#    __refs__ = defaultdict(list)
-#
-#    def __init__(self):
-#        self.__refs__[self.__class__].append(weakref.ref(self))
-#
-#    @classmethod
-#    def get_instances(cls):
-#        for inst_ref in cls.__refs__[cls]:
-#            inst = inst_ref()
-#            if inst is not None:
-#                yield inst
-
-
 class DAT_restraint(object):
     """
     Distance or angle or torsion restraints on atoms in the simulation.
     """
-    # Global lists to keep track of restraints and window counts.
-    # This is helpful because I can do `max(DAT_restraint.window_counts['attach'])`
-    # to get the expected number of attach windows. Some individual restraints may
-    # not have attach windows, but this ensures I can check all of them.
-    restraint_list = []
-    #window_counts = {'attach': [], 'pull': [], 'release': []}
 
     def __init__(self):
-        # https://stackoverflow.com/questions/3484019/python-list-to-store-class-instance
-        #DAT_restraint.restraint_list.append(self)
 
         self.structure_file = None
         self.mask1 = None
@@ -92,7 +69,6 @@ class DAT_restraint(object):
             'fc_list': None  # The list of force constants (will be created if not
             # given)
         }
-        #super(DAT_restraint, self).__init__()
 
     def _calc_meth(self,phase,rdict,meth):
         """ Return the appropriate list of force_constants and targets depending on the method """
