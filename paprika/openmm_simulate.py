@@ -109,8 +109,9 @@ class OpenMM_GB_simulation():
 
     def setup_simulation(self, system, settings):
         inpcrd = app.AmberInpcrdFile(settings['coordinates'])
+        prmtop = app.AmberPrmtopFile(self.topology)
         platform, prop = self.setup_platform(settings)
-        simulation = app.Simulation(self.topology, system, self.integrator,
+        simulation = app.Simulation(prmtop.topology, system, self.integrator,
                                     platform, prop)
         simulation.context.setPositions(inpcrd.positions)
         return simulation
@@ -267,8 +268,8 @@ class OpenMM_GB_simulation():
                 self.md['temperature'] * unit.kelvin)
 
         if save:
-            reporter = NetCDFReporter(self.md['output'],
-                                      self.md['reporter_frequency'])
+            reporter = NetCDFReporter(
+                self.md['output'], self.md['reporter_frequency'], cell=False)
             simulation.reporters.append(reporter)
             simulation.reporters.append(
                 app.StateDataReporter(

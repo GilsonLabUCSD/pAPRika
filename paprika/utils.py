@@ -17,12 +17,14 @@ except ImportError:
     HAS_OPENMM = False
 
 
-def index_from_mask(structure_file, mask, index_offset=0):
+def index_from_mask(structure_file, mask, amber):
     """
     Return the atom indicies for a given mask.
-    The index_offset keyword sets the index offset, commonly 0 or 1.
     """
-
+    if amber:
+        index_offset = 1
+    else:
+        index_offset = 0
     structure = align.return_structure(structure_file)
     # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
     indices = [i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()]
@@ -64,7 +66,7 @@ def amber_to_pdb(topology, coordinates):
 
 def decompose_openmm_energy(structure, context):
     """Return individual energy components.
-    
+
     Parameters:
     ----------
     structure : {}

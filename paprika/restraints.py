@@ -23,7 +23,7 @@ class DAT_restraint(object):
 
     def __init__(self):
 
-        self.structure_file = None
+        self.topology = None
         self.mask1 = None
         self.mask2 = None
         self.mask3 = None
@@ -32,9 +32,12 @@ class DAT_restraint(object):
         self.index2 = None
         self.index3 = None
         self.index4 = None
+
         self.auto_apr = False  # If True, sets some pull and release values automatically.
         # If True, the first window of pull is re-used as last window of attach and the last window of pull is re-used as first window of release.
         self.continuous_apr = True
+        self.amber = False
+
 
         self.attach = {
             'target': None,  # The target value for the restraint (mandatory)
@@ -432,16 +435,18 @@ class DAT_restraint(object):
 
         # ---------------------------------- ATOM MASKS ---------------------------------- #
         log.debug('Assigning atom indices...')
-        self.index1 = utils.index_from_mask(self.structure_file, self.mask1)
-        self.index2 = utils.index_from_mask(self.structure_file, self.mask2)
+        self.index1 = utils.index_from_mask(self.topology, self.mask1, self.amber)
+        self.index2 = utils.index_from_mask(self.topology, self.mask2, self.amber)
         if self.mask3:
-            self.index3 = utils.index_from_mask(self.structure_file,
-                                                self.mask3)
+            self.index3 = utils.index_from_mask(self.topology,
+                                                self.mask3,
+                                                self.amber)
         else:
             self.index3 = None
         if self.mask4:
-            self.index4 = utils.index_from_mask(self.structure_file,
-                                                self.mask4)
+            self.index4 = utils.index_from_mask(self.topology,
+                                                self.mask4,
+                                                self.amber)
         else:
             self.index4 = None
         # If any `index` has more than one atom, mark it as a group restraint.
