@@ -107,3 +107,6 @@ local/
 # antechamber-generated files
 *ANTECHAMBER*
 *ATOMTYPE*
+
+# VIM swap
+*.swp
