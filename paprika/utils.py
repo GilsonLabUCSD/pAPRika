@@ -17,7 +17,7 @@ except ImportError:
     HAS_OPENMM = False
 
 
-def index_from_mask(structure_file, mask, index_offset=1):
+def index_from_mask(structure_file, mask, index_offset=0):
     """
     Return the atom indicies for a given mask.
     The index_offset keyword sets the index offset, commonly 0 or 1.
