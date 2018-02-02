@@ -38,7 +38,6 @@ class DAT_restraint(object):
         self.continuous_apr = True
         self.amber = False
 
-
         self.attach = {
             'target': None,  # The target value for the restraint (mandatory)
             'fc_initial': None,  # The initial force constant (optional)
@@ -281,7 +280,9 @@ class DAT_restraint(object):
             )
             for k, v in self.attach.items():
                 log.debug('{} = {}'.format(k, v))
-            sys.exit(1)
+            raise Exception(
+                'Attach restraint input did not match one of the supported methods...'
+            )
 
         if force_constants is not None and targets is not None:
             self.phase['attach']['force_constants'] = force_constants
@@ -343,7 +344,9 @@ class DAT_restraint(object):
             )
             for k, v in self.pull.items():
                 log.debug('{} = {}'.format(k, v))
-            sys.exit(1)
+            raise Exception(
+                'Pull restraint input did not match one of the supported methods...'
+            )
 
         if force_constants is not None and targets is not None:
             self.phase['pull']['force_constants'] = force_constants
@@ -413,7 +416,9 @@ class DAT_restraint(object):
             )
             for k, v in self.release.items():
                 log.debug('{} = {}'.format(k, v))
-            sys.exit(1)
+            raise Exception(
+                'Release restraint input did not match one of the supported methods...'
+            )
 
         if force_constants is not None and targets is not None:
             self.phase['release']['force_constants'] = force_constants
@@ -435,17 +440,17 @@ class DAT_restraint(object):
 
         # ---------------------------------- ATOM MASKS ---------------------------------- #
         log.debug('Assigning atom indices...')
-        self.index1 = utils.index_from_mask(self.topology, self.mask1, self.amber)
-        self.index2 = utils.index_from_mask(self.topology, self.mask2, self.amber)
+        self.index1 = utils.index_from_mask(self.topology, self.mask1,
+                                            self.amber)
+        self.index2 = utils.index_from_mask(self.topology, self.mask2,
+                                            self.amber)
         if self.mask3:
-            self.index3 = utils.index_from_mask(self.topology,
-                                                self.mask3,
+            self.index3 = utils.index_from_mask(self.topology, self.mask3,
                                                 self.amber)
         else:
             self.index3 = None
         if self.mask4:
-            self.index4 = utils.index_from_mask(self.topology,
-                                                self.mask4,
+            self.index4 = utils.index_from_mask(self.topology, self.mask4,
                                                 self.amber)
         else:
             self.index4 = None
@@ -648,12 +653,12 @@ def setup_openmm_restraints(system, restraint, phase, window):
             bond_restraint.addPerBondParameter('k')
             bond_restraint.addPerBondParameter('r_0')
 
-            r_0 = restraint.phase[phase]['targets'][window] * \
-                  0.1 * unit.nanometers
-            k = restraint.phase[phase]['force_constants'][window] / \
-                0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers ** 2
+            r_0 = restraint.phase[phase]['targets'][window] * unit.angstrom
+            k = restraint.phase[phase]['force_constants'][
+                window] * unit.kilocalorie_per_mole / unit.angstrom**2
             bond_restraint.addBond(restraint.index1[0], restraint.index2[0],
                                    [k, r_0])
+            bond_restraint.setForceGroup(1)
             system.addForce(bond_restraint)
             log.debug(
                 'Added bond restraint between {} and {} with target value = '
@@ -667,13 +672,13 @@ def setup_openmm_restraints(system, restraint, phase, window):
             bond_restraint.addPerBondParameter('k')
             bond_restraint.addPerBondParameter('r_0')
 
-            r_0 = restraint.phase[phase]['targets'][window] * \
-                  0.1 * unit.nanometers
-            k = restraint.phase[phase]['force_constants'][window] / \
-                0.239 / 0.01 * unit.kilojoules_per_mole / unit.nanometers ** 2
+            r_0 = restraint.phase[phase]['targets'][window] * unit.angstrom
+            k = restraint.phase[phase]['force_constants'][
+                window] * unit.kilocalorie_per_mole / unit.angstrom**2
             g1 = bond_restraint.addGroup(restraint.index1)
             g2 = bond_restraint.addGroup(restraint.index2)
             bond_restraint.addBond([g1, g2], [k, r_0])
+            bond_restraint.setForceGroup(1)
             system.addForce(bond_restraint)
             log.debug(
                 'Added bond restraint between {} and {} with target value = '
@@ -683,7 +688,7 @@ def setup_openmm_restraints(system, restraint, phase, window):
         log.error('Unable to add bond restraint...')
         log.debug('restraint.index1 = {}'.format(restraint.index1))
         log.debug('restraint.index2 = {}'.format(restraint.index2))
-        sys.exit(1)
+        raise Exception('Unable to add bond restraint...')
 
     if restraint.mask1 is not None and \
        restraint.mask2 is not None and \
@@ -696,7 +701,7 @@ def setup_openmm_restraints(system, restraint, phase, window):
             log.debug('restraint.index1 = {}'.format(restraint.index1))
             log.debug('restraint.index2 = {}'.format(restraint.index2))
             log.debug('restraint.index3 = {}'.format(restraint.index3))
-            sys.exit(1)
+            raise Exception('Unable to add a group angle restraint...')
 
         angle_restraint = mm.CustomAngleForce('k * (theta - theta_0)^2')
         angle_restraint.addPerAngleParameter('k')
@@ -724,7 +729,7 @@ def setup_openmm_restraints(system, restraint, phase, window):
             log.debug('restraint.index2 = {}'.format(restraint.index2))
             log.debug('restraint.index3 = {}'.format(restraint.index3))
             log.debug('restraint.index4 = {}'.format(restraint.index4))
-            sys.exit(1)
+            raise Exception('Unable to add a group dihedral restraint...')
 
         dihedral_restraint = mm.CustomTorsionForce('k * (theta - theta_0)^2')
         dihedral_restraint.addPerTorsionParameter('k')
