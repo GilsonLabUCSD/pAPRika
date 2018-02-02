@@ -15,8 +15,7 @@ from paprika.restraints import *
 from paprika.utils import HAS_OPENMM
 
 
-@unittest.skipUnless(HAS_OPENMM,
-                     'Cannot run OpenMM tests without OpenMM installed.')
+@unittest.skipUnless(HAS_OPENMM, 'Cannot run OpenMM tests without OpenMM installed.')
 class TestOpenMM(unittest.TestCase):
     def test_minimization_finishes(self):
         """ Test that we can minimize CB6-BUT with OpenMM. """
@@ -62,7 +61,7 @@ class TestOpenMM(unittest.TestCase):
         system = my_simulation.setup_system(my_simulation.md, seed=42)
 
         restraint = DAT_restraint()
-        restraint.structure_file = my_simulation.topology
+        restraint.topology = my_simulation.topology
         restraint.mask1 = ':BUT'
         restraint.mask2 = ':CB6'
         restraint.attach['target'] = 3.0
@@ -72,8 +71,7 @@ class TestOpenMM(unittest.TestCase):
         restraint.auto_apr = False
         restraint.initialize()
 
-        my_simulation.add_openmm_restraints(
-            system, [restraint], phase='attach', window=3)
+        my_simulation.add_openmm_restraints(system, [restraint], phase='attach', window=3)
 
         simulation = my_simulation.setup_simulation(system, my_simulation.md)
 

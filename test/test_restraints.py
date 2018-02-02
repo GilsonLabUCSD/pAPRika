@@ -17,9 +17,10 @@ def test_DAT_restraint():
     # Method 1
     log.info('### Testing restraint 1, Method 1')
     rest1 = DAT_restraint()
+    rest1.amber = True
     rest1.continuous_apr = False
     rest1.auto_apr = False
-    rest1.structure_file = './cb6-but/cb6-but-notcentered.pdb'
+    rest1.topology = './cb6-but/cb6-but-notcentered.pdb'
     rest1.mask1 = ':CB6@O,O2,O4,O6,O8,O10'
     rest1.mask2 = ':BUT@C3'
     rest1.attach['target'] = 3.0
@@ -53,9 +54,10 @@ def test_DAT_restraint():
     # Method 1a
     log.info('### Testing restraint 2, Method 1a')
     rest2 = DAT_restraint()
+    rest2.amber = True
     rest2.continuous_apr = False
     rest2.auto_apr = False
-    rest2.structure_file = './cb6-but/cb6-but-notcentered.pdb'
+    rest2.topology = './cb6-but/cb6-but-notcentered.pdb'
     rest2.mask1 = ':CB6@O,O2,O4,O6,O8,O10'
     rest2.mask2 = ':BUT@C3'
     rest2.mask3 = ':BUT@C'
@@ -87,9 +89,10 @@ def test_DAT_restraint():
     # Method 2 (Note auto_apr = True)
     log.info('### Testing restraint 3, Method 2')
     rest3 = DAT_restraint()
+    rest3.amber = True
     rest3.continuous_apr = False
     rest3.auto_apr = True
-    rest3.structure_file = './cb6-but/cb6-but-notcentered.pdb'
+    rest3.topology = './cb6-but/cb6-but-notcentered.pdb'
     rest3.mask1 = ':CB6@O2'
     rest3.mask2 = ':CB6@O'
     rest3.mask3 = ':BUT@C3'
@@ -119,9 +122,10 @@ def test_DAT_restraint():
     # Method 2a
     log.info('### Testing restraint 4, Method 2a')
     rest4 = DAT_restraint()
+    rest4.amber = True
     rest4.continuous_apr = False
     rest4.auto_apr = False
-    rest4.structure_file = './cb6-but/cb6-but-notcentered.pdb'
+    rest4.topology = './cb6-but/cb6-but-notcentered.pdb'
     rest4.mask1 = ':CB6@O2'
     rest4.mask2 = ':CB6@O'
     rest4.mask3 = ':BUT@C3'
@@ -154,9 +158,10 @@ def test_DAT_restraint():
     #Method 3
     log.info('### Testing restraint 5, Method 3')
     rest5 = DAT_restraint()
+    rest5.amber = True
     rest5.continuous_apr = False
     rest5.auto_apr = False
-    rest5.structure_file = './cb6-but/cb6-but-notcentered.pdb'
+    rest5.topology = './cb6-but/cb6-but-notcentered.pdb'
     rest5.mask1 = ':CB6@O,O2,O4,O6,O8,O10'
     rest5.mask2 = ':BUT@C*'
     rest5.attach['target'] = 0.0
@@ -185,9 +190,10 @@ def test_DAT_restraint():
     # Method 4
     log.info('### Testing restraint 6, Method 4')
     rest6 = DAT_restraint()
+    rest6.amber = True
     rest6.continuous_apr = False
     rest6.auto_apr = False
-    rest6.structure_file = './cb6-but/cb6-but-notcentered.pdb'
+    rest6.topology = './cb6-but/cb6-but-notcentered.pdb'
     rest6.mask1 = ':CB6@O,O2,O4,O6,O8,O10'
     rest6.mask2 = ':BUT@C*'
     rest6.attach['target'] = 0.0
@@ -219,9 +225,10 @@ def test_DAT_restraint():
     # Method 5 (Note continuous_apr = True)
     log.info('### Testing restraint 7, Method 5')
     rest7 = DAT_restraint()
+    rest7.amber = True
     rest7.continuous_apr = True
     rest7.auto_apr = False
-    rest7.structure_file = './cb6-but/cb6-but-notcentered.pdb'
+    rest7.topology = './cb6-but/cb6-but-notcentered.pdb'
     rest7.mask1 = ':1@O,O1,:BUT@H1'
     rest7.mask2 = ':CB6@N'
     rest7.attach['target'] = 0.0
@@ -247,9 +254,10 @@ def test_DAT_restraint():
     # Just Attach
     log.info('### Testing restraint 8, just attach')
     rest8 = DAT_restraint()
+    rest8.amber = True
     rest8.continuous_apr = False
     rest8.auto_apr = False
-    rest8.structure_file = './cb6-but/cb6-but-notcentered.pdb'
+    rest8.topology = './cb6-but/cb6-but-notcentered.pdb'
     rest8.mask1 = ':CB6@O'
     rest8.mask2 = ':BUT@C3'
     rest8.attach['target'] = 0.0
@@ -273,9 +281,10 @@ def test_DAT_restraint():
     # Just Pull
     log.info('### Testing restraint 9, just pull')
     rest9 = DAT_restraint()
+    rest9.amber = True
     rest9.continuous_apr = False
     rest9.auto_apr = False
-    rest9.structure_file = './cb6-but/cb6-but-notcentered.pdb'
+    rest9.topology = './cb6-but/cb6-but-notcentered.pdb'
     rest9.mask1 = ':CB6@O'
     rest9.mask2 = ':BUT@C3'
     rest9.pull['fc'] = 3.0
@@ -299,9 +308,10 @@ def test_DAT_restraint():
     # Just Release
     log.info('### Testing restraint 10, just release')
     rest10 = DAT_restraint()
+    rest10.amber = True
     rest10.continuous_apr = False
     rest10.auto_apr = False
-    rest10.structure_file = './cb6-but/cb6-but-notcentered.pdb'
+    rest10.topology = './cb6-but/cb6-but-notcentered.pdb'
     rest10.mask1 = ':CB6@O'
     rest10.mask2 = ':BUT@C3'
     rest10.release['target'] = 0.0
