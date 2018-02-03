@@ -64,19 +64,19 @@ def amber_to_pdb(topology, coordinates):
     sp.check_call(['cpptraj', '-i', pdb_input])
 
 
-def decompose_openmm_energy(structure, context):
+def decompose_openmm_energy(simulation, groups=[0, 1], names=['non-restraint', 'restraint']):
     """Return individual energy components.
-
-    Parameters:
-    ----------
-    structure : {}
-        ParmEd structure
-    context : {}
-        OpenMM context
-    Returns
-    -------
-    dict
-        Dictionary containing energy values.
     """
 
-    return pmd.openmm.energy_decomposition(structure, context)
+    energies = dict()
+    # Get the total potential energy
+    state = simulation.context.getState(getEnergy=True)
+    energy = state.getPotentialEnergy() / unit.kilocalorie_per_mole
+    energies.update({'total': energy})
+
+    for index, group in enumerate(groups):
+        state = simulation.context.getState(getEnergy=True, groups={group})
+        energy = state.getPotentialEnergy() / unit.kilocalorie_per_mole
+        energies.update({names[index]: energy})
+
+    return energies

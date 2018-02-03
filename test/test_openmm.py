@@ -123,20 +123,12 @@ class TestOpenMM(unittest.TestCase):
         state = result.context.getState(getEnergy=True)
         energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
 
-        restraint_state = result.context.getState(getEnergy=True, groups={1})
-        restraint_energy = restraint_state.getPotentialEnergy(
-        ) / unit.kilocalorie_per_mole
-
-        non_restraint_state = result.context.getState(
-            getEnergy=True, groups={0})
-        non_restraint_energy = non_restraint_state.getPotentialEnergy(
-        ) / unit.kilocalorie_per_mole
-
-        log.debug(energy)
-        log.debug(restraint_energy)
-        log.debug(non_restraint_energy)
+        energies = utils.decompose_openmm_energy(result)
 
         self.assertAlmostEqual(energy, -709.6, places=1)
+        self.assertAlmostEqual(energies['total'], -709.6, places=1)
+        self.assertAlmostEqual(energies['restraint'], 1.6, places=1)
+        self.assertAlmostEqual(energies['non-restraint'], -711.1, places=1)
 
 
 if __name__ == '__main__':
