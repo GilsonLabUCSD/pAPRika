@@ -455,22 +455,22 @@ class DAT_restraint(object):
         else:
             self.index4 = None
         # If any `index` has more than one atom, mark it as a group restraint.
-        if self.mask1 and len(self.index1) == 1:
-            self.group1 = False
-        else:
+        if self.mask1 and len(self.index1) > 1:
             self.group1 = True
-        if self.mask2 and len(self.index2) == 1:
-            self.group2 = False
         else:
+            self.group1 = False
+        if self.mask2 and len(self.index2) > 1:
             self.group2 = True
-        if self.mask3 and len(self.index3) == 1:
-            self.group3 = False
         else:
+            self.group2 = False
+        if self.mask3 and len(self.index3) > 1:
             self.group3 = True
-        if self.mask4 and len(self.index4) == 1:
-            self.group4 = False
         else:
+            self.group3 = False
+        if self.mask4 and len(self.index4) > 1:
             self.group4 = True
+        else:
+            self.group4 = False
 
 
 def check_restraints(restraint_list, create_window_list=False):
@@ -540,9 +540,9 @@ def create_window_list(restraint_list):
     return check_restraints(restraint_list, create_window_list=True)
 
 
-def amber_restraint_line(restraint, phase, window, group=False):
+def amber_restraint_line(restraint, phase, window):
     """
-    Write the restraints to a file for each window.
+    Return an AMBER restraint line a specific phase/window combination.
     For example:
     &rst iat= 3,109, r1= 0.0000, r2= 6.9665, r3= 6.9665, r4= 999.0000,
          rk2= 5.0000000, rk3= 5.0000000, &end
@@ -631,7 +631,7 @@ def amber_restraint_line(restraint, phase, window, group=False):
         if restraint.group4:
             string += ' igr4 = {}'.format(igr4)
 
-    string += '  &end'
+    string += "  &end\n"
     return string
 
 
