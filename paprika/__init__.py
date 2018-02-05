@@ -19,8 +19,11 @@ __all__ = [
 __version__ = '0.0.3'
 try:
     # Try to use git to find current commit.
-    git_describe = sp.check_output(["git", "describe",
-                                    "--always"]).decode("utf-8").strip()
+    p = sp.Popen(
+        ["git", "describe", "--always"], stdout=sp.PIPE, stderr=sp.PIPE)
+    output, error = p.communicate()
+    git_describe = output.decode("utf-8").strip()
     __version__ = re.sub('-g[0-9a-f]*$', '', git_describe)
-except:
+except sp.CalledProcessError as e:
+    print('Git error...')
     pass
