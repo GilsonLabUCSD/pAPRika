@@ -160,7 +160,7 @@ class AMBER_GB_simulation():
         log.info('Running GB Minimization at {}'.format(self.path))
         sp.call("{6} -O -p {0} -c {1} -ref {1} -i {2}\
                  -o {3} -r {4} -inf {5}"
-                .format(self.toplogy, self.min['coords'], self.min['input'],
+                .format(self.topology, self.min['coords'], self.min['input'],
                         self.min['output'], self.min['restart'], self.min['info'],
                         self.amber_executable), cwd=self.path, shell=True)
         log.debug('TODO: Does the above command need `shell=True` ...?')
