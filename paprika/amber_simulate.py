@@ -43,72 +43,91 @@ def _amber_write_input_file(filename, dictionary, title='Input.'):
         if dictionary['GROUP'] is not None:
             f.write("{:s}".format(dictionary['GROUP']))
 
+class MutableDict(dict):
+    """ If prefix gets updated, updated all associated files """
+
+    suffixes = {
+        'input':        '.in',
+        'inpcrd':       '.inpcrd',
+        'ref':          '.inpcrd',
+        'output':       '.out',
+        'restart':      '.rst',
+        'mdinfo':       '.mdinfo',
+        'mdcrd':        '.nc',
+    }
+
+    def __setitem__(self,key,value):
+        if key == 'prefix':
+            dict.__setitem__(self, 'prefix', value)
+            for filetype, suff in self.suffixes.items():
+                if dict.__contains__(self, filetype):
+                    dict.__setitem__(self, filetype, value+suff)
+        else:
+            dict.__setitem__(self,key,value)
 
 
-class AMBER_GB_simulation():
+class Simulation(object):
     """
+    AMBER simulation class.
     """
 
     def __init__(self):
 
-        # Setup simulation directory and files
-        self.path = './'
+        ### Setup simulation directory and files
+        self.path = '.' # Assume everything will be created/executed in this path
         self.amber_executable = 'pmemd'
-        self.phase = None
+        self.phase = None   
         self.window = None
+        self.topology = 'prmtop'
+        self.restraint_file = 'restraints.in'
 
-        self.topology = self.path + 'prmtop'
-        self.restraints = self.path + 'restraints.in'
 
-        self.min = {}
-        self.min['prefix'] = 'minimize'
-        self.min['input'] = self.path + self.min['prefix'] + '.in'
-        self.min['output'] = self.path + self.min['prefix'] + '.out'
-        self.min['restart'] = self.path + self.min['prefix'] + '.rst'
-        self.min['info'] = self.path + self.min['prefix'] + '.inf'
-        self.min['coords'] = self.path + self.min['prefix'] + '.inpcrd'
+        ### Minimization Settings
+        self._min = MutableDict({})
+        self._min['prefix'] = 'minimize'
+        self._min['input'] = self._min['prefix'] + '.in'
+        self._min['inpcrd'] = self._min['prefix'] + '.inpcrd'
+        #self._min['ref'] = None  # We're gonna leave this unset
+        self._min['output'] = self._min['prefix'] + '.out'
+        self._min['restart'] = self._min['prefix'] + '.rst'
+        self._min['mdinfo'] = self._min['prefix'] + '.mdinfo'
 
         self.min['cntrl'] = OrderedDict()
-        # Minimize
         self.min['cntrl']['imin'] = 1
-        # Coordinates will be read
         self.min['cntrl']['ntx'] = 1
-        # Not a restart
         self.min['cntrl']['irest'] = 0
-        # Maximum number of cycles
         self.min['cntrl']['maxcyc'] = 5000
-        # Number of steps until switching from SD to CG
         self.min['cntrl']['ncyc'] = 1000
-        # Number of steps to output human-readable energy
         self.min['cntrl']['ntpr'] = 100
-        # Output format
         self.min['cntrl']['ntxo'] = 1
-        # Whether all interactions are calculated
         self.min['cntrl']['ntf'] = 1
-        # Whether SHAKE is performed
         self.min['cntrl']['ntc'] = 1
-        # Nonbonded cutoff
         self.min['cntrl']['cut'] = 999.0
-        # Flag for generalized Born
+        self.min['cntrl']['ntb'] = 0
         self.min['cntrl']['igb'] = 1
         self.min['cntrl']['ntr'] = None
         self.min['cntrl']['restraint_wt'] = None
         self.min['cntrl']['restraintmask'] = None
         self.min['cntrl']['nmropt'] = 1
         self.min['cntrl']['pencut'] = -1
+
         self.min['ewald'] = None
         self.min['wt'] = None    # or []
-        self.min['DISANG'] = self.restraints
+        self.min['DISANG'] = self.restraint_file
         self.min['GROUP'] = None    # or []
 
-        self.md = {}
-        self.md['prefix'] = 'md'
-        self.md['input'] = self.path + self.md['prefix'] + '.in'
-        self.md['output'] = self.path + self.md['prefix'] + '.out'
-        self.md['restart'] = self.path + self.md['prefix'] + '.rst'
-        self.md['info'] = self.path + self.md['prefix'] + '.inf'
-        self.md['coords'] = self.path + self.md['prefix'] + '.inpcrd'
-        self.md['ref_coords'] = None
+
+        ### MD settings
+        self._md = MutableDict({})
+        self._md['prefix'] = 'md'
+        self._md['input'] = self._md['prefix'] + '.in'
+        self._md['inpcrd'] = self._md['prefix'] + '.inpcrd'
+        #self._md['ref'] = None  # Leave unset
+        self._md['output'] = self._md['prefix'] + '.out'
+        self._md['restart'] = self._md['prefix'] + '.rst'
+        self._md['mdcrd'] = self._md['prefix'] + '.nc'
+        self._md['mdinfo'] = self._md['prefix'] + '.mdinfo'
+        self._md['coords'] = self._md['prefix'] + '.inpcrd'
 
         self.md['cntrl'] = OrderedDict()
         self.md['cntrl']['imin'] = 0
@@ -138,11 +157,26 @@ class AMBER_GB_simulation():
 
         self.md['ewald'] = None
         self.md['wt'] = None
-        self.md['DISANG'] = self.restraints
+        self.md['DISANG'] = self.restraint_file
         self.md['GROUP'] = None
 
+    ### Refresh the min/md dicts if prefix changes
+    @property
+    def min(self):
+        return self._min
+    @property
+    def md(self):
+        return self._md
 
-    def minimize_with_amber(self, soft=False):
+    def config_ntp(self):
+        """
+        Configure input settings to default NTP.
+        """
+
+        self.min['cntrl']['ntb'] = 1
+        self.min['cntrl']['cut'] = 8.0
+    
+    def minimize(self, soft=False):
         """
         Minimize the system.
 
@@ -151,48 +185,68 @@ class AMBER_GB_simulation():
 
         """
 
+        # These settings hardcoded at the moment ... possibly expose for editing in the future
         if soft:
+            # Set a burn in value that is 25% of the way between ncyc and maxcyc
+            burn_in = int(float(self.min['cntrl']['ncyc']) + 0.20*(float(self.min['cntrl']['maxcyc']) - float(self.min['cntrl']['ncyc'])))
+            # If the burn_in value is nuts, then just put it to zero
+            if burn_in < 0 or burn_in >= self.min['cntrl']['maxcyc']:
+                burn_in = 0
+            # Set an end_soft value that is 75% of way between ncyc and maxcyc
+            end_soft = int(float(self.min['cntrl']['ncyc']) + 0.60*(float(self.min['cntrl']['maxcyc']) - float(self.min['cntrl']['ncyc'])))
             self.min['wt'] = [
-                "&wt type = 'NB', istep1=0, istep2=2000, value1 = 0.0, value2=0.0, IINC=50, /",
-                "&wt type = 'NB', istep1=2000, istep2=4000, value1 = 0.0, value2=1.0, IINC=50, /"]
-        _amber_write_input_file(self.min['input'], self.min, title='GB Minimization.')
+                "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(burn_in),
+                "&wt type = 'NB', istep1={:.0f}, istep2={:.0f}, value1 = 0.0, value2=1.0, IINC=50, /".format(burn_in,end_soft)]
+
+        _amber_write_input_file(self.path+'/'+self.min['input'], self.min, title='GB Minimization.')
 
         log.info('Running GB Minimization at {}'.format(self.path))
-        sp.call("{6} -O -p {0} -c {1} -ref {1} -i {2}\
-                 -o {3} -r {4} -inf {5}"
-                .format(self.topology, self.min['coords'], self.min['input'],
-                        self.min['output'], self.min['restart'], self.min['info'],
-                        self.amber_executable), cwd=self.path, shell=True)
-        log.debug('TODO: Does the above command need `shell=True` ...?')
-        log.debug('TODO: Catch errors here...')
 
-    def run_md_with_amber(self):
+        if 'ref' in self.min:
+            exec_list = [
+                self.amber_executable, '-O', '-p', self.topology, '-ref',  self.min['ref'],
+                '-c', self.min['inpcrd'], '-i', self.min['input'], '-o', self.min['output'],
+                '-r', self.min['restart'], '-inf', self.min['mdinfo']
+            ]
+        else:
+            exec_list = [
+                self.amber_executable, '-O', '-p', self.topology,
+                '-c', self.min['inpcrd'], '-i', self.min['input'], '-o', self.min['output'],
+                '-r', self.min['restart'], '-inf', self.min['mdinfo']
+            ]
+
+
+        log.debug('Exec line: '+' '.join(exec_list))
+        sp.call(exec_list, cwd=self.path)
+        log.debug('TODO: Catch errors here...')
+        log.info('MD completed...')
+
+
+    def run_md(self):
         """
         Run MD with AMBER.
         """
 
-        _amber_write_input_file(self.md['input'], self.md, title='MD.')
+        _amber_write_input_file(self.path+'/'+self.md['input'], self.md, title='MD.')
+
         log.info('Running AMBER MD at {}'.format(self.path))
 
-        if self.md['ref_coords']:
-            log.warning('Check the specificiation of reference coordinates is correct.')
-            execution_string = "{6} -O -p {0} -c {1} -ref {7} -i {2}\
-                     -o {3} -r {4} -inf {5}".format(self.toplogy, self.md['coords'], self.md['input'],
-                                                    self.md['output'], self.md['restart'],
-                                                    self.md['restart'], self.amber_executable,
-                                                    self.md['ref_coords'])
-
-            log.debug(execution_string)
-            sp.call(execution_string, cwd=self.path)
-
+        if 'ref' in self.md:
+            exec_list = [
+                self.amber_executable, '-O', '-p', self.topology, '-ref',  self.md['ref'],
+                '-c', self.md['inpcrd'], '-i', self.md['input'], '-o', self.md['output'],
+                '-r', self.md['restart'], '-x', self.md['mdcrd'], '-inf', self.md['mdinfo']
+            ]
         else:
-            execution_string = "{6} -O -p {0} -c {1} -i {2}\
-                     -o {3} -r {4} -inf {5}".format(self.toplogy, self.md['coords'], self.md['input'],
-                                                    self.md['output'], self.md['restart'],
-                                                    self.md['restart'], self.amber_executable)
+            exec_list = [
+                self.amber_executable, '-O', '-p', self.topology,
+                '-c', self.md['inpcrd'], '-i', self.md['input'], '-o', self.md['output'],
+                '-r', self.md['restart'], '-x', self.md['mdcrd'], '-inf', self.md['mdinfo']
+            ]
 
-            log.debug(execution_string)
-            sp.call(execution_string, cwd=self.path)
-        log.info('Minimization completed...')
+        log.debug('Exec Line: '+' '.join(exec_list))
+        sp.call(exec_list, cwd=self.path)
+        log.debug('TODO: Catch errors here...')
+        log.info('MD completed...')
 
 
