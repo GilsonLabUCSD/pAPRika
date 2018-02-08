@@ -96,8 +96,8 @@ def test_amber_single_window():
     gbsim.topology = 'vac.prmtop'
     gbsim.min['inpcrd'] = 'vac.rst7'
     gbsim.min['cntrl']['maxcyc'] = 1
-    gbsim.min['cntrl']['ncyc'] = 500
-    gbsim.minimize(soft=True)
+    gbsim.min['cntrl']['ncyc'] = 1 
+    gbsim.minimize()
 
     # Collect values
     test_values = []
