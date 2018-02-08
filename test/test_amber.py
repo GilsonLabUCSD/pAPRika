@@ -97,7 +97,7 @@ def test_amber_single_window():
     gbsim.min['inpcrd'] = 'vac.rst7'
     gbsim.min['cntrl']['maxcyc'] = 1
     gbsim.min['cntrl']['ncyc'] = 500
-    gbsim.minimize()
+    gbsim.minimize(soft=True)
 
     # Collect values
     test_values = []
