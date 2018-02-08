@@ -92,6 +92,7 @@ def test_amber_single_window():
     # Create Simulation
     gbsim = paprika.amber.Simulation()
     gbsim.path = path
+    gbsim.executable = 'sander'
     gbsim.topology = 'vac.prmtop'
     gbsim.min['inpcrd'] = 'vac.rst7'
     gbsim.min['cntrl']['maxcyc'] = 1
