@@ -12,7 +12,7 @@ log.basicConfig(
     format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
 
 __all__ = [
-    "align", "build", "restraints", "amber_simulate", "openmm_simulate",
+    "align", "build", "restraints", "amber", "openmm_simulate",
     "utils"
 ]
 

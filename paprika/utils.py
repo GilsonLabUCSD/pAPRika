@@ -3,6 +3,7 @@ import os as os
 import subprocess as sp
 
 import parmed as pmd
+from parmed.structure import Structure as RefStructureForCmp
 from paprika import align
 
 global HAS_OPENMM
@@ -17,7 +18,7 @@ except ImportError:
     HAS_OPENMM = False
 
 
-def index_from_mask(structure_file, mask, amber):
+def index_from_mask(input_structure, mask, amber):
     """
     Return the atom indicies for a given mask.
     """
@@ -25,7 +26,12 @@ def index_from_mask(structure_file, mask, amber):
         index_offset = 1
     else:
         index_offset = 0
-    structure = align.return_structure(structure_file)
+    if type(input_structure) is str:
+        structure = align.return_structure(input_structure)
+    elif type(input_structure) is RefStructureForCmp:
+        structure = input_structure
+    else:
+        raise Exception('index_from_mask does not support the type associated with input_structure')
     # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
     indices = [i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()]
     log.debug('There are {} atoms in the mask {}  ...'.format(len(indices), mask))
