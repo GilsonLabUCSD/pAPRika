@@ -75,7 +75,7 @@ class Simulation(object):
 
         ### Setup simulation directory and files
         self.path = '.' # Assume everything will be created/executed in this path
-        self.amber_executable = 'pmemd'
+        self.executable = 'sander'
         self.phase = None   
         self.window = None
         self.topology = 'prmtop'
@@ -204,13 +204,13 @@ class Simulation(object):
 
         if 'ref' in self.min:
             exec_list = [
-                self.amber_executable, '-O', '-p', self.topology, '-ref',  self.min['ref'],
+                self.executable, '-O', '-p', self.topology, '-ref',  self.min['ref'],
                 '-c', self.min['inpcrd'], '-i', self.min['input'], '-o', self.min['output'],
                 '-r', self.min['restart'], '-inf', self.min['mdinfo']
             ]
         else:
             exec_list = [
-                self.amber_executable, '-O', '-p', self.topology,
+                self.executable, '-O', '-p', self.topology,
                 '-c', self.min['inpcrd'], '-i', self.min['input'], '-o', self.min['output'],
                 '-r', self.min['restart'], '-inf', self.min['mdinfo']
             ]
@@ -233,13 +233,13 @@ class Simulation(object):
 
         if 'ref' in self.md:
             exec_list = [
-                self.amber_executable, '-O', '-p', self.topology, '-ref',  self.md['ref'],
+                self.executable, '-O', '-p', self.topology, '-ref',  self.md['ref'],
                 '-c', self.md['inpcrd'], '-i', self.md['input'], '-o', self.md['output'],
                 '-r', self.md['restart'], '-x', self.md['mdcrd'], '-inf', self.md['mdinfo']
             ]
         else:
             exec_list = [
-                self.amber_executable, '-O', '-p', self.topology,
+                self.executable, '-O', '-p', self.topology,
                 '-c', self.md['inpcrd'], '-i', self.md['input'], '-o', self.md['output'],
                 '-r', self.md['restart'], '-x', self.md['mdcrd'], '-inf', self.md['mdinfo']
             ]
