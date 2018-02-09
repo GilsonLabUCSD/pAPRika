@@ -10,7 +10,7 @@ import os
 import shutil
 import re
 
-def test_amber_single_window():
+def test_amber_single_window_min():
     # Align PDB to Z-axis
     inputpdb = pmd.load_file('cb6-but/cb6-but-notcentered.pdb')
     #alignedpdb = paprika.align.align(inputpdb, ':CB6@O,O2,O4,O6,O8,O10', ':BUT@C', save=True, filename='cb6-but-aligned.pdb')
@@ -22,7 +22,6 @@ def test_amber_single_window():
     rest1.topology = inputpdb
     rest1.mask1 = ':CB6@O'
     rest1.mask2 = ':BUT@C1'
-    #rest1.mask2 = ':BUT@C1,C2'
     rest1.attach['target'] = 4.5
     rest1.attach['fraction_list'] = [0.00, 0.04, 0.181, 0.496, 1.000]
     rest1.attach['fc_final'] = 5.0
@@ -40,7 +39,6 @@ def test_amber_single_window():
     rest2.mask1 = ':CB6@O1'
     rest2.mask2 = ':CB6@O'
     rest2.mask3 = ':BUT@C1'
-    #rest2.mask3 = ':BUT@C1,C2'
     rest2.attach['target'] = 8.0
     rest2.attach['fraction_list'] = [0.00, 0.04, 0.181, 0.496, 1.000]
     rest2.attach['fc_final'] = 50.0
@@ -59,7 +57,6 @@ def test_amber_single_window():
     rest3.mask2 = ':CB6@O1'
     rest3.mask3 = ':CB6@O'
     rest3.mask4 = ':BUT@C1'
-    #rest3.mask4 = ':BUT@C1,C2'
     rest3.attach['target'] = -60.0
     rest3.attach['fraction_list'] = [0.00, 0.04, 0.181, 0.496, 1.000]
     rest3.attach['fc_final'] = 50.0
@@ -106,27 +103,28 @@ def test_amber_single_window():
         for i,line in enumerate(filelines):
             if re.search('^ BOND ', line):
                 cols = line.split()
-                test_values.append(float(cols[2]))
-                test_values.append(float(cols[5]))
-                test_values.append(float(cols[8]))
+                test_values.append(float(cols[2])) # BOND
+                test_values.append(float(cols[5])) # ANGLE
+                test_values.append(float(cols[8])) # DIHED
                 cols = filelines[i+1].split()
-                test_values.append(float(cols[2]))
-                test_values.append(float(cols[5]))
-                test_values.append(float(cols[8]))
+                test_values.append(float(cols[2])) # VDWAALS
+                test_values.append(float(cols[5])) # EEL
+                test_values.append(float(cols[8])) # EGB
                 cols = filelines[i+2].split()
-                test_values.append(float(cols[3]))
-                test_values.append(float(cols[7]))
-                test_values.append(float(cols[10]))
+                test_values.append(float(cols[3])) # 1-4 VDW
+                test_values.append(float(cols[7])) # 1-4 EEL
+                test_values.append(float(cols[10])) # RESTRAINT
                 cols = filelines[i+3].split()
-                test_values.append(float(cols[2]))
+                test_values.append(float(cols[2])) # EAMBER
                 cols = filelines[i+4].split()
-                test_values.append(float(cols[4]))
-                test_values.append(float(cols[7]))
-                test_values.append(float(cols[10]))
+                test_values.append(float(cols[4])) # Restraint: Bond
+                test_values.append(float(cols[7])) # Restraint: Angle
+                test_values.append(float(cols[10])) # Restraint: Torsion
                 break
 
     # A bit ugly, but we're here
     nptest_values = np.asarray(test_values)
+    # Reference             BOND      ANGLE    DIHED    VDWAALS     EEL        EGB    1-4 VDW    1-4 EEL  RESTRAINT   EAMBER    Bond    Angle  Torsion
     ref_values = np.array([11.4252, 109.4691, 52.9473, -67.7555, 1326.4786, -123.9177, 5.8587, -2127.9397, 90.8046, -813.4340, 76.073, 14.724, 0.008])
 
     assert np.allclose(nptest_values, ref_values)
