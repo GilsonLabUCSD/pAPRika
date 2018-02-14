@@ -216,7 +216,7 @@ class fe_calc(object):
         Do free energy calc.
         """
 
-        for phase in ['attach', 'pull']: ### Need to add release, but check it's done correctly
+        for phase in ['attach', 'pull', 'release']: ### Need to add release, but check it's done correctly
             prepared_data = self._prepare_active_rest_data(phase, self.restraint_list, self.raw_values)
             if prepared_data:
                 self.fe_matrix[phase], self.fe_sem_matrix[phase] = self._run_mbar(prepared_data)
