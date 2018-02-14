@@ -1,4 +1,4 @@
-#rm -rf "$HOME/miniconda"
+rm -rf "$HOME/miniconda"
 if [ -d "$HOME/miniconda" ]; then
       export PATH="$HOME/miniconda/bin:$PATH"
       conda list
@@ -16,7 +16,7 @@ else
       conda config --add channels omnia --add channels conda-forge
       conda create -y -n myenv python=$PYTHON_VERSION
       conda install -y -n myenv \
-            openmm numpy scipy pandas pytest pytest-cov codecov mdtraj
+            openmm numpy scipy pandas pytest pytest-cov codecov mdtraj pymbar
       conda install -y -n myenv \
             ambertools=17.0 -c http://ambermd.org/downloads/ambertools/conda/
       pip install codecov
