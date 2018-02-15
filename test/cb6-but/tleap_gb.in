@@ -1,5 +1,3 @@
-source leaprc.protein.ff14SB
-source leaprc.water.tip3p
 source leaprc.gaff
 loadamberparams cb6.frcmod
 CB6 = loadmol2 cb6.mol2
@@ -10,7 +8,7 @@ model = loadpdb cb6-but.pdb
 
 check model
 savepdb model vac.pdb
-saveamberparm model vac.topo vac.crds
+saveamberparm model vac.prmtop vac.rst7
 
 quit
 

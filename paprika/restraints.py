@@ -455,6 +455,8 @@ class DAT_restraint(object):
         else:
             self.index4 = None
         # If any `index` has more than one atom, mark it as a group restraint.
+        #print('Masks:',self.mask1, self.mask2, self.mask3, self.mask4)
+        #print('index:',self.index1, self.index2, self.index3, self.index4)
         if self.mask1 and len(self.index1) > 1:
             self.group1 = True
         else:
@@ -471,6 +473,8 @@ class DAT_restraint(object):
             self.group4 = True
         else:
             self.group4 = False
+        #print('index:',self.group1, self.group2, self.group3, self.group4)
+
 
 
 def check_restraints(restraint_list, create_window_list=False):
@@ -600,10 +604,10 @@ def amber_restraint_line(restraint, phase, window):
     lower_bound = 0.0
     upper_bound = 999.0
 
-    if restraint.group3 and not restraint.group4:
+    if restraint.mask3 and not restraint.mask4:
         upper_bound = 180.0
 
-    if restraint.group3 and restraint.group4:
+    if restraint.mask3 and restraint.mask4:
         lower_bound = restraint.phase[phase]['targets'][window] - 180.0
         upper_bound = restraint.phase[phase]['targets'][window] + 180.0
 
