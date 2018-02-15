@@ -17,6 +17,16 @@ except ImportError:
     HAS_OPENMM = False
 
 
+def check_for_leap_log(path='./'):
+    """Check if `leap.log` exists, and if so, delete so the current run doesn't append."""
+    filename = 'leap.log'
+    try:
+        os.remove(path + filename)
+        log.debug('Deleted existing leap.log file...')
+    except OSError:
+        pass
+
+
 def index_from_mask(structure_file, mask, amber):
     """
     Return the atom indicies for a given mask.
