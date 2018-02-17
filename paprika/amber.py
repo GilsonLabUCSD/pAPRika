@@ -2,10 +2,6 @@ import logging as log
 import subprocess as sp
 from collections import OrderedDict
 
-import numpy as np
-import parmed as pmd
-from paprika.restraints import *
-
 
 def _amber_write_input_file(filename, dictionary, title='Input.'):
     """
@@ -81,7 +77,6 @@ class Simulation(object):
         self.topology = 'prmtop'
         self.restraint_file = 'restraints.in'
 
-
         ### Minimization Settings
         self._min = MutableDict({})
         self._min['prefix'] = 'minimize'
@@ -116,7 +111,6 @@ class Simulation(object):
         self.min['DISANG'] = self.restraint_file
         self.min['GROUP'] = None    # or []
 
-
         ### MD settings
         self._md = MutableDict({})
         self._md['prefix'] = 'md'
@@ -149,6 +143,7 @@ class Simulation(object):
         self.md['cntrl']['gamma_ln'] = 1.0
         self.md['cntrl']['ig'] = -1
         self.md['cntrl']['temp0'] = 298.15
+        self.md['cntrl']['ntp'] = 0
         self.md['cntrl']['ntr'] = None
         self.md['cntrl']['restraint_wt'] = None
         self.md['cntrl']['restraintmask'] = None
@@ -173,8 +168,11 @@ class Simulation(object):
         Configure input settings to default NTP.
         """
 
-        self.min['cntrl']['ntb'] = 1
+        self.min['cntrl']['ntb'] = 2
         self.min['cntrl']['cut'] = 8.0
+        self.md['cntrl']['ntp'] = 1
+        self.md['cntrl']['barostat'] = 1
+
     
     def minimize(self, soft=False):
         """
