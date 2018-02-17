@@ -221,8 +221,9 @@ class fe_calc(object):
                 # check the next *potential* window which probably had non-zero force constants
                 while not u_kln[k,l,0:N_k[k]].any():
                     l += 1
-                # Now compute statistical inefficiency: g = N*(SEM**2)/variance 
-                sem = get_block_sem(u_kln[k,l,0:N_k[k]])
+                # Now compute statistical inefficiency: g = N*(SEM**2)/variance
+                nearest_max = get_nearest_max(N_k[k]) 
+                sem = get_block_sem(u_kln[k,l,0:nearest_max])
                 variance = np.var( u_kln[k,l,0:N_k[k]] )
                 g_k[k] = ( N_k[k]*(sem**2)/variance )
                 # Create subsampled indices and count their lengths
@@ -278,7 +279,7 @@ def get_factors(n):
       i += 1
     return sorted(factors, key=int)
 
-def nearest_max(n):
+def get_nearest_max(n):
     """
     Return the number with the largest number of factors between n-100 and n.
     """
