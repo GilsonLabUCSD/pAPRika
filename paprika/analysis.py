@@ -19,6 +19,10 @@ class fe_calc(object):
         # raw_values[phase][0:num_win][0:num_rest][np.array]
         self.raw_values = None  # Add a function to create this automatically
 
+        # Use blocking analysis to compute statistical inefficiency (g) and
+        # subsample the data when estimating the uncertainty.
+        self.subsample_with_blocking = True
+
         # Goal is to populate these
         self.fe =     { 'attach':  None, 'pull':    None, 'release': None }
         self.fe_sem = { 'attach':  None, 'pull':    None, 'release': None }
@@ -134,7 +138,7 @@ class fe_calc(object):
             for rest_idx in range(num_rest):
                 force_constants[win_idx, rest_idx] = active_rest[rest_idx].phase[phase]['force_constants'][win_idx]
                 if active_rest[rest_idx].mask3 is not None:
-                    # Convert force constants in radians to degrees
+                    # Convert force constants with radians into degrees
                     force_constants[win_idx, rest_idx] *= ( (np.pi/180.0)**2 )
                 targets[win_idx, rest_idx] = active_rest[rest_idx].phase[phase]['targets'][win_idx]
 
@@ -197,14 +201,45 @@ class fe_calc(object):
 
                 # Compute the potential ... for each frame, sum the contributions for each restraint
                 # Note, we multiply by kT
-                u_kln[k,l,0:N_k[l]] = np.sum(self.beta*force_constants[l,:,None]*(ordered_values[k] - targets[l,:,None])**2, axis=0)
+                u_kln[k,l,0:N_k[k]] = np.sum(self.beta*force_constants[l,:,None]*(ordered_values[k] - targets[l,:,None])**2, axis=0)
 
         # Setup mbar calc, and get free energies
         mbar = pymbar.MBAR(u_kln, N_k, verbose=False)
         Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(compute_uncertainty=True)
 
-        # Add additional calc for correct uncertainties!!!
+        # Should I subsample based on the restraint coordinate values? Here I'm
+        # doing it on the potential.  Should be pretty close .... 
+        if self.subsample_with_blocking:
+            # We want to use all possible data to get the free energy estimates Deltaf_ij,
+            # but for uncertainty estimates we'll subsample to create uncorrelated data.
+            g_k = np.zeros([num_win], np.float64)
+            ss_indices = []
+            N_ss = np.zeros([num_win], np.int32) # N_subsample
+            for k in range(num_win):
+                l = k
+                # If the potential is zero everywhere, we can't estimate the uncertainty, so
+                # check the next *potential* window which probably had non-zero force constants
+                while not u_kln[k,l,0:N_k[k]].any():
+                    l += 1
+                # Now compute statistical inefficiency: g = N*(SEM**2)/variance 
+                sem = get_block_sem(u_kln[k,l,0:N_k[k]])
+                variance = np.var( u_kln[k,l,0:N_k[k]] )
+                g_k[k] = ( N_k[k]*(sem**2)/variance )
+                # Create subsampled indices and count their lengths
+                ss_indices.append( get_subsampled_indices(N_k[k], g_k[k]) )
+                N_ss[k] = len(ss_indices[k])
 
+            # Create a new potential array for the uncertainty calculation (are we using too much memory?)
+            u_kln_err = np.zeros([num_win, num_win, np.max(N_ss)], np.float64)
+
+            # Populate the subsampled array, drawing values from the original
+            for k in range(num_win):
+                for l in range(num_win):
+                    u_kln_err[k,l,0:N_ss[k]] = u_kln[k,l,ss_indices[k]]
+
+            mbar = pymbar.MBAR(u_kln_err, N_ss, verbose=False)
+            tmp_Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(compute_uncertainty=True)
+                    
         # Put back into kcal/mol
         Deltaf_ij /= self.beta
         dDeltaf_ij /= self.beta
@@ -225,9 +260,101 @@ class fe_calc(object):
 
                 
 
+### Additional Functions
+
+def get_factors(n):
+    """
+    Return a list of integer factors for a number.
+    """
+    factors = []
+    sqrt_n = int(round(np.sqrt(n) + 0.5))
+    i = 1
+    while i <= sqrt_n:
+      if n % i == 0:
+        factors.append(i)
+        j = n/i
+        if j != i:
+          factors.append(j)
+      i += 1
+    return sorted(factors, key=int)
+
+def nearest_max(n):
+    """
+    Return the number with the largest number of factors between n-100 and n.
+    """
+    num_factors = []
+    max_factors = 0
+    if n % 2 == 0:
+        beg = n - 100
+        end = n
+    else:
+        beg = n-101
+        end = n-1
+    if beg < 0:
+        beg = 0
+    for i in range(beg, end + 2, 2):
+        num_factors = len( get_factors(i) )
+        if num_factors >= max_factors:
+            max_factors = num_factors
+            most_factors = i
+    return most_factors
+
+def get_block_sem(data_array):
+    """
+    Compute the standard error of the mean (SEM) for a data_array using the blocking method."
+    """
+    # Get the integer factors for the number of data points. These
+    # are equivalent to the block sizes we will check.
+    block_sizes = get_factors( len(data_array) )
+
+    # An array to store means for each block ... make it bigger than we need.
+    block_means = np.zeros( [block_sizes[-1]], np.float64 )
+
+    # Store the SEM for each block size, except the last two size for which
+    # there will only be two or one blocks total and thus very noisy.
+    sems = np.zeros( [len(block_sizes) - 2], np.float64 )
+
+    # Check each block size except the last two.
+    for size_idx in range(len(block_sizes) - 2):
+        # Check each block, the number of which is conveniently found as
+        # the other number of the factor pair in block_sizes
+        num_blocks = block_sizes[-size_idx - 1]
+        for blk_idx in range(num_blocks):
+            # Find the index for beg and end of data points for each block
+            data_beg_idx = blk_idx*block_sizes[size_idx]
+            data_end_idx = (blk_idx+1)*block_sizes[size_idx]
+            # Compute the mean of this block and store in array
+            block_means[blk_idx] = np.mean( data_array[ data_beg_idx : data_end_idx ] )
+        # Compute the standard deviation across all blocks, devide by num_blocks-1 for SEM
+        sems[size_idx] = np.std( block_means[0:num_blocks], ddof=0 ) / np.sqrt( num_blocks - 1 )
+        # Hmm or should ddof=1? I think 0, see Flyvbjerg -----^
+
+    # Return the max SEM found ... this is a conservative approach.
+    return np.max(sems)
 
         
-        
+def get_subsampled_indices(N, g, conservative=False):
+    """ Get subsampling indices. Adapted from pymbar's implementation. """
+
+    # g should not be less than 1.0
+    if g < 1.0:
+        g = 1.0
+
+    # if conservative, assume integer g and round up
+    if conservative:
+        g = np.ceil(g)
+
+    # initialize
+    indices = [0]
+    g_idx = 1.0
+    int_step = int( np.round( g_idx*g ) )
+
+    while int_step < N:
+        indices.append(int_step)
+        g_idx += 1
+        int_step = int( np.round( g_idx*g ) )
+
+    return indices
 
 
 
