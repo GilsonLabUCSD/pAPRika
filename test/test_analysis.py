@@ -92,7 +92,7 @@ def test_fe_calc():
     fecalc.compute_free_energy()
 
     test_vals = [fecalc.fe['attach'], fecalc.fe_sem['attach'], fecalc.fe['pull'], fecalc.fe_sem['pull']]
-    ref_vals = [13.26773117, 0.153722441163, -2.17914307348, 0.830768727911]
+    ref_vals = [13.267731176, 0.16892084090, -2.1791430735, 0.93638948302]
 
     assert np.allclose(test_vals, ref_vals)
 
