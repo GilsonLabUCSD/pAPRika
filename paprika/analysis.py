@@ -1,5 +1,5 @@
 import numpy as np
-from pymbar import mbar
+import pymbar
 
 class fe_calc(object):
     """
@@ -204,7 +204,7 @@ class fe_calc(object):
                 u_kln[k,l,0:N_k[k]] = np.sum(self.beta*force_constants[l,:,None]*(ordered_values[k] - targets[l,:,None])**2, axis=0)
 
         # Setup mbar calc, and get free energies
-        mbar = mbar.MBAR(u_kln, N_k, verbose=False)
+        mbar = pymbar.MBAR(u_kln, N_k, verbose=False)
         Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(compute_uncertainty=True)
 
         # Should I subsample based on the restraint coordinate values? Here I'm
@@ -237,7 +237,7 @@ class fe_calc(object):
                 for l in range(num_win):
                     u_kln_err[k,l,0:N_ss[k]] = u_kln[k,l,ss_indices[k]]
 
-            mbar = mbar.MBAR(u_kln_err, N_ss, verbose=False)
+            mbar = pymbar.MBAR(u_kln_err, N_ss, verbose=False)
             tmp_Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(compute_uncertainty=True)
                     
         # Put back into kcal/mol
