@@ -1,3 +1,4 @@
+import logging as log
 import numpy as np
 import pymbar
 
@@ -29,14 +30,10 @@ class fe_calc(object):
         # Should this be a tuple? (as above)
         self.subsample_methods = ['blocking']
 
-        # TODO: Check that fe_methods and subsample_methods have correct keywords
+        # TODO: Add check that fe_methods and subsample_methods have correct keywords
 
+        # FE calculation results will be stored here
         self.results = {}
-        # Goal is to populate these
-        #self.fe =     { 'attach':  None, 'pull':    None, 'release': None }
-        #self.fe_sem = { 'attach':  None, 'pull':    None, 'release': None }
-        #self.fe_matrix =     { 'attach':  None, 'pull':    None, 'release': None }
-        #self.fe_sem_matrix = { 'attach':  None, 'pull':    None, 'release': None }
 
     def _identify_active_rest(self, phase, change_param, restraint_list):
         """ Identify the restraints which are changing in the specified phase."""
@@ -284,6 +281,30 @@ class fe_calc(object):
                                 = self.results[phase][fe_method][subsample_method]['fe_matrix'][0,-1]
                             self.results[phase][fe_method][subsample_method]['sem']\
                                 = self.results[phase][fe_method][subsample_method]['sem_matrix'][0,-1]
+
+                            windows = len(self.results[phase][fe_method][subsample_method]['sem_matrix'])
+                            self.results[phase][fe_method][subsample_method]['convergence'] = np.ones([windows], np.float64)*-1.0
+                            for i in range(windows):
+                                log.info('ahaha'+str(i))
+                                if i == 0:
+                                    self.results[phase][fe_method][subsample_method]['convergence'][i]\
+                                        = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i+1]
+                                elif i == windows-1:
+                                    self.results[phase][fe_method][subsample_method]['convergence'][i]\
+                                        = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i-1]
+                                else:
+                                    left = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i-1]
+                                    right = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i+1]
+                                    if left > right:
+                                        max_val = left
+                                    elif right > left:
+                                        max_val = right
+                                    else:
+                                        max_val = right
+                                    self.results[phase][fe_method][subsample_method]['convergence'][i]\
+                                        = max_val
+
+                            
 
 ### Additional Functions
 
