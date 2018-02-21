@@ -19,15 +19,24 @@ class fe_calc(object):
         # raw_values[phase][0:num_win][0:num_rest][np.array]
         self.raw_values = None  # Add a function to create this automatically
 
+        # FE Methods list. Possible methods are 'mbar' and 'ti'
+        # Should this be a tuple?
+        self.fe_methods = ['mbar']
+
         # Use blocking analysis to compute statistical inefficiency (g) and
         # subsample the data when estimating the uncertainty.
-        self.subsample_with_blocking = True
+        # TODO: Add autocorrelation method
+        # Should this be a tuple? (as above)
+        self.subsample_methods = ['blocking']
 
+        # TODO: Check that fe_methods and subsample_methods have correct keywords
+
+        self.results = {}
         # Goal is to populate these
-        self.fe =     { 'attach':  None, 'pull':    None, 'release': None }
-        self.fe_sem = { 'attach':  None, 'pull':    None, 'release': None }
-        self.fe_matrix =     { 'attach':  None, 'pull':    None, 'release': None }
-        self.fe_sem_matrix = { 'attach':  None, 'pull':    None, 'release': None }
+        #self.fe =     { 'attach':  None, 'pull':    None, 'release': None }
+        #self.fe_sem = { 'attach':  None, 'pull':    None, 'release': None }
+        #self.fe_matrix =     { 'attach':  None, 'pull':    None, 'release': None }
+        #self.fe_sem_matrix = { 'attach':  None, 'pull':    None, 'release': None }
 
     def _identify_active_rest(self, phase, change_param, restraint_list):
         """ Identify the restraints which are changing in the specified phase."""
@@ -170,7 +179,7 @@ class fe_calc(object):
         return [num_win, num_rest, data_points, max_data_points, active_rest, force_constants, targets, ordered_values]
 
 
-    def _run_mbar(self, prepared_data):
+    def _run_mbar(self, prepared_data, verbose=False):
         """
         Compute the free energy matrix for a series of windows. We'll follow the pymbar nomenclature for data structures.
         """
@@ -200,16 +209,16 @@ class fe_calc(object):
                         ordered_values[k][r][bool_list] -= 360.0
 
                 # Compute the potential ... for each frame, sum the contributions for each restraint
-                # Note, we multiply by kT
+                # Note, we multiply by beta, and do some extra [l,:,None] to get the math operation correct.
                 u_kln[k,l,0:N_k[k]] = np.sum(self.beta*force_constants[l,:,None]*(ordered_values[k] - targets[l,:,None])**2, axis=0)
 
-        # Setup mbar calc, and get free energies
-        mbar = pymbar.MBAR(u_kln, N_k, verbose=False)
+        # Setup mbar calc, and get matrix of free energies, uncertainties
+        mbar = pymbar.MBAR(u_kln, N_k, verbose=verbose)
         Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(compute_uncertainty=True)
 
         # Should I subsample based on the restraint coordinate values? Here I'm
         # doing it on the potential.  Should be pretty close .... 
-        if self.subsample_with_blocking:
+        if 'blocking' in self.subsample_methods:
             # We want to use all possible data to get the free energy estimates Deltaf_ij,
             # but for uncertainty estimates we'll subsample to create uncorrelated data.
             g_k = np.zeros([num_win], np.float64)
@@ -238,13 +247,14 @@ class fe_calc(object):
                 for l in range(num_win):
                     u_kln_err[k,l,0:N_ss[k]] = u_kln[k,l,ss_indices[k]]
 
-            mbar = pymbar.MBAR(u_kln_err, N_ss, verbose=False)
+            mbar = pymbar.MBAR(u_kln_err, N_ss, verbose=verbose)
             tmp_Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(compute_uncertainty=True)
                     
         # Put back into kcal/mol
         Deltaf_ij /= self.beta
         dDeltaf_ij /= self.beta
 
+        # Return Matrix of free energies and uncertainties
         return Deltaf_ij, dDeltaf_ij
 
     def compute_free_energy(self):
@@ -253,13 +263,27 @@ class fe_calc(object):
         """
 
         for phase in ['attach', 'pull', 'release']: ### Need to add release, but check it's done correctly
-            prepared_data = self._prepare_active_rest_data(phase, self.restraint_list, self.raw_values)
-            if prepared_data:
-                self.fe_matrix[phase], self.fe_sem_matrix[phase] = self._run_mbar(prepared_data)
-                self.fe[phase] = self.fe_matrix[phase][0,-1]
-                self.fe_sem[phase] = self.fe_sem_matrix[phase][0,-1]
-
-                
+            self.results[phase] = {}
+            for fe_method in self.fe_methods:
+                self.results[phase][fe_method] = {}
+                for subsample_method in self.subsample_methods:
+                    self.results[phase][fe_method][subsample_method] = {}
+                    self.results[phase][fe_method][subsample_method]['fe'] = None
+                    self.results[phase][fe_method][subsample_method]['sem'] = None
+                    self.results[phase][fe_method][subsample_method]['fe_matrix'] = None
+                    self.results[phase][fe_method][subsample_method]['sem_matrix'] = None
+                    
+                    # mbar and blocking are currently supported.
+                    if fe_method == 'mbar' and subsample_method == 'blocking':
+                        prepared_data = self._prepare_active_rest_data(phase, self.restraint_list, self.raw_values)
+                        if prepared_data:
+                            self.results[phase][fe_method][subsample_method]['fe_matrix'],\
+                                self.results[phase][fe_method][subsample_method]['sem_matrix']\
+                                = self._run_mbar(prepared_data)
+                            self.results[phase][fe_method][subsample_method]['fe']\
+                                = self.results[phase][fe_method][subsample_method]['fe_matrix'][0,-1]
+                            self.results[phase][fe_method][subsample_method]['sem']\
+                                = self.results[phase][fe_method][subsample_method]['sem_matrix'][0,-1]
 
 ### Additional Functions
 
