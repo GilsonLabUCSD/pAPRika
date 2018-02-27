@@ -3,8 +3,41 @@ import numpy as np
 import os as os
 import re as re
 import subprocess as sp
+import parmed as pmd
 
 from .utils import check_for_leap_log
+
+def add_dummy(input_structure, atom_name='DUM', res_name='DUM', x=0.000, y=0.000, z=0.000):
+    """ Add a dummy atom at the specified coordinates to the end of the structure """
+
+    # Assume the input_structure is a filename or ...
+    if type(input_structure) is str:
+        structure = align.return_structure(input_structure)
+    # ... a parmed.structure
+    elif type(input_structure) is RefStructureForCmp:
+        structure = input_structure
+    else:
+        raise Exception('add_dummy does not support the type associated with input_structure:'+type(input_structure))
+
+    dum = pmd.topologyobjects.Atom()
+    dum.name = atom_name
+    dum.xx = x
+    dum.xy = y
+    dum.xz = z
+    
+    # This assumes that the atom numbering we read in is correct!!
+    dum.number = structure.atoms[-1].number + 1
+    res_num = structure.residues[-1].number + 1
+    
+    structure.add_atom(dum, res_name, res_num)
+
+    # tleap will probably want TER cards in any PDBs we make, so enforce
+    # that for both the dummy residue and the residue before it
+    structure.residues[-2].ter = True
+    structure.residues[-1].ter = True
+
+    return structure
+
 
 
 def read_tleaplines(tleapfile, pdbfile=None, skip_solvate=True):
