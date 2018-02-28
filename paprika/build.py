@@ -5,7 +5,7 @@ import re as re
 import subprocess as sp
 import parmed as pmd
 from parmed.structure import Structure as ParmedStructureClass
-from paprika import align
+from paprika import utils
 
 
 from .utils import check_for_leap_log
@@ -15,7 +15,7 @@ def add_dummy(structure, atom_name='DUM', residue_name='DUM', mass=208.00, atomi
 
     # Assume the input_structure is a filename or ...
     if type(structure) is str:
-        structure = align.return_structure(structure)
+        structure = utils.return_parmed_structure(structure)
     # ... a parmed.structure
     elif type(structure) is ParmedStructureClass:
         pass

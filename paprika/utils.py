@@ -27,6 +27,19 @@ def check_for_leap_log(path='./'):
     except OSError:
         pass
 
+def return_parmed_structure(filename):
+    """
+    Return structure object from file name.
+    """
+    # `parmed` can read both PDBs and
+    # .inpcrd/.prmtop files with the same function call.
+    try:
+        structure = pmd.load_file(filename)
+        log.info('Loaded {}...'.format(filename))
+    except:
+        log.error('Unable to load file: {}'.format(filename))
+    return structure
+
 
 def index_from_mask(structure, mask, amber_index=False):
     """
@@ -37,7 +50,7 @@ def index_from_mask(structure, mask, amber_index=False):
     else:
         index_offset = 0
     if type(structure) is str:
-        structure = align.return_structure(structure)
+        structure = return_parmed_structure(structure)
     elif type(structure) is ParmedStructureClass:
         pass
     else:

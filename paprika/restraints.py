@@ -8,7 +8,6 @@ import weakref as weakref
 import pytraj as pt
 import parmed as pmd
 from parmed.structure import Structure as ParmedStructureClass
-from paprika import align
 from collections import defaultdict
 from paprika import utils
 
@@ -487,7 +486,7 @@ def static_DAT_restraint(restraint_mask_list, num_window_list, ref_structure, fo
 
     # Setup reference structure
     if type(ref_structure) is str:
-        ref_structure = align.return_structure(ref_structure)
+        ref_structure = utils.return_parmed_structure(ref_structure)
     elif type(ref_structure) is ParmedStructureClass:
         pass
     else:

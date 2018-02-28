@@ -76,15 +76,3 @@ def offset_structure(structure, offset):
     log.info('Added offset of {} to atomic coordinates...'.format(offset))
     return structure
 
-def return_structure(filename):
-    """
-    Return structure object from file name.
-    """
-    # `parmed` can read both PDBs and
-    # .inpcrd/.prmtop files with the same function call.
-    try:
-        structure = pmd.load_file(filename)
-        log.info('Loaded {}...'.format(filename))
-    except:
-        log.error('Unable to load file: {}'.format(filename))
-    return structure
