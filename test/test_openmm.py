@@ -13,6 +13,7 @@ import paprika
 from paprika.openmm_simulate import *
 from paprika.restraints import *
 from paprika.utils import HAS_OPENMM
+import os
 
 
 @unittest.skipUnless(HAS_OPENMM,
@@ -129,6 +130,10 @@ class TestOpenMM(unittest.TestCase):
         self.assertAlmostEqual(energies['total'], -709.6, places=1)
         self.assertAlmostEqual(energies['restraint'], 1.6, places=1)
         self.assertAlmostEqual(energies['non-restraint'], -711.1, places=1)
+
+        for filename in ['md.nc', 'md.csv']:
+            if os.path.isfile('./'+filename):
+                os.remove('./'+filename)
 
 
 if __name__ == '__main__':

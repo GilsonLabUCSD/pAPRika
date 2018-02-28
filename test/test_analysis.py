@@ -11,7 +11,7 @@ def test_fe_calc():
     # Distance restraint
     rest1 = paprika.restraints.DAT_restraint()
     rest1.continuous_apr = True
-    rest1.amber = True
+    rest1.amber_index = True
     rest1.topology = inputpdb
     rest1.mask1 = ':CB6@O'
     rest1.mask2 = ':BUT@C1'
@@ -27,7 +27,7 @@ def test_fe_calc():
     # Angle restraint
     rest2 = paprika.restraints.DAT_restraint()
     rest2.continuous_apr = True
-    rest2.amber = True
+    rest2.amber_index = True
     rest2.topology = inputpdb
     rest2.mask1 = ':CB6@O1'
     rest2.mask2 = ':CB6@O'
@@ -44,7 +44,7 @@ def test_fe_calc():
     # Dihedral restraint
     rest3 = paprika.restraints.DAT_restraint()
     rest3.continuous_apr = True
-    rest3.amber = True
+    rest3.amber_index = True
     rest3.topology = inputpdb
     rest3.mask1 = ':CB6@O11'
     rest3.mask2 = ':CB6@O1'

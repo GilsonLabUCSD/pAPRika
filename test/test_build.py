@@ -1,5 +1,5 @@
 """
-Tests the solvation of the system using `tleap`.
+Tests build tools.
 """
 
 import unittest
@@ -12,9 +12,17 @@ import parmed as pmd
 import paprika
 from paprika.align import *
 from paprika.build import *
+import os
+import shutil
 
+class TestBuild(unittest.TestCase):
 
-class TestSolvate(unittest.TestCase):
+    def rm_solvated_files(self):
+        files = ['solvated.pdb', 'solvated.prmtop', 'solvated.rst7', 'tleap_apr_solvate.in', 'leap.log', 'tmp.pdb']
+        for f in files:
+            if os.path.isfile('./cb6-but/'+f):
+                os.remove('./cb6-but/'+f)
+
     def test_solvation_simple(self):
         """ Test that we can solvate CB6-BUT using default settings. """
         waters = np.random.randint(1000, 10000)
@@ -26,6 +34,7 @@ class TestSolvate(unittest.TestCase):
         grepped_waters = sp.check_output(
             ["grep -oh 'WAT' ./cb6-but/solvated.prmtop | wc -w"], shell=True)
         self.assertEqual(int(grepped_waters), waters)
+        self.rm_solvated_files()
 
     def test_solvation_octahedron(self):
         """ Test that we can solvate CB6-BUT with a truncated octahedron. """
@@ -40,6 +49,7 @@ class TestSolvate(unittest.TestCase):
         grepped_waters = sp.check_output(
             ["grep -oh 'WAT' ./cb6-but/solvated.prmtop | wc -w"], shell=True)
         self.assertEqual(int(grepped_waters), waters)
+        self.rm_solvated_files()
 
     def test_solvation_box(self):
         """ Test that we can solvate CB6-BUT with an isometric box. """
@@ -53,6 +63,7 @@ class TestSolvate(unittest.TestCase):
         grepped_waters = sp.check_output(
             ["grep -oh 'WAT' ./cb6-but/solvated.prmtop | wc -w"], shell=True)
         self.assertEqual(int(grepped_waters), waters)
+        self.rm_solvated_files()
 
     def test_solvation_spatial_size(self):
         """ Test that we can solvate CB6-BUT with an buffer size in Angstroms. """
@@ -67,6 +78,7 @@ class TestSolvate(unittest.TestCase):
                      We\'d have to parse the coordinates, perhaps.')
         # This is bad, but I'll think of a better way.
         self.assertEqual(0, 0)
+        self.rm_solvated_files()
 
     def test_solvation_potassium_control(self):
         """ Test there is no potassium by default. A negative control. """
@@ -80,6 +92,7 @@ class TestSolvate(unittest.TestCase):
         potassium = sp.check_output(
             ["grep -oh 'K+' ./cb6-but/solvated.prmtop | wc -w"], shell=True)
         self.assertEqual(int(potassium), 0)
+        self.rm_solvated_files()
 
     def test_solvation_with_additional_ions(self):
         """ Test that we can solvate CB6-BUT with additional ions. """
@@ -120,6 +133,7 @@ class TestSolvate(unittest.TestCase):
 
         self.assertTrue(
             int(cation_number) == n_cations and int(anion_number) == n_anions)
+        self.rm_solvated_files()
 
     def test_solvation_by_molarity(self):
         """ Test that we can solvate CB6-BUT through molarity. """
@@ -149,6 +163,7 @@ class TestSolvate(unittest.TestCase):
         n_anions = np.ceil((6.022 * 10**23) * (0.150) * volume_in_liters)
         self.assertTrue(
             int(cation_number) == n_cations and int(anion_number) == n_anions)
+        self.rm_solvated_files()
 
     def test_solvation_by_molality(self):
         """ Test that we can solvate CB6-BUT through molarity. """
@@ -176,11 +191,12 @@ class TestSolvate(unittest.TestCase):
         n_anions = np.ceil(0.150 * 2000 * 0.018)
         self.assertTrue(
             int(cation_number) == n_cations and int(anion_number) == n_anions)
+        self.rm_solvated_files()
 
     def test_alignment_workflow(self):
         """ Test that we can solvate CB6-BUT after alignment. """
         cb6 = pmd.load_file('./cb6-but/vac.pdb')
-        align(cb6, ':CB6', ':BUT', save=True, filename='./cb6-but/tmp.pdb')
+        zalign(cb6, ':CB6', ':BUT', save=True, filename='./cb6-but/tmp.pdb')
         waters = np.random.randint(1000, 10000)
         log.debug('Trying {} waters after alignment...'.format(waters))
         solvate(
@@ -190,6 +206,7 @@ class TestSolvate(unittest.TestCase):
         grepped_waters = sp.check_output(
             ["grep -oh 'WAT' ./cb6-but/solvated.prmtop | wc -w"], shell=True)
         self.assertEqual(int(grepped_waters), waters)
+        self.rm_solvated_files()
 
 
 if __name__ == '__main__':

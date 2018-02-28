@@ -4,32 +4,39 @@ import os as os
 import re as re
 import subprocess as sp
 import parmed as pmd
+from parmed.structure import Structure as ParmedStructureClass
+from paprika import align
+
 
 from .utils import check_for_leap_log
 
-def add_dummy(input_structure, atom_name='DUM', res_name='DUM', x=0.000, y=0.000, z=0.000):
+def add_dummy(structure, atom_name='DUM', residue_name='DUM', mass=208.00, atomic_number=82, x=0.000, y=0.000, z=0.000):
     """ Add a dummy atom at the specified coordinates to the end of the structure """
 
     # Assume the input_structure is a filename or ...
-    if type(input_structure) is str:
-        structure = align.return_structure(input_structure)
+    if type(structure) is str:
+        structure = align.return_structure(structure)
     # ... a parmed.structure
-    elif type(input_structure) is RefStructureForCmp:
-        structure = input_structure
+    elif type(structure) is ParmedStructureClass:
+        pass
     else:
-        raise Exception('add_dummy does not support the type associated with input_structure:'+type(input_structure))
+        raise Exception('add_dummy does not support the type associated with structure:'+type(structure))
 
+    # Create an atom object
     dum = pmd.topologyobjects.Atom()
     dum.name = atom_name
+    dum.mass = mass
+    dum.atomic_number = atomic_number
     dum.xx = x
     dum.xy = y
     dum.xz = z
     
-    # This assumes that the atom numbering we read in is correct!!
+    # Assume that the atom numbering we read in is correct!!
     dum.number = structure.atoms[-1].number + 1
-    res_num = structure.residues[-1].number + 1
+    residue_num = structure.residues[-1].number + 1
     
-    structure.add_atom(dum, res_name, res_num)
+    # Add to structure
+    structure.add_atom(dum, residue_name, residue_num)
 
     # tleap will probably want TER cards in any PDBs we make, so enforce
     # that for both the dummy residue and the residue before it
@@ -38,6 +45,43 @@ def add_dummy(input_structure, atom_name='DUM', res_name='DUM', x=0.000, y=0.000
 
     return structure
 
+def write_dummy_frcmod(path='.', filename='dummy.frcmod', atomtype='Du', mass='208.00'):
+    """ Write a frcmod file for a dummy atom """
+
+    with open(path+'/'+filename, 'w') as f:
+        f.write("""\
+Parameters for dummy atom with type {0}
+MASS
+{0}     {1}
+
+BOND
+
+ANGLE
+
+DIHE
+
+IMPROPER
+
+NONBON
+  {0}       0.000     0.0000000
+""".format(atomtype, mass))
+
+
+def write_dummy_mol2(path='.', filename='dummy.mol2', atomtype='Du', residue_name='DUM'):
+    """ Write a mol2 file for a dummy atom """
+
+    with open(path+'/'+filename, 'w') as f:
+        f.write("""\
+{0}
+    1     0     1     0     1
+SMALL
+USER_CHARGES
+@<TRIPOS>ATOM
+  1 {1}      0.000000    0.000000    0.000000 {1}    1 {0}     0.0000 ****
+@<TRIPOS>BOND
+@<TRIPOS>SUBSTRUCTURE
+      1  {0}              1 ****               0 ****  ****
+""".format(residue_name[0:3], atomtype[0:2]))
 
 
 def read_tleaplines(tleapfile, pdbfile=None, skip_solvate=True):

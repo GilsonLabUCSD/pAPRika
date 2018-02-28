@@ -5,7 +5,10 @@ import sys as sys
 import parmed as pmd
 import subprocess as sp
 import weakref as weakref
-
+import pytraj as pt
+import parmed as pmd
+from parmed.structure import Structure as ParmedStructureClass
+from paprika import align
 from collections import defaultdict
 from paprika import utils
 
@@ -36,7 +39,7 @@ class DAT_restraint(object):
         self.auto_apr = False  # If True, sets some pull and release values automatically.
         # If True, the first window of pull is re-used as last window of attach and the last window of pull is re-used as first window of release.
         self.continuous_apr = True
-        self.amber = False
+        self.amber_index = False
 
         self.attach = {
             'target': None,  # The target value for the restraint (mandatory)
@@ -294,7 +297,7 @@ class DAT_restraint(object):
         force_constants = None
         targets = None
 
-        if self.auto_apr:
+        if self.auto_apr and self.pull['target_final'] is not None:
             self.pull['fc'] = self.phase['attach']['force_constants'][-1]
             self.pull['target_initial'] = self.phase['attach']['targets'][-1]
 
@@ -358,7 +361,10 @@ class DAT_restraint(object):
         force_constants = None
         targets = None
 
-        if self.auto_apr:
+        # I don't want auto_apr to make release restraints, unless I'm sure the user wants them.
+        # I'm gonna assume that specifying self.attach['fc_final'] indicates you want it, 
+        # although this weakens the whole purpose of auto_apr
+        if self.auto_apr and self.release['fc_final'] is not None:
             self.release['target'] = self.phase['pull']['targets'][-1]
             for key in [
                     'fc_final', 'fc_initial', 'num_windows', 'fc_increment',
@@ -441,17 +447,17 @@ class DAT_restraint(object):
         # ---------------------------------- ATOM MASKS ---------------------------------- #
         log.debug('Assigning atom indices...')
         self.index1 = utils.index_from_mask(self.topology, self.mask1,
-                                            self.amber)
+                                            self.amber_index)
         self.index2 = utils.index_from_mask(self.topology, self.mask2,
-                                            self.amber)
+                                            self.amber_index)
         if self.mask3:
             self.index3 = utils.index_from_mask(self.topology, self.mask3,
-                                                self.amber)
+                                                self.amber_index)
         else:
             self.index3 = None
         if self.mask4:
             self.index4 = utils.index_from_mask(self.topology, self.mask4,
-                                                self.amber)
+                                                self.amber_index)
         else:
             self.index4 = None
         # If any `index` has more than one atom, mark it as a group restraint.
@@ -475,6 +481,73 @@ class DAT_restraint(object):
             self.group4 = False
         #print('index:',self.group1, self.group2, self.group3, self.group4)
 
+
+def static_DAT_restraint(restraint_mask_list, num_window_list, ref_structure, force_constant, continuous_apr=True, amber_index=False):
+    """ Create a static restraint """
+
+    # Setup reference structure
+    if type(ref_structure) is str:
+        ref_structure = align.return_structure(ref_structure)
+    elif type(ref_structure) is ParmedStructureClass:
+        pass
+    else:
+        raise Exception('static_DAT_restraint does not support the type associated with ref_structure:'+type(ref_structure))
+    ref_traj = pt.load_parmed(ref_structure, traj=True)
+
+    # Check num_window_list
+    if len(num_window_list) != 3:
+        raise Exception('The num_window_list needs to contain three integers corresponding to the number of windows in the attach, pull, and release phase, respectively')
+
+    # Setup restraint
+    rest = DAT_restraint()
+    rest.continuous_apr = continuous_apr
+    rest.amber_index = amber_index
+    rest.topology = ref_structure
+    rest.mask1 = restraint_mask_list[0]
+    rest.mask2 = restraint_mask_list[1]
+    if len(restraint_mask_list) >= 3:
+        rest.mask3 = restraint_mask_list[2]
+    if len(restraint_mask_list) == 4:
+        rest.mask4 = restraint_mask_list[3]
+
+    # Target value
+    mask_string = ' '.join(restraint_mask_list)
+    if len(restraint_mask_list) == 2:
+        # Distance restraint
+        target = pt.distance(ref_traj, mask_string)[0]
+    elif len(restraint_mask_list) == 3:
+        # Angle restraint
+        target = pt.angle(ref_traj, mask_string)[0]
+    elif len(restraint_mask_list) == 4:
+        # Dihedral restraint
+        target = pt.dihedral(ref_traj, mask_string)[0]
+    else:
+        raise Exception('The number of masks ('+str(len(restraint_mask_list))+') in restraint_mask_list is not 2, 3, or 4 and thus is not one of the supported types: distance, angle, dihedral')
+
+    # Attach phase
+    if num_window_list[0] is not None and num_window_list[0] != 0:
+        rest.attach['target'] = target
+        rest.attach['fc_initial'] = force_constant
+        rest.attach['fc_final'] = force_constant
+        rest.attach['num_windows'] = num_window_list[0]
+
+    # Pull phase
+    if num_window_list[1] is not None and num_window_list[1] != 0:
+        rest.pull['fc'] = force_constant
+        rest.pull['target_initial'] = target
+        rest.pull['target_final'] = target
+        rest.pull['num_windows'] = num_window_list[1]
+
+    # Release phase
+    if num_window_list[2] is not None and num_window_list[2] != 0:
+        rest.attach['target'] = target
+        rest.attach['fc_initial'] = force_constant
+        rest.attach['fc_final'] = force_constant
+        rest.attach['num_windows'] = num_window_list[2]
+
+    rest.initialize()
+
+    return rest
 
 
 def check_restraints(restraint_list, create_window_list=False):

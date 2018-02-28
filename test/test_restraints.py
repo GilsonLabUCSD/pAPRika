@@ -17,7 +17,7 @@ def test_DAT_restraint():
     # Method 1
     log.info('### Testing restraint 1, Method 1')
     rest1 = DAT_restraint()
-    rest1.amber = True
+    rest1.amber_index = True
     rest1.continuous_apr = False
     rest1.auto_apr = False
     rest1.topology = './cb6-but/cb6-but-notcentered.pdb'
@@ -54,7 +54,7 @@ def test_DAT_restraint():
     # Method 1a
     log.info('### Testing restraint 2, Method 1a')
     rest2 = DAT_restraint()
-    rest2.amber = True
+    rest2.amber_index = True
     rest2.continuous_apr = False
     rest2.auto_apr = False
     rest2.topology = './cb6-but/cb6-but-notcentered.pdb'
@@ -89,7 +89,7 @@ def test_DAT_restraint():
     # Method 2 (Note auto_apr = True)
     log.info('### Testing restraint 3, Method 2')
     rest3 = DAT_restraint()
-    rest3.amber = True
+    rest3.amber_index = True
     rest3.continuous_apr = False
     rest3.auto_apr = True
     rest3.topology = './cb6-but/cb6-but-notcentered.pdb'
@@ -103,6 +103,7 @@ def test_DAT_restraint():
     rest3.attach['fc_final'] = 75.0
     rest3.pull['target_increment'] = 1.0
     rest3.pull['target_final'] = 93.0
+    rest3.release['fc_final'] = 75.0
     rest3.initialize()
     assert rest3.index1 == [31]
     assert rest3.index2 == [13]
@@ -122,7 +123,7 @@ def test_DAT_restraint():
     # Method 2a
     log.info('### Testing restraint 4, Method 2a')
     rest4 = DAT_restraint()
-    rest4.amber = True
+    rest4.amber_index = True
     rest4.continuous_apr = False
     rest4.auto_apr = False
     rest4.topology = './cb6-but/cb6-but-notcentered.pdb'
@@ -158,7 +159,7 @@ def test_DAT_restraint():
     #Method 3
     log.info('### Testing restraint 5, Method 3')
     rest5 = DAT_restraint()
-    rest5.amber = True
+    rest5.amber_index = True
     rest5.continuous_apr = False
     rest5.auto_apr = False
     rest5.topology = './cb6-but/cb6-but-notcentered.pdb'
@@ -190,7 +191,7 @@ def test_DAT_restraint():
     # Method 4
     log.info('### Testing restraint 6, Method 4')
     rest6 = DAT_restraint()
-    rest6.amber = True
+    rest6.amber_index = True
     rest6.continuous_apr = False
     rest6.auto_apr = False
     rest6.topology = './cb6-but/cb6-but-notcentered.pdb'
@@ -225,7 +226,7 @@ def test_DAT_restraint():
     # Method 5 (Note continuous_apr = True)
     log.info('### Testing restraint 7, Method 5')
     rest7 = DAT_restraint()
-    rest7.amber = True
+    rest7.amber_index = True
     rest7.continuous_apr = True
     rest7.auto_apr = False
     rest7.topology = './cb6-but/cb6-but-notcentered.pdb'
@@ -254,7 +255,7 @@ def test_DAT_restraint():
     # Just Attach
     log.info('### Testing restraint 8, just attach')
     rest8 = DAT_restraint()
-    rest8.amber = True
+    rest8.amber_index = True
     rest8.continuous_apr = False
     rest8.auto_apr = False
     rest8.topology = './cb6-but/cb6-but-notcentered.pdb'
@@ -281,7 +282,7 @@ def test_DAT_restraint():
     # Just Pull
     log.info('### Testing restraint 9, just pull')
     rest9 = DAT_restraint()
-    rest9.amber = True
+    rest9.amber_index = True
     rest9.continuous_apr = False
     rest9.auto_apr = False
     rest9.topology = './cb6-but/cb6-but-notcentered.pdb'
@@ -308,7 +309,7 @@ def test_DAT_restraint():
     # Just Release
     log.info('### Testing restraint 10, just release')
     rest10 = DAT_restraint()
-    rest10.amber = True
+    rest10.amber_index = True
     rest10.continuous_apr = False
     rest10.auto_apr = False
     rest10.topology = './cb6-but/cb6-but-notcentered.pdb'

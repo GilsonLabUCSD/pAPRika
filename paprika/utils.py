@@ -3,7 +3,7 @@ import os as os
 import subprocess as sp
 
 import parmed as pmd
-from parmed.structure import Structure as RefStructureForCmp
+from parmed.structure import Structure as ParmedStructureClass
 from paprika import align
 
 global HAS_OPENMM
@@ -28,20 +28,20 @@ def check_for_leap_log(path='./'):
         pass
 
 
-def index_from_mask(input_structure, mask, amber):
+def index_from_mask(structure, mask, amber_index=False):
     """
     Return the atom indicies for a given mask.
     """
-    if amber:
+    if amber_index:
         index_offset = 1
     else:
         index_offset = 0
-    if type(input_structure) is str:
-        structure = align.return_structure(input_structure)
-    elif type(input_structure) is RefStructureForCmp:
-        structure = input_structure
+    if type(structure) is str:
+        structure = align.return_structure(structure)
+    elif type(structure) is ParmedStructureClass:
+        pass
     else:
-        raise Exception('index_from_mask does not support the type associated with input_structure')
+        raise Exception('index_from_mask does not support the type associated with structure:'+type(structure))
     # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
     indices = [i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()]
     log.debug('There are {} atoms in the mask {}  ...'.format(len(indices), mask))

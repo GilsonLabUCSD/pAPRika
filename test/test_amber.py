@@ -1,6 +1,5 @@
 import parmed as pmd
 import paprika
-#import paprika.align
 import paprika.build
 import paprika.restraints
 import paprika.amber
@@ -13,12 +12,11 @@ import re
 def test_amber_single_window_min():
     # Align PDB to Z-axis
     inputpdb = pmd.load_file('cb6-but/cb6-but-notcentered.pdb')
-    #alignedpdb = paprika.align.align(inputpdb, ':CB6@O,O2,O4,O6,O8,O10', ':BUT@C', save=True, filename='cb6-but-aligned.pdb')
     
     # Distance restraint
     rest1 = paprika.restraints.DAT_restraint()
     rest1.continuous_apr = True
-    rest1.amber = True
+    rest1.amber_index = True
     rest1.topology = inputpdb
     rest1.mask1 = ':CB6@O'
     rest1.mask2 = ':BUT@C1'
@@ -34,7 +32,7 @@ def test_amber_single_window_min():
     # Angle restraint
     rest2 = paprika.restraints.DAT_restraint()
     rest2.continuous_apr = True
-    rest2.amber = True
+    rest2.amber_index = True
     rest2.topology = inputpdb
     rest2.mask1 = ':CB6@O1'
     rest2.mask2 = ':CB6@O'
@@ -51,7 +49,7 @@ def test_amber_single_window_min():
     # Dihedral restraint
     rest3 = paprika.restraints.DAT_restraint()
     rest3.continuous_apr = True
-    rest3.amber = True
+    rest3.amber_index = True
     rest3.topology = inputpdb
     rest3.mask1 = ':CB6@O11'
     rest3.mask2 = ':CB6@O1'

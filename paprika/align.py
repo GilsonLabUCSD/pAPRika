@@ -2,7 +2,7 @@ import parmed as pmd
 import logging as log
 import numpy as np
 
-def align(structure, mask1, mask2, save=False, filename=None):
+def zalign(structure, mask1, mask2, save=False, filename=None):
     """
     Align the mask1 -- mask2 vector to the z axis.
     """
