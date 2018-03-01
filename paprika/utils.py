@@ -1,7 +1,7 @@
 import logging as log
 import os as os
 import subprocess as sp
-
+import shutil
 import parmed as pmd
 from parmed.structure import Structure as ParmedStructureClass
 from paprika import align
@@ -61,16 +61,19 @@ def index_from_mask(structure, mask, amber_index=False):
     return indices
 
 
-def make_window_dirs(window_list):
+def make_window_dirs(window_list, remove_existing=False):
     """
     Make a series of directories to hold the simulation setup files
     and the data. Here we could check if the directories already exist and prompt
     the user or quit or do something else.
     """
 
+    directory = os.getcwd()
+
+    if remove_existing:
+        shutil.rmtree(directory + '/windows/')
+
     for window in window_list:
-        # It seems unprudent to use '.' for CWD here.
-        directory = os.getcwd()
         if not os.path.exists(directory + '/windows/' + window):
             os.makedirs(directory + '/windows/' + window)
 

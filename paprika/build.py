@@ -67,21 +67,23 @@ NONBON
 """.format(atomtype, mass))
 
 
-def write_dummy_mol2(path='.', filename='dummy.mol2', atomtype='Du', residue_name='DUM'):
+def write_dummy_mol2(path='.', filename='dummy.mol2', atom_name='DUM', atomtype='Du', residue_name='DUM'):
     """ Write a mol2 file for a dummy atom """
 
     with open(path+'/'+filename, 'w') as f:
         f.write("""\
+@<TRIPOS>MOLECULE
 {0}
     1     0     1     0     1
 SMALL
 USER_CHARGES
+
 @<TRIPOS>ATOM
-  1 {1}      0.000000    0.000000    0.000000 {1}    1 {0}     0.0000 ****
+  1 {1:4s}    0.000000    0.000000    0.000000 {2}    1 {0}     0.0000 ****
 @<TRIPOS>BOND
 @<TRIPOS>SUBSTRUCTURE
-      1  {0}              1 ****               0 ****  ****
-""".format(residue_name[0:3], atomtype[0:2]))
+      1  {0}              1 ****               0 ****  ****    0 ROOT
+""".format(residue_name[0:3], atom_name, atomtype[0:2]))
 
 
 def read_tleaplines(tleapfile, pdbfile=None, skip_solvate=True):
