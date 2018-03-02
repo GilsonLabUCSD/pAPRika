@@ -1,6 +1,7 @@
 import logging as log
 import subprocess as sp
 from collections import OrderedDict
+import os
 
 
 def _amber_write_input_file(filename, dictionary, title='Input.'):
@@ -174,7 +175,7 @@ class Simulation(object):
         self.md['cntrl']['barostat'] = 1
 
     
-    def minimize(self, soft=False):
+    def minimize(self, soft=False, overwrite=False):
         """
         Minimize the system.
 
@@ -201,26 +202,28 @@ class Simulation(object):
         log.info('Running GB Minimization at {}'.format(self.path))
 
         if 'ref' in self.min:
-            exec_list = [
-                self.executable, '-O', '-p', self.topology, '-ref',  self.min['ref'],
+            exec_list = self.executable.split() + [
+                '-O', '-p', self.topology, '-ref',  self.min['ref'],
                 '-c', self.min['inpcrd'], '-i', self.min['input'], '-o', self.min['output'],
                 '-r', self.min['restart'], '-inf', self.min['mdinfo']
             ]
         else:
-            exec_list = [
-                self.executable, '-O', '-p', self.topology,
+            exec_list = self.executable.split() + [
+                '-O', '-p', self.topology,
                 '-c', self.min['inpcrd'], '-i', self.min['input'], '-o', self.min['output'],
                 '-r', self.min['restart'], '-inf', self.min['mdinfo']
             ]
 
 
         log.debug('Exec line: '+' '.join(exec_list))
-        sp.call(exec_list, cwd=self.path)
+        # DO BETTER OVERWRITE CHECKING!!!!
+        if overwrite or not os.path.isfile(self.path+'/'+self.min['output']):
+            sp.call(exec_list, cwd=self.path)
         log.debug('TODO: Catch errors here...')
-        log.info('MD completed...')
+        log.info('Minimization completed...')
 
 
-    def run_md(self):
+    def run_md(self, overwrite=False):
         """
         Run MD with AMBER.
         """
@@ -230,20 +233,22 @@ class Simulation(object):
         log.info('Running AMBER MD at {}'.format(self.path))
 
         if 'ref' in self.md:
-            exec_list = [
-                self.executable, '-O', '-p', self.topology, '-ref',  self.md['ref'],
+            exec_list = self.executable.split() + [
+                '-O', '-p', self.topology, '-ref',  self.md['ref'],
                 '-c', self.md['inpcrd'], '-i', self.md['input'], '-o', self.md['output'],
                 '-r', self.md['restart'], '-x', self.md['mdcrd'], '-inf', self.md['mdinfo']
             ]
         else:
-            exec_list = [
-                self.executable, '-O', '-p', self.topology,
+            exec_list = self.executable.split() + [
+                '-O', '-p', self.topology,
                 '-c', self.md['inpcrd'], '-i', self.md['input'], '-o', self.md['output'],
                 '-r', self.md['restart'], '-x', self.md['mdcrd'], '-inf', self.md['mdinfo']
             ]
 
         log.debug('Exec Line: '+' '.join(exec_list))
-        sp.call(exec_list, cwd=self.path)
+        # DO BETTER OVERWRITE CHECKING!!!!
+        if overwrite or not os.path.isfile(self.path+'/'+self.md['output']):
+            sp.call(exec_list, cwd=self.path)
         log.debug('TODO: Catch errors here...')
         log.info('MD completed...')
 

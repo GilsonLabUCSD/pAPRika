@@ -70,6 +70,12 @@ def make_window_dirs(window_list, remove_existing=False):
 
     directory = os.getcwd()
 
+    # Should change the following to move the windows dir
+    # import datetime
+    # print(
+    #   'test-{date:%Y-%m-%d_%H:%M:%S}.txt'.format( date=datetime.datetime.now() )
+    # )
+
     if remove_existing:
         shutil.rmtree(directory + '/windows/')
 

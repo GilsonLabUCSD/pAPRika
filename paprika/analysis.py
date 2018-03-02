@@ -284,8 +284,8 @@ class fe_calc(object):
 
                             windows = len(self.results[phase][fe_method][subsample_method]['sem_matrix'])
                             self.results[phase][fe_method][subsample_method]['convergence'] = np.ones([windows], np.float64)*-1.0
+                            log.info(phase+': computing convergence for mbar/blocking method')
                             for i in range(windows):
-                                log.info(phase+': computing convergence for mbar/blocking method5')
                                 if i == 0:
                                     self.results[phase][fe_method][subsample_method]['convergence'][i]\
                                         = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i+1]
