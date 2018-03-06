@@ -88,34 +88,37 @@ def test_fe_calc():
 
     fecalc = analysis.fe_calc()
     fecalc.restraint_list = [rest1,rest2,rest3]
-    fecalc.raw_values = rest_dat
+    fecalc.simulation_values = rest_dat
     fecalc.compute_free_energy()
 
     # Test free energies and uncertainties
     test_vals = [
-                fecalc.results['attach']['mbar']['blocking']['fe'],
-                fecalc.results['attach']['mbar']['blocking']['sem'],
-                fecalc.results['pull']['mbar']['blocking']['fe'],
-                fecalc.results['pull']['mbar']['blocking']['sem']
+                fecalc.results['attach']['mbar-block']['fe'],
+                fecalc.results['attach']['mbar-block']['sem'],
+                fecalc.results['pull']['mbar-block']['fe'],
+                fecalc.results['pull']['mbar-block']['sem']
                 ]
     ref_vals = [13.267731176, 0.16892084090, -2.1791430735, 0.93638948302]
 
-    assert np.allclose(test_vals, ref_vals)
+    for i in range(len(test_vals)):
+        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
 
     # Test convergence values attach
 
-    test_vals = fecalc.results['attach']['mbar']['blocking']['convergence']
+    test_vals = fecalc.results['attach']['mbar-block']['convergence']
 
     ref_vals = np.array([0.0198918, 0.0451676, 0.0564517, 0.1079282, 0.1079282])
 
-    assert np.allclose(test_vals, ref_vals)
+    for i in range(len(test_vals)):
+        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
 
     # Test convergence values pull
 
-    test_vals = fecalc.results['pull']['mbar']['blocking']['convergence']
+    test_vals = fecalc.results['pull']['mbar-block']['convergence']
 
     ref_vals = np.array([0.2053769, 0.2053769, 0.1617423, 0.1747668, 0.5255023, 0.5255023, 0.1149945, 0.1707901, 0.2129136, 0.2129136, 0.1942189, 0.1768906, 0.1997338, 0.1997338, 0.2014766, 0.2014766, 0.1470727, 0.1442517, 0.1434395])
 
-    assert np.allclose(test_vals, ref_vals)
+    for i in range(len(test_vals)):
+        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
 
 #test_fe_calc()

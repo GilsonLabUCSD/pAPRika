@@ -17,25 +17,17 @@ class fe_calc(object):
         self.restraint_list = None
 
         # All raw restraint values. Organized as:
-        # raw_values[phase][0:num_win][0:num_rest][np.array]
-        self.raw_values = None  # Add a function to create this automatically
+        # simulation_values[phase][0:num_win][0:num_rest][np.array]
+        self.simulation_values = None  # Add a function to create this automatically
 
-        # FE Methods list. Possible methods are 'mbar' and 'ti'
-        # Should this be a tuple?
-        self.fe_methods = ['mbar']
-
-        # Use blocking analysis to compute statistical inefficiency (g) and
-        # subsample the data when estimating the uncertainty.
-        # TODO: Add autocorrelation method
-        # Should this be a tuple? (as above)
-        self.subsample_methods = ['blocking']
+        # FE/Uncertainty methods.
+        self.methods = ['mbar-block'] # mbar-autoc, mbar-none, ti-block, ti-autoc, ti-none
+        # TODO: Add check that fe_methods and subsample_methods have correct keywords
 
         # Keep track of the order of increasing force_constants/targets for each
         # phase. This helps in cases where reordering is required due to post-hoc
         # window additions.
         self.ordered_index = {}
-
-        # TODO: Add check that fe_methods and subsample_methods have correct keywords
 
         # FE calculation results will be stored here
         self.results = {}
@@ -74,7 +66,7 @@ class fe_calc(object):
         return active_rest, active_rest_bool
 
 
-    def _prepare_active_rest_data(self, phase, restraint_list, raw_values):
+    def _prepare_active_rest_data(self, phase, restraint_list, simulation_values):
         """ 
         Identifies the restraints which are changing in the specified phase
         and reorders windows numerically, in case additional
@@ -121,24 +113,24 @@ class fe_calc(object):
         # to do this but it ensures we're checking the size of an active restraint
         first_active_idx = next((i for i, rbool in enumerate(active_rest_bool) if rbool is True), None)
 
-        # Now count the size of data_points for each np.array in raw_values.
+        # Now count the size of data_points for each np.array in simulation_values.
         # We only need to check size for first_active_idx, since they should all be same.
         # If continuous_apr and attach/release, we'll need to take the data
         # for the final attach/release window from the first/last pull window.
         if active_rest[0].continuous_apr and phase in ['attach', 'release']:
             data_points = np.zeros([num_win], np.int32)
             for win_idx in reorder[:-1]:
-                data_points[win_idx] = raw_values[phase][win_idx][first_active_idx].size
+                data_points[win_idx] = simulation_values[phase][win_idx][first_active_idx].size
             # If attach, then take data from first pull window
             if phase == 'attach':
                 pull_idx = 0
             # Else, must be release, so take from last pull window
             else:
                 pull_idx = -1
-            data_points[-1] = raw_values['pull'][pull_reorder[pull_idx]][pull_first_active_idx].size
+            data_points[-1] = simulation_values['pull'][pull_reorder[pull_idx]][pull_first_active_idx].size
         # If not continuous_apr or pull, then it's more straightforward
         else:
-            data_points = np.array([raw_values[phase][i][first_active_idx].size for i in reorder])
+            data_points = np.array([simulation_values[phase][i][first_active_idx].size for i in reorder])
 
         # Get max_data_points ... will be needed for MBAR
         max_data_points = int(np.max(data_points))
@@ -161,7 +153,7 @@ class fe_calc(object):
             for win_idx in reorder[:-1]:
                 for rest_idx,rest_bool in enumerate(active_rest_bool):
                     if rest_bool:
-                        ordered_values[win_idx].append(raw_values[phase][win_idx][rest_idx])
+                        ordered_values[win_idx].append(simulation_values[phase][win_idx][rest_idx])
             for rest_idx,rest_bool in enumerate(active_rest_bool):
                 if rest_bool:
                     # Same logic as above ... must figure out which pull window to use as
@@ -170,12 +162,12 @@ class fe_calc(object):
                         pull_idx = 0
                     else:
                         pull_idx = -1
-                    ordered_values[-1].append(raw_values['pull'][pull_reorder[pull_idx]][rest_idx])
+                    ordered_values[-1].append(simulation_values['pull'][pull_reorder[pull_idx]][rest_idx])
         else:
             for win_idx in reorder:
                 for rest_idx,rest_bool in enumerate(active_rest_bool):
                     if rest_bool:
-                        ordered_values[win_idx].append(raw_values[phase][win_idx][rest_idx])
+                        ordered_values[win_idx].append(simulation_values[phase][win_idx][rest_idx])
 
         # Return all this in a list. Will pass to _run_mbar, which unpacks.
         # That seems inefficient, but we'll keep it for now.
@@ -221,7 +213,7 @@ class fe_calc(object):
 
         # Should I subsample based on the restraint coordinate values? Here I'm
         # doing it on the potential.  Should be pretty close .... 
-        if 'blocking' in self.subsample_methods:
+        if 'mbar-block' in self.methods:
             # We want to use all possible data to get the free energy estimates Deltaf_ij,
             # but for uncertainty estimates we'll subsample to create uncorrelated data.
             g_k = np.zeros([num_win], np.float64)
@@ -265,56 +257,51 @@ class fe_calc(object):
         Do free energy calc.
         """
 
-        for phase in ['attach', 'pull', 'release']: ### Need to add release, but check it's done correctly
+        for phase in ['attach', 'pull', 'release']:
             self.results[phase] = {}
-            for fe_method in self.fe_methods:
-                self.results[phase][fe_method] = {}
-                for subsample_method in self.subsample_methods:
-                    self.results[phase][fe_method][subsample_method] = {}
-                    self.results[phase][fe_method][subsample_method]['fe'] = None
-                    self.results[phase][fe_method][subsample_method]['sem'] = None
-                    self.results[phase][fe_method][subsample_method]['fe_matrix'] = None
-                    self.results[phase][fe_method][subsample_method]['sem_matrix'] = None
+            for method in self.methods:
+                self.results[phase][method] = {}
+                self.results[phase][method]['fe'] = None
+                self.results[phase][method]['sem'] = None
+                self.results[phase][method]['fe_matrix'] = None
+                self.results[phase][method]['sem_matrix'] = None
                     
-                    # mbar and blocking are currently supported.
-                    if fe_method == 'mbar' and subsample_method == 'blocking':
-                        prepared_data = self._prepare_active_rest_data(phase, self.restraint_list, self.raw_values)
-                        if prepared_data:
-                            self.results[phase][fe_method][subsample_method]['fe_matrix'],\
-                                self.results[phase][fe_method][subsample_method]['sem_matrix']\
-                                = self._run_mbar(prepared_data)
-                            self.results[phase][fe_method][subsample_method]['fe']\
-                                = self.results[phase][fe_method][subsample_method]['fe_matrix'][0,-1]
-                            self.results[phase][fe_method][subsample_method]['sem']\
-                                = self.results[phase][fe_method][subsample_method]['sem_matrix'][0,-1]
+                # mbar with blocking are currently supported.
+                if method == 'mbar-block':
+                    prepared_data = self._prepare_active_rest_data(phase, self.restraint_list, self.simulation_values)
+                    if prepared_data:
+                        self.results[phase][method]['fe_matrix'],self.results[phase][method]['sem_matrix']\
+                            = self._run_mbar(prepared_data)
+                        self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0,-1]
+                        self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0,-1]
 
-                            windows = len(self.results[phase][fe_method][subsample_method]['sem_matrix'])
-                            self.results[phase][fe_method][subsample_method]['convergence'] = np.ones([windows], np.float64)*-1.0
-                            self.results[phase][fe_method][subsample_method]['ordered_convergence'] = np.ones([windows], np.float64)*-1.0
-                            log.info(phase+': computing convergence for mbar/blocking method')
-                            for i in range(windows):
-                                if i == 0:
-                                    self.results[phase][fe_method][subsample_method]['ordered_convergence'][i]\
-                                        = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i+1]
-                                elif i == windows-1:
-                                    self.results[phase][fe_method][subsample_method]['ordered_convergence'][i]\
-                                        = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i-1]
+                        windows = len(self.results[phase][method]['sem_matrix'])
+                        self.results[phase][method]['convergence'] = np.ones([windows], np.float64)*-1.0
+                        self.results[phase][method]['ordered_convergence'] = np.ones([windows], np.float64)*-1.0
+                        log.info(phase+': computing convergence for mbar-blocking')
+                        for i in range(windows):
+                            if i == 0:
+                                self.results[phase][method]['ordered_convergence'][i]\
+                                    = self.results[phase][method]['sem_matrix'][i][i+1]
+                            elif i == windows-1:
+                                self.results[phase][method]['ordered_convergence'][i]\
+                                    = self.results[phase][method]['sem_matrix'][i][i-1]
+                            else:
+                                left = self.results[phase][method]['sem_matrix'][i][i-1]
+                                right = self.results[phase][method]['sem_matrix'][i][i+1]
+                                if left > right:
+                                    max_val = left
+                                elif right > left:
+                                    max_val = right
                                 else:
-                                    left = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i-1]
-                                    right = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i+1]
-                                    if left > right:
-                                        max_val = left
-                                    elif right > left:
-                                        max_val = right
-                                    else:
-                                        max_val = right
-                                    self.results[phase][fe_method][subsample_method]['ordered_convergence'][i]\
-                                        = max_val
+                                    max_val = right
+                                self.results[phase][method]['ordered_convergence'][i]\
+                                    = max_val
 
-                            # Un-reorder so that convergence easily matches up with original window order
-                            unreorder = np.argsort(self.ordered_index[phase])
-                            self.results[phase][fe_method][subsample_method]['convergence'] =\
-                                self.results[phase][fe_method][subsample_method]['ordered_convergence'][unreorder]
+                        # Un-reorder so that convergence easily matches up with original window order
+                        unreorder = np.argsort(self.ordered_index[phase])
+                        self.results[phase][method]['convergence'] =\
+                            self.results[phase][method]['ordered_convergence'][unreorder]
 
                             
 
