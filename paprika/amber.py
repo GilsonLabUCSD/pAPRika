@@ -2,7 +2,7 @@ import logging as log
 import subprocess as sp
 from collections import OrderedDict
 import os
-
+import time
 
 class Simulation(object):
     """
@@ -86,79 +86,54 @@ class Simulation(object):
         self.mdcrd = new_prefix + '.nc'
         self.mden = new_prefix + '.mden'
 
-    def config_pbc_min(self):
+    def _config_min(self):
         """
-        Configure input settings to minimization in periodic boundary conditions.
+        Configure input settings for minimization.
         """
-        self.title = 'PBC Minimization'
         self.cntrl['imin'] = 1
         self.cntrl['ntx'] = 1
         self.cntrl['irest'] = 0
         self.cntrl['maxcyc'] = 5000
         self.cntrl['ncyc'] = 1000
+        self.cntrl['dt'] = 0.0
+        self.cntrl['nstlim'] = 0
         self.cntrl['ntpr'] = 100
         self.cntrl['ntwr'] = 5000
         self.cntrl['ntxo'] = 1
         self.cntrl['ntf'] = 1
         self.cntrl['ntc'] = 1
+        self.cntrl['ntt'] = 0
+        self.cntrl['gamma_ln'] = 0.0
+        self.cntrl['ig'] = 0
+        self.cntrl['ntp'] = 0
+        self.cntrl['barostat'] = 0
+
+
+    def config_pbc_min(self):
+        """
+        Configure input settings to minimization in periodic boundary conditions.
+        """
+        self._config_min()
+        self.title = 'PBC Minimization'
         self.cntrl['cut'] = 8.0
         self.cntrl['igb'] = 0
-        self.cntrl['ntp'] = 0
+
 
     def config_gb_min(self):
         """
         Configure input settings to minimization in continuum solvent.
         """
 
+        self._config_min()
         self.title = 'GB Minimization'
-        self.cntrl['imin'] = 1
-        self.cntrl['ntx'] = 1
-        self.cntrl['irest'] = 0
-        self.cntrl['maxcyc'] = 5000
-        self.cntrl['ncyc'] = 1000
-        self.cntrl['ntpr'] = 100
-        self.cntrl['ntwr'] = 5000
-        self.cntrl['ntxo'] = 1
-        self.cntrl['ntf'] = 1
-        self.cntrl['ntc'] = 1
         self.cntrl['cut'] = 999.0
         self.cntrl['igb'] = 1
-        self.cntrl['ntp'] = 0
 
 
-    def config_gb_md(self):
+    def _config_md(self):
         """
-        Configure input settings to default GB.
+        Configure input settings for MD.
         """
-
-        self.title = 'GB MD Simulation'
-        self.cntrl['imin'] = 0
-        self.cntrl['ntx'] = 1
-        self.cntrl['irest'] = 0
-        self.cntrl['dt'] = 0.002
-        self.cntrl['nstlim'] = 5000
-        self.cntrl['ntpr'] = 500
-        self.cntrl['ntwe'] = 500
-        self.cntrl['ntwr'] = 5000
-        self.cntrl['ntwx'] = 500
-        self.cntrl['ntxo'] = 1
-        self.cntrl['ioutfm'] = 1
-        self.cntrl['ntf'] = 2
-        self.cntrl['ntc'] = 2
-        self.cntrl['cut'] = 999.0
-        self.cntrl['igb'] = 1
-        self.cntrl['ntt'] = 3
-        self.cntrl['gamma_ln'] = 1.0
-        self.cntrl['ig'] = -1
-        self.cntrl['ntp'] = 0
-
-
-    def config_ntp_md(self):
-        """
-        Configure input settings to default NTP.
-        """
-
-        self.title = 'PBC MD Simulation'
         self.cntrl['imin'] = 0
         self.cntrl['ntx'] = 1
         self.cntrl['irest'] = 0
@@ -174,11 +149,32 @@ class Simulation(object):
         self.cntrl['ioutfm'] = 1
         self.cntrl['ntf'] = 2
         self.cntrl['ntc'] = 2
-        self.cntrl['cut'] = 8.0
-        self.cntrl['igb'] = 0
         self.cntrl['ntt'] = 3
         self.cntrl['gamma_ln'] = 1.0
         self.cntrl['ig'] = -1
+
+    def config_gb_md(self):
+        """
+        Configure input settings for MD in default GB.
+        """
+
+        self._config_md()
+        self.title = 'GB MD Simulation'
+        self.cntrl['cut'] = 999.0
+        self.cntrl['igb'] = 1
+        self.cntrl['ntp'] = 0
+        self.cntrl['barostat'] = 0
+
+
+    def config_pbc_md(self):
+        """
+        Configure input settings to default NTP.
+        """
+
+        self._config_md()
+        self.title = 'PBC MD Simulation'
+        self.cntrl['cut'] = 8.0
+        self.cntrl['igb'] = 0
         self.cntrl['ntp'] = 1
         self.cntrl['barostat'] = 2
 
@@ -233,7 +229,7 @@ class Simulation(object):
                 burn_in = 0
             # Set an end_soft value that is 75% of way between ncyc and maxcyc
             end_soft = int(float(ncyc) + 0.60*(float(maxcyc) - float(ncyc)))
-            self.min['wt'] = [
+            self.wt = [
                 "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(burn_in),
                 "&wt type = 'NB', istep1={:.0f}, istep2={:.0f}, value1 = 0.0, value2=1.0, IINC=50, /".format(burn_in,end_soft)]
 
@@ -262,8 +258,19 @@ class Simulation(object):
         log.debug('Exec line: '+' '.join(exec_list))
         # DO BETTER OVERWRITE CHECKING!!!!
         if overwrite or not os.path.isfile(self.path+'/'+self.output):
-            sp.call(exec_list, cwd=self.path)
-        log.debug('TODO: Catch errors here...')
+            #sp.call(exec_list, cwd=self.path)
+
+            p = sp.Popen(exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.STDOUT, bufsize=1, universal_newlines=True)
+            output = []
+            while p.poll() is None:
+                line = p.communicate()[0]
+                output.append(line)
+            if p.poll() is None:
+                p.kill()
+
+            if output != []:
+                output = "\n".join(output)
+                log.info("Execution returned output messages!\n"+output)
         log.info('Minimization completed...')
 
 
