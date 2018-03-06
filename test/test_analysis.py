@@ -1,15 +1,15 @@
 import parmed as pmd
 import pytraj as pt
 import numpy as np
-import paprika.restraints
-import paprika.analysis
+from paprika import restraints
+from paprika import analysis
 
 def test_fe_calc():
 
     inputpdb = pmd.load_file('cb6_but_gb_ref_data/vac.pdb')
     
     # Distance restraint
-    rest1 = paprika.restraints.DAT_restraint()
+    rest1 = restraints.DAT_restraint()
     rest1.continuous_apr = True
     rest1.amber_index = True
     rest1.topology = inputpdb
@@ -25,7 +25,7 @@ def test_fe_calc():
     rest1.initialize()
     
     # Angle restraint
-    rest2 = paprika.restraints.DAT_restraint()
+    rest2 = restraints.DAT_restraint()
     rest2.continuous_apr = True
     rest2.amber_index = True
     rest2.topology = inputpdb
@@ -42,7 +42,7 @@ def test_fe_calc():
     rest2.initialize()
     
     # Dihedral restraint
-    rest3 = paprika.restraints.DAT_restraint()
+    rest3 = restraints.DAT_restraint()
     rest3.continuous_apr = True
     rest3.amber_index = True
     rest3.topology = inputpdb
@@ -60,7 +60,7 @@ def test_fe_calc():
     rest3.initialize()
     
     # Create window directories
-    window_list = paprika.restraints.create_window_list([rest1,rest2,rest3])
+    window_list = restraints.create_window_list([rest1,rest2,rest3])
 
     # Phase abbreviations
     phase_dict = {'a': 'attach', 'p': 'pull', 'r': 'release'}
@@ -86,7 +86,7 @@ def test_fe_calc():
             else:
                 pass
 
-    fecalc = paprika.analysis.fe_calc()
+    fecalc = analysis.fe_calc()
     fecalc.restraint_list = [rest1,rest2,rest3]
     fecalc.raw_values = rest_dat
     fecalc.compute_free_energy()

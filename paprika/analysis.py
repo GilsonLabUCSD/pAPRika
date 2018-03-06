@@ -30,6 +30,11 @@ class fe_calc(object):
         # Should this be a tuple? (as above)
         self.subsample_methods = ['blocking']
 
+        # Keep track of the order of increasing force_constants/targets for each
+        # phase. This helps in cases where reordering is required due to post-hoc
+        # window additions.
+        self.ordered_index = {}
+
         # TODO: Add check that fe_methods and subsample_methods have correct keywords
 
         # FE calculation results will be stored here
@@ -95,6 +100,7 @@ class fe_calc(object):
 
         # Create a window index list which matches numerical ascending order for the change_param
         reorder = np.argsort(active_rest[0].phase[phase][change_param])
+        self.ordered_index[phase] = reorder
 
         # If continuous_apr and attach/release, we need to know the order of pull too
         if active_rest[0].continuous_apr and phase in ['attach', 'release']:
@@ -284,13 +290,14 @@ class fe_calc(object):
 
                             windows = len(self.results[phase][fe_method][subsample_method]['sem_matrix'])
                             self.results[phase][fe_method][subsample_method]['convergence'] = np.ones([windows], np.float64)*-1.0
+                            self.results[phase][fe_method][subsample_method]['ordered_convergence'] = np.ones([windows], np.float64)*-1.0
                             log.info(phase+': computing convergence for mbar/blocking method')
                             for i in range(windows):
                                 if i == 0:
-                                    self.results[phase][fe_method][subsample_method]['convergence'][i]\
+                                    self.results[phase][fe_method][subsample_method]['ordered_convergence'][i]\
                                         = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i+1]
                                 elif i == windows-1:
-                                    self.results[phase][fe_method][subsample_method]['convergence'][i]\
+                                    self.results[phase][fe_method][subsample_method]['ordered_convergence'][i]\
                                         = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i-1]
                                 else:
                                     left = self.results[phase][fe_method][subsample_method]['sem_matrix'][i][i-1]
@@ -301,8 +308,13 @@ class fe_calc(object):
                                         max_val = right
                                     else:
                                         max_val = right
-                                    self.results[phase][fe_method][subsample_method]['convergence'][i]\
+                                    self.results[phase][fe_method][subsample_method]['ordered_convergence'][i]\
                                         = max_val
+
+                            # Un-reorder so that convergence easily matches up with original window order
+                            unreorder = np.argsort(self.ordered_index[phase])
+                            self.results[phase][fe_method][subsample_method]['convergence'] =\
+                                self.results[phase][fe_method][subsample_method]['ordered_convergence'][unreorder]
 
                             
 

@@ -5,6 +5,7 @@ import shutil
 import parmed as pmd
 from parmed.structure import Structure as ParmedStructureClass
 from paprika import align
+from datetime import datetime
 
 global HAS_OPENMM
 try:
@@ -61,27 +62,23 @@ def index_from_mask(structure, mask, amber_index=False):
     return indices
 
 
-def make_window_dirs(window_list, remove_existing=False):
+def make_window_dirs(window_list, stash_existing=False):
     """
     Make a series of directories to hold the simulation setup files
     and the data. Here we could check if the directories already exist and prompt
     the user or quit or do something else.
     """
 
-    directory = os.getcwd()
+    cwd = os.getcwd()
+    win_dir = cwd+'/windows'
 
-    # Should change the following to move the windows dir
-    # import datetime
-    # print(
-    #   'test-{date:%Y-%m-%d_%H:%M:%S}.txt'.format( date=datetime.datetime.now() )
-    # )
-
-    if remove_existing:
-        shutil.rmtree(directory + '/windows/')
+    if stash_existing and os.path.isdir(win_dir):
+        stash_dir = cwd+"/windows_{:%Y.%m.%d_%H.%M.%S}".format(datetime.now())
+        shutil.move(win_dir, stash_dir)
 
     for window in window_list:
-        if not os.path.exists(directory + '/windows/' + window):
-            os.makedirs(directory + '/windows/' + window)
+        if not os.path.exists(win_dir+'/'+window):
+            os.makedirs(win_dir+'/'+window)
 
 
 def amber_to_pdb(topology, coordinates):

@@ -4,65 +4,6 @@ from collections import OrderedDict
 import os
 
 
-def _amber_write_input_file(filename, dictionary, title='Input.'):
-    """
-    Process a dictionary to generate an AMBER input file.
-
-    Parameters
-    ---------
-    filename : string
-        Name of the AMBER input file (to be written)
-    dictionary : dict
-        Python dictionary containing `&cntrl` keywords
-    title : str
-        Title of the AMBER input file
-    """
-
-    log.debug('Writing {}'.format(filename))
-    with open(filename, 'w') as f:
-        f.write("{}\n".format(title))
-        for namelist in ['cntrl', 'ewald']:
-            if dictionary[namelist] is not None:
-                f.write(" &{}\n".format(namelist))
-                for key, val in dictionary[namelist].items():
-                    if val is not None:
-                        f.write("  {:15s} {:s},\n".format(
-                            key + ' =', str(val)))
-                f.write(" /\n")
-        if dictionary['cntrl']['nmropt'] == 1:
-            if dictionary['wt'] is not None:
-                for line in dictionary['wt']:
-                    f.write(" " + line + "\n")
-            f.write(" &wt type = 'END', /\n")
-            if dictionary['DISANG'] is not None:
-                f.write("DISANG = {}\n".format(dictionary['DISANG']))
-                f.write("LISTOUT = POUT\n\n")
-        if dictionary['GROUP'] is not None:
-            f.write("{:s}".format(dictionary['GROUP']))
-
-class MutableDict(dict):
-    """ If prefix gets updated, updated all associated files """
-
-    suffixes = {
-        'input':        '.in',
-        'inpcrd':       '.inpcrd',
-        'ref':          '.inpcrd',
-        'output':       '.out',
-        'restart':      '.rst',
-        'mdinfo':       '.mdinfo',
-        'mdcrd':        '.nc',
-    }
-
-    def __setitem__(self,key,value):
-        if key == 'prefix':
-            dict.__setitem__(self, 'prefix', value)
-            for filetype, suff in self.suffixes.items():
-                if dict.__contains__(self, filetype):
-                    dict.__setitem__(self, filetype, value+suff)
-        else:
-            dict.__setitem__(self,key,value)
-
-
 class Simulation(object):
     """
     AMBER simulation class.
@@ -77,105 +18,202 @@ class Simulation(object):
         self.window = None
         self.topology = 'prmtop'
         self.restraint_file = 'restraints.in'
+        self.title = 'PBC MD Simulation'
+        self.converged = False
 
-        ### Minimization Settings
-        self._min = MutableDict({})
-        self._min['prefix'] = 'minimize'
-        self._min['input'] = self._min['prefix'] + '.in'
-        self._min['inpcrd'] = self._min['prefix'] + '.inpcrd'
-        #self._min['ref'] = None  # We're gonna leave this unset
-        self._min['output'] = self._min['prefix'] + '.out'
-        self._min['restart'] = self._min['prefix'] + '.rst'
-        self._min['mdinfo'] = self._min['prefix'] + '.mdinfo'
+        ### File names
+        self._prefix = 'md'
+        self.input = self._prefix + '.in'
+        self.inpcrd = self._prefix + '.inpcrd'
+        self.ref = self._prefix + '.inpcrd'
+        self.output = self._prefix + '.out'
+        self.restart = self._prefix + '.rst7'
+        self.mdinfo = self._prefix + '.mdinfo'
+        self.mdcrd = self._prefix + '.nc'
+        self.mden = self._prefix + '.mden'
 
-        self.min['cntrl'] = OrderedDict()
-        self.min['cntrl']['imin'] = 1
-        self.min['cntrl']['ntx'] = 1
-        self.min['cntrl']['irest'] = 0
-        self.min['cntrl']['maxcyc'] = 5000
-        self.min['cntrl']['ncyc'] = 1000
-        self.min['cntrl']['ntpr'] = 100
-        self.min['cntrl']['ntxo'] = 1
-        self.min['cntrl']['ntf'] = 1
-        self.min['cntrl']['ntc'] = 1
-        self.min['cntrl']['cut'] = 999.0
-        self.min['cntrl']['ntb'] = 0
-        self.min['cntrl']['igb'] = 1
-        self.min['cntrl']['ntr'] = None
-        self.min['cntrl']['restraint_wt'] = None
-        self.min['cntrl']['restraintmask'] = None
-        self.min['cntrl']['nmropt'] = 1
-        self.min['cntrl']['pencut'] = -1
+        ### Input file cntrl settings (Default = NTP)
+        self.cntrl = OrderedDict()
+        self.cntrl['imin'] = 0
+        self.cntrl['ntx'] = 1
+        self.cntrl['irest'] = 0
+        self.cntrl['maxcyc'] = 0
+        self.cntrl['ncyc'] = 0
+        self.cntrl['dt'] = 0.002
+        self.cntrl['nstlim'] = 5000
+        self.cntrl['ntpr'] = 500
+        self.cntrl['ntwe'] = 500
+        self.cntrl['ntwr'] = 5000
+        self.cntrl['ntwx'] = 500
+        self.cntrl['ntxo'] = 1
+        self.cntrl['ioutfm'] = 1
+        self.cntrl['ntf'] = 2
+        self.cntrl['ntc'] = 2
+        self.cntrl['cut'] = 8.0
+        self.cntrl['igb'] = 0
+        self.cntrl['ntt'] = 3
+        self.cntrl['gamma_ln'] = 1.0
+        self.cntrl['ig'] = -1
+        self.cntrl['ntp'] = 1
+        self.cntrl['barostat'] = 2
+        self.cntrl['ntr'] = None
+        self.cntrl['restraint_wt'] = None
+        self.cntrl['restraintmask'] = None
+        self.cntrl['nmropt'] = 1
+        self.cntrl['pencut'] = -1
 
-        self.min['ewald'] = None
-        self.min['wt'] = None    # or []
-        self.min['DISANG'] = self.restraint_file
-        self.min['GROUP'] = None    # or []
+        # Other input file sections
+        self.ewald = None
+        self.other_namelist = None # Could add other namelists as dicts
+        self.wt = None    # or []
+        self.disang = self.restraint_file
+        self.group = None    # or []
 
-        ### MD settings
-        self._md = MutableDict({})
-        self._md['prefix'] = 'md'
-        self._md['input'] = self._md['prefix'] + '.in'
-        self._md['inpcrd'] = self._md['prefix'] + '.inpcrd'
-        #self._md['ref'] = None  # Leave unset
-        self._md['output'] = self._md['prefix'] + '.out'
-        self._md['restart'] = self._md['prefix'] + '.rst'
-        self._md['mdcrd'] = self._md['prefix'] + '.nc'
-        self._md['mdinfo'] = self._md['prefix'] + '.mdinfo'
-        self._md['coords'] = self._md['prefix'] + '.inpcrd'
 
-        self.md['cntrl'] = OrderedDict()
-        self.md['cntrl']['imin'] = 0
-        self.md['cntrl']['ntx'] = 1
-        self.md['cntrl']['irest'] = 0
-        self.md['cntrl']['dt'] = 0.002
-        self.md['cntrl']['nstlim'] = 5000
-        self.md['cntrl']['ntpr'] = 500
-        self.md['cntrl']['ntwe'] = 0
-        self.md['cntrl']['ntwr'] = 5000
-        self.md['cntrl']['ntxo'] = 1
-        self.md['cntrl']['ntwx'] = 500
-        self.md['cntrl']['ioutfm'] = 1
-        self.md['cntrl']['ntf'] = 2
-        self.md['cntrl']['ntc'] = 2
-        self.md['cntrl']['igb'] = 1
-        self.md['cntrl']['cut'] = 999.0
-        self.md['cntrl']['ntt'] = 3
-        self.md['cntrl']['gamma_ln'] = 1.0
-        self.md['cntrl']['ig'] = -1
-        self.md['cntrl']['temp0'] = 298.15
-        self.md['cntrl']['ntp'] = 0
-        self.md['cntrl']['ntr'] = None
-        self.md['cntrl']['restraint_wt'] = None
-        self.md['cntrl']['restraintmask'] = None
-        self.md['cntrl']['nmropt'] = 1
-        self.md['cntrl']['pencut'] = -1
-
-        self.md['ewald'] = None
-        self.md['wt'] = None
-        self.md['DISANG'] = self.restraint_file
-        self.md['GROUP'] = None
-
-    ### Refresh the min/md dicts if prefix changes
+    ### Refresh file names if prefix changes
     @property
-    def min(self):
-        return self._min
-    @property
-    def md(self):
-        return self._md
+    def prefix(self):
+        return self._prefix
+    @prefix.setter
+    def prefix(self, new_prefix):
+        self._prefix = new_prefix
+        self.input = new_prefix + '.in'
+        self.inpcrd = new_prefix + '.inpcrd'
+        self.ref = new_prefix + '.inpcrd'
+        self.output = new_prefix + '.out'
+        self.restart = new_prefix + '.rst7'
+        self.mdinfo = new_prefix + '.mdinfo'
+        self.mdcrd = new_prefix + '.nc'
+        self.mden = new_prefix + '.mden'
 
-    def config_ntp(self):
+    def config_pbc_min(self):
+        """
+        Configure input settings to minimization in periodic boundary conditions.
+        """
+        self.title = 'PBC Minimization'
+        self.cntrl['imin'] = 1
+        self.cntrl['ntx'] = 1
+        self.cntrl['irest'] = 0
+        self.cntrl['maxcyc'] = 5000
+        self.cntrl['ncyc'] = 1000
+        self.cntrl['ntpr'] = 100
+        self.cntrl['ntwr'] = 5000
+        self.cntrl['ntxo'] = 1
+        self.cntrl['ntf'] = 1
+        self.cntrl['ntc'] = 1
+        self.cntrl['cut'] = 8.0
+        self.cntrl['igb'] = 0
+        self.cntrl['ntp'] = 0
+
+    def config_gb_min(self):
+        """
+        Configure input settings to minimization in continuum solvent.
+        """
+
+        self.title = 'GB Minimization'
+        self.cntrl['imin'] = 1
+        self.cntrl['ntx'] = 1
+        self.cntrl['irest'] = 0
+        self.cntrl['maxcyc'] = 5000
+        self.cntrl['ncyc'] = 1000
+        self.cntrl['ntpr'] = 100
+        self.cntrl['ntwr'] = 5000
+        self.cntrl['ntxo'] = 1
+        self.cntrl['ntf'] = 1
+        self.cntrl['ntc'] = 1
+        self.cntrl['cut'] = 999.0
+        self.cntrl['igb'] = 1
+        self.cntrl['ntp'] = 0
+
+
+    def config_gb_md(self):
+        """
+        Configure input settings to default GB.
+        """
+
+        self.title = 'GB MD Simulation'
+        self.cntrl['imin'] = 0
+        self.cntrl['ntx'] = 1
+        self.cntrl['irest'] = 0
+        self.cntrl['dt'] = 0.002
+        self.cntrl['nstlim'] = 5000
+        self.cntrl['ntpr'] = 500
+        self.cntrl['ntwe'] = 500
+        self.cntrl['ntwr'] = 5000
+        self.cntrl['ntwx'] = 500
+        self.cntrl['ntxo'] = 1
+        self.cntrl['ioutfm'] = 1
+        self.cntrl['ntf'] = 2
+        self.cntrl['ntc'] = 2
+        self.cntrl['cut'] = 999.0
+        self.cntrl['igb'] = 1
+        self.cntrl['ntt'] = 3
+        self.cntrl['gamma_ln'] = 1.0
+        self.cntrl['ig'] = -1
+        self.cntrl['ntp'] = 0
+
+
+    def config_ntp_md(self):
         """
         Configure input settings to default NTP.
         """
 
-        self.min['cntrl']['ntb'] = 2
-        self.min['cntrl']['cut'] = 8.0
-        self.md['cntrl']['ntp'] = 1
-        self.md['cntrl']['barostat'] = 1
+        self.title = 'PBC MD Simulation'
+        self.cntrl['imin'] = 0
+        self.cntrl['ntx'] = 1
+        self.cntrl['irest'] = 0
+        self.cntrl['maxcyc'] = 0
+        self.cntrl['ncyc'] = 0
+        self.cntrl['dt'] = 0.002
+        self.cntrl['nstlim'] = 5000
+        self.cntrl['ntpr'] = 500
+        self.cntrl['ntwe'] = 500
+        self.cntrl['ntwr'] = 5000
+        self.cntrl['ntwx'] = 500
+        self.cntrl['ntxo'] = 1
+        self.cntrl['ioutfm'] = 1
+        self.cntrl['ntf'] = 2
+        self.cntrl['ntc'] = 2
+        self.cntrl['cut'] = 8.0
+        self.cntrl['igb'] = 0
+        self.cntrl['ntt'] = 3
+        self.cntrl['gamma_ln'] = 1.0
+        self.cntrl['ig'] = -1
+        self.cntrl['ntp'] = 1
+        self.cntrl['barostat'] = 2
+
+    def _write_dict_to_mdin(self, f, dictionary):
+        for key, val in dictionary.items():
+            if val is not None:
+                f.write("  {:15s} {:s},\n".format(key + ' =', str(val)))
+        f.write(" /\n")
+
+
+    def _amber_write_input_file(self):
+        log.debug('Writing {}'.format(self.input))
+        with open(self.path+'/'+self.input, 'w') as f:
+            f.write("{}\n".format(self.title))
+
+            f.write(" &cntrl\n")
+            self._write_dict_to_mdin(f, self.cntrl)
+
+            if self.ewald is not None:
+                f.write(" &ewald\n")
+                self._write_dict_to_mdin(f, self.ewald)
+
+            if self.cntrl['nmropt'] == 1:
+                if self.wt is not None:
+                    for line in self.wt:
+                        f.write(" " + line + "\n")
+                f.write(" &wt type = 'END', /\n")
+                if self.disang is not None:
+                    f.write("DISANG = {}\n".format(self.disang))
+                    f.write("LISTOUT = POUT\n\n")
+            if self.group is not None:
+                f.write("{:s}".format(self.group))
 
     
-    def minimize(self, soft=False, overwrite=False):
+    def run(self, soft_minimize=False, overwrite=False):
         """
         Minimize the system.
 
@@ -185,71 +223,48 @@ class Simulation(object):
         """
 
         # These settings hardcoded at the moment ... possibly expose for editing in the future
-        if soft:
+        if soft_minimize:
             # Set a burn in value that is 25% of the way between ncyc and maxcyc
-            burn_in = int(float(self.min['cntrl']['ncyc']) + 0.20*(float(self.min['cntrl']['maxcyc']) - float(self.min['cntrl']['ncyc'])))
-            # If the burn_in value is nuts, then just put it to zero
-            if burn_in < 0 or burn_in >= self.min['cntrl']['maxcyc']:
+            ncyc = self.cntrl['ncyc']
+            maxcyc = self.cntrl['maxcyc']
+            burn_in = int(float(ncyc) + 0.20*(float(maxcyc) - float(ncyc)))
+            # If the burn_in value is nuts, then just set it to zero
+            if burn_in < 0 or burn_in >= maxcyc:
                 burn_in = 0
             # Set an end_soft value that is 75% of way between ncyc and maxcyc
-            end_soft = int(float(self.min['cntrl']['ncyc']) + 0.60*(float(self.min['cntrl']['maxcyc']) - float(self.min['cntrl']['ncyc'])))
+            end_soft = int(float(ncyc) + 0.60*(float(maxcyc) - float(ncyc)))
             self.min['wt'] = [
                 "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(burn_in),
                 "&wt type = 'NB', istep1={:.0f}, istep2={:.0f}, value1 = 0.0, value2=1.0, IINC=50, /".format(burn_in,end_soft)]
 
-        _amber_write_input_file(self.path+'/'+self.min['input'], self.min, title='GB Minimization.')
+        #_amber_write_input_file(self.path+'/'+self.input, self.min, title='GB Minimization.')
+        self._amber_write_input_file()
 
-        log.info('Running GB Minimization at {}'.format(self.path))
-
-        if 'ref' in self.min:
-            exec_list = self.executable.split() + [
-                '-O', '-p', self.topology, '-ref',  self.min['ref'],
-                '-c', self.min['inpcrd'], '-i', self.min['input'], '-o', self.min['output'],
-                '-r', self.min['restart'], '-inf', self.min['mdinfo']
-            ]
+        if self.cntrl['imin'] == 1:
+            log.info('Running Minimization at {}'.format(self.path))
         else:
-            exec_list = self.executable.split() + [
-                '-O', '-p', self.topology,
-                '-c', self.min['inpcrd'], '-i', self.min['input'], '-o', self.min['output'],
-                '-r', self.min['restart'], '-inf', self.min['mdinfo']
-            ]
+            log.info('Running MD at {}'.format(self.path))
+
+        exec_list = self.executable.split() + [
+                    '-O',
+                    '-p', self.topology,
+                    '-ref', self.ref,
+                    '-c', self.inpcrd,
+                    '-i', self.input,
+                    '-o', self.output,
+                    '-r', self.restart,
+                    '-x', self.mdcrd,
+                    '-inf', self.mdinfo,
+                    '-e', self.mden
+                    ]
 
 
         log.debug('Exec line: '+' '.join(exec_list))
         # DO BETTER OVERWRITE CHECKING!!!!
-        if overwrite or not os.path.isfile(self.path+'/'+self.min['output']):
+        if overwrite or not os.path.isfile(self.path+'/'+self.output):
             sp.call(exec_list, cwd=self.path)
         log.debug('TODO: Catch errors here...')
         log.info('Minimization completed...')
 
-
-    def run_md(self, overwrite=False):
-        """
-        Run MD with AMBER.
-        """
-
-        _amber_write_input_file(self.path+'/'+self.md['input'], self.md, title='MD.')
-
-        log.info('Running AMBER MD at {}'.format(self.path))
-
-        if 'ref' in self.md:
-            exec_list = self.executable.split() + [
-                '-O', '-p', self.topology, '-ref',  self.md['ref'],
-                '-c', self.md['inpcrd'], '-i', self.md['input'], '-o', self.md['output'],
-                '-r', self.md['restart'], '-x', self.md['mdcrd'], '-inf', self.md['mdinfo']
-            ]
-        else:
-            exec_list = self.executable.split() + [
-                '-O', '-p', self.topology,
-                '-c', self.md['inpcrd'], '-i', self.md['input'], '-o', self.md['output'],
-                '-r', self.md['restart'], '-x', self.md['mdcrd'], '-inf', self.md['mdinfo']
-            ]
-
-        log.debug('Exec Line: '+' '.join(exec_list))
-        # DO BETTER OVERWRITE CHECKING!!!!
-        if overwrite or not os.path.isfile(self.path+'/'+self.md['output']):
-            sp.call(exec_list, cwd=self.path)
-        log.debug('TODO: Catch errors here...')
-        log.info('MD completed...')
 
 

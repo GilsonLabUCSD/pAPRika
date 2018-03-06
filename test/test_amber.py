@@ -1,9 +1,8 @@
 import parmed as pmd
-import paprika
-import paprika.build
-import paprika.restraints
-import paprika.amber
-import paprika.utils
+from paprika import build
+from paprika import restraints
+from paprika import amber
+from paprika import utils
 import numpy as np
 import os
 import shutil
@@ -14,7 +13,7 @@ def test_amber_single_window_min():
     inputpdb = pmd.load_file('cb6-but/cb6-but-notcentered.pdb')
     
     # Distance restraint
-    rest1 = paprika.restraints.DAT_restraint()
+    rest1 = restraints.DAT_restraint()
     rest1.continuous_apr = True
     rest1.amber_index = True
     rest1.topology = inputpdb
@@ -30,7 +29,7 @@ def test_amber_single_window_min():
     rest1.initialize()
     
     # Angle restraint
-    rest2 = paprika.restraints.DAT_restraint()
+    rest2 = restraints.DAT_restraint()
     rest2.continuous_apr = True
     rest2.amber_index = True
     rest2.topology = inputpdb
@@ -47,7 +46,7 @@ def test_amber_single_window_min():
     rest2.initialize()
     
     # Dihedral restraint
-    rest3 = paprika.restraints.DAT_restraint()
+    rest3 = restraints.DAT_restraint()
     rest3.continuous_apr = True
     rest3.amber_index = True
     rest3.topology = inputpdb
@@ -74,7 +73,7 @@ def test_amber_single_window_min():
     with open(path+'restraints.in', 'w') as f:
         for rest in [rest1,rest2,rest3]:
             # Testing just window p005
-            f.write(paprika.restraints.amber_restraint_line(rest,'pull',5))
+            f.write(restraints.amber_restraint_line(rest,'pull',5))
 
     # Copy build files for tleap
     files = 'cb6.mol2 cb6.frcmod but.mol2 but.frcmod cb6-but-notcentered.pdb'.split()
@@ -82,17 +81,19 @@ def test_amber_single_window_min():
         shutil.copy('cb6-but/'+file,path+file)
 
     # Build prmtop/inpcrd
-    paprika.build.basic_tleap('cb6-but/tleap_gb.in', directory=path, pdbfile='cb6-but-notcentered.pdb', saveprefix='vac')
+    build.basic_tleap('cb6-but/tleap_gb.in', directory=path, pdbfile='cb6-but-notcentered.pdb', saveprefix='vac')
 
     # Create Simulation
-    gbsim = paprika.amber.Simulation()
+    gbsim = amber.Simulation()
     gbsim.path = path
     gbsim.executable = 'sander'
     gbsim.topology = 'vac.prmtop'
-    gbsim.min['inpcrd'] = 'vac.rst7'
-    gbsim.min['cntrl']['maxcyc'] = 1
-    gbsim.min['cntrl']['ncyc'] = 1 
-    gbsim.minimize()
+    gbsim.prefix = 'minimize'
+    gbsim.inpcrd = 'vac.rst7'
+    gbsim.config_gb_min()
+    gbsim.cntrl['maxcyc'] = 1
+    gbsim.cntrl['ncyc'] = 1 
+    gbsim.run()
 
     # Collect values
     test_values = []
