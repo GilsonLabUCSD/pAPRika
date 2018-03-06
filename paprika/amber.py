@@ -258,20 +258,22 @@ class Simulation(object):
         log.debug('Exec line: '+' '.join(exec_list))
         # DO BETTER OVERWRITE CHECKING!!!!
         if overwrite or not os.path.isfile(self.path+'/'+self.output):
-            #sp.call(exec_list, cwd=self.path)
-
-            p = sp.Popen(exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.STDOUT, bufsize=1, universal_newlines=True)
-            output = []
-            while p.poll() is None:
-                line = p.communicate()[0]
-                output.append(line)
-            if p.poll() is None:
-                p.kill()
-
-            if output != []:
-                output = "\n".join(output)
-                log.info("Execution returned output messages!\n"+output)
-        log.info('Minimization completed...')
+            sp.call(exec_list, cwd=self.path, stderr=sp.STDOUT)
+#            p = sp.Popen(exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.STDOUT, bufsize=1, universal_newlines=True)
+#            output = []
+#            while p.poll() is None:
+#                line = p.communicate()[0]
+#                output.append(line)
+#            if p.poll() is None:
+#                p.kill()
+#
+#            if output != []:
+#                output = "\n".join(output)
+#                log.info("Execution returned output messages!\n"+output)
+        if self.cntrl['imin'] == 1:
+            log.info('Minimization completed...')
+        else:
+            log.info('MD completed ...')
 
 
 
