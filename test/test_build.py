@@ -14,6 +14,13 @@ from paprika.align import *
 from paprika.build import *
 import os
 import shutil
+import sys
+
+# Enable import from local dir
+sys.path.append('')
+import pytest
+import conftest
+
 
 class TestBuild(unittest.TestCase):
 
@@ -23,6 +30,7 @@ class TestBuild(unittest.TestCase):
             if os.path.isfile('./cb6-but/'+f):
                 os.remove('./cb6-but/'+f)
 
+    @pytest.mark.slow
     def test_solvation_simple(self):
         """ Test that we can solvate CB6-BUT using default settings. """
         waters = np.random.randint(1000, 10000)
@@ -65,6 +73,7 @@ class TestBuild(unittest.TestCase):
         self.assertEqual(int(grepped_waters), waters)
         self.rm_solvated_files()
 
+    @pytest.mark.slow
     def test_solvation_spatial_size(self):
         """ Test that we can solvate CB6-BUT with an buffer size in Angstroms. """
         random_int = np.random.randint(10, 100)
@@ -80,6 +89,7 @@ class TestBuild(unittest.TestCase):
         self.assertEqual(0, 0)
         self.rm_solvated_files()
 
+    @pytest.mark.slow
     def test_solvation_potassium_control(self):
         """ Test there is no potassium by default. A negative control. """
         waters = np.random.randint(1000, 10000)
@@ -94,6 +104,7 @@ class TestBuild(unittest.TestCase):
         self.assertEqual(int(potassium), 0)
         self.rm_solvated_files()
 
+    @pytest.mark.slow
     def test_solvation_with_additional_ions(self):
         """ Test that we can solvate CB6-BUT with additional ions. """
         waters = np.random.randint(1000, 10000)
@@ -135,8 +146,9 @@ class TestBuild(unittest.TestCase):
             int(cation_number) == n_cations and int(anion_number) == n_anions)
         self.rm_solvated_files()
 
-    def test_solvation_by_molarity(self):
-        """ Test that we can solvate CB6-BUT through molarity. """
+#    @pytest.mark.slow
+    def test_solvation_by_M_and_m(self):
+        """ Test that we can solvate CB6-BUT through molarity and molality. """
         log.debug('Trying 10 A buffer with 150 mM NaCl...')
         solvate(
             tleapfile='./cb6-but/tleap_solvate.in',
@@ -144,55 +156,50 @@ class TestBuild(unittest.TestCase):
             bufferwater='10A',
             neutralize=False,
             pbctype=1,
-            addions=['Na+', '0.150M', 'Cl-', '0.150M'])
-        cation_number = sp.check_output(
+            addions=['NA', '0.150M', 'CL', '0.150M', 'K', '0.100m', 'BR', '0.100m'])
+
+        # Molarity Check
+        obs_num_na = sp.check_output(
             [
                 "grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
-                "grep -oh 'Na+ ' | wc -w"
+                "grep -oh 'NA ' | wc -w"
             ],
             shell=True)
-        anion_number = sp.check_output(
+        obs_num_cl = sp.check_output(
             [
                 "grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
-                "grep -oh 'Cl- ' | wc -w"
+                "grep -oh 'CL ' | wc -w"
             ],
             shell=True)
         # Approximate volume of the solvated system in liters
+        # NMH: is the 4.6766 hardcoded from your observation?
         volume_in_liters = 4.6766 * 10**-23
-        n_cations = np.ceil((6.022 * 10**23) * (0.150) * volume_in_liters)
-        n_anions = np.ceil((6.022 * 10**23) * (0.150) * volume_in_liters)
+        calc_num_na = np.ceil((6.022 * 10**23) * (0.150) * volume_in_liters)
+        calc_num_cl = np.ceil((6.022 * 10**23) * (0.150) * volume_in_liters)
         self.assertTrue(
-            int(cation_number) == n_cations and int(anion_number) == n_anions)
-        self.rm_solvated_files()
+            int(obs_num_na) == calc_num_na and int(obs_num_cl) == calc_num_cl)
 
-    def test_solvation_by_molality(self):
-        """ Test that we can solvate CB6-BUT through molarity. """
-        log.debug('Trying 2000 water buffer with 150 mmol/kg NaCl...')
-        solvate(
-            tleapfile='./cb6-but/tleap_solvate.in',
-            pdbfile='cb6-but.pdb',
-            bufferwater=2000,
-            neutralize=False,
-            pbctype=1,
-            addions=['Na+', '0.150m', 'Cl-', '0.150m'])
-        cation_number = sp.check_output(
+        # Molality Check
+        obs_num_k = sp.check_output(
             [
                 "grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
-                "grep -oh 'Na+ ' | wc -w"
+                "grep -oh 'K ' | wc -w"
             ],
             shell=True)
-        anion_number = sp.check_output(
+        obs_num_br = sp.check_output(
             [
                 "grep -A 99 RESIDUE_LABEL ./cb6-but/solvated.prmtop | " +
-                "grep -oh 'Cl- ' | wc -w"
+                "grep -oh 'BR ' | wc -w"
             ],
             shell=True)
-        n_cations = np.ceil(0.150 * 2000 * 0.018)
-        n_anions = np.ceil(0.150 * 2000 * 0.018)
+        calc_num_k = np.ceil(0.100 * 945 * 0.018)
+        calc_num_br = np.ceil(0.100 * 945 * 0.018)
         self.assertTrue(
-            int(cation_number) == n_cations and int(anion_number) == n_anions)
+            int(obs_num_k) == calc_num_k and int(obs_num_br) == calc_num_br)
+
         self.rm_solvated_files()
 
+    @pytest.mark.slow
     def test_alignment_workflow(self):
         """ Test that we can solvate CB6-BUT after alignment. """
         cb6 = pmd.load_file('./cb6-but/vac.pdb')

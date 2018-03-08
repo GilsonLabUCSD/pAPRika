@@ -6,7 +6,7 @@ from paprika import analysis
 
 def test_fe_calc():
 
-    inputpdb = pmd.load_file('cb6_but_gb_ref_data/vac.pdb')
+    inputpdb = pmd.load_file('cb6_but_gb_apr_ref_data/vac.pdb')
     
     # Distance restraint
     rest1 = restraints.DAT_restraint()
@@ -72,7 +72,7 @@ def test_fe_calc():
     for i,window in enumerate(window_list):
         phase = phase_dict[window[0]]
         rest_dat[phase].append([])
-        traj = pt.load('cb6_but_gb_ref_data/'+window+'/md.nc', 'cb6_but_gb_ref_data/vac.prmtop')
+        traj = pt.load('cb6_but_gb_apr_ref_data/'+window+'/md.nc', 'cb6_but_gb_apr_ref_data/vac.prmtop')
         for rest in [rest1,rest2,rest3]:
             if rest.mask1 and rest.mask2 and not rest.mask3 and not rest.mask4:
                 dist = pt.distance(traj, ' '.join([rest.mask1, rest.mask2]))

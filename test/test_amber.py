@@ -8,9 +8,9 @@ import os
 import shutil
 import re
 
-def test_amber_single_window_min():
+def test_amber_single_window_gbmin():
     # Align PDB to Z-axis
-    inputpdb = pmd.load_file('cb6-but/cb6-but-notcentered.pdb')
+    inputpdb = pmd.load_file('cb6-but/cb6-but-minimized.pdb')
     
     # Distance restraint
     rest1 = restraints.DAT_restraint()
@@ -25,7 +25,7 @@ def test_amber_single_window_min():
     rest1.pull['fc'] = rest1.attach['fc_final']
     rest1.pull['target_initial'] = rest1.attach['target']
     rest1.pull['target_final'] = 18.5
-    rest1.pull['num_windows'] = 19
+    rest1.pull['num_windows'] = 29
     rest1.initialize()
     
     # Angle restraint
@@ -36,13 +36,13 @@ def test_amber_single_window_min():
     rest2.mask1 = ':CB6@O1'
     rest2.mask2 = ':CB6@O'
     rest2.mask3 = ':BUT@C1'
-    rest2.attach['target'] = 8.0
+    rest2.attach['target'] = 25.0
     rest2.attach['fraction_list'] = [0.00, 0.04, 0.181, 0.496, 1.000]
     rest2.attach['fc_final'] = 50.0
     rest2.pull['fc'] = rest2.attach['fc_final']
     rest2.pull['target_initial'] = rest2.attach['target']
     rest2.pull['target_final'] = rest2.attach['target']
-    rest2.pull['num_windows'] = 19
+    rest2.pull['num_windows'] = 29
     rest2.initialize()
     
     # Dihedral restraint
@@ -60,7 +60,7 @@ def test_amber_single_window_min():
     rest3.pull['fc'] = rest3.attach['fc_final']
     rest3.pull['target_initial'] = rest3.attach['target']
     rest3.pull['target_final'] = rest3.attach['target']
-    rest3.pull['num_windows'] = 19
+    rest3.pull['num_windows'] = 29
     rest3.initialize()
 
     # Create working directory
@@ -72,16 +72,16 @@ def test_amber_single_window_min():
     # Write restraints file for amber
     with open(path+'restraints.in', 'w') as f:
         for rest in [rest1,rest2,rest3]:
-            # Testing just window p005
-            f.write(restraints.amber_restraint_line(rest,'pull',5))
+            # Testing just window p001
+            f.write(restraints.amber_restraint_line(rest,'pull',1))
 
     # Copy build files for tleap
-    files = 'cb6.mol2 cb6.frcmod but.mol2 but.frcmod cb6-but-notcentered.pdb'.split()
+    files = 'cb6.mol2 cb6.frcmod but.mol2 but.frcmod cb6-but-minimized.pdb'.split()
     for file in files:
         shutil.copy('cb6-but/'+file,path+file)
 
     # Build prmtop/inpcrd
-    build.basic_tleap('cb6-but/tleap_gb.in', directory=path, pdbfile='cb6-but-notcentered.pdb', saveprefix='vac')
+    build.basic_tleap('cb6-but/tleap_gb.in', directory=path, pdbfile='cb6-but-minimized.pdb', saveprefix='vac')
 
     # Create Simulation
     gbsim = amber.Simulation()
@@ -96,37 +96,84 @@ def test_amber_single_window_min():
     gbsim.run()
 
     # Collect values
-    test_values = []
+    test_vals = []
     with open(path+'minimize.out', 'r') as f:
         filelines = f.readlines()
         for i,line in enumerate(filelines):
             if re.search('^ BOND ', line):
                 cols = line.split()
-                test_values.append(float(cols[2])) # BOND
-                test_values.append(float(cols[5])) # ANGLE
-                test_values.append(float(cols[8])) # DIHED
+                test_vals.append(float(cols[2])) # BOND
+                test_vals.append(float(cols[5])) # ANGLE
+                test_vals.append(float(cols[8])) # DIHED
                 cols = filelines[i+1].split()
-                test_values.append(float(cols[2])) # VDWAALS
-                test_values.append(float(cols[5])) # EEL
-                test_values.append(float(cols[8])) # EGB
+                test_vals.append(float(cols[2])) # VDWAALS
+                test_vals.append(float(cols[5])) # EEL
+                test_vals.append(float(cols[8])) # EGB
                 cols = filelines[i+2].split()
-                test_values.append(float(cols[3])) # 1-4 VDW
-                test_values.append(float(cols[7])) # 1-4 EEL
-                test_values.append(float(cols[10])) # RESTRAINT
+                test_vals.append(float(cols[3])) # 1-4 VDW
+                test_vals.append(float(cols[7])) # 1-4 EEL
+                test_vals.append(float(cols[10])) # RESTRAINT
                 cols = filelines[i+3].split()
-                test_values.append(float(cols[2])) # EAMBER
+                test_vals.append(float(cols[2])) # EAMBER
                 cols = filelines[i+4].split()
-                test_values.append(float(cols[4])) # Restraint: Bond
-                test_values.append(float(cols[7])) # Restraint: Angle
-                test_values.append(float(cols[10])) # Restraint: Torsion
+                test_vals.append(float(cols[4])) # Restraint: Bond
+                test_vals.append(float(cols[7])) # Restraint: Angle
+                test_vals.append(float(cols[10])) # Restraint: Torsion
                 break
 
     # A bit ugly, but we're here
-    nptest_values = np.asarray(test_values)
-    # Reference             BOND      ANGLE    DIHED    VDWAALS     EEL        EGB    1-4 VDW    1-4 EEL  RESTRAINT   EAMBER    Bond    Angle  Torsion
-    ref_values = np.array([11.4252, 109.4691, 52.9473, -67.7555, 1326.4786, -123.9177, 5.8587, -2127.9397, 90.8046, -813.4340, 76.073, 14.724, 0.008])
+    test_vals = np.asarray(test_vals)
+    # Reference           BOND     ANGLE    DIHED    VDWAALS     EEL        EGB    1-4 VDW    1-4 EEL  RESTRAINT   EAMBER  Bond   Angle  Torsion
+    ref_vals = np.array([0.9209, 107.7555, 52.3356, -68.1311, 1331.1371, -127.7541, 5.0130, -2128.7873, 4.5071, -827.5103, 1.214, 2.829, 0.464])
 
-    assert np.allclose(nptest_values, ref_values)
+    for i in range(len(test_vals)):
+        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.0001)
+
+    gbsim.config_gb_md()
+    gbsim.prefix = 'md'
+    gbsim.inpcrd = 'minimize.rst7'
+    gbsim.cntrl['nstlim'] = 1
+    gbsim.cntrl['ntpr'] = 1
+    gbsim.cntrl['ig'] = 777
+    gbsim.run()
+
+    test_vals = []
+    with open(path+'md.out', 'r') as f:
+        filelines = f.readlines()
+        for i,line in enumerate(filelines):
+            if re.search('^ NSTEP =        1 ', line):
+                cols = line.split()
+                test_vals.append(float(cols[8])) # TEMP
+                cols = filelines[i+1].split()
+                test_vals.append(float(cols[2])) # Etot
+                test_vals.append(float(cols[5])) # EKtot
+                test_vals.append(float(cols[8])) # EPtot
+                cols = filelines[i+2].split()
+                test_vals.append(float(cols[2])) # BOND
+                test_vals.append(float(cols[5])) # ANGLE
+                test_vals.append(float(cols[8])) # DIHED
+                cols = filelines[i+3].split()
+                test_vals.append(float(cols[3])) # 1-4 NB
+                test_vals.append(float(cols[7])) # 1-4 EEL
+                test_vals.append(float(cols[10])) # VDWAALS
+                cols = filelines[i+4].split()
+                test_vals.append(float(cols[2])) # EELEC
+                test_vals.append(float(cols[5])) # EGB
+                test_vals.append(float(cols[8])) # RESTRAINT
+                cols = filelines[i+5].split()
+                test_vals.append(float(cols[3])) # EAMBER
+                cols = filelines[i+8].split()
+                test_vals.append(float(cols[4])) # Restraint: Bond
+                test_vals.append(float(cols[7])) # Restraint: Angle
+                test_vals.append(float(cols[10])) # Restraint: Torsion
+                break
+
+    test_vals = np.asarray(test_vals)
+    # Reference           TEMP       Etot    EKtot      EPtot    BOND     ANGLE    DIHED  VDWAALS      EEL        EGB    1-4 VDW     1-4 EEL  RESTRAINT  EAMBER   Bond   Angle  Torsion
+    ref_vals = np.array([303.48, -726.5748, 96.4929, -823.0677, 0.8564, 107.7555, 52.3356, 5.0130, -2128.7873, -68.1311, 1331.1371, -127.7541, 4.5071, -827.5748, 1.214, 2.829, 0.464])
+
+    for i in range(len(test_vals)):
+        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.0001)
 
     shutil.rmtree('amber_test')
 
