@@ -51,6 +51,8 @@ class Simulation(object):
         self.cntrl['ntc'] = 2
         self.cntrl['cut'] = 8.0
         self.cntrl['igb'] = 0
+        self.cntrl['tempi'] = 298.15
+        self.cntrl['temp0'] = 298.15
         self.cntrl['ntt'] = 3
         self.cntrl['gamma_ln'] = 1.0
         self.cntrl['ig'] = -1
@@ -107,6 +109,8 @@ class Simulation(object):
         self.cntrl['ig'] = 0
         self.cntrl['ntp'] = 0
         self.cntrl['barostat'] = 0
+        self.mdcrd = None
+        self.mden = None
 
 
     def config_pbc_min(self):
@@ -241,18 +245,17 @@ class Simulation(object):
         else:
             log.info('Running MD at {}'.format(self.path))
 
-        exec_list = self.executable.split() + [
-                    '-O',
-                    '-p', self.topology,
-                    '-ref', self.ref,
-                    '-c', self.inpcrd,
-                    '-i', self.input,
-                    '-o', self.output,
-                    '-r', self.restart,
-                    '-x', self.mdcrd,
-                    '-inf', self.mdinfo,
-                    '-e', self.mden
-                    ]
+        # Deal with overwrite here? -O
+        exec_list = self.executable.split() + ['-O', '-p', self.topology]
+        if self.ref is not None:
+            exec_list += ['-ref', self.ref]
+        exec_list += ['-c', self.inpcrd, '-i', self.input, '-o', self.output, '-r', self.restart]
+        if self.mdcrd is not None:
+            exec_list += ['-x', self.mdcrd]
+        if self.mdinfo is not None:
+            exec_list += ['-inf', self.mdinfo]
+        if self.mden is not None:
+            exec_list += ['-e', self.mden]
 
 
         log.debug('Exec line: '+' '.join(exec_list))
