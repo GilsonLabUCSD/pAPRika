@@ -15,6 +15,7 @@ from paprika.build import *
 import os
 import shutil
 import sys
+import filecmp
 
 # Enable import from local dir
 sys.path.append('')
@@ -25,7 +26,9 @@ import conftest
 class TestBuild(unittest.TestCase):
 
     def rm_solvated_files(self):
-        files = ['solvated.pdb', 'solvated.prmtop', 'solvated.rst7', 'tleap_apr_solvate.in', 'leap.log', 'tmp.pdb']
+        files = ['solvated.pdb', 'solvated.prmtop', 'solvated.rst7', 'tleap_apr_solvate.in',
+                 'leap.log', 'tmp.pdb', 'cb6-but-dum.pdb', 'cb6-but-dum.prmtop',
+                 'cb6-but-dum.rst7', 'tleap.in']
         for f in files:
             if os.path.isfile('./cb6-but/'+f):
                 os.remove('./cb6-but/'+f)
@@ -157,7 +160,6 @@ class TestBuild(unittest.TestCase):
             neutralize=False,
             pbctype=1,
             addions=['NA', '0.150M', 'CL', '0.150M', 'K', '0.100m', 'BR', '0.100m'])
-
         # Molarity Check
         obs_num_na = sp.check_output(
             [
@@ -178,7 +180,6 @@ class TestBuild(unittest.TestCase):
         calc_num_cl = np.ceil((6.022 * 10**23) * (0.150) * volume_in_liters)
         self.assertTrue(
             int(obs_num_na) == calc_num_na and int(obs_num_cl) == calc_num_cl)
-
         # Molality Check
         obs_num_k = sp.check_output(
             [
@@ -196,7 +197,6 @@ class TestBuild(unittest.TestCase):
         calc_num_br = np.ceil(0.100 * 945 * 0.018)
         self.assertTrue(
             int(obs_num_k) == calc_num_k and int(obs_num_br) == calc_num_br)
-
         self.rm_solvated_files()
 
     @pytest.mark.slow
@@ -215,6 +215,25 @@ class TestBuild(unittest.TestCase):
         self.assertEqual(int(grepped_waters), waters)
         self.rm_solvated_files()
 
+    def test_add_dummy(self):
+        """ Test that dummy atoms get added correctly """
+        hostguest = pmd.load_file('cb6-but/cb6-but-notcentered.pdb', structure=True)
+        hostguest = zalign(hostguest, ':BUT@C', ':BUT@C3', save=False)
+        hostguest = add_dummy(hostguest, residue_name='DM1', z=-11.000, y=2.000, x=-1.500)
+        hostguest.write_pdb('cb6-but/cb6-but-dum.pdb', renumber=False)
+        with open('cb6-but/cb6-but-dum.pdb', 'r') as f:
+            lines = f.readlines()
+            test_line1 = lines[123].rstrip()
+            test_line2 = lines[124].rstrip()
+        ref_line1 = 'TER     123      BUT     2'
+        ref_line2 = 'HETATM  123 DUM  DM1     3      -1.500   2.000 -11.000  0.00  0.00          PB'
+        self.assertEqual(ref_line1, test_line1)
+        self.assertEqual(ref_line2, test_line2)
+        write_dummy_frcmod(path='cb6-but')
+        write_dummy_mol2(path='cb6-but', filename='dm1.mol2', residue_name='DM1')
+        basic_tleap('cb6-but/tleap_gb_dum.in', directory='cb6-but', pdbfile='cb6-but-dum.pdb', saveprefix='cb6-but-dum')
+        assert ( filecmp.cmp('cb6-but/REF_cb6-but-dum.rst7', 'cb6-but/cb6-but-dum.rst7', shallow=False) )
+        self.rm_solvated_files
 
 if __name__ == '__main__':
     log.debug('{}'.format(paprika.__version__))

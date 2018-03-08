@@ -1,0 +1,15 @@
+source leaprc.gaff
+loadamberparams cb6.frcmod
+CB6 = loadmol2 cb6.mol2
+loadamberparams but.frcmod
+BUT = loadmol2 but.mol2
+loadamberparams dummy.frcmod
+DM1 = loadmol2 dm1.mol2
+
+model = loadpdb cb6-but-dum.pdb
+
+check model
+saveamberparm model cb6-but-dum.prmtop cb6-but-dum.rst7
+
+quit
+
