@@ -16,11 +16,7 @@ import os
 import shutil
 import sys
 import filecmp
-
-# Enable import from local dir
-sys.path.append('')
 import pytest
-import conftest
 
 
 class TestBuild(unittest.TestCase):
@@ -149,7 +145,6 @@ class TestBuild(unittest.TestCase):
             int(cation_number) == n_cations and int(anion_number) == n_anions)
         self.rm_solvated_files()
 
-#    @pytest.mark.slow
     def test_solvation_by_M_and_m(self):
         """ Test that we can solvate CB6-BUT through molarity and molality. """
         log.debug('Trying 10 A buffer with 150 mM NaCl...')
