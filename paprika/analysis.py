@@ -260,25 +260,35 @@ class fe_calc(object):
         for phase in ['attach', 'pull', 'release']:
             self.results[phase] = {}
             for method in self.methods:
+                # Initialize some values that we will compute
+                # The matrix gives all possible fe/sem for any window to any other window
                 self.results[phase][method] = {}
                 self.results[phase][method]['fe'] = None
                 self.results[phase][method]['sem'] = None
                 self.results[phase][method]['fe_matrix'] = None
                 self.results[phase][method]['sem_matrix'] = None
                     
-                # mbar with blocking are currently supported.
+                # Currently mbar with blocking is supported.
                 if method == 'mbar-block':
+                    # Prepare data ... which mostly means organize the window data in force_constant/target order
                     prepared_data = self._prepare_active_rest_data(phase, self.restraint_list, self.simulation_values)
+                    # If we have data for this APR phase ...
                     if prepared_data:
+                        # Run MBAR
                         self.results[phase][method]['fe_matrix'],self.results[phase][method]['sem_matrix']\
                             = self._run_mbar(prepared_data)
+                        # Set the total free energy change and SEM from the matrix
                         self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0,-1]
                         self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0,-1]
-
+                        # Create a convergence array, which stores the convergence value of each window.
+                        # The ordered_convergence array stores the values in the "prepared" order, but
+                        # the user might want them in the window_list order, so store that in 'convergence'
                         windows = len(self.results[phase][method]['sem_matrix'])
                         self.results[phase][method]['convergence'] = np.ones([windows], np.float64)*-1.0
                         self.results[phase][method]['ordered_convergence'] = np.ones([windows], np.float64)*-1.0
                         log.info(phase+': computing convergence for mbar-blocking')
+                        # We choose the convergence value as the largest uncertainty to a neighboring
+                        # window, left or right.  If window is at the end, just take neigboring value.
                         for i in range(windows):
                             if i == 0:
                                 self.results[phase][method]['ordered_convergence'][i]\
@@ -298,7 +308,8 @@ class fe_calc(object):
                                 self.results[phase][method]['ordered_convergence'][i]\
                                     = max_val
 
-                        # Un-reorder so that convergence easily matches up with original window order
+                        # To get the convergence list in the same order as the input restraints, we
+                        # "un-reorder" it.
                         unreorder = np.argsort(self.ordered_index[phase])
                         self.results[phase][method]['convergence'] =\
                             self.results[phase][method]['ordered_convergence'][unreorder]
