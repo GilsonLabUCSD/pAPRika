@@ -1,16 +1,19 @@
-import logging as log
-import numpy as np
 import os as os
 import re as re
 import subprocess as sp
+
+import logging as log
+import numpy as np
 import parmed as pmd
 from parmed.structure import Structure as ParmedStructureClass
 from paprika import utils
 
+N_A = 6.0221409 * 10**23
+angstrom_cubed_to_liters = 1 * 10**-27
 
-from .utils import check_for_leap_log
 
-def add_dummy(structure, atom_name='DUM', residue_name='DUM', mass=208.00, atomic_number=82, x=0.000, y=0.000, z=0.000):
+def add_dummy(structure, atom_name='DUM', residue_name='DUM', mass=208.00, atomic_number=82, x=0.000, y=0.000,
+              z=0.000):
     """ Add a dummy atom at the specified coordinates to the end of the structure """
 
     # Assume the input_structure is a filename or ...
@@ -20,7 +23,7 @@ def add_dummy(structure, atom_name='DUM', residue_name='DUM', mass=208.00, atomi
     elif type(structure) is ParmedStructureClass:
         pass
     else:
-        raise Exception('add_dummy does not support the type associated with structure:'+type(structure))
+        raise Exception('add_dummy does not support the type associated with structure:' + type(structure))
 
     # Create an atom object
     dum = pmd.topologyobjects.Atom()
@@ -30,11 +33,11 @@ def add_dummy(structure, atom_name='DUM', residue_name='DUM', mass=208.00, atomi
     dum.xx = x
     dum.xy = y
     dum.xz = z
-    
+
     # Assume that the atom numbering we read in is correct!!
     dum.number = structure.atoms[-1].number + 1
     residue_num = structure.residues[-1].number + 1
-    
+
     # Add to structure
     structure.add_atom(dum, residue_name, residue_num)
 
@@ -45,10 +48,11 @@ def add_dummy(structure, atom_name='DUM', residue_name='DUM', mass=208.00, atomi
 
     return structure
 
+
 def write_dummy_frcmod(path='.', filename='dummy.frcmod', atomtype='Du', mass='208.00'):
     """ Write a frcmod file for a dummy atom """
 
-    with open(path+'/'+filename, 'w') as f:
+    with open(path + '/' + filename, 'w') as f:
         f.write("""\
 Parameters for dummy atom with type {0}
 MASS
@@ -70,7 +74,7 @@ NONBON
 def write_dummy_mol2(path='.', filename='dummy.mol2', atom_name='DUM', atomtype='Du', residue_name='DUM'):
     """ Write a mol2 file for a dummy atom """
 
-    with open(path+'/'+filename, 'w') as f:
+    with open(path + '/' + filename, 'w') as f:
         f.write("""\
 @<TRIPOS>MOLECULE
 {0}
@@ -105,10 +109,8 @@ def read_tleaplines(tleapfile, pdbfile=None, skip_solvate=True):
                     pdbfile = words[2]
                 unit = words[0]
                 tleaplines.append("{} = loadpdb {}\n".format(unit, pdbfile))
-            if not re.search(
-                    r"^\s*addions|^\s*addions2|^\s*addionsrand|^\s*desc|"
-                    r"^\s*quit|^\s*solvate|loadpdb|^\s*save", line,
-                    re.IGNORECASE):
+            if not re.search(r"^\s*addions|^\s*addions2|^\s*addionsrand|^\s*desc|"
+                             r"^\s*quit|^\s*solvate|loadpdb|^\s*save", line, re.IGNORECASE):
                 tleaplines.append(line)
 
     return tleaplines
@@ -136,33 +138,27 @@ def write_tleapin(filename='tleap.in',
         for line in tleaplines:
             f.write(line)
         if pbctype == 0:
-            f.write("solvatebox {} {} {:0.5f} iso\n".format(
-                unit, waterbox, bufferval))
+            f.write("solvatebox {} {} {:0.5f} iso\n".format(unit, waterbox, bufferval))
         elif pbctype == 1:
-            f.write("solvatebox {} {} {{10.0 10.0 {:0.5f}}}\n".format(
-                unit, waterbox, bufferval))
+            f.write("solvatebox {} {} {{10.0 10.0 {:0.5f}}}\n".format(unit, waterbox, bufferval))
         elif pbctype == 2:
-            f.write("solvateoct {} {} {:0.5f} iso\n".format(
-                unit, waterbox, bufferval))
+            f.write("solvateoct {} {} {:0.5f} iso\n".format(unit, waterbox, bufferval))
         elif pbctype is None:
             f.write("# Skipping solvation ...\n")
         else:
-            raise Exception("Incorrect pbctype value provided: " + pbctype +
-                            ". Only 0, 1, 2, and None are valid")
+            raise Exception("Incorrect pbctype value provided: " + pbctype + ". Only 0, 1, 2, and None are valid")
         if neutralize:
             f.write("addionsrand {} {} 0\n".format(unit, counter_cation))
             f.write("addionsrand {} {} 0\n".format(unit, counter_anion))
         if addion_residues:
             for i, res in enumerate(addion_residues):
-                f.write("addionsrand {} {} {}\n".format(
-                    unit, res, addion_values[i]))
+                f.write("addionsrand {} {} {}\n".format(unit, res, addion_values[i]))
         if removewat:
             for watnum in removewat:
                 f.write("remove {} {}.{}\n".format(unit, unit, watnum))
         if saveprefix:
             f.write("savepdb {} {}.pdb\n".format(unit, saveprefix))
-            f.write("saveamberparm {} {}.prmtop {}.rst7\n".format(
-                unit, saveprefix, saveprefix))
+            f.write("saveamberparm {} {}.prmtop {}.rst7\n".format(unit, saveprefix, saveprefix))
         f.write("desc {}\n".format(unit))
         f.write("quit\n")
 
@@ -172,14 +168,9 @@ def run_tleap(filename, directory):
     Execute tLEaP.
     """
 
-    check_for_leap_log(path=directory)
+    utils.check_for_leap_log(path=directory)
     p = sp.Popen(
-        'tleap -s -f ' + filename,
-        stdout=sp.PIPE,
-        bufsize=1,
-        universal_newlines=True,
-        cwd=directory,
-        shell=True)
+        'tleap -s -f ' + filename, stdout=sp.PIPE, bufsize=1, universal_newlines=True, cwd=directory, shell=True)
     output = []
     while p.poll() is None:
         line = p.communicate()[0]
@@ -195,11 +186,9 @@ def basic_tleap(tleapfile, directory='.', pdbfile=None, saveprefix=None):
     Run tleap with a user supplied tleap script, optionally substitute PDB.
     """
 
-    log.debug('Reading {}, writing {}/tleap.in, and executing ...'.format(
-        tleapfile, directory))
+    log.debug('Reading {}, writing {}/tleap.in, and executing ...'.format(tleapfile, directory))
 
-    tleaplines = read_tleaplines(
-        tleapfile, pdbfile=pdbfile, skip_solvate=False)
+    tleaplines = read_tleaplines(tleapfile, pdbfile=pdbfile, skip_solvate=False)
 
     write_tleapin(
         filename='tleap.in',
@@ -212,10 +201,7 @@ def basic_tleap(tleapfile, directory='.', pdbfile=None, saveprefix=None):
     run_tleap('tleap.in', directory=directory)
 
 
-def countresidues(filename='tleap.in',
-                  directory='.',
-                  choice='water_residues',
-                  volume=False):
+def countresidues(filename='tleap.in', directory='.', choice='water_residues', volume=False):
     """
     Run and parse `tleap` output and return the number of residues added.
     The first choice gives a list of water residues. The second choice
@@ -317,9 +303,9 @@ def solvate(tleapfile,
     buffer_iterexp = 1
     wat_added = [0.0]
 
-    dir = os.path.dirname(tleapfile)
-    if dir == '':
-        dir = '.'
+    path = os.path.dirname(tleapfile)
+    if path == '':
+        path = '.'
 
     # Read tleapfile
     tleaplines = read_tleaplines(tleapfile, pdbfile=pdbfile, skip_solvate=True)
@@ -331,7 +317,7 @@ def solvate(tleapfile,
         bufferval.append(float(bufferwater[:-1]))
         write_tleapin(
             filename='tleap_apr_solvate.in',
-            directory=dir,
+            directory=path,
             tleaplines=tleaplines,
             unit=unit,
             pbctype=pbctype,
@@ -346,15 +332,12 @@ def solvate(tleapfile,
             saveprefix=None)
         # Get the number of water residues added...
         bufferwater = countresidues(
-            filename='tleap_apr_solvate.in',
-            directory=dir,
-            choice='residue_dictionary')['WAT']
+            filename='tleap_apr_solvate.in', directory=path, choice='residue_dictionary')['WAT']
     if addions:
         if len(addions) % 2 == 1:
-            raise Exception(
-                "Error: The 'addions' list requires an even number of elements. "
-                "Make sure there is a residue mask followed by a value for "
-                "each ion to be added")
+            raise Exception("Error: The 'addions' list requires an even number of elements. "
+                            "Make sure there is a residue mask followed by a value for "
+                            "each ion to be added")
         for i, txt in enumerate(addions):
             if i % 2 == 0:
                 addion_residues.append(txt)
@@ -362,19 +345,11 @@ def solvate(tleapfile,
                 # User specifies molaliy...
                 if str(txt).endswith('m'):
                     # number to add = (molality) x (number waters) x (0.018 kg/mol per water)
-                    addion_values.append(
-                        int(
-                            np.ceil(
-                                float(txt[:-1]) * float(bufferwater) * 0.018)))
+                    addion_values.append(int(np.ceil(float(txt[:-1]) * float(bufferwater) * 0.018)))
                 # User specifies molarity...
                 elif str(txt).endswith('M'):
                     volume = countresidues(
-                        filename='tleap_apr_solvate.in',
-                        directory=dir,
-                        choice='residue_dictionary',
-                        volume=True)
-                    N_A = 6.0221409 * 10**23
-                    angstrom_cubed_to_liters = 1 * 10**-27
+                        filename='tleap_apr_solvate.in', directory=path, choice='residue_dictionary', volume=True)
                     number_of_atoms = float(txt[:-1]) * N_A
                     liters = volume * angstrom_cubed_to_liters
                     atoms_to_add = number_of_atoms * liters
@@ -388,7 +363,7 @@ def solvate(tleapfile,
     while cycle < 50:
         write_tleapin(
             filename='tleap_apr_solvate.in',
-            directory=dir,
+            directory=path,
             tleaplines=tleaplines,
             unit=unit,
             pbctype=pbctype,
@@ -403,12 +378,9 @@ def solvate(tleapfile,
             saveprefix=None)
         # Get the number of water residues added...
         wat_added.append(
-            countresidues(
-                filename='tleap_apr_solvate.in',
-                directory=dir,
-                choice='residue_dictionary')['WAT'])
-        print(cycle, buffer_iter, ":", bufferwater, ':', bufferval[-1],
-              buffer_iterexp, wat_added[-2], wat_added[-1])
+            countresidues(filename='tleap_apr_solvate.in', directory=path, choice='residue_dictionary')['WAT'])
+        log.debug(cycle, buffer_iter, ":", bufferwater, ':', bufferval[-1], buffer_iterexp, wat_added[-2],
+                  wat_added[-1])
         cycle += 1
         buffer_iter += 1
         if 0 <= (wat_added[-1] - bufferwater) < 12 or \
@@ -439,19 +411,14 @@ def solvate(tleapfile,
         elif wat_added[-2] < bufferwater and wat_added[-1] < bufferwater:
             bufferval.append(bufferval[-1] + 1 * (10**buffer_iterexp))
         else:
-            raise Exception(
-                "The bufferval search died due to an unanticipated set of variable values"
-            )
+            raise Exception("The bufferval search died due to an unanticipated set of variable values")
 
     if cycle >= 50:
-        raise Exception(
-            "Automatic adjustment of the buffer value was unable to converge on \
+        raise Exception("Automatic adjustment of the buffer value was unable to converge on \
             a solution with sufficient tolerance")
     elif wat_added[-1] - bufferwater < 0:
-        raise Exception(
-            "Automatic adjustment of the buffer value resulted in fewer waters \
-            added than targeted by bufferwater. Try increasing the tolerance in the above loop"
-        )
+        raise Exception("Automatic adjustment of the buffer value resulted in fewer waters \
+            added than targeted by bufferwater. Try increasing the tolerance in the above loop")
     else:
         watover = 0
         cycle = 0
@@ -459,10 +426,7 @@ def solvate(tleapfile,
             # Note I don't think there should be water removal errors, but if
             # so, this loop and '+=' method is an attempt to fix.
             watover += wat_added[-1] - bufferwater
-            watlist = countresidues(
-                filename='tleap_apr_solvate.in',
-                choice='water_residues',
-                directory=dir)
+            watlist = countresidues(filename='tleap_apr_solvate.in', choice='water_residues', directory=path)
             if watover == 0:
                 removewat = None
             else:
@@ -470,7 +434,7 @@ def solvate(tleapfile,
 
             write_tleapin(
                 filename='tleap_apr_solvate.in',
-                directory=dir,
+                directory=path,
                 tleaplines=tleaplines,
                 unit=unit,
                 pbctype=pbctype,
@@ -484,15 +448,10 @@ def solvate(tleapfile,
                 removewat=removewat,
                 saveprefix=saveprefix)
             # Get the full residue dictionary...
-            reslist = countresidues(
-                filename='tleap_apr_solvate.in',
-                choice='residue_dictionary',
-                directory=dir)
+            reslist = countresidues(filename='tleap_apr_solvate.in', choice='residue_dictionary', directory=path)
             wat_added.append(reslist['WAT'])
             for key, value in sorted(reslist.items()):
                 log.info('{}\t{}'.format(key, value))
             cycle += 1
             if cycle >= 10:
-                raise Exception(
-                    "Solvation failed due to an unanticipated problem with water removal"
-                )
+                raise Exception("Solvation failed due to an unanticipated problem with water removal")
