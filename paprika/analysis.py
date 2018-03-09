@@ -332,6 +332,8 @@ class fe_calc(object):
         for phase in ['attach', 'pull', 'release']:
             self.results[phase] = {}
             for method in self.methods:
+                # Initialize some values that we will compute
+                # The matrix gives all possible fe/sem for any window to any other window
                 self.results[phase][method] = {}
                 self.results[phase][method]['fe'] = None
                 self.results[phase][method]['sem'] = None
