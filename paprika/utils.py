@@ -82,47 +82,6 @@ def make_window_dirs(window_list, stash_existing=False):
             os.makedirs(win_dir + '/' + window)
 
 
-def create_pdb_with_conect(amber_inpcrd, amber_prmtop, output_pdb, path='./'):
-    """
-    Create a PDB file containing CONECT records.
-    `cpptraj` must be in your PATH.
-    Parameters
-    ----------
-    amber_inpcrd : str
-        AMBER (or other) coordinates
-    amber_prmtop : str
-        AMBER (or other) parameters
-    output_pdb : str
-        Output PDB file name
-    path : str
-        Directory for input and output files
-    """
-    cpptraj = \
-        '''
-    parm {}
-    trajin {}
-    trajout {} conect
-    '''.format(amber_prmtop, amber_inpcrd, output_pdb)
-
-    cpptraj_input = output_pdb + '.in'
-    cpptraj_output = output_pdb + '.out'
-
-    with open(path + cpptraj_input, 'w') as file:
-        file.write(cpptraj)
-    with open(path + cpptraj_output, 'w') as file:
-        p = sp.Popen(['cpptraj', '-i', cpptraj_input], cwd=path, stdout=file, stderr=file)
-        output, error = p.communicate()
-    if p.returncode == 0:
-        log.debug('PDB file written by cpptraj.')
-    else:
-        log.error('Error returned by cpptraj.')
-        log.error(f'Output: {output}')
-        log.error(f'Error: {error}')
-        p = sp.Popen(['cat', cpptraj_output], cwd=path, stdout=sp.PIPE)
-        for line in p.stdout:
-            log.error(line.decode("utf-8").strip(), )
-
-
 def decompose_openmm_energy(simulation, groups=[0, 1], names=['non-restraint', 'restraint']):
     """Return individual energy components.
     """
@@ -139,3 +98,11 @@ def decompose_openmm_energy(simulation, groups=[0, 1], names=['non-restraint', '
         energies.update({names[index]: energy})
 
     return energies
+
+
+def write_hg_frcmod():
+    """Write a `frcmod` file for a host-guest system.
+    
+    
+    """
+    pass
