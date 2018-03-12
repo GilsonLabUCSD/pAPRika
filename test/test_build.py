@@ -159,20 +159,22 @@ class TestBuild(unittest.TestCase):
             ["grep -A 99 RESIDUE_LABEL ./cb6-but/solvate.prmtop | " + "grep -oh 'NA ' | wc -w"], shell=True)
         obs_num_cl = sp.check_output(
             ["grep -A 99 RESIDUE_LABEL ./cb6-but/solvate.prmtop | " + "grep -oh 'CL ' | wc -w"], shell=True)
-        # Approximate volume of the solvated system in liters
-        # NMH: is the 4.6766 hardcoded from your observation?
-        # TODO: this test is failing and I'm not sure why, but it may be related to the volume...
-        volume_in_liters = 4.6766 * 10**-23
+
+        volume = count_volume(file_name='solvate.in', path='./cb6-but/')
+        volume_in_liters = volume * ANGSTROM_CUBED_TO_LITERS
         calc_num_na = np.ceil((6.022 * 10**23) * (0.150) * volume_in_liters)
         calc_num_cl = np.ceil((6.022 * 10**23) * (0.150) * volume_in_liters)
+
         self.assertTrue(int(obs_num_na) == calc_num_na and int(obs_num_cl) == calc_num_cl)
+
         # Molality Check
         obs_num_k = sp.check_output(
             ["grep -A 99 RESIDUE_LABEL ./cb6-but/solvate.prmtop | " + "grep -oh 'K ' | wc -w"], shell=True)
         obs_num_br = sp.check_output(
             ["grep -A 99 RESIDUE_LABEL ./cb6-but/solvate.prmtop | " + "grep -oh 'BR ' | wc -w"], shell=True)
-        calc_num_k = np.ceil(0.100 * 945 * 0.018)
-        calc_num_br = np.ceil(0.100 * 945 * 0.018)
+        calc_num_waters = count_residues(file_name='solvate.in', path='./cb6-but/')['WAT']
+        calc_num_k = np.ceil(0.100 * calc_num_waters * 0.018)
+        calc_num_br = np.ceil(0.100 * calc_num_waters * 0.018)
         self.assertTrue(int(obs_num_k) == calc_num_k and int(obs_num_br) == calc_num_br)
         self.rm_solvated_files()
 

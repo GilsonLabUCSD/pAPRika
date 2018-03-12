@@ -81,7 +81,8 @@ def test_amber_single_window_gbmin():
         shutil.copy('cb6-but/'+file,path+file)
 
     # Build prmtop/inpcrd
-    build.basic_tleap('cb6-but/tleap_gb.in', directory=path, pdbfile='cb6-but-minimized.pdb', saveprefix='vac')
+    build.basic_tleap(input_file='tleap_gb.in', input_path='./cb6-but/', output_prefix='vac',
+                    pdb_file='cb6-but-minimized.pdb')
 
     # Create Simulation
     gbsim = amber.Simulation()

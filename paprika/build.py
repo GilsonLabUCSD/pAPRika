@@ -148,11 +148,12 @@ def run_tleap(path='./', file_name='tleap.in'):
     return output
 
 
-def basic_tleap(input_file='tleap.in', input_path='./', output_prefix='solvate', output_path='./', pdb_file=None):
+def basic_tleap(input_file='tleap.in', input_path='./', output_prefix='solvate', output_path=None, pdb_file=None):
     """
     Run tleap with a user supplied tleap script, optionally substitute PDB.
     """
-
+    if output_path is None:
+        output_path = input_path
     log.debug('Reading {}/{}, writing {}/{}.in, and executing ...'.format(input_path, input_file, output_path,
                                                                           output_prefix))
 
@@ -276,25 +277,25 @@ def adjust_buffer_value(number_of_waters, target_number_of_waters, buffer_values
 
         # If the last two rounds of solvation have too many waters, make the buffer smaller...
         if number_of_waters[-2] > target_number_of_waters and number_of_waters[-1] > target_number_of_waters:
-            log.debug('Adjustment loop 1')
+            # log.debug('Adjustment loop 1')
             return buffer_values[-1] + -1 * (10**exponent), exponent
 
         # If the last two rounds of solvation had too few waters, make the buffer bigger...
         elif number_of_waters[-2] < target_number_of_waters and number_of_waters[-1] < target_number_of_waters:
-            log.debug('Adjustment loop 2')
+            # log.debug('Adjustment loop 2')
             return buffer_values[-1] + 1 * (10**exponent), exponent
 
         # If the number of waters was greater than the target and is now less than the target, make the buffer a bit
         # bigger, by an increasingly smaller amount...
         elif number_of_waters[-2] > target_number_of_waters and number_of_waters[-1] < target_number_of_waters:
-            log.debug('Adjustment loop 3')
+            # log.debug('Adjustment loop 3')
             exponent -= 1
             return buffer_values[-1] + 5 * (10**exponent), exponent
 
         # If the number of waters was less than the target and is now greater than the target, make the buffer a bit
         # smaller, by an increasingly bigger amount...
         elif number_of_waters[-2] < target_number_of_waters and number_of_waters[-1] > target_number_of_waters:
-            log.debug('Adjustment loop 4')
+            # log.debug('Adjustment loop 4')
             exponent -= 1
             return buffer_values[-1] + -5 * (10**exponent), exponent
         else:

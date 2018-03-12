@@ -12,9 +12,9 @@ check model
 savepdb model vac.pdb
 saveamberparm model vac.topo vac.crds
 
-solvatebox model TIP3PBOX {10.0 10.0 16.6}
-addionsrand model Na+ 0
-addionsrand model Cl- 0
+solvatebox model TIP3PBOX {10.0 10.0 10.0}
+addionsrand model Na 0
+addionsrand model Cl 0
 
 savepdb model full.pdb
 saveamberparm model full.topo full.crds
