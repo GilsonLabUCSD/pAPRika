@@ -51,7 +51,7 @@ class TestBuild(unittest.TestCase):
                 path='./cb6-but/',
                 pdb_file='cb6-but.pdb',
                 buffer_target=waters,
-                pbc_type=2)
+                pbc_type='octahedral')
         grepped_waters = sp.check_output(["grep -oh 'WAT' ./cb6-but/solvate.prmtop | wc -w"], shell=True)
         self.assertEqual(int(grepped_waters), waters)
         self.rm_solvated_files()
@@ -64,7 +64,7 @@ class TestBuild(unittest.TestCase):
                 path='./cb6-but/',
                 pdb_file='cb6-but.pdb',
                 buffer_target=waters,
-                pbc_type=0)
+                pbc_type='cubic')
         grepped_waters = sp.check_output(["grep -oh 'WAT' ./cb6-but/solvate.prmtop | wc -w"], shell=True)
         self.assertEqual(int(grepped_waters), waters)
         self.rm_solvated_files()
@@ -72,7 +72,7 @@ class TestBuild(unittest.TestCase):
     @pytest.mark.slow
     def test_solvation_spatial_size(self):
         """ Test that we can solvate CB6-BUT with an buffer size in Angstroms. """
-        random_int = np.random.randint(10, 50)
+        random_int = np.random.randint(10, 20)
         random_size = random_int * np.random.random_sample(1) + random_int
         log.debug('Trying buffer size of {} A...'.format(random_size[0]))
 
@@ -83,12 +83,13 @@ class TestBuild(unittest.TestCase):
             buffer_target='{0:1.4f}A'.format(random_size[0]))
         grepped_waters = sp.check_output(["grep -oh 'WAT' ./cb6-but/solvate.prmtop | wc -w"], shell=True)
 
-
         lines = read_tleap_lines(pdb_file='cb6-but.pdb', path='./cb6-but/', file_name='tleap_solvate.in')
         options = default_tleap_options()
         options['pdb_file'] = 'cb6-but.pdb'
+        options['pbc_type'] = 'cubic'
         options['path'] = './cb6-but/'
         options['output_prefix'] = 'solvate'
+        options['buffer_target'] = '{0:1.4f}A'.format(random_size[0])
         target_number_of_waters = set_target_number_of_waters(lines, options, '{0:1.4f}A'.format(random_size[0]))
         self.assertEqual(int(grepped_waters), target_number_of_waters)
         self.rm_solvated_files()
@@ -152,7 +153,7 @@ class TestBuild(unittest.TestCase):
             pdb_file='cb6-but.pdb',
             buffer_target='10A',
             neutralize=False,
-            pbc_type=1,
+            pbc_type='rectangular',
             add_ions=['NA', '0.150M', 'CL', '0.150M', 'K', '0.100m', 'BR', '0.100m'])
         # Molarity Check
         obs_num_na = sp.check_output(
