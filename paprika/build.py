@@ -135,8 +135,10 @@ def run_tleap(path='./', file_name='tleap.in'):
     """
 
     utils.check_for_leap_log(path=path)
-    p = sp.Popen('tleap -s -f ' + file_name, stdout=sp.PIPE, bufsize=1, universal_newlines=True, cwd=path, shell=True)
+
+    p = sp.Popen(['tleap', '-s ', '-f ', file_name], stdout=sp.PIPE, bufsize=1, universal_newlines=True, cwd=path)
     output = []
+    # Wait until process terminates...
     while p.poll() is None:
         line = p.communicate()[0]
         output.append(line)
@@ -263,8 +265,10 @@ def set_additional_ions(add_ions, options, buffer_target):
             volume = count_volume(file_name=options['output_prefix'] + '.in', path=options['path'])
             number_of_atoms = float(amount[:-1]) * N_A
             liters = volume * ANGSTROM_CUBED_TO_LITERS
-            number_to_add = number_of_atoms * liters
+            number_to_add = int(np.ceil(number_of_atoms * liters))
             add_ion_residues.append(number_to_add)
+        else:
+            raise Exception('Unanticipated error calculating how many ions to add.')
     return add_ion_residues
 
 
@@ -379,8 +383,7 @@ def solvate(tleap_file,
         number_of_waters.append(waters)
         buffer_values.append(options['buffer_value'])
 
-        log.debug('Cycle {0:02d}\t'.format(cycle), options['buffer_value'], waters,
-                  '({})'.format(target_number_of_waters))
+        log.debug('Cycle %02d\t %d %d (%d)' % (cycle, options['buffer_value'], waters, target_number_of_waters))
 
         # Possible location of a switch to adjust the buffer_values by polynomial
         # fit approach.
@@ -396,6 +399,10 @@ def solvate(tleap_file,
         else:
             options['buffer_value'], exponent = adjust_buffer_value(number_of_waters, target_number_of_waters, buffer_values,
                                                          exponent)
+            # Now that we're close, let's re-evaluate how many ions to add, in case the volume has changed a lot.
+            # (This could be slow and run less frequently...)
+            if add_ions and cycle % 10 == 0:
+                options['add_ion_residues'] = set_additional_ions(add_ions, options, target_number_of_waters)
             cycle += 1
 
 
