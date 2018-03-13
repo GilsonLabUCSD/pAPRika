@@ -61,6 +61,11 @@ def add_dummy(structure, atom_name='DUM', residue_name='DUM', mass=208.00, atomi
     residue_num = structure.residues[-1].number + 1
 
     structure.add_atom(dum, residue_name, residue_num)
+    
+    # Make sure that atom.number get set properly.  When reading in prmtop/inpcrd
+    # parmed doesn't seem to set atom.number for some reason.
+    for i,atom in enumerate(structure.atoms):
+        atom.number = structure.atoms[i].idx + 1
 
     # tleap will probably want TER cards in any PDBs we make, so enforce
     # that for both the dummy residue and the residue before it
