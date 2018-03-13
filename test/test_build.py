@@ -24,7 +24,8 @@ class TestBuild(unittest.TestCase):
     def rm_solvated_files(self):
         files = [
             'solvate.pdb', 'solvate.prmtop', 'solvate.rst7', 'tleap_apr_solvate.in', 'leap.log', 'tmp.pdb',
-            'cb6-but-dum.pdb', 'cb6-but-dum.prmtop', 'cb6-but-dum.rst7', 'tleap.in', 'dm1.mol2', 'dummy.frcmod'
+            'cb6-but-dum.pdb', 'cb6-but-dum.prmtop', 'cb6-but-dum.rst7', 'tleap.in', 'dm1.mol2', 'dummy.frcmod',
+            'solvate.in'
         ]
         for f in files:
             if os.path.isfile('./cb6-but/' + f):
