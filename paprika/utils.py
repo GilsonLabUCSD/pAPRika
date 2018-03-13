@@ -28,6 +28,7 @@ def check_for_leap_log(path='./'):
     except OSError:
         pass
 
+
 def return_parmed_structure(filename):
     """
     Return structure object from file name.
@@ -55,7 +56,7 @@ def index_from_mask(structure, mask, amber_index=False):
     elif type(structure) is ParmedStructureClass:
         pass
     else:
-        raise Exception('index_from_mask does not support the type associated with structure:'+type(structure))
+        raise Exception('index_from_mask does not support the type associated with structure:' + type(structure))
     # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
     indices = [i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()]
     log.debug('There are {} atoms in the mask {}  ...'.format(len(indices), mask))
@@ -70,33 +71,15 @@ def make_window_dirs(window_list, stash_existing=False):
     """
 
     cwd = os.getcwd()
-    win_dir = cwd+'/windows'
+    win_dir = cwd + '/windows'
 
     if stash_existing and os.path.isdir(win_dir):
-        stash_dir = cwd+"/windows_{:%Y.%m.%d_%H.%M.%S}".format(datetime.now())
+        stash_dir = cwd + "/windows_{:%Y.%m.%d_%H.%M.%S}".format(datetime.now())
         shutil.move(win_dir, stash_dir)
 
     for window in window_list:
-        if not os.path.exists(win_dir+'/'+window):
-            os.makedirs(win_dir+'/'+window)
-
-
-def amber_to_pdb(topology, coordinates):
-    """
-    In certain cases, we may need to convert AMBER-formatted files to
-    PDB format, with proper CONECT records. `cpptraj` seems to be the write
-    tool for the job at the moment.
-    """
-
-    pdb_output = '.'.join(toplogy.split('.')[0:-1]) + '.pdb'
-    pdb_input = '.'.join(toplogy.split('.')[0:-1]) + '.in'
-    log.info('Converting AMBER coordinates and topology to PDB format.')
-    log.debug('Calling `cpptraj`...')
-    with open(pdb_input, 'w') as file:
-        file.write('parm {}\n'.format(toplogy))
-        file.write('trajin {}\n'.format(coordinates))
-        file.write('trajout {} conect\n'.format(pdb))
-    sp.check_call(['cpptraj', '-i', pdb_input])
+        if not os.path.exists(win_dir + '/' + window):
+            os.makedirs(win_dir + '/' + window)
 
 
 def decompose_openmm_energy(simulation, groups=[0, 1], names=['non-restraint', 'restraint']):
@@ -115,3 +98,11 @@ def decompose_openmm_energy(simulation, groups=[0, 1], names=['non-restraint', '
         energies.update({names[index]: energy})
 
     return energies
+
+
+def write_hg_frcmod():
+    """Write a `frcmod` file for a host-guest system.
+    
+    
+    """
+    pass
