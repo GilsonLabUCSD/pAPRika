@@ -101,6 +101,8 @@ class Simulation(object):
         self.cntrl['nstlim'] = 0
         self.cntrl['ntpr'] = 100
         self.cntrl['ntwr'] = 5000
+        self.cntrl['ntwx'] = 0
+        self.cntrl['ntwe'] = 0
         self.cntrl['ntxo'] = 1
         self.cntrl['ntf'] = 1
         self.cntrl['ntc'] = 1
