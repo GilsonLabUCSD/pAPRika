@@ -159,9 +159,17 @@ def run_tleap(path='./', file_name='tleap.in'):
         output.append(line)
     if p.poll() is None:
         p.kill()
-
+    grep_leap_log(path=path)
     return output
 
+def grep_leap_log(path='./'):
+    """
+    Check for a few keywords in the `tleap` output.
+    """
+    with open(path + 'leap.log', r) as file:
+        for line in file.readlines():
+            if re.search('ERROR|WARNING|Warning|duplicate', line):
+                log.warning('It appears there was a problem with solvation: check `leap.log`...')
 
 def basic_tleap(input_file='tleap.in', input_path='./', output_prefix='solvate', output_path=None, pdb_file=None):
     """
