@@ -32,7 +32,10 @@ def default_tleap_options():
     return options
 
 
-def read_tleap_lines(pdb_file=None, path='./', file_name='tleap.in', file_path=None):
+def read_tleap_lines(pdb_file=None,
+                     path='./',
+                     file_name='tleap.in',
+                     file_path=None):
     """
     Read a `tleap` input file and return a list containing each line of instruction, minus solvation, which we re-write
     later.
@@ -67,8 +70,10 @@ def read_tleap_lines(pdb_file=None, path='./', file_name='tleap.in', file_path=N
                 unit = words[0]
                 lines.append("{} = loadpdb {}\n".format(unit, pdb_file))
             # Skip over any included solvation and ionization commands...
-            if not re.search(r"^\s*addions|^\s*addions2|^\s*addionsrand|^\s*desc|"
-                             r"^\s*quit|^\s*solvate|loadpdb|^\s*save", line, re.IGNORECASE):
+            if not re.search(
+                    r"^\s*addions|^\s*addions2|^\s*addionsrand|^\s*desc|"
+                    r"^\s*quit|^\s*solvate|loadpdb|^\s*save", line,
+                    re.IGNORECASE):
                 lines.append(line)
 
     return lines
@@ -92,36 +97,48 @@ def write_tleapin(lines, options):
             f.write(line)
 
         if 'cubic' in options['pbc_type']:
-            f.write("solvatebox {} {} {} iso\n".format(options['unit'], options['water_box'], options['buffer_value']))
+            f.write("solvatebox {} {} {} iso\n".format(
+                options['unit'], options['water_box'],
+                options['buffer_value']))
         elif 'rectangular' in options['pbc_type']:
-            f.write("solvatebox {} {} {{10.0 10.0 {}}}\n".format(options['unit'], options['water_box'],
-                                                                 options['buffer_value']))
+            f.write("solvatebox {} {} {{10.0 10.0 {}}}\n".format(
+                options['unit'], options['water_box'],
+                options['buffer_value']))
         elif 'octahedral' in options['pbc_type']:
-            f.write("solvateoct {} {} {} iso\n".format(options['unit'], options['water_box'], options['buffer_value']))
+            f.write("solvateoct {} {} {} iso\n".format(
+                options['unit'], options['water_box'],
+                options['buffer_value']))
         elif options['pbc_type'] is None:
             f.write("# Skipping solvation ...\n")
         else:
-            raise Exception(
-                "Incorrect pbctype value provided: " + str(options['pbc_type']) + ". Only `cubic`, `rectangular`, "
-                "`octahedral`, and "
-                "None are valid")
+            raise Exception("Incorrect pbctype value provided: " + str(
+                options['pbc_type']) + ". Only `cubic`, `rectangular`, "
+                            "`octahedral`, and "
+                            "None are valid")
         if options['neutralize']:
-            f.write("addionsrand {} {} 0\n".format(options['unit'], options['counter_cation']))
-            f.write("addionsrand {} {} 0\n".format(options['unit'], options['counter_anion']))
+            f.write("addionsrand {} {} 0\n".format(options['unit'],
+                                                   options['counter_cation']))
+            f.write("addionsrand {} {} 0\n".format(options['unit'],
+                                                   options['counter_anion']))
         # Additional ions should be specified as a list, with residue name and number of ions in pairs, like ['NA',
         # 5] for five additional sodium ions. By this point, if the user specified a molality or molarity,
         # it should already have been converted into a number.
         if options['add_ion_residues']:
-            for residue, amount in zip(options['add_ion_residues'][0::2], options['add_ion_residues'][1::2]):
-                f.write("addionsrand {} {} {}\n".format(options['unit'], residue, amount))
+            for residue, amount in zip(options['add_ion_residues'][0::2],
+                                       options['add_ion_residues'][1::2]):
+                f.write("addionsrand {} {} {}\n".format(
+                    options['unit'], residue, amount))
         if options['remove_water']:
             for water_number in options['remove_water']:
-                f.write("remove {} {}.{}\n".format(options['unit'], options['unit'], water_number))
+                f.write("remove {} {}.{}\n".format(
+                    options['unit'], options['unit'], water_number))
 
         if options['output_prefix']:
-            f.write("savepdb {} {}.pdb\n".format(options['unit'], options['output_prefix']))
-            f.write("saveamberparm {} {}.prmtop {}.rst7\n".format(options['unit'], options['output_prefix'],
-                                                                  options['output_prefix']))
+            f.write("savepdb {} {}.pdb\n".format(options['unit'],
+                                                 options['output_prefix']))
+            f.write("saveamberparm {} {}.prmtop {}.rst7\n".format(
+                options['unit'], options['output_prefix'],
+                options['output_prefix']))
         else:
             pass
         f.write("desc {}\n".format(options['unit']))
@@ -148,7 +165,12 @@ def run_tleap(path='./', file_name='tleap.in'):
 
     utils.check_for_leap_log(path=path)
 
-    p = sp.Popen(['tleap', '-s ', '-f ', file_name], stdout=sp.PIPE, bufsize=1, universal_newlines=True, cwd=path)
+    p = sp.Popen(
+        ['tleap', '-s ', '-f ', file_name],
+        stdout=sp.PIPE,
+        bufsize=1,
+        universal_newlines=True,
+        cwd=path)
     output = []
     # Wait until process terminates...
     while p.poll() is None:
@@ -167,13 +189,20 @@ def grep_leap_log(path='./'):
     try:
         with open(path + 'leap.log', 'r') as file:
             for line in file.readlines():
-                if re.search('ERROR|WARNING|Warning|duplicate|FATAL|Could', line):
-                    log.warning('It appears there was a problem with solvation: check `leap.log`...')
+                if re.search('ERROR|WARNING|Warning|duplicate|FATAL|Could',
+                             line):
+                    log.warning(
+                        'It appears there was a problem with solvation: check `leap.log`...'
+                    )
     except:
         return
 
 
-def basic_tleap(input_file='tleap.in', input_path='./', output_prefix='solvate', output_path=None, pdb_file=None):
+def basic_tleap(input_file='tleap.in',
+                input_path='./',
+                output_prefix='solvate',
+                output_path=None,
+                pdb_file=None):
     """
     Run `tleap` with a user supplied input file and optionally override the `loadpdb` section. This is usefully for
     quickly solvating a structure without iteratively finding an exact number of water.
@@ -195,10 +224,11 @@ def basic_tleap(input_file='tleap.in', input_path='./', output_prefix='solvate',
 
     if output_path is None:
         output_path = input_path
-    log.debug('Reading {}/{}, writing {}/{}.in, and executing ...'.format(input_path, input_file, output_path,
-                                                                          output_prefix))
+    log.debug('Reading {}/{}, writing {}/{}.in, and executing ...'.format(
+        input_path, input_file, output_path, output_prefix))
 
-    lines = read_tleap_lines(pdb_file=pdb_file, path=input_path, file_name=input_file)
+    lines = read_tleap_lines(
+        pdb_file=pdb_file, path=input_path, file_name=input_file)
     options = default_tleap_options()
     options['path'] = output_path
     options['output_prefix'] = output_prefix
@@ -300,7 +330,9 @@ def quick_check(lines, options):
     Quickly check the number of waters added for a given buffer size.
     """
     write_tleapin(lines, options)
-    waters = count_residues(file_name=options['output_prefix'] + '.in', path=options['path'])['WAT']
+    waters = count_residues(
+        file_name=options['output_prefix'] + '.in',
+        path=options['path'])['WAT']
     return waters
 
 
@@ -329,7 +361,9 @@ def set_target_number_of_waters(lines, options, buffer_target):
         # This could fail if there is a space in `buffer_target`...
         options['buffer_value'] = buffer_target[:-1]
         waters = quick_check(lines, options)
-        log.debug('Initial guess of {} waters for a buffer size of {}...'.format(waters, buffer_target))
+        log.debug(
+            'Initial guess of {} waters for a buffer size of {}...'.format(
+                waters, buffer_target))
         # This is now the target number of waters for solvation...
         return waters
     elif isinstance(buffer_target, int):
@@ -364,9 +398,11 @@ def set_additional_ions(add_ions, options, buffer_target):
     if len(add_ions) < 2:
         raise Exception("No amount specified for additional ions.")
     if len(add_ions) % 2 == 1:
-        raise Exception("The 'add_ions' list requires an even number of elements. "
-                        "Make sure there is a residue mask followed by a value for "
-                        "each ion to be added (or molarity ending in 'M' or molality ending in 'm').")
+        raise Exception(
+            "The 'add_ions' list requires an even number of elements. "
+            "Make sure there is a residue mask followed by a value for "
+            "each ion to be added (or molarity ending in 'M' or molality ending in 'm')."
+        )
     add_ion_residues = []
     for ion, amount in zip(add_ions[0::2], add_ions[1::2]):
         add_ion_residues.append(ion)
@@ -375,21 +411,26 @@ def set_additional_ions(add_ions, options, buffer_target):
         elif isinstance(amount, str) and amount[-1] == 'm':
             # User specifies molality...
             # number to add = (molality) x (number waters) x (0.018 kg/mol per water)
-            number_to_add = int(np.ceil(float(amount[:-1]) * buffer_target * 0.018))
+            number_to_add = int(
+                np.ceil(float(amount[:-1]) * buffer_target * 0.018))
             add_ion_residues.append(number_to_add)
         elif isinstance(amount, str) and amount[-1] == 'M':
             # User specifies molarity...
-            volume = count_volume(file_name=options['output_prefix'] + '.in', path=options['path'])
+            volume = count_volume(
+                file_name=options['output_prefix'] + '.in',
+                path=options['path'])
             number_of_atoms = float(amount[:-1]) * N_A
             liters = volume * ANGSTROM_CUBED_TO_LITERS
             number_to_add = int(np.ceil(number_of_atoms * liters))
             add_ion_residues.append(number_to_add)
         else:
-            raise Exception('Unanticipated error calculating how many ions to add.')
+            raise Exception(
+                'Unanticipated error calculating how many ions to add.')
     return add_ion_residues
 
 
-def adjust_buffer_value(number_of_waters, target_number_of_waters, buffer_values, exponent):
+def adjust_buffer_value(number_of_waters, target_number_of_waters,
+                        buffer_values, exponent):
     """
     Determine whether to increase or decrease the buffer thickness to match a desired number of waters.
 
@@ -435,10 +476,13 @@ def adjust_buffer_value(number_of_waters, target_number_of_waters, buffer_values
         exponent -= 1
         return buffer_values[-1] + -5 * (10**exponent), exponent
     else:
-        raise Exception("The buffer_values search died due to an unanticipated set of variable values")
+        raise Exception(
+            "The buffer_values search died due to an unanticipated set of variable values"
+        )
 
 
-def remove_waters_manually(lines, number_of_waters, target_number_of_waters, options):
+def remove_waters_manually(lines, number_of_waters, target_number_of_waters,
+                           options):
     """
     Remove a few water molecules manually with `tleap` to exactly match a desired number of waters.
 
@@ -459,13 +503,15 @@ def remove_waters_manually(lines, number_of_waters, target_number_of_waters, opt
     waters = number_of_waters[-1]
     while waters > target_number_of_waters:
         water_surplus = (waters - target_number_of_waters)
-        water_residues = count_waters(file_name=options['output_prefix'] + '.in', path=options['path'])
+        water_residues = count_waters(
+            file_name=options['output_prefix'] + '.in', path=options['path'])
         waters_to_remove = water_residues[-1 * water_surplus:]
         log.debug('Manually removing waters... {}'.format(waters_to_remove))
         options['remove_water'] = waters_to_remove
         write_tleapin(lines, options)
 
-        residues = count_residues(file_name=options['output_prefix'] + '.in', path=options['path'])
+        residues = count_residues(
+            file_name=options['output_prefix'] + '.in', path=options['path'])
         waters = residues['WAT']
         if waters == target_number_of_waters:
             for key, value in sorted(residues.items()):
@@ -473,7 +519,9 @@ def remove_waters_manually(lines, number_of_waters, target_number_of_waters, opt
             return
         cycle += 1
         if cycle > max_cycles:
-            raise Exception("Solvation failed due to an unanticipated problem with water removal.")
+            raise Exception(
+                "Solvation failed due to an unanticipated problem with water removal."
+            )
 
 
 def solvate(tleap_file,
@@ -518,7 +566,8 @@ def solvate(tleap_file,
     """
 
     # Read template and setup default `tleap` options.
-    lines = read_tleap_lines(pdb_file=pdb_file, path=path, file_name=tleap_file)
+    lines = read_tleap_lines(
+        pdb_file=pdb_file, path=path, file_name=tleap_file)
     options = default_tleap_options()
     options['pbc_type'] = pbc_type
     options['pdb_file'] = pdb_file
@@ -530,10 +579,12 @@ def solvate(tleap_file,
     options['path'] = path
     # If `buffer_target` is a string ending with 'A', an estimate of the number of waters is generated, otherwise,
     # the target is returned.
-    target_number_of_waters = set_target_number_of_waters(lines, options, buffer_target)
+    target_number_of_waters = set_target_number_of_waters(
+        lines, options, buffer_target)
 
     if add_ions:
-        options['add_ion_residues'] = set_additional_ions(add_ions, options, target_number_of_waters)
+        options['add_ion_residues'] = set_additional_ions(
+            add_ions, options, target_number_of_waters)
 
     # First, a coarse adjustment...
     # This will run for 50 iterations or until we (a) have more waters than the target and (b) are within ~12 waters
@@ -560,7 +611,9 @@ def solvate(tleap_file,
         number_of_waters.append(waters)
         buffer_values.append(options['buffer_value'])
 
-        log.debug('Cycle %02d\t %d %d (%d)' % (cycle, options['buffer_value'], waters, target_number_of_waters))
+        log.debug('Cycle %02d\t %d %d (%d)' %
+                  (cycle, options['buffer_value'], waters,
+                   target_number_of_waters))
 
         # Possible location of a switch to adjust the buffer_values by polynomial
         # fit approach.
@@ -569,25 +622,33 @@ def solvate(tleap_file,
         if waters == target_number_of_waters:
             return
         # If we are close, go to fine adjustment...
-        elif waters > target_number_of_waters and (waters - target_number_of_waters) < 12:
-            remove_waters_manually(lines, number_of_waters, target_number_of_waters, options)
+        elif waters > target_number_of_waters and (
+                waters - target_number_of_waters) < 12:
+            remove_waters_manually(lines, number_of_waters,
+                                   target_number_of_waters, options)
             return
         # Otherwise, try to keep adjusting the number of waters...
         else:
-            options['buffer_value'], exponent = adjust_buffer_value(number_of_waters, target_number_of_waters,
-                                                                    buffer_values, exponent)
+            options['buffer_value'], exponent = adjust_buffer_value(
+                number_of_waters, target_number_of_waters, buffer_values,
+                exponent)
             # Now that we're close, let's re-evaluate how many ions to add, in case the volume has changed a lot.
             # (This could be slow and run less frequently...)
             if add_ions and cycle % 10 == 0:
-                options['add_ion_residues'] = set_additional_ions(add_ions, options, target_number_of_waters)
+                options['add_ion_residues'] = set_additional_ions(
+                    add_ions, options, target_number_of_waters)
             cycle += 1
 
     if cycle >= max_cycles and waters > target_number_of_waters:
-        remove_waters_manually(lines, number_of_waters, target_number_of_waters, options)
+        remove_waters_manually(lines, number_of_waters,
+                               target_number_of_waters, options)
 
     if cycle >= max_cycles and waters < target_number_of_waters:
-        raise Exception("Automatic adjustment of the buffer value resulted in fewer waters '
-            'added than targeted by `buffer_water`. Try increasing the tolerance in the above loop")
+        raise Exception(
+            "Automatic adjustment of the buffer value resulted in fewer waters ' + \
+            'added than targeted by `buffer_water`. Try increasing the tolerance in the above loop"
+        )
     else:
-        raise Exception("Automatic adjustment of the buffer value was unable to converge on '
+        raise Exception(
+            "Automatic adjustment of the buffer value was unable to converge on ' + \
             'a solution with sufficient tolerance")
