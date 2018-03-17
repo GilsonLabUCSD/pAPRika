@@ -8,8 +8,8 @@ import parmed as pmd
 from parmed.structure import Structure as ParmedStructureClass
 from paprika import utils
 
-N_A = 6.0221409 * 10 ** 23
-ANGSTROM_CUBED_TO_LITERS = 1 * 10 ** -27
+N_A = 6.0221409 * 10**23
+ANGSTROM_CUBED_TO_LITERS = 1 * 10**-27
 
 
 def default_tleap_options():
@@ -92,21 +92,19 @@ def write_tleapin(lines, options):
             f.write(line)
 
         if 'cubic' in options['pbc_type']:
-            f.write("solvatebox {} {} {} iso\n".format(options['unit'], options['water_box'],
-                                                       options['buffer_value']))
+            f.write("solvatebox {} {} {} iso\n".format(options['unit'], options['water_box'], options['buffer_value']))
         elif 'rectangular' in options['pbc_type']:
             f.write("solvatebox {} {} {{10.0 10.0 {}}}\n".format(options['unit'], options['water_box'],
                                                                  options['buffer_value']))
         elif 'octahedral' in options['pbc_type']:
-            f.write("solvateoct {} {} {} iso\n".format(options['unit'], options['water_box'],
-                                                       options['buffer_value']))
+            f.write("solvateoct {} {} {} iso\n".format(options['unit'], options['water_box'], options['buffer_value']))
         elif options['pbc_type'] is None:
             f.write("# Skipping solvation ...\n")
         else:
             raise Exception(
                 "Incorrect pbctype value provided: " + str(options['pbc_type']) + ". Only `cubic`, `rectangular`, "
-                                                                                  "`octahedral`, and "
-                                                                                  "None are valid")
+                "`octahedral`, and "
+                "None are valid")
         if options['neutralize']:
             f.write("addionsrand {} {} 0\n".format(options['unit'], options['counter_cation']))
             f.write("addionsrand {} {} 0\n".format(options['unit'], options['counter_anion']))
@@ -114,8 +112,7 @@ def write_tleapin(lines, options):
         # 5] for five additional sodium ions. By this point, if the user specified a molality or molarity,
         # it should already have been converted into a number.
         if options['add_ion_residues']:
-            for residue, amount in zip(options['add_ion_residues'][0::2],
-                                       options['add_ion_residues'][1::2]):
+            for residue, amount in zip(options['add_ion_residues'][0::2], options['add_ion_residues'][1::2]):
                 f.write("addionsrand {} {} {}\n".format(options['unit'], residue, amount))
         if options['remove_water']:
             for water_number in options['remove_water']:
@@ -162,14 +159,19 @@ def run_tleap(path='./', file_name='tleap.in'):
     grep_leap_log(path=path)
     return output
 
+
 def grep_leap_log(path='./'):
     """
     Check for a few keywords in the `tleap` output.
     """
-    with open(path + 'leap.log', r) as file:
-        for line in file.readlines():
-            if re.search('ERROR|WARNING|Warning|duplicate', line):
-                log.warning('It appears there was a problem with solvation: check `leap.log`...')
+    try:
+        with open(path + 'leap.log', 'r') as file:
+            for line in file.readlines():
+                if re.search('ERROR|WARNING|Warning|duplicate|FATAL|Could', line):
+                    log.warning('It appears there was a problem with solvation: check `leap.log`...')
+    except:
+        return
+
 
 def basic_tleap(input_file='tleap.in', input_path='./', output_prefix='solvate', output_path=None, pdb_file=None):
     """
@@ -334,8 +336,9 @@ def set_target_number_of_waters(lines, options, buffer_target):
         return buffer_target
     # Otherwise, the number of waters to add is specified as an integer, not a distance...
     else:
-        raise Exception("The `buffer_target` should either be a string ending with 'A' (e.g., 12A) for 12 Angstroms of "
-                        "buffer or an int (e.g., 2000) for 2000 waters.")
+        raise Exception(
+            "The `buffer_target` should either be a string ending with 'A' (e.g., 12A) for 12 Angstroms of "
+            "buffer or an int (e.g., 2000) for 2000 waters.")
 
 
 def set_additional_ions(add_ions, options, buffer_target):
@@ -411,26 +414,26 @@ def adjust_buffer_value(number_of_waters, target_number_of_waters, buffer_values
     # If the last two rounds of solvation have too many waters, make the buffer smaller...
     if number_of_waters[-2] > target_number_of_waters and number_of_waters[-1] > target_number_of_waters:
         # log.debug('Adjustment loop 1')
-        return buffer_values[-1] + -1 * (10 ** exponent), exponent
+        return buffer_values[-1] + -1 * (10**exponent), exponent
 
     # If the last two rounds of solvation had too few waters, make the buffer bigger...
     elif number_of_waters[-2] < target_number_of_waters and number_of_waters[-1] < target_number_of_waters:
         # log.debug('Adjustment loop 2')
-        return buffer_values[-1] + 1 * (10 ** exponent), exponent
+        return buffer_values[-1] + 1 * (10**exponent), exponent
 
     # If the number of waters was greater than the target and is now less than the target, make the buffer a bit
     # bigger, by an increasingly smaller amount...
     elif number_of_waters[-2] > target_number_of_waters and number_of_waters[-1] < target_number_of_waters:
         # log.debug('Adjustment loop 3')
         exponent -= 1
-        return buffer_values[-1] + 5 * (10 ** exponent), exponent
+        return buffer_values[-1] + 5 * (10**exponent), exponent
 
     # If the number of waters was less than the target and is now greater than the target, make the buffer a bit
     # smaller, by an increasingly bigger amount...
     elif number_of_waters[-2] < target_number_of_waters and number_of_waters[-1] > target_number_of_waters:
         # log.debug('Adjustment loop 4')
         exponent -= 1
-        return buffer_values[-1] + -5 * (10 ** exponent), exponent
+        return buffer_values[-1] + -5 * (10**exponent), exponent
     else:
         raise Exception("The buffer_values search died due to an unanticipated set of variable values")
 
@@ -473,7 +476,8 @@ def remove_waters_manually(lines, number_of_waters, target_number_of_waters, opt
             raise Exception("Solvation failed due to an unanticipated problem with water removal.")
 
 
-def solvate(tleap_file, pdb_file=None,
+def solvate(tleap_file,
+            pdb_file=None,
             pbc_type='cubic',
             buffer_target='12.0A',
             water_box='TIP3PBOX',
@@ -552,7 +556,6 @@ def solvate(tleap_file, pdb_file=None,
         write_tleapin(lines, options)
         # Find out how many waters for *this* buffer value...
         residues = count_residues(file_name=output_prefix + '.in', path=path)
-        log.debug(residues)
         waters = residues['WAT']
         number_of_waters.append(waters)
         buffer_values.append(options['buffer_value'])
@@ -572,8 +575,7 @@ def solvate(tleap_file, pdb_file=None,
         # Otherwise, try to keep adjusting the number of waters...
         else:
             options['buffer_value'], exponent = adjust_buffer_value(number_of_waters, target_number_of_waters,
-                                                                    buffer_values,
-                                                                    exponent)
+                                                                    buffer_values, exponent)
             # Now that we're close, let's re-evaluate how many ions to add, in case the volume has changed a lot.
             # (This could be slow and run less frequently...)
             if add_ions and cycle % 10 == 0:
@@ -584,8 +586,8 @@ def solvate(tleap_file, pdb_file=None,
         remove_waters_manually(lines, number_of_waters, target_number_of_waters, options)
 
     if cycle >= max_cycles and waters < target_number_of_waters:
-        raise Exception("Automatic adjustment of the buffer value resulted in fewer waters \
-            added than targeted by `buffer_water`. Try increasing the tolerance in the above loop")
+        raise Exception("Automatic adjustment of the buffer value resulted in fewer waters '
+            'added than targeted by `buffer_water`. Try increasing the tolerance in the above loop")
     else:
-        raise Exception("Automatic adjustment of the buffer value was unable to converge on \
-            a solution with sufficient tolerance")
+        raise Exception("Automatic adjustment of the buffer value was unable to converge on '
+            'a solution with sufficient tolerance")
