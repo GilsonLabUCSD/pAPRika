@@ -599,6 +599,7 @@ def solvate(tleap_file,
     exponent = 1
     # Number of waters corresponding to each buffer value...
     number_of_waters = [0]
+    log.debug('Cycle\tBuffer Waters Target')
     while cycle < max_cycles:
 
         # Start by not manually removing any water, just adjusting the buffer value to get near the target number of
@@ -611,9 +612,8 @@ def solvate(tleap_file,
         number_of_waters.append(waters)
         buffer_values.append(options['buffer_value'])
 
-        log.debug('Cycle %02d\t %d %d (%d)' %
-                  (cycle, options['buffer_value'], waters,
-                   target_number_of_waters))
+        log.debug('%02d\t %d %d (%d)' % (cycle, options['buffer_value'],
+                                         waters, target_number_of_waters))
 
         # Possible location of a switch to adjust the buffer_values by polynomial
         # fit approach.
@@ -632,6 +632,8 @@ def solvate(tleap_file,
             options['buffer_value'], exponent = adjust_buffer_value(
                 number_of_waters, target_number_of_waters, buffer_values,
                 exponent)
+            if options['buffer_value'] < 0:
+                raise Exception('The buffer size has been lowered too much. ')
             # Now that we're close, let's re-evaluate how many ions to add, in case the volume has changed a lot.
             # (This could be slow and run less frequently...)
             if add_ions and cycle % 10 == 0:
