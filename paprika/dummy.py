@@ -9,8 +9,15 @@ from parmed.structure import Structure as ParmedStructureClass
 from paprika import utils
 
 
-def add_dummy(structure, atom_name='DUM', residue_name='DUM', mass=208.00, atomic_number=82, x=0.000, y=0.000,
-              z=0.000):
+def add_dummy(structure,
+              atom_name='DUM',
+              residue_name='DUM',
+              mass=208.00,
+              atomic_number=82,
+              x=0.000,
+              y=0.000,
+              z=0.000,
+              ):
     """Add a dummy atom at the specified coordinates to the end of a structure.
 
     Parameters:
@@ -31,6 +38,10 @@ def add_dummy(structure, atom_name='DUM', residue_name='DUM', mass=208.00, atomi
         The y coordinate of the dummy atom (the default is 0.000)
     z : {float}, optional
         The z coordinate of the dummy atom (the default is 0.000)
+    mol2 : bool
+        Whether to write a `mol2` file for the dummy atom
+    frcmod : bool
+        Whether to write a `frcmod` file for the dummy atom
 
     Returns:
     -------
@@ -61,10 +72,10 @@ def add_dummy(structure, atom_name='DUM', residue_name='DUM', mass=208.00, atomi
     residue_num = structure.residues[-1].number + 1
 
     structure.add_atom(dum, residue_name, residue_num)
-    
+
     # Make sure that atom.number get set properly.  When reading in prmtop/inpcrd
     # parmed doesn't seem to set atom.number for some reason.
-    for i,atom in enumerate(structure.atoms):
+    for i, atom in enumerate(structure.atoms):
         atom.number = structure.atoms[i].idx + 1
 
     # tleap will probably want TER cards in any PDBs we make, so enforce

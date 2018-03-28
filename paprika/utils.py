@@ -51,15 +51,21 @@ def index_from_mask(structure, mask, amber_index=False):
         index_offset = 1
     else:
         index_offset = 0
-    if type(structure) is str:
+    if isinstance(structure, str):
         structure = return_parmed_structure(structure)
-    elif type(structure) is ParmedStructureClass:
+    elif isinstance(structure, ParmedStructureClass):
         pass
     else:
-        raise Exception('index_from_mask does not support the type associated with structure:' + type(structure))
+        raise Exception(
+            'index_from_mask does not support the type associated with structure:'
+            + type(structure))
     # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
-    indices = [i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()]
-    log.debug('There are {} atoms in the mask {}  ...'.format(len(indices), mask))
+    indices = [
+        i + index_offset
+        for i in pmd.amber.mask.AmberMask(structure, mask).Selected()
+    ]
+    log.debug('There are {} atoms in the mask {}  ...'.format(
+        len(indices), mask))
     return indices
 
 
@@ -74,7 +80,8 @@ def make_window_dirs(window_list, stash_existing=False):
     win_dir = cwd + '/windows'
 
     if stash_existing and os.path.isdir(win_dir):
-        stash_dir = cwd + "/windows_{:%Y.%m.%d_%H.%M.%S}".format(datetime.now())
+        stash_dir = cwd + "/windows_{:%Y.%m.%d_%H.%M.%S}".format(
+            datetime.now())
         shutil.move(win_dir, stash_dir)
 
     for window in window_list:
@@ -82,7 +89,9 @@ def make_window_dirs(window_list, stash_existing=False):
             os.makedirs(win_dir + '/' + window)
 
 
-def decompose_openmm_energy(simulation, groups=[0, 1], names=['non-restraint', 'restraint']):
+def decompose_openmm_energy(simulation,
+                            groups=[0, 1],
+                            names=['non-restraint', 'restraint']):
     """Return individual energy components.
     """
 
