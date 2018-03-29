@@ -13,11 +13,12 @@ def find_version():
         git_describe = output.decode("utf-8").strip()
         git_hash = re.sub('-g[0-9a-f]*$', '', git_describe)
 
-        p = sp.Popen(["git", "log", "-1", "--format=%cd", "--date=short"], cwd=path, stdout=sp.PIPE, stderr=sp.PIPE)
+        p = sp.Popen(["git", "log", "-1", "--format=%cd", "--date=iso"], cwd=path, stdout=sp.PIPE, stderr=sp.PIPE)
         output, error = p.communicate()
         git_date = output.decode("utf-8").strip()
+        date_time = '_'.join(git_date.split(' '))
 
-        __version__ = git_date + '-' + git_hash + '-' + version_prefix
+        __version__ = date_time + '-' + git_hash + '-' + version_prefix
     except:
         __version__ = version_prefix
     return __version__
