@@ -569,7 +569,6 @@ def amber_restraint_line(restraint, phase, window):
     rk2=   5.0000000, rk3=   5.0000000, &end
 
     """
-
     if not restraint.index1:
         iat1 = ' '
         raise Exception('There must be at least two atoms in a restraint.')
@@ -633,15 +632,13 @@ def amber_restraint_line(restraint, phase, window):
     }
 
     for key, value in restraint.custom_restraint_values.items():
-        # print('Checking for override...')
         if value is not None:
             log.debug('Overriding {} = {}'.format(key, value))
             amber_restraint_values[key] = value
 
     # Prepare AMBER NMR-style restraint
-    string = '&rst iat = {:6s}{:6s}{:6s}{:6s} '.format(iat1, iat2, iat3, iat4)
-    # import ipdb
-    # ipdb.set_trace()
+    atoms = ''.join([iat1, iat2, iat3, iat4])
+    string = '&rst iat = {:16s} '.format(atoms)
     string += \
          ' r1 = {0:10.5f},'.format(amber_restraint_values['r1']) + \
          ' r2 = {0:10.5f},'.format(amber_restraint_values['r2']) + \
