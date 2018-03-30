@@ -23,7 +23,7 @@ def rm_solvated_files():
     files = [
         'solvate.pdb', 'solvate.prmtop', 'solvate.rst7', 'tleap_apr_solvate.in', 'leap.log', 'tmp.pdb',
         'cb6-but-dum.tleap.in', 'cb6-but-dum.pdb', 'cb6-but-dum.prmtop', 'cb6-but-dum.rst7', 'tleap.in', 'dm1.mol2', 'dummy.frcmod',
-        'solvate.in', 'solvate.tleap.in', 'vac.topo', 'vac.crds', 'full.topo', 'full.crds', 'full.pdb'
+        'solvate.in', 'solvate.tleap.in', 'full.topo', 'full.crds', 'full.pdb'
     ]
     for f in files:
         if os.path.isfile('./cb6-but/' + f):
