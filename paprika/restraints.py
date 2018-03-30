@@ -14,7 +14,7 @@ from paprika import utils
 try:
     import simtk.openmm as mm
     import simtk.unit as unit
-except:
+except ImportError:
     pass
 
 
@@ -22,6 +22,7 @@ class DAT_restraint(object):
     """
     Distance or angle or torsion restraints on atoms in the simulation.
     """
+    instances = []
 
     def __init__(self):
 
@@ -76,6 +77,8 @@ class DAT_restraint(object):
             'fc_list': None  # The list of force constants (will be created if not
             # given)
         }
+
+        DAT_restraint.instances.append(self)
 
     def _calc_meth(self, phase, rdict, meth):
         """ Return the appropriate list of force_constants and targets depending on the method """
@@ -638,25 +641,25 @@ def amber_restraint_line(restraint, phase, window):
 
     # Prepare AMBER NMR-style restraint
     atoms = ''.join([iat1, iat2, iat3, iat4])
-    string = '&rst iat = {:16s} '.format(atoms)
+    string = '&rst iat= {:16s} '.format(atoms)
     string += \
-         ' r1 = {0:10.5f},'.format(amber_restraint_values['r1']) + \
-         ' r2 = {0:10.5f},'.format(amber_restraint_values['r2']) + \
-         ' r3 = {0:10.5f},'.format(amber_restraint_values['r3']) + \
-         ' r4 = {0:10.5f},'.format(amber_restraint_values['r4']) + \
-        ' rk2 = {0:10.5f},'.format(amber_restraint_values['rk2']) + \
-        ' rk3 = {0:10.5f},'.format(amber_restraint_values['rk3'])
+         ' r1= {0:10.5f},'.format(amber_restraint_values['r1']) + \
+         ' r2= {0:10.5f},'.format(amber_restraint_values['r2']) + \
+         ' r3= {0:10.5f},'.format(amber_restraint_values['r3']) + \
+         ' r4= {0:10.5f},'.format(amber_restraint_values['r4']) + \
+        ' rk2= {0:10.5f},'.format(amber_restraint_values['rk2']) + \
+        ' rk3= {0:10.5f},'.format(amber_restraint_values['rk3'])
 
     if any([restraint.group1, restraint.group2, restraint.group3, restraint.group4]):
         string += '\n    '
         if restraint.group1:
-            string += ' igr1 = {}'.format(igr1)
+            string += ' igr1= {}'.format(igr1)
         if restraint.group2:
-            string += ' igr2 = {}'.format(igr2)
+            string += ' igr2= {}'.format(igr2)
         if restraint.group3:
-            string += ' igr3 = {}'.format(igr3)
+            string += ' igr3= {}'.format(igr3)
         if restraint.group4:
-            string += ' igr4 = {}'.format(igr4)
+            string += ' igr4= {}'.format(igr4)
 
     string += "  &end\n"
     return string
