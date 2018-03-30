@@ -24,7 +24,7 @@ def check_for_leap_log(path='./'):
     filename = 'leap.log'
     try:
         os.remove(path + filename)
-        log.debug('Deleted existing leap.log file...')
+        #log.debug('Deleted existing leap.log file...')
     except OSError:
         pass
 
