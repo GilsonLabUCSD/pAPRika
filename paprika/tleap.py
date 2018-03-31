@@ -8,22 +8,77 @@ import parmed as pmd
 from parmed.structure import Structure as ParmedStructureClass
 from paprika import utils
 
-### New Changes:
-# Allows building an in vacuo prmtop
-# Restores two logic gates in adjust_buffer_value which gives a big speed up in solvation
-# Allows option to not write out prmtop, speeds things up cb6-but solv with 2922 by from 10 seconds to 6 seconds
-# Allows user to change max_cycles
-
-### Issues: 
-# Do we check change in volume often enough?
-# The reason we want to remove test files after each test is so they don't pollute other tests 
-
 
 N_A = 6.0221409 * 10 ** 23
 ANGSTROM_CUBED_TO_LITERS = 1 * 10 ** -27
 
 class System(object):
-    """ tLEaP build class """
+    """
+    Class for building AMBER prmtop/inpcrd files with tleap.
+
+    Class Variables
+    ---------------
+    template_file : str
+        Name of template file to read boilerplate `tleap` input (e.g., `source leaprc`... lines). Default: None
+    template_lines : lst
+        The list of tleap commands which are needed to build the system. Either the template_file or
+        the template_lines needs to be set prior to running build(). Default: None
+    loadpdb_file : str
+        If specified, this PDB file will be loaded via loadpdb instead of whatever file is specified
+        in the template. Default: None
+    pbc_type : str
+        Type of solvation (cubic, rectangular, octahedral, or None). Default: cubic
+    buffer_target : int or str
+        The desired amount of water to add. Either an integer number of waters, or a buffer
+        size ending in with an 'A', e.g. '12.0A'
+    water_box : str
+        The type of water box, e.g., TIP3PBOX (see AMBER manual for acceptable values). Default: TIP3PBOX
+    neutralize : bool
+        Whether to neutralize the system with counterions. Default: True
+    counter_cation : str
+        If neutralize=True, this positive ion will be used. Default: Na+
+    counter_anion : str
+        If neuralize=True, this negative ion will be used. Default: Cl-
+    add_ions : list
+        A list of additional ions to be added to the system, specified by the residue name and 
+        an indication of the amount: an integer number, the molarity (M), or the molality (m).
+        For example, the following list shows valid examples:
+        add_ions = ['MG', 2, 'Cl-', 4, 'K', '0.150M', 'BR', '0.150M', 'NA', '0.050m', 'F', '0.050m']
+        Default: None
+    output_path : str
+        Directory path where tleap input files will be written and executed. Associated input
+        files (frcmod, mol2, pdb, etc) need to present in that path.
+    output_prefix : str
+        Append a prefix to files created by this module. Default: 'build'
+
+    Advanced Class Variables
+    ------------------------
+    unit : str
+        The tleap unit name. Default: 'model'
+    buffer_value : float
+        The initial buffer_value to be attempted for solvation. Default: 1.0
+    target_waters : int
+        The initial number of waters we are targeting. (I think this could be None ...?)
+        Default: 1000
+    exponent : int
+        The initial value used for dynamically adjusting the buffer value. Default: 1
+    cyc_since_last_exp_change : int
+        A count of the number of buffer_value adjustments since the last exponent change. Should
+        always start at 0. Default: 0
+    max_cycles : int
+        The maximum number of buffer_value adjustment cycles.  Default: 50
+    waters_to_remove : list
+        A list of the water residues to be manually removed after solvation. Default: None
+    add_ion_residues : list
+        A property formated list of ions to add to the system.  The format is the same as add_ions
+        except that only integer amounts are allowed.  This is set by set_additional_ions. Default: None
+    buffer_val_history : list
+        The history of buffer_value adjustments stored in a list. Default: [0]
+    wat_added_history : list
+        The history of number of waters added which correlate to the values in buffer_val_history.
+        Default: [0]
+    
+    """
 
     def __init__(self):
 
@@ -31,7 +86,6 @@ class System(object):
         self.template_file = None
         self.template_lines = None
         self.loadpdb_file = None
-        self.unit = 'model'
         self.pbc_type = 'cubic'
         self.buffer_target = '12.0A'
         self.water_box = 'TIP3PBOX'
@@ -42,28 +96,22 @@ class System(object):
         self.output_path='./'
         self.output_prefix='build'
 
-        ### Other Settings: Defaults
-        # The buffer value that is passed to solvatebox or solvateoct
+        ### Advanced Settings: Defaults
+        self.unit = 'model'
         self.buffer_value = 1.0
-        # The target number of waters which we are trying to add
         self.target_waters = 1000
-        # Initial self.exponent used to narrow the search of buffer values to give a target number of waters...
         self.exponent = 1
         self.cyc_since_last_exp_change = 0
-        # Maximum cycles of adjusting buffer_value for targeting the correct number of waters
         self.max_cycles = 50
-        # Waters to remove during the manual removal phase
         self.waters_to_remove = None
-        # If self.add_ions, this list will be prepared from processing self.add_ions
         self.add_ion_residues = None
-        # List of buffer values attempted...
         self.buffer_val_history = [0]
-        # Number of waters corresponding to each buffer value...
         self.wat_added_history = [0]
 
     def build(self):
         """
-        Run appropriate tleap for settings
+        Build the tleap.System
+
         """
 
         # Check input
@@ -95,7 +143,8 @@ class System(object):
 
     def filter_template(self):
         """
-        Find any lines that may interfere with what we are doing
+        Filter out any template_lines that may interfere with solvation.
+
         """
 
         filtered_lines = []
@@ -119,11 +168,9 @@ class System(object):
 
     def write_input(self, include_saves=True):
         """
-        Write a `tleap` input file using lines from a template.
-    
-        """
+        Write a tleap input file based on template_lines and other things we have set.
 
-    ##### ADD OPTION TO NOT WRITE OUT PRMTOP/INPCRD FOR QUICK CHECK!!!! #####################
+        """
 
         file_path = self.output_path + self.output_prefix + '.tleap.in'
         with open(file_path, 'w') as f:
@@ -170,12 +217,11 @@ class System(object):
 
     def run(self):
         """
-        Run `tleap`
+        Execute `tleap`
     
         """
     
-        # Consider moving this thing into here.  what does it do?
-        utils.check_for_leap_log(path=self.output_path)
+        self.check_for_leap_log()
         file_name = self.output_prefix + '.tleap.in'    
         p = sp.Popen(['tleap', '-s ', '-f ', file_name], stdout=sp.PIPE, bufsize=1, universal_newlines=True, cwd=self.output_path)
         output = []
@@ -191,6 +237,7 @@ class System(object):
     def grep_leap_log(self):
         """
         Check for a few keywords in the `tleap` output.
+
         """
         try:
             with open(self.output_path + 'leap.log', 'r') as file:
@@ -202,11 +249,22 @@ class System(object):
         except:
             return
 
+    def check_for_leap_log(self):
+        """
+        Check if `leap.log` exists in output_path, and if so, delete so the current run doesn't append.
+
+        """
+        filename = 'leap.log'
+        try:
+            os.remove(self.output_path + filename)
+            log.debug('Deleted existing leap.log file: '+self.output_path + filename)
+        except OSError:
+            pass
 
     def solvate(self):
         """
-        Solvate a structure with `tleap` to an exact number of waters or buffer size.
-    
+        Solvate a structure with an exact number of waters or buffer size.
+
         """
     
         # If `buffer_target` is a string ending with 'A', an estimate of the number of waters is generated, otherwise,
@@ -273,10 +331,9 @@ class System(object):
         Determine the target number of waters by parsing the `buffer_target` option.
     
         Sets
-        -------
+        ----
         self.target_waters : int
-            The desired number of waters for the solvation
-    
+
         """
     
         # If buffer_water ends with 'A', meaning it is a buffer distance...
@@ -298,6 +355,11 @@ class System(object):
     def count_waters(self):
         """
         Quickly check the number of waters added for a given buffer size.
+
+        Returns
+        -------
+        waters : int
+
         """
         waters = self.count_residues()['WAT']
         return waters
@@ -310,6 +372,7 @@ class System(object):
         -------
         residues : dict
             Dictionary of added residues and their number
+
         """
         self.write_input(include_saves=False)
         output = self.run()
@@ -339,7 +402,7 @@ class System(object):
         -------
         self.add_ion_residues : list
             A processed list of ions and their amounts that can be passed to `tleap`
-    
+
         """
         if not self.add_ions:
             return None
@@ -378,7 +441,7 @@ class System(object):
         -------
         volume : float
             The volume of the structure in cubic angstroms
-    
+
         """
         output = self.run()
         # Return the total simulation volume
@@ -394,7 +457,7 @@ class System(object):
     def remove_waters_manually(self):
         """
         Remove a few water molecules manually with `tleap` to exactly match a desired number of waters.
-    
+
         """
     
         cycle = 0
@@ -430,6 +493,7 @@ class System(object):
         -------
         water_residues : list
             A list of the water residues in the structure
+
         """
         output = self.run()
     
@@ -452,7 +516,9 @@ class System(object):
             A new buffer size to try
         self.exponent : int
             Adjusts the order of magnitue of buffer value changes
-    
+        self.cyc_since_last_exp_change : int
+            Resets this value to 0 when exponent to help with the logic gates.
+
         """
     
         # If the number of waters was less than the target and is now greater than the target, make the buffer a bit
