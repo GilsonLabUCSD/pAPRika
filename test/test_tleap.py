@@ -39,7 +39,7 @@ def test_solvation_simple():
     sys.template_file = 'cb6-but/tleap_solvate.in'
     sys.output_path = 'cb6-but'
     sys.loadpdb_file = 'cb6-but.pdb'
-    sys.buffer_target = waters
+    sys.target_waters = waters
     sys.output_prefix = 'solvate'
     sys.build()
     grepped_waters = sp.check_output(["grep -oh 'WAT' ./cb6-but/solvate.prmtop | wc -w"], shell=True)
@@ -54,7 +54,7 @@ def test_solvation_octahedron():
     sys.template_file = 'cb6-but/tleap_solvate.in'
     sys.output_path = 'cb6-but'
     sys.loadpdb_file = 'cb6-but.pdb'
-    sys.buffer_target = waters
+    sys.target_waters = waters
     sys.output_prefix = 'solvate'
     sys.pbc_type = 'octahedral'
     sys.build()
@@ -70,7 +70,7 @@ def test_solvation_box():
     sys.template_file = 'cb6-but/tleap_solvate.in'
     sys.output_path = 'cb6-but'
     sys.loadpdb_file = 'cb6-but.pdb'
-    sys.buffer_target = waters
+    sys.target_waters = waters
     sys.output_prefix = 'solvate'
     sys.pbc_type = 'cubic'
     sys.build()
@@ -89,7 +89,7 @@ def test_solvation_spatial_size():
     sys.template_file = 'cb6-but/tleap_solvate.in'
     sys.output_path = 'cb6-but'
     sys.loadpdb_file = 'cb6-but.pdb'
-    sys.buffer_target = '{0:1.4f}A'.format(random_size[0])
+    sys.buffer_value = float(random_size[0])
     sys.output_prefix = 'solvate'
     sys.pbc_type = 'cubic'
     sys.build()
@@ -106,7 +106,7 @@ def test_solvation_potassium_control():
     sys.template_file = 'cb6-but/tleap_solvate.in'
     sys.output_path = 'cb6-but'
     sys.loadpdb_file = 'cb6-but.pdb'
-    sys.buffer_target = waters
+    sys.target_waters = waters
     sys.output_prefix = 'solvate'
     sys.counter_cation = 'K+'
     sys.build()
@@ -129,7 +129,7 @@ def test_solvation_with_additional_ions():
     sys.template_file = 'cb6-but/tleap_solvate.in'
     sys.output_path = 'cb6-but'
     sys.loadpdb_file = 'cb6-but.pdb'
-    sys.buffer_target = waters
+    sys.target_waters = waters
     sys.output_prefix = 'solvate'
     sys.neutralize = False
     sys.add_ions = [random_cation, n_cations, random_anion, n_anions]
@@ -158,7 +158,7 @@ def test_solvation_by_M_and_m():
     sys.template_file = 'cb6-but/tleap_solvate.in'
     sys.output_path = 'cb6-but'
     sys.loadpdb_file = 'cb6-but.pdb'
-    sys.buffer_target = '10A'
+    sys.buffer_value = 10.0
     sys.output_prefix = 'solvate'
     sys.neutralize = False
     sys.pbc_type = 'rectangular'
@@ -198,7 +198,7 @@ def test_alignment_workflow():
     sys.template_file = 'cb6-but/tleap_solvate.in'
     sys.output_path = 'cb6-but'
     sys.loadpdb_file = 'tmp.pdb'
-    sys.buffer_target = waters
+    sys.target_waters = waters
     sys.output_prefix = 'solvate'
     sys.build()
     log.debug('Trying {} waters after alignment...'.format(waters))

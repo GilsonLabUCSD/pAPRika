@@ -30,9 +30,13 @@ class System(object):
         the path must be relative to output_path. Default: None
     pbc_type : str
         Type of solvation (cubic, rectangular, octahedral, or None). Default: cubic
-    buffer_target : int or str
-        The desired amount of water to add. Either an integer number of waters, or a buffer
-        size ending in with an 'A', e.g. '12.0A'
+    buffer_value : float
+        The desired solvation buffer value. This will add a layer of water around your solute with the
+        minimum distance to the periodic box edge defined by buffer_value. If target_waters is set, it
+        will override this value. Default: 12.0
+    target_waters : int
+        The desired number of waters to solvate your system with. If specified, this will override any
+        buffer_value settings. Default: None
     water_box : str
         The type of water box, e.g., TIP3PBOX (see AMBER manual for acceptable values). Default: TIP3PBOX
     neutralize : bool
@@ -57,11 +61,6 @@ class System(object):
     ------------------------
     unit : str
         The tleap unit name. Default: 'model'
-    buffer_value : float
-        The initial buffer_value to be attempted for solvation. Default: 1.0
-    target_waters : int
-        The number of waters we are targeting. User should set buffer_target instead of this variable.
-        Default: None
     exponent : int
         The initial value used for dynamically adjusting the buffer value. Default: 1
     cyc_since_last_exp_change : int
@@ -95,7 +94,8 @@ class System(object):
         self.template_lines = None
         self.loadpdb_file = None
         self.pbc_type = 'cubic'
-        self.buffer_target = '12.0A'
+        self.buffer_value = 12.0
+        self.target_waters = None
         self.water_box = 'TIP3PBOX'
         self.neutralize = True
         self.counter_cation='Na+'
@@ -106,8 +106,6 @@ class System(object):
 
         ### Advanced Settings: Defaults
         self.unit = 'model'
-        self.buffer_value = 1.0
-        self.target_waters = None
         self.exponent = 1
         self.cyc_since_last_exp_change = 0
         self.max_cycles = 50
@@ -289,10 +287,17 @@ class System(object):
         Solvate a structure with an exact number of waters or buffer size.
 
         """
-    
-        # If `buffer_target` is a string ending with 'A', an estimate of the number of waters is generated, otherwise,
-        # the target is returned.
-        self.set_target_waters()
+
+        # If buffer_value is set but not target_waters, figure out what
+        # target_waters value corresponds to buffer_value. We do this because
+        # the solvate() algorithm is focused on getting target_waters correct.
+        if self.target_waters is None:
+            self.target_waters = self.count_waters()
+        # If target_waters is set, we assume that overrides buffer_value. We'll
+        # set buffer_value = 1.0 because that seems to lead to smooth convergence
+        # of the solvate() routine.
+        else:
+            self.buffer_value = 1.0
     
         if self.add_ions:
             self.set_additional_ions()
@@ -346,33 +351,6 @@ class System(object):
         else:
             raise Exception("Automatic adjustment of the buffer value was unable to converge on \
                 a solution to within the specified manual_switch_thresh: "+self.manual_switch_thresh)
-
-
-    def set_target_waters(self):
-        """
-        Determine the target number of waters by parsing the `buffer_target` option.
-    
-        Sets
-        ----
-        self.target_waters : int
-
-        """
-    
-        # If buffer_water ends with 'A', meaning it is a buffer distance...
-        if isinstance(self.buffer_target, str) and self.buffer_target[-1] == 'A':
-            # Let's get a rough value of the number of waters if the buffer target is given as a string.
-            # This could fail if there is a space in `buffer_target`...
-            self.buffer_value = float(self.buffer_target[:-1])
-            waters = self.count_waters()
-            log.debug('Initial guess of {} waters for a buffer size of {}...'.format(waters, self.buffer_target))
-            # This is now the target number of waters for solvation...
-            self.target_waters = waters
-        elif isinstance(self.buffer_target, int):
-            self.target_waters = self.buffer_target
-        # Otherwise, the number of waters to add is specified as an integer, not a distance...
-        else:
-            raise Exception("The `buffer_target` should either be a string ending with 'A' (e.g., 12A) for 12 Angstroms of "
-                            "buffer or an int (e.g., 2000) for 2000 waters.")
 
     def count_waters(self):
         """
