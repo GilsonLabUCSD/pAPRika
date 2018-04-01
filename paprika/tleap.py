@@ -1,12 +1,10 @@
 import os as os
 import re as re
 import subprocess as sp
-
 import logging as log
 import numpy as np
 import parmed as pmd
 from parmed.structure import Structure as ParmedStructureClass
-from paprika import utils
 
 
 N_A = 6.0221409 * 10 ** 23
@@ -14,18 +12,22 @@ ANGSTROM_CUBED_TO_LITERS = 1 * 10 ** -27
 
 class System(object):
     """
-    Class for building AMBER prmtop/inpcrd files with tleap.
+    Class for building AMBER prmtop/rst7 files with tleap.
 
     Class Variables
     ---------------
     template_file : str
-        Name of template file to read boilerplate `tleap` input (e.g., `source leaprc`... lines). Default: None
+        Name of template file to read boilerplate `tleap` input (e.g., `source leaprc`... lines). Any
+        frcmod/mol2/pdb files which are loaded by the template must be present in output_path.
+        Default: None
     template_lines : lst
         The list of tleap commands which are needed to build the system. Either the template_file or
-        the template_lines needs to be set prior to running build(). Default: None
+        the template_lines needs to be set prior to running build(). Files called for loading should
+        be present in output_path (see above). Default: None
     loadpdb_file : str
         If specified, this PDB file will be loaded via loadpdb instead of whatever file is specified
-        in the template. Default: None
+        in the template. This file should be present in output_path, or if you specify it with a path,
+        the path must be relative to output_path. Default: None
     pbc_type : str
         Type of solvation (cubic, rectangular, octahedral, or None). Default: cubic
     buffer_target : int or str
@@ -51,15 +53,15 @@ class System(object):
     output_prefix : str
         Append a prefix to files created by this module. Default: 'build'
 
-    Advanced Class Variables
+    Advanced/Internal Class Variables
     ------------------------
     unit : str
         The tleap unit name. Default: 'model'
     buffer_value : float
         The initial buffer_value to be attempted for solvation. Default: 1.0
     target_waters : int
-        The initial number of waters we are targeting. (I think this could be None ...?)
-        Default: 1000
+        The number of waters we are targeting. User should set buffer_target instead of this variable.
+        Default: None
     exponent : int
         The initial value used for dynamically adjusting the buffer value. Default: 1
     cyc_since_last_exp_change : int
@@ -67,11 +69,17 @@ class System(object):
         always start at 0. Default: 0
     max_cycles : int
         The maximum number of buffer_value adjustment cycles.  Default: 50
+    manual_switch_thresh : int
+        The threshold difference between waters actually added and target_waters for which we can
+        safely switch to manual removal of waters. If too large, then there will be big air pockets
+        in our box. If too small, it will take forever to converge. Default: 12
     waters_to_remove : list
         A list of the water residues to be manually removed after solvation. Default: None
     add_ion_residues : list
         A property formated list of ions to add to the system.  The format is the same as add_ions
         except that only integer amounts are allowed.  This is set by set_additional_ions. Default: None
+    kg_per_mol_solvent : float
+        kg/mol for the solvent. Used for equation computing molality. Default for water: 0.018
     buffer_val_history : list
         The history of buffer_value adjustments stored in a list. Default: [0]
     wat_added_history : list
@@ -99,12 +107,14 @@ class System(object):
         ### Advanced Settings: Defaults
         self.unit = 'model'
         self.buffer_value = 1.0
-        self.target_waters = 1000
+        self.target_waters = None
         self.exponent = 1
         self.cyc_since_last_exp_change = 0
         self.max_cycles = 50
+        self.manual_switch_thresh = 12
         self.waters_to_remove = None
         self.add_ion_residues = None
+        self.kg_per_mol_solvent = 0.018
         self.buffer_val_history = [0]
         self.wat_added_history = [0]
 
@@ -125,11 +135,6 @@ class System(object):
                 self.template_lines[i] = line.rstrip()
         else:
             raise Exception('Either template_file or template_lines needs to be specified')
-
-        ### DAVE WOULD LIKE TO SEE THIS BECOME A GENERAL UTILITY!!!
-        # Make sure path is low maintenance
-        if self.output_path[-1] != '/':
-            self.output_path += '/'
 
         # Filter out any interfering lines
         self.filter_template()
@@ -166,13 +171,19 @@ class System(object):
         self.template_lines = filtered_lines
 
 
-    def write_input(self, include_saves=True):
+    def write_input(self, write_save_lines=True):
         """
         Write a tleap input file based on template_lines and other things we have set.
 
+        Parameters
+        ----------
+        write_save_lines : bool
+            If True, saveamberparm and savepdb lines will be written in the tleap input
+            file. If False, it saves some time for quick iteration.        
+
         """
 
-        file_path = self.output_path + self.output_prefix + '.tleap.in'
+        file_path = os.path.join(self.output_path, self.output_prefix + '.tleap.in')
         with open(file_path, 'w') as f:
             for line in self.template_lines:
                 f.write(line+"\n")
@@ -206,7 +217,7 @@ class System(object):
             # Note, the execution of tleap is assumed to take place in the
             # same directory as all the associated input files, so we won't
             # put directory paths on the saveamberparm or savepdb commands.
-            if self.output_prefix and include_saves:
+            if self.output_prefix and write_save_lines:
                 f.write("savepdb {} {}.pdb\n".format(self.unit, self.output_prefix))
                 f.write("saveamberparm {} {}.prmtop {}.rst7\n".format(self.unit, self.output_prefix,
                                                                       self.output_prefix))
@@ -217,7 +228,12 @@ class System(object):
 
     def run(self):
         """
-        Execute `tleap`
+        Execute `tleap`.
+
+        Returns
+        -------
+        output : list
+            The tleap stdout returned as a list.
     
         """
     
@@ -229,6 +245,8 @@ class System(object):
         while p.poll() is None:
             line = p.communicate()[0]
             output.append(line)
+        # The concern here is if tleap is executed without a 'quit' line?
+        # Not 100% sure what this is doing for us.
         if p.poll() is None:
             p.kill()
         self.grep_leap_log()
@@ -249,15 +267,20 @@ class System(object):
         except:
             return
 
-    def check_for_leap_log(self):
+    def check_for_leap_log(self, log_file='leap.log'):
         """
         Check if `leap.log` exists in output_path, and if so, delete so the current run doesn't append.
 
+        Parameters
+        ----------
+        log_file : str
+            Name of the tleap logfile. Default: leap.log
+
         """
-        filename = 'leap.log'
+        log_file_path = os.path.join(self.output_path, log_file)
         try:
-            os.remove(self.output_path + filename)
-            log.debug('Deleted existing leap.log file: '+self.output_path + filename)
+            os.remove(log_file_path)
+            log.debug('Deleted existing leap logfile: '+log_file_path)
         except OSError:
             pass
 
@@ -294,13 +317,13 @@ class System(object):
             # If we've nailed it, break!
             if waters == self.target_waters:
                 # Run one more time and save files
-                self.write_input(include_saves=True)
+                self.write_input(write_save_lines=True)
                 self.run()
                 return
             # If we are close, go to fine adjustment...
-            elif waters > self.target_waters and (waters - self.target_waters) < 12:
+            elif waters > self.target_waters and (waters - self.target_waters) < self.manual_switch_thresh:
                 self.remove_waters_manually()
-                self.write_input(include_saves=True)
+                self.write_input(write_save_lines=True)
                 self.run()
                 return
             # Otherwise, try to keep adjusting the number of waters...
@@ -308,14 +331,13 @@ class System(object):
                 self.adjust_buffer_value()
                 # Now that we're close, let's re-evaluate how many ions to add, in case the volume has changed a lot.
                 # (This could be slow and run less frequently...)
-                ################# HOW DO WE KNOW THAT ONCE EVERY 10 IS GOOD ENOUGH??????????????????????????!!!!!!!!!!!!!!!!!!
                 if self.add_ions and cycle % 10 == 0:
                     self.set_additional_ions()
                 cycle += 1
     
         if cycle >= self.max_cycles and waters > self.target_waters:
             self.remove_waters_manually()
-            self.write_input(include_saves=True)
+            self.write_input(write_save_lines=True)
             self.run()
     
         if cycle >= self.max_cycles and waters < self.target_waters:
@@ -323,7 +345,7 @@ class System(object):
                 added than targeted by `buffer_water`. Try increasing the tolerance in the above loop")
         else:
             raise Exception("Automatic adjustment of the buffer value was unable to converge on \
-                a solution with sufficient tolerance")
+                a solution to within the specified manual_switch_thresh: "+self.manual_switch_thresh)
 
 
     def set_target_waters(self):
@@ -374,7 +396,7 @@ class System(object):
             Dictionary of added residues and their number
 
         """
-        self.write_input(include_saves=False)
+        self.write_input(write_save_lines=False)
         output = self.run()
         # Return a dictionary of {'RES' : number of RES}
         residues = {}
@@ -419,13 +441,15 @@ class System(object):
                 self.add_ion_residues.append(amount)
             elif isinstance(amount, str) and amount[-1] == 'm':
                 # User specifies molality...
-                # number to add = (molality) x (number waters) x (0.018 kg/mol per water)
-                number_to_add = int(np.ceil(float(amount[:-1]) * self.target_waters * 0.018))
+                # number to add = (molality) x (number waters) x (kg/mol solvent)
+                number_to_add = int(np.ceil(float(amount[:-1]) * self.target_waters * self.kg_per_mol_solvent))
                 self.add_ion_residues.append(number_to_add)
             elif isinstance(amount, str) and amount[-1] == 'M':
                 # User specifies molarity...
                 volume = self.get_volume()
-          ################# raise Exception if volume is None?????????? ########################################!!!!!!!!!!!!
+                if volume is None:
+                    raise Exception("The volume of the system could not be found and thus "
+                                    "the correct ion count could not be determined.")
                 number_of_atoms = float(amount[:-1]) * N_A
                 liters = volume * ANGSTROM_CUBED_TO_LITERS
                 number_to_add = int(np.ceil(number_of_atoms * liters))
@@ -477,7 +501,7 @@ class System(object):
             waters = residues['WAT']
             if waters == self.target_waters:
                 for key, value in sorted(residues.items()):
-                    log.info('{}\t{}'.format(key, value))
+                    log.info('{:10s} {:10.0f}'.format(key, value))
                 return
             cycle += 1
             if cycle > max_cycles:
@@ -517,7 +541,7 @@ class System(object):
         self.exponent : int
             Adjusts the order of magnitue of buffer value changes
         self.cyc_since_last_exp_change : int
-            Resets this value to 0 when exponent to help with the logic gates.
+            Resets this value to 0 when exponent value is changed to help with the logic gates.
 
         """
     
@@ -561,14 +585,4 @@ class System(object):
             raise Exception(
                 "The buffer_values search died due to an unanticipated set of variable values"
             )
-
-
-
-
-
-
-
-
-
-
 

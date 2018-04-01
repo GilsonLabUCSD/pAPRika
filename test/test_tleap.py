@@ -141,7 +141,6 @@ def test_solvation_with_additional_ions():
     anion_number = sp.check_output(
         ["grep -A 99 RESIDUE_LABEL ./cb6-but/solvate.prmtop | " + "grep -oh '{} ' | wc -w".format(random_anion)],
         shell=True)
-    # Have to think about what to do here...
     log.debug('Expecting...')
     log.debug('cation = {}\tn_cations={}'.format(random_cation, n_cations))
     log.debug('anion  = {}\t n_anions={}'.format(random_anion, n_anions))
