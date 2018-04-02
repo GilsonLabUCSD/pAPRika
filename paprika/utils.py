@@ -28,7 +28,6 @@ def check_for_leap_log(path='./'):
     except OSError:
         pass
 
-
 def return_parmed_structure(filename):
     """
     Return structure object from file name.
