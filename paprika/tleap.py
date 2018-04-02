@@ -342,6 +342,7 @@ class System(object):
             # If we are close, go to fine adjustment...
             elif waters > self.target_waters and (waters - self.target_waters) < self.manual_switch_thresh:
                 self.remove_waters_manually()
+                # Run once more and save files
                 self.write_input(write_save_lines=True)
                 self.run()
                 return
@@ -353,9 +354,6 @@ class System(object):
                 if self.add_ions and cycle % 10 == 0:
                     self.set_additional_ions()
                 cycle += 1
-                if self.exponent <= self.min_exponent_limit:
-                    raise Exception("Automatic adjustment of the buffer value failed to get near enough to target_waters\
-                                     before the exponent value was below {:.0f}. Try increasing manual_switch_thresh.".format(self.exponent))
     
         if cycle >= self.max_cycles and waters > self.target_waters:
             self.remove_waters_manually()
@@ -580,3 +578,6 @@ class System(object):
                 "The buffer_values search died due to an unanticipated set of variable values"
             )
 
+        if self.exponent <= self.min_exponent_limit:
+            raise Exception("Automatic adjustment of the buffer value failed to get near enough to target_waters "
+                            "before the exponent value was below {:.0f}. Try increasing manual_switch_thresh.".format(self.exponent))
