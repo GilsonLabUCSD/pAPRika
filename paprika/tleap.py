@@ -63,6 +63,9 @@ class System(object):
         The tleap unit name. Default: 'model'
     exponent : int
         The initial value used for dynamically adjusting the buffer value. Default: 1
+    min_exponent_limit : int
+        The minimum limit that we let exponent get to. If it gets too small, it has no effect on
+        the number of waters added. Default: -5
     cyc_since_last_exp_change : int
         A count of the number of buffer_value adjustments since the last exponent change. Should
         always start at 0. Default: 0
@@ -71,7 +74,8 @@ class System(object):
     manual_switch_thresh : int
         The threshold difference between waters actually added and target_waters for which we can
         safely switch to manual removal of waters. If too large, then there will be big air pockets
-        in our box. If too small, it will take forever to converge. Default: 12
+        in our box. If too small, it will take forever to converge. If the user does not set this
+        value, it will set proportionately to the target_waters. Default: (target_waters)**(1./3.)
     waters_to_remove : list
         A list of the water residues to be manually removed after solvation. Default: None
     add_ion_residues : list
@@ -107,9 +111,10 @@ class System(object):
         ### Advanced Settings: Defaults
         self.unit = 'model'
         self.exponent = 1
+        self.min_exponent_limit = -5
         self.cyc_since_last_exp_change = 0
         self.max_cycles = 50
-        self.manual_switch_thresh = 12
+        self.manual_switch_thresh = None
         self.waters_to_remove = None
         self.add_ion_residues = None
         self.kg_per_mol_solvent = 0.018
@@ -298,6 +303,15 @@ class System(object):
         # of the solvate() routine.
         else:
             self.buffer_value = 1.0
+
+        # If the user has not set manual_switch_thresh, we will set it proportionately
+        # to the target_waters. This will control when we can start manually deleting
+        # waters rather than adjusting the buffer_value.
+        if self.manual_switch_thresh is None:
+            self.manual_switch_thresh = int(np.ceil(self.target_waters**(1./3.)))
+            if self.manual_switch_thresh < 12:
+                self.manual_switch_thresh = 12
+            log.debug("manual_switch_thresh is set to: {:.0f}".format(self.manual_switch_thresh))
     
         if self.add_ions:
             self.set_additional_ions()
@@ -314,7 +328,7 @@ class System(object):
             waters = self.count_waters()
             self.wat_added_history.append(waters)
             self.buffer_val_history.append(self.buffer_value)
-            log.debug("Cycle {:02.0f}   {:8.5f} {:6.0f} ({:6.0f})".format(cycle, self.buffer_value, waters, self.target_waters))
+            log.debug("Cycle {:02.0f} {:.0f} {:10.7f} {:6.0f} ({:6.0f})".format(cycle, self.exponent,self.buffer_value, waters, self.target_waters))
     
             # Possible location of a switch to adjust the buffer_value by polynomial
             # fit approach.
@@ -339,6 +353,9 @@ class System(object):
                 if self.add_ions and cycle % 10 == 0:
                     self.set_additional_ions()
                 cycle += 1
+                if self.exponent <= self.min_exponent_limit:
+                    raise Exception("Automatic adjustment of the buffer value failed to get near enough to target_waters\
+                                     before the exponent value was below {:.0f}. Try increasing manual_switch_thresh.".format(self.exponent))
     
         if cycle >= self.max_cycles and waters > self.target_waters:
             self.remove_waters_manually()
@@ -347,10 +364,10 @@ class System(object):
     
         if cycle >= self.max_cycles and waters < self.target_waters:
             raise Exception("Automatic adjustment of the buffer value resulted in fewer waters \
-                added than targeted by `buffer_water`. Try increasing the tolerance in the above loop")
+                added than targeted by `buffer_water`. Try increasing manual_switch_thresh")
         else:
             raise Exception("Automatic adjustment of the buffer value was unable to converge on \
-                a solution to within the specified manual_switch_thresh: "+self.manual_switch_thresh)
+                a solution to within the specified manual_switch_thresh: {:.0f}".format(self.manual_switch_thresh))
 
     def count_waters(self):
         """
@@ -523,40 +540,39 @@ class System(object):
 
         """
     
-        # If the number of waters was less than the target and is now greater than the target, make the buffer a bit
-        # smaller, by an increasingly smaller amount, (if we've taken more than one step since the last exponent change)
-        if self.wat_added_history[-2] < self.target_waters and self.wat_added_history[-1] > self.target_waters and self.cyc_since_last_exp_change > 1:
-            log.debug('Adjustment loop 1')
-            self.exponent -= 1
-            self.cyc_since_last_exp_change = 0
-            self.buffer_value = self.buffer_val_history[-1] + -5 * (10**self.exponent)
-        # If the number of waters was greater than the target and is now less than the target, make the buffer a bit
-        # bigger, by an increasingly smaller amount, (if we've taken more than one step since the last exponent change)
-        elif self.wat_added_history[-2] > self.target_waters and self.wat_added_history[-1] < self.target_waters and self.cyc_since_last_exp_change > 1:
-            log.debug('Adjustment loop 2')
-            self.exponent -= 1
-            self.cyc_since_last_exp_change = 0
-            self.buffer_value = self.buffer_val_history[-1] + 5 * (10**self.exponent)
+        # If the number of waters was less than the target and is now greater than the target, make the buffer smaller
+        # smaller
+        if self.wat_added_history[-2] < self.target_waters and self.wat_added_history[-1] > self.target_waters:
+            # If its been more than one round since last exponent change, change exponent
+            if self.cyc_since_last_exp_change > 1:
+                log.debug('Adjustment loop 1a')
+                self.exponent -= 1
+                self.buffer_value = self.buffer_val_history[-1] + -5 * (10**self.exponent)
+                self.cyc_since_last_exp_change = 0
+            else:
+                log.debug('Adjustment loop 1b')
+                self.buffer_value = self.buffer_val_history[-1] + -1 * (10**self.exponent)
+                self.cyc_since_last_exp_change += 1
+        # If the number of waters was greater than the target and is now less than the target, make the buffer bigger
+        elif self.wat_added_history[-2] > self.target_waters and self.wat_added_history[-1] < self.target_waters:
+            # If its been more than one round since last exponent change, change exponent
+            if self.cyc_since_last_exp_change > 1:
+                log.debug('Adjustment loop 2a')
+                self.exponent -= 1
+                self.buffer_value = self.buffer_val_history[-1] + 5 * (10**self.exponent)
+                self.cyc_since_last_exp_change = 0
+            else:
+                log.debug('Adjustment loop 2b')
+                self.buffer_value = self.buffer_val_history[-1] + 1 * (10**self.exponent)
+                self.cyc_since_last_exp_change += 1
         # If the last two rounds of solvation have too many waters, make the buffer smaller...
         elif self.wat_added_history[-2] > self.target_waters and self.wat_added_history[-1] > self.target_waters:
             log.debug('Adjustment loop 3')
             self.buffer_value = self.buffer_val_history[-1] + -1 * (10**self.exponent)
             self.cyc_since_last_exp_change += 1
-        # If the number of waters was greater than the target and is now less than the target, make the buffer a bit
-        # bigger ...
-        elif self.wat_added_history[-2] > self.target_waters and self.wat_added_history[-1] < self.target_waters:
-            log.debug('Adjustment loop 4')
-            self.buffer_value = self.buffer_val_history[-1] + 1 * (10**self.exponent)
-            self.cyc_since_last_exp_change += 1
-        # If the number of waters was less than the target and is now greater than the target, make the buffer a bit
-        # smaller ...
-        elif self.wat_added_history[-2] < self.target_waters and self.wat_added_history[-1] > self.target_waters:
-            log.debug('Adjustment loop 5')
-            self.buffer_value = self.buffer_val_history[-1] + -1 * (10**self.exponent)
-            self.cyc_since_last_exp_change += 1
         # If the last two rounds of solvation had too few waters, make the buffer bigger...
         elif self.wat_added_history[-2] < self.target_waters and self.wat_added_history[-1] < self.target_waters:
-            log.debug('Adjustment loop 6')
+            log.debug('Adjustment loop 4')
             self.buffer_value = self.buffer_val_history[-1] + 1 * (10**self.exponent)
             self.cyc_since_last_exp_change += 1
         else:
