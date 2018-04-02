@@ -2,7 +2,7 @@
 The pAPRika package sets up and performs attach-pull-release calculations.
 """
 
-import logging as log
+#import logging as log
 import subprocess as sp
 import re as re
 
