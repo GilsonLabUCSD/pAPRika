@@ -19,16 +19,6 @@ except ImportError:
     HAS_OPENMM = False
 
 
-def check_for_leap_log(path='./'):
-    """Check if `leap.log` exists, and if so, delete so the current run doesn't append."""
-    filename = 'leap.log'
-    try:
-        os.remove(path + filename)
-        log.debug('Deleted existing leap.log file...')
-    except OSError:
-        pass
-
-
 def return_parmed_structure(filename):
     """
     Return structure object from file name.

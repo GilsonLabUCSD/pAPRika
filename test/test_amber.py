@@ -1,5 +1,5 @@
 import parmed as pmd
-from paprika import build
+from paprika import tleap
 from paprika import restraints
 from paprika import amber
 from paprika import utils
@@ -81,8 +81,13 @@ def test_amber_single_window_gbmin():
         shutil.copy('cb6-but/'+file,path+file)
 
     # Build prmtop/inpcrd
-    build.basic_tleap(input_file='tleap_gb.in', input_path='./cb6-but/', output_prefix='vac',
-                    pdb_file='cb6-but-minimized.pdb')
+    sys = tleap.System()
+    sys.template_file = './cb6-but/tleap_gb.in'
+    sys.output_path = path
+    sys.output_prefix = 'vac'
+    sys.pbc_type = None
+    sys.loadpdb_file = 'cb6-but-minimized.pdb'
+    sys.build()
 
     # Create Simulation
     gbsim = amber.Simulation()
@@ -127,8 +132,8 @@ def test_amber_single_window_gbmin():
     # Reference           BOND     ANGLE    DIHED    VDWAALS     EEL        EGB    1-4 VDW    1-4 EEL  RESTRAINT   EAMBER  Bond   Angle  Torsion
     ref_vals = np.array([0.9209, 107.7555, 52.3356, -68.1311, 1331.1371, -127.7541, 5.0130, -2128.7873, 4.5071, -827.5103, 1.214, 2.829, 0.464])
 
-    for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.0001)
+    for i in range(len(ref_vals)):
+        assert np.isclose(test_vals[i], ref_vals[i], rtol=0.0, atol=0.0001)
 
     gbsim.config_gb_md()
     gbsim.prefix = 'md'
@@ -173,8 +178,8 @@ def test_amber_single_window_gbmin():
     # Reference           TEMP       Etot    EKtot      EPtot    BOND     ANGLE    DIHED  VDWAALS      EEL        EGB    1-4 VDW     1-4 EEL  RESTRAINT  EAMBER   Bond   Angle  Torsion
     ref_vals = np.array([303.48, -726.5748, 96.4929, -823.0677, 0.8564, 107.7555, 52.3356, 5.0130, -2128.7873, -68.1311, 1331.1371, -127.7541, 4.5071, -827.5748, 1.214, 2.829, 0.464])
 
-    for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.0001)
+    for i in range(len(ref_vals)):
+        assert np.isclose(test_vals[i], ref_vals[i], rtol=0.0, atol=0.0001)
 
     shutil.rmtree('amber_test')
 

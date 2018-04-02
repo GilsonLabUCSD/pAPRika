@@ -1,0 +1,16 @@
+source leaprc.gaff
+loadamberparams cb6.frcmod
+CB6 = loadmol2 cb6.mol2
+loadamberparams but.frcmod
+BUT = loadmol2 but.mol2
+
+model = loadpdb cb6-but-minimized.pdb
+
+check model
+
+
+solvatebox model TIP3PBOX {10.0 10.0 []}
+savepdb model vac.pdb
+saveamberparm model vac.prmtop vac.rst7
+desc model
+quit
