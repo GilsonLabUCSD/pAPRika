@@ -242,4 +242,3 @@ def test_add_dummy():
     assert filecmp.cmp('cb6-but/REF_cb6-but-dum.rst7', 'cb6-but/cb6-but-dum.rst7', shallow=False)
     rm_solvated_files()
 
-
