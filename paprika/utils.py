@@ -53,17 +53,17 @@ def index_from_mask(structure, mask, amber_index=False):
     return indices
 
 
-def make_window_dirs(window_list, stash_existing=False, path='./'):
+def make_window_dirs(window_list, stash_existing=False, path='./', window_dir_name='windows'):
     """
     Make a series of directories to hold the simulation setup files
     and the data. Here we could check if the directories already exist and prompt
     the user or quit or do something else.
     """
 
-    win_dir = os.path.join(path, 'windows')
+    win_dir = os.path.join(path, window_dir_name)
 
     if stash_existing and os.path.isdir(win_dir):
-        stash_dir = os.path.join(path, "/windows_{:%Y.%m.%d_%H.%M.%S}".format(datetime.now()))
+        stash_dir = os.path.join(path, window_dir_name+"_{:%Y.%m.%d_%H.%M.%S}".format(datetime.now()))
         shutil.move(win_dir, stash_dir)
 
     for window in window_list:
