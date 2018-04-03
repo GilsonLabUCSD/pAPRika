@@ -60,15 +60,16 @@ def make_window_dirs(window_list, stash_existing=False, path='./'):
     the user or quit or do something else.
     """
 
-    win_dir = path + '/windows'
+    win_dir = os.path.join(path, 'windows')
 
     if stash_existing and os.path.isdir(win_dir):
-        stash_dir = cwd + "/windows_{:%Y.%m.%d_%H.%M.%S}".format(datetime.now())
+        stash_dir = os.path.join(path, "/windows_{:%Y.%m.%d_%H.%M.%S}".format(datetime.now()))
         shutil.move(win_dir, stash_dir)
 
     for window in window_list:
-        if not os.path.exists(win_dir + '/' + window):
-            os.makedirs(win_dir + '/' + window)
+        window_path = os.path.join(win_dir, window)
+        if not os.path.exists(window_path):
+            os.makedirs(window_path)
 
 
 def decompose_openmm_energy(simulation, groups=[0, 1], names=['non-restraint', 'restraint']):
