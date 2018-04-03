@@ -105,7 +105,7 @@ def write_dummy_frcmod(atom_type='Du', mass='208.00', path='./', filename='dummy
     """
 
     if filepath is None:
-        filepath = path + filename
+        filepath = os.path.join(path, filename)
 
     with open(filepath, 'w') as f:
         f.write("""\
@@ -152,7 +152,7 @@ def write_dummy_mol2(atom_name='DUM',
     """
 
     if filepath is None:
-        filepath = path + filename
+        filepath = os.path.join(path, filename)
 
     with open(filepath, 'w') as f:
         f.write("""\
