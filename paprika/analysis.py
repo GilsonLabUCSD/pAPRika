@@ -403,3 +403,107 @@ def get_subsampled_indices(N, g, conservative=False):
 
 
 
+def collect_data(restraint_list):
+    # determine_static_restraints(restraint_list)
+    # determine_window_order(restraint_list)
+    # read_trajectories(restraint_list)
+    pass
+
+def determine_static_restraints(restraint_list):
+
+    # Actually, first identify the changing restraints...
+    changing_restraints = {
+        'attach' : [],
+        'pull' : [],
+        'release' : []
+    }
+
+    for phase in ['attach', 'pull', 'release']:
+        if phase == 'attach' or phase == 'release':
+            changing_parameter = 'force_constants'
+        else:
+            changing_parameter = 'targets'
+        for restraint in restraint_list:
+            if restraint.phase[phase][changing_parameter] is not None:
+                static = all(np.isclose(x, restraint.phase[phase][changing_parameter][0]) for x in
+                    restraint.phase[phase][changing_parameter]
+                    )
+            else:
+                static = True
+
+            changing_restraints[phase].append(not static)
+
+    return changing_restraints
+
+def determine_window_order(restraint_list, changing_restraints):
+    orders = {
+        'attach' : [],
+        'pull' : [],
+        'release' : []
+    }
+    active_attach_restraints = np.asarray(restraint_list)[changing_restraints['attach']]
+    active_pull_restraints = np.asarray(restraint_list)[changing_restraints['pull']]
+    active_release_restraints = np.asarray(restraint_list)[changing_restraints['release']]
+
+    attach_orders = []
+    pull_orders = []
+    release_orders = []
+
+    for restraint in active_attach_restraints:
+        attach_orders.append(np.argsort(restraint.phase['attach']['force_constants']))
+    if not all([np.array_equal(attach_orders[0], i) for i in attach_orders]):
+        raise Exception
+    elif attach_orders:
+        orders['attach'] = attach_orders[0]
+    else:
+        orders['attach'] = None
+    for restraint in active_pull_restraints:
+        pull_orders.append(np.argsort(restraint.phase['pull']['targets']))
+    if not all([np.array_equal(pull_orders[0], i) for i in pull_orders]):
+        raise Exception
+    elif pull_orders:
+        orders['pull'] = pull_orders[0]
+    else:
+        orders['pull'] = None
+
+    # Still a problem here, with no release windows.
+    for restraint in active_release_restraints:
+        release_orders.append(np.argsort(restraint.phase['release']['force_constants']))
+    if not all([np.array_equal(release_orders[0], i) for i in release_orders]):
+        raise Exception
+    elif release_orders:
+        orders['release'] = release_orders[0]
+    else:
+        orders['release'] = None
+    # Make sure each of these is a list with the same order -- i.e., that each restraint has the order the same.
+    # all([np.array_equal(attach_orders[0], i) for i in attach_orders])
+    # Then, return the ordering, perhaps concatenated together.
+    return orders
+
+
+def read_trajectories(restraint_list, changing_restraints, path):
+
+    # Map between the ordering and the windows.
+    simulation_data = {
+        'attach' : [],
+        'pull'   : [],
+        'release': []
+    }
+
+    # We have a list of active restraints...
+    # Now let's craft a list of the windows where we need to collect data...
+
+    ordered_windows = ['a{:03d}'.format(i) for i in orders['attach']] + \
+    ['p{:03d}'.format(i) for i in orders['pull']] + \
+    ['r{:03d}'.format(i) for i in orders['release']]
+
+
+
+    simulation_data[phase].append([])
+    for window in window_list:
+        for restraint in active_attach_restraints:
+            simulation_data[phase][index].append([])
+            # Then read the data...
+
+
+    pass
