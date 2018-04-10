@@ -1,5 +1,7 @@
 import logging as log
+import os as os
 import numpy as np
+import pytraj as pt
 import pymbar
 
 class fe_calc(object):
@@ -456,7 +458,7 @@ def determine_window_order(restraint_list, changing_restraints):
     elif attach_orders:
         orders['attach'] = attach_orders[0]
     else:
-        orders['attach'] = None
+        orders['attach'] = []
     for restraint in active_pull_restraints:
         pull_orders.append(np.argsort(restraint.phase['pull']['targets']))
     if not all([np.array_equal(pull_orders[0], i) for i in pull_orders]):
@@ -464,7 +466,7 @@ def determine_window_order(restraint_list, changing_restraints):
     elif pull_orders:
         orders['pull'] = pull_orders[0]
     else:
-        orders['pull'] = None
+        orders['pull'] = []
 
     # Still a problem here, with no release windows.
     for restraint in active_release_restraints:
@@ -474,14 +476,15 @@ def determine_window_order(restraint_list, changing_restraints):
     elif release_orders:
         orders['release'] = release_orders[0]
     else:
-        orders['release'] = None
+        orders['release'] = []
     # Make sure each of these is a list with the same order -- i.e., that each restraint has the order the same.
     # all([np.array_equal(attach_orders[0], i) for i in attach_orders])
     # Then, return the ordering, perhaps concatenated together.
     return orders
 
 
-def read_trajectories(restraint_list, changing_restraints, path):
+def read_trajectories(restraint_list, changing_restraints, order, prmtop, traj, path='./',
+                      strip=None, inpcrd=None):
 
     # Map between the ordering and the windows.
     simulation_data = {
@@ -490,20 +493,55 @@ def read_trajectories(restraint_list, changing_restraints, path):
         'release': []
     }
 
-    # We have a list of active restraints...
-    # Now let's craft a list of the windows where we need to collect data...
+    ordered_windows = \
+        [os.path.join('./', 'a{:03d}'.format(i)) for i in order['attach'] if i] + \
+        [os.path.join('./', 'p{:03d}'.format(i)) for i in order['pull'] if i] + \
+        [os.path.join('./', 'r{:03d}'.format(i)) for i in order['release'] if i]
 
-    ordered_windows = ['a{:03d}'.format(i) for i in orders['attach']] + \
-    ['p{:03d}'.format(i) for i in orders['pull']] + \
-    ['r{:03d}'.format(i) for i in orders['release']]
+    active_attach_restraints = np.asarray(restraint_list)[changing_restraints['attach']]
+    active_pull_restraints = np.asarray(restraint_list)[changing_restraints['pull']]
+    active_release_restraints = np.asarray(restraint_list)[changing_restraints['release']]
 
+    active_restraints = [active_attach_restraints, active_pull_restraints, active_release_restraints]
 
+    for restraint_index, restraint in enumerate(active_restraints):
+        log.debug('Restraint = {}'.format(restraint_index))
+        for window_index, window in enumerate(ordered_windows):
+            # Each relevant window gets its own list inside `simulation_data[phase]`
+            if restraint in active_attach_restraints:
+                phase = 'attach'
+            elif restraint in active_pull_restraints:
+                phase = 'pull'
+            elif restraint in active_release_restraints:
+                phase = 'release'
+            else:
+                raise Exception
+            simulation_data[phase].append([])
+            log.debug('Window = {}'.format(window_index))
+            simulation_data[phase][window_index].append([])
 
-    simulation_data[phase].append([])
-    for window in window_list:
-        for restraint in active_attach_restraints:
-            simulation_data[phase][index].append([])
-            # Then read the data...
+            if strip:
+                structure = pt.load(os.path.join(window, inpcrd),
+                                    os.path.join(window, prmtop))
 
+                stripped = structure.strip(':WAT,:Na+,:Cl-')
 
-    pass
+                traj = pt.iterload(os.path.join(window, traj),
+                                   top=stripped.topology)
+            else:
+                traj = pt.iterload(os.path.join(window, traj),
+                                   os.path.join(window, prmtop))
+
+            if restraint.mask1 and restraint.mask2 and \
+                    not restraint.mask3 and not restraint.mask4:
+                data = pt.distance(traj, ' '.join([restraint.mask1, restraint.mask2]))
+            elif restraint.mask1 and restraint.mask2 and \
+                    restraint.mask3 and not restraint.mask4:
+                data = pt.angle(traj, ' '.join([restraint.mask1, restraint.mask2, restraint.mask3]))
+            elif restraint.mask1 and restraint.mask2 and \
+                    restraint.mask3 and restraint.mask4:
+                data = pt.dihedral(traj, ' '.join([restraint.mask1, restraint.mask2, restraint.mask3, restraint.mask4]))
+
+            simulation_data[phase][window_index][restraint_index] = data
+
+    return simulation_data
