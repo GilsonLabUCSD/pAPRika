@@ -35,146 +35,6 @@ class fe_calc(object):
         # FE calculation results will be stored here
         self.results = {}
 
-    def _identify_active_rest(self, phase, change_param, restraint_list):
-        """ Identify the restraints which are changing in the specified phase."""
-
-        # This is a verbose approach, but it got messy when trying to be more pythonic.
-
-        # The list of restraints which are changing
-        active_rest = []
-        # A boolean of which restriants in restraint_list are changing
-        active_rest_bool = []
-
-        # Iterate through the restraints and, for attach/release, check if force_constants are changing,
-        # or, for pull, check if targets are changing
-        for rest in restraint_list:
-            if rest.phase[phase][change_param] is not None:
-                # These is probably a better way to do this ... but
-                # create an array in which the first element is repeated
-                test_val = rest.phase[phase][change_param][0]
-                test_len = rest.phase[phase][change_param].size
-                test_arr = test_val * np.ones([test_len])
-                # Then check if it is identical to the real array ...
-                if np.allclose(rest.phase[phase][change_param], test_arr):
-                    # If yes, then it's not changing, and thus not active
-                    active_rest_bool.append(False)
-                else:
-                    # Add to active restraint list
-                    active_rest.append(rest)
-                    active_rest_bool.append(True)
-            else:
-                # If nothing is set for this phase, it's definitely not active
-                active_rest_bool.append(False)
-
-        return active_rest, active_rest_bool
-
-    def _prepare_active_rest_data(self, phase, restraint_list, simulation_values):
-        """ 
-        Identifies the restraints which are changing in the specified phase
-        and reorders windows numerically, in case additional
-        windows are added out of order after an initial run.
-        """
-
-        # Identify the restraint parameter which is expected to change for this phase
-        if phase in ['attach', 'release']:
-            change_param = 'force_constants'
-        elif phase == 'pull':
-            change_param = 'targets'
-        else:
-            raise Exception('Invalid phase specified: ' + phase + '. Should be either attach, pull, or release')
-
-        # First we identify the restraints which are changing in the specified phase.
-        # active_rest is the list of active restraints, active_rest_bool is bool of
-        # active restraints in the full restraint_list.
-        active_rest, active_rest_bool = self._identify_active_rest(phase, change_param, restraint_list)
-
-        # If we didn't find any active restraints, we're done
-        if len(active_rest) == 0:
-            return None
-
-        # Create a window index list which matches numerical ascending order for the change_param
-        reorder = np.argsort(active_rest[0].phase[phase][change_param])
-        self.ordered_index[phase] = reorder
-
-        # If continuous_apr and attach/release, we need to know the order of pull too
-        if active_rest[0].continuous_apr and phase in ['attach', 'release']:
-            pull_active_rest, pull_active_rest_bool = self._identify_active_rest('pull', 'targets', restraint_list)
-            if len(pull_active_rest) == 0:
-                raise Exception('There should be active pull restraints, but none were found!')
-            pull_reorder = np.argsort(pull_active_rest[0].phase['pull']['targets'])
-            pull_first_active_idx = next((i for i, rbool in enumerate(pull_active_rest_bool) if rbool is True), None)
-
-        # Count number of windows
-        num_win = len(reorder)
-
-        # Count the number of active restraints
-        num_rest = len(active_rest)
-
-        # Identify the index of the first active restraint in the full
-        # restraint_list by checking active_rest_bool. Probably don't need
-        # to do this but it ensures we're checking the size of an active restraint
-        first_active_idx = next((i for i, rbool in enumerate(active_rest_bool) if rbool is True), None)
-
-        # Now count the size of data_points for each np.array in simulation_values.
-        # We only need to check size for first_active_idx, since they should all be same.
-        # If continuous_apr and attach/release, we'll need to take the data
-        # for the final attach/release window from the first/last pull window.
-        if active_rest[0].continuous_apr and phase in ['attach', 'release']:
-            data_points = np.zeros([num_win], np.int32)
-            for win_idx in reorder[:-1]:
-                data_points[win_idx] = simulation_values[phase][win_idx][first_active_idx].size
-            # If attach, then take data from first pull window
-            if phase == 'attach':
-                pull_idx = 0
-            # Else, must be release, so take from last pull window
-            else:
-                pull_idx = -1
-            data_points[-1] = simulation_values['pull'][pull_reorder[pull_idx]][pull_first_active_idx].size
-        # If not continuous_apr or pull, then it's more straightforward
-        else:
-            data_points = np.array([simulation_values[phase][i][first_active_idx].size for i in reorder])
-
-        # Get max_data_points ... will be needed for MBAR
-        max_data_points = int(np.max(data_points))
-
-        # Now create properly ordered force_constants and targets.
-        force_constants = np.zeros([num_win, num_rest], np.float64)
-        targets = np.zeros([num_win, num_rest], np.float64)
-        for win_idx in reorder:
-            for rest_idx in range(num_rest):
-                force_constants[win_idx, rest_idx] = active_rest[rest_idx].phase[phase]['force_constants'][win_idx]
-                if active_rest[rest_idx].mask3 is not None:
-                    # Convert force constants with radians into degrees
-                    force_constants[win_idx, rest_idx] *= ((np.pi / 180.0)**2)
-                targets[win_idx, rest_idx] = active_rest[rest_idx].phase[phase]['targets'][win_idx]
-
-        # Also reorder the data to match the force_constants, targets.
-        # Again, if attach/release, must take last window from pull
-        ordered_values = [[] for i in range(num_win)]
-        if active_rest[0].continuous_apr and phase in ['attach', 'release']:
-            for win_idx in reorder[:-1]:
-                for rest_idx, rest_bool in enumerate(active_rest_bool):
-                    if rest_bool:
-                        ordered_values[win_idx].append(simulation_values[phase][win_idx][rest_idx])
-            for rest_idx, rest_bool in enumerate(active_rest_bool):
-                if rest_bool:
-                    # Same logic as above ... must figure out which pull window to use as
-                    # final attach/release window.
-                    if phase == 'attach':
-                        pull_idx = 0
-                    else:
-                        pull_idx = -1
-                    ordered_values[-1].append(simulation_values['pull'][pull_reorder[pull_idx]][rest_idx])
-        else:
-            for win_idx in reorder:
-                for rest_idx, rest_bool in enumerate(active_rest_bool):
-                    if rest_bool:
-                        ordered_values[win_idx].append(simulation_values[phase][win_idx][rest_idx])
-
-        # Return all this in a list. Will pass to _run_mbar, which unpacks.
-        # That seems inefficient, but we'll keep it for now.
-        return [num_win, num_rest, data_points, max_data_points, active_rest, force_constants, targets, ordered_values]
-
     def _run_mbar(self, prepared_data, verbose=False):
         """
         Compute the free energy matrix for a series of windows. We'll follow the pymbar nomenclature for data structures.
@@ -406,16 +266,45 @@ def get_subsampled_indices(N, g, conservative=False):
     return indices
 
 
-def collect_data(restraint_list):
-    # determine_static_restraints(restraint_list)
-    # determine_window_order(restraint_list)
-    # read_trajectories(restraint_list)
-    pass
+def collect_data(restraint_list, prmtop, trajectory, path):
+    """Gather simulation data on the distance, angle, and torsion restraints that change during the simulation.
+    
+    Parameters:
+    ----------
+    restraint_list : {list}
+        List of restraints to be analyzed (this can now be a list of all simulation restraints)
+    prmtop : {str} or ParmEd AmberParm
+        Simulation parameters
+    trajectory : {str}
+        File name of the trajectories (can probably include a wildcard)
+    path : {str}
+        The parent directory that contains the simulation windows
+    Returns
+    -------
+    simulation_data : {dict}
+        Dictionary containing restraint values for analysis
+    """
+
+    changing_restraints = determine_static_restraints(restraint_list)
+    order = determine_window_order(restraint_list, changing_restraints)
+    simulation_data = read_trajectories(restraint_list, changing_restraints, order, prmtop, trajectory, path)
+
+    return simulation_data
 
 
 def determine_static_restraints(restraint_list):
+    """Figure out which restraints change during each phase of the calculation.
+    
+    Parameters:
+    ----------
+    restraint_list : {list}
+        List of restraints to be analyzed
+    Returns
+    -------
+    changing_restraints : {dict}
+        A dictionary containing which restraints change during which phase of the calculation
+    """
 
-    # Actually, first identify the changing restraints...
     changing_restraints = {'attach': [], 'pull': [], 'release': []}
 
     for phase in ['attach', 'pull', 'release']:
@@ -437,6 +326,22 @@ def determine_static_restraints(restraint_list):
 
 
 def determine_window_order(restraint_list, changing_restraints):
+    """Order the trajectories (i.e., simulation windows) in terms of increasing force constants and
+    targets for each restraint.
+    
+    Parameters:
+    ----------
+    restraint_ist : {list}
+        List of restraints to be analyze
+    changing_restraints : {dict}
+        Dictionary of restraints that change during each phase of the calculation
+    
+    Returns
+    -------
+    orders : {dict}
+        The sorted order of windows for analysis
+    """
+
     orders = {'attach': [], 'pull': [], 'release': []}
     active_attach_restraints = np.asarray(restraint_list)[changing_restraints['attach']]
     active_pull_restraints = np.asarray(restraint_list)[changing_restraints['pull']]
@@ -446,20 +351,23 @@ def determine_window_order(restraint_list, changing_restraints):
     pull_orders = []
     release_orders = []
 
-    # If continuous APR, take off the last attach window?
-
     for restraint in active_attach_restraints:
         attach_orders.append(np.argsort(restraint.phase['attach']['force_constants']))
     if not all([np.array_equal(attach_orders[0], i) for i in attach_orders]):
-        raise Exception
+        raise Exception('The order of increasing force constants is not the same in all restraints.')
     elif attach_orders:
         orders['attach'] = attach_orders[0]
     else:
         orders['attach'] = []
+
+    # Niel: is this okay?
+    if active_attach_restraints[0].continuous_apr:
+        orders['attach'] = orders['attach'][:-1]
+
     for restraint in active_pull_restraints:
         pull_orders.append(np.argsort(restraint.phase['pull']['targets']))
     if not all([np.array_equal(pull_orders[0], i) for i in pull_orders]):
-        raise Exception
+        raise Exception('The order of increasing target distances is not the same in all restraints.')
     elif pull_orders:
         orders['pull'] = pull_orders[0]
     else:
@@ -469,18 +377,33 @@ def determine_window_order(restraint_list, changing_restraints):
     for restraint in active_release_restraints:
         release_orders.append(np.argsort(restraint.phase['release']['force_constants']))
     if not all([np.array_equal(release_orders[0], i) for i in release_orders]):
-        raise Exception
+        raise Exception('The order of increasing force constants is not the same in all restraints.')
     elif release_orders:
         orders['release'] = release_orders[0]
     else:
         orders['release'] = []
-    # Make sure each of these is a list with the same order -- i.e., that each restraint has the order the same.
-    # all([np.array_equal(attach_orders[0], i) for i in attach_orders])
-    # Then, return the ordering, perhaps concatenated together.
     return orders
 
 
 def read_restraint_data(restraint, window, trajectory, prmtop):
+    """Given a trajectory (or trajectories) and restraint, read the restraint values.
+    
+    Parameters:
+    ----------
+    restraint : {DAT_restraint}
+        The restraint to analyze
+    window : {str}
+        The simulation window to analyze
+    trajectory : {str}
+        The name or names of the trajectory
+    prmtop : {str} or ParmEd AmberParm
+        The parameters for the simulation
+    Returns
+    -------
+    data : {np.array}
+        The values for this restraint in this window
+    """
+
     if isinstance(prmtop, str):
         traj = pt.iterload(os.path.join(window, trajectory), os.path.join(window, prmtop))
     else:
@@ -500,21 +423,35 @@ def read_restraint_data(restraint, window, trajectory, prmtop):
 
 
 def read_trajectories(restraint_list, changing_restraints, order, prmtop, trajectory, path='./'):
+    """For each each phase and window, and for each non-static restraint, parse the trajectories to 
+    get the restraint values.
+    
+    Parameters:
+    ----------
+    restraint_list : {list}
+        List of restraints to analyze
+    changing_restraints : {dict}
+        Dictionary of non-static restraints
+    order : {dict}
+        Sorted order of simulation windows
+    prmtop : {str} or ParmEd AmberParm 
+        Simulation parameters
+    trajectory : {str}
+        The name or names of the trajectory
+    path : {str}, optional
+        The parent directory that contains the simulation windows
+    
+    Returns
+    -------
+    simulation_data : {dict}
+        Dictionary containing restraint values for analysis 
+    """
 
-    # Map between the ordering and the windows.
     simulation_data = {'attach': [], 'pull': [], 'release': []}
-
-    # ordered_windows = \
-    #     [os.path.join(path, 'a{:03d}'.format(i)) for i in order['attach'] if i] + \
-    #     [os.path.join(path, 'p{:03d}'.format(i)) for i in order['pull'] if i] + \
-    #     [os.path.join(path, 'r{:03d}'.format(i)) for i in order['release'] if i]
 
     ordered_attach_windows = [os.path.join(path, 'a{:03d}'.format(i)) for i in order['attach'] if i]
     ordered_pull_windows = [os.path.join(path, 'p{:03d}'.format(i)) for i in order['pull'] if i]
     ordered_release_windows = [os.path.join(path, 'r{:03d}'.format(i)) for i in order['release'] if i]
-
-    print(ordered_attach_windows)
-    print(order)
 
     active_attach_restraints = np.asarray(restraint_list)[changing_restraints['attach']]
     active_pull_restraints = np.asarray(restraint_list)[changing_restraints['pull']]
@@ -526,10 +463,20 @@ def read_trajectories(restraint_list, changing_restraints, order, prmtop, trajec
 
     for window_index, window in enumerate(ordered_attach_windows):
         phase = 'attach'
-        print(window)
         simulation_data[phase].append([])
         for restraint_index, restraint in enumerate(active_attach_restraints):
-            print(restraint_index)
+            simulation_data[phase][window_index] = read_restraint_data(restraint, window, trajectory, prmtop)
+
+    for window_index, window in enumerate(ordered_pull_windows):
+        phase = 'pull'
+        simulation_data[phase].append([])
+        for restraint_index, restraint in enumerate(active_pull_restraints):
+            simulation_data[phase][window_index] = read_restraint_data(restraint, window, trajectory, prmtop)
+
+    for window_index, window in enumerate(ordered_release_windows):
+        phase = 'release'
+        simulation_data[phase].append([])
+        for restraint_index, restraint in enumerate(active_release_restraints):
             simulation_data[phase][window_index] = read_restraint_data(restraint, window, trajectory, prmtop)
 
     return simulation_data
