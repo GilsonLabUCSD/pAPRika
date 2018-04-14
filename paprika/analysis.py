@@ -150,6 +150,7 @@ class fe_calc(object):
             orders['release'] = release_orders[0]
         else:
             orders['release'] = []
+
         return orders
 
     def read_trajectories(self):
@@ -164,14 +165,13 @@ class fe_calc(object):
 
         data = {'attach': [], 'pull': [], 'release': []}
 
-        ordered_attach_windows = [os.path.join(self.path, 'a{:03d}'.format(i)) for i in self.orders['attach'] if i]
-        ordered_pull_windows = [os.path.join(self.path, 'p{:03d}'.format(i)) for i in self.orders['pull'] if i]
-        ordered_release_windows = [os.path.join(self.path, 'r{:03d}'.format(i)) for i in self.orders['release'] if i]
+        ordered_attach_windows = [os.path.join(self.path, 'a{:03d}'.format(i)) for i in self.orders['attach'] if i is not None]
+        ordered_pull_windows = [os.path.join(self.path, 'p{:03d}'.format(i)) for i in self.orders['pull'] if i is not None]
+        ordered_release_windows = [os.path.join(self.path, 'r{:03d}'.format(i)) for i in self.orders['release'] if i is not None]
 
         active_attach_restraints = np.asarray(self.restraint_list)[self.changing_restraints['attach']]
         active_pull_restraints = np.asarray(self.restraint_list)[self.changing_restraints['pull']]
         active_release_restraints = np.asarray(self.restraint_list)[self.changing_restraints['release']]
-
 
         # This is inefficient and slow, but I just want to get it working for now.
         # I am going to separately loop through the attach, then pull, then release windows.
@@ -257,11 +257,6 @@ class fe_calc(object):
                 u_kln[k, l, 0:N_k[k]] = np.sum(
                     self.beta * force_constants_T * (ordered_values[k] - targets_T)**2, axis=0)
 
-        np.savetxt('diagonal.txt', np.diagonal(u_kln))
-        print(np.shape(u_kln))
-        print(np.shape(np.mean(u_kln, axis=2)))
-        np.savetxt('u_kln.txt', np.mean(u_kln, axis=2))
-
         # Setup mbar calc, and get matrix of free energies, uncertainties
         mbar = pymbar.MBAR(u_kln, N_k, verbose=verbose)
         Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(compute_uncertainty=True)
@@ -312,8 +307,7 @@ class fe_calc(object):
         Do free energy calc.
         """
 
-        # for phase in ['attach', 'pull', 'release']:
-        for phase in ['pull']:
+        for phase in ['attach', 'pull', 'release']:
             self.results[phase] = {}
             for method in self.methods:
                 self.results[phase][method] = {}
