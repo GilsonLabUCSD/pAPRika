@@ -172,6 +172,7 @@ class fe_calc(object):
         active_pull_restraints = np.asarray(self.restraint_list)[self.changing_restraints['pull']]
         active_release_restraints = np.asarray(self.restraint_list)[self.changing_restraints['release']]
 
+
         # This is inefficient and slow, but I just want to get it working for now.
         # I am going to separately loop through the attach, then pull, then release windows.
         # Niel: I'm sure you can think of a better solution.
@@ -252,16 +253,17 @@ class fe_calc(object):
 
                 force_constants_T = np.asarray(force_constants).T[l, :, None]
                 targets_T = np.asarray(targets).T[l, :, None]
-                if k == 0:
-                    log.debug(force_constants_T)
-                    log.debug(ordered_values[k])
-                    log.debug(targets_T)
 
                 u_kln[k, l, 0:N_k[k]] = np.sum(
                     self.beta * force_constants_T * (ordered_values[k] - targets_T)**2, axis=0)
 
+        np.savetxt('diagonal.txt', np.diagonal(u_kln))
+        print(np.shape(u_kln))
+        print(np.shape(np.mean(u_kln, axis=2)))
+        np.savetxt('u_kln.txt', np.mean(u_kln, axis=2))
+
         # Setup mbar calc, and get matrix of free energies, uncertainties
-         mbar = pymbar.MBAR(u_kln, N_k, verbose=verbose)
+        mbar = pymbar.MBAR(u_kln, N_k, verbose=verbose)
         Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(compute_uncertainty=True)
 
         # Should I subsample based on the restraint coordinate values? Here I'm
@@ -310,7 +312,8 @@ class fe_calc(object):
         Do free energy calc.
         """
 
-        for phase in ['attach', 'pull', 'release']:
+        # for phase in ['attach', 'pull', 'release']:
+        for phase in ['pull']:
             self.results[phase] = {}
             for method in self.methods:
                 self.results[phase][method] = {}
