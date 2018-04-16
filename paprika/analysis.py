@@ -12,36 +12,37 @@ class fe_calc(object):
 
     Attributes
     ----------
-    temperature
-    k_b
-    beta
-
-
-
-    
+    temperature : {float}
+        The simulation temperature (Kelvin)
+    k_B : {float}
+        Boltzmann's constant (kcal/mol-K)
+    beta : {float}
+        1 / (k_B * T)  (kcal/mol)
     prmtop : {str} or ParmEd AmberParm
         Simulation parameters
     trajectory : {str}
         File name of the trajectories (can probably include a wildcard)
     path : {str}
         The parent directory that contains the simulation windows
-
     restraint_list : {list}
         List of restraints to be analyzed (this can now be a list of all simulation restraints)
     changing_restraints : {dict}
-        A dictionary containing which restraints change during which phase of the calculation
+        Dictionary containing which restraints change during which phase of the calculation
     orders : {dict}
         The sorted order of windows for analysis
-
     simulation_data : {dict}
-
+        Dictionary containing collected trajectory values for the relevant restraints and windows
+    methods : {list}
+        List of analysis methods to be performed (e.g., MBAR, TI, ...)
+    results : {dict}
+        TODO: description
     """
 
     def __init__(self):
 
-        self.temperature = 298.15
-        self.k_b = 0.0019872041  # kcal/mol-K
-        self.beta = 1 / (self.k_b * self.temperature)  # Add auto updating for beta
+        self._temperature = 298.15
+        self.k_B = 0.0019872041
+        self.beta = 1 / (self.k_B * self._temperature)
 
         self.prmtop = None
         self.trajectory = None
@@ -57,20 +58,24 @@ class fe_calc(object):
 
         self.results = {}
 
+    @property
+    def temperature(self):
+        """Allow updating of beta with temperature."""
+        return self._temperature
+
+    @temperature.setter
+    def temperature(self, new_temperature):
+        """Set updating of beta with new temperature."""
+        self.beta = 1 / (self.k_B * new_temperature)
+
     def collect_data(self):
         """Gather simulation data on the distance, angle, and torsion restraints that change during the simulation.
-        
-        Returns
-        -------
-        simulation_data : {dict}
-            Dictionary containing restraint values for analysis
+
         """
 
         self.changing_restraints = self.determine_static_restraints()
         self.orders = self.determine_window_order()
         self.simulation_data = self.read_trajectories()
-
-        return self.simulation_data
 
     def determine_static_restraints(self):
         """Figure out which restraints change during each phase of the calculation.
@@ -165,9 +170,15 @@ class fe_calc(object):
 
         data = {'attach': [], 'pull': [], 'release': []}
 
-        ordered_attach_windows = [os.path.join(self.path, 'a{:03d}'.format(i)) for i in self.orders['attach'] if i is not None]
-        ordered_pull_windows = [os.path.join(self.path, 'p{:03d}'.format(i)) for i in self.orders['pull'] if i is not None]
-        ordered_release_windows = [os.path.join(self.path, 'r{:03d}'.format(i)) for i in self.orders['release'] if i is not None]
+        ordered_attach_windows = [
+            os.path.join(self.path, 'a{:03d}'.format(i)) for i in self.orders['attach'] if i is not None
+        ]
+        ordered_pull_windows = [
+            os.path.join(self.path, 'p{:03d}'.format(i)) for i in self.orders['pull'] if i is not None
+        ]
+        ordered_release_windows = [
+            os.path.join(self.path, 'r{:03d}'.format(i)) for i in self.orders['release'] if i is not None
+        ]
 
         active_attach_restraints = np.asarray(self.restraint_list)[self.changing_restraints['attach']]
         active_pull_restraints = np.asarray(self.restraint_list)[self.changing_restraints['pull']]
