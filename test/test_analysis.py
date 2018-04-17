@@ -1,13 +1,19 @@
 import parmed as pmd
 import pytraj as pt
 import numpy as np
+import logging as log
+
 from paprika import restraints
 from paprika import analysis
+
+logger = log.getLogger()
+logger.setLevel(log.DEBUG)
+log.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
 
 def test_fe_calc():
 
     inputpdb = pmd.load_file('cb6_but_gb_apr_ref_data/vac.pdb')
-    
+
     # Distance restraint
     rest1 = restraints.DAT_restraint()
     rest1.continuous_apr = True
@@ -23,7 +29,7 @@ def test_fe_calc():
     rest1.pull['target_final'] = 18.5
     rest1.pull['num_windows'] = 19
     rest1.initialize()
-    
+
     # Angle restraint
     rest2 = restraints.DAT_restraint()
     rest2.continuous_apr = True
@@ -40,7 +46,7 @@ def test_fe_calc():
     rest2.pull['target_final'] = rest2.attach['target']
     rest2.pull['num_windows'] = 19
     rest2.initialize()
-    
+
     # Dihedral restraint
     rest3 = restraints.DAT_restraint()
     rest3.continuous_apr = True
@@ -58,46 +64,29 @@ def test_fe_calc():
     rest3.pull['target_final'] = rest3.attach['target']
     rest3.pull['num_windows'] = 19
     rest3.initialize()
-    
+
     # Create window directories
-    window_list = restraints.create_window_list([rest1,rest2,rest3])
+    window_list = restraints.create_window_list([rest1, rest2, rest3])
 
     # Phase abbreviations
     phase_dict = {'a': 'attach', 'p': 'pull', 'r': 'release'}
-    
-    # Restraint data
-    rest_dat = {'attach': [], 'pull': [], 'release': []}
-    
-    # Loop through windows
-    for i,window in enumerate(window_list):
-        phase = phase_dict[window[0]]
-        rest_dat[phase].append([])
-        traj = pt.load('cb6_but_gb_apr_ref_data/'+window+'/md.nc', 'cb6_but_gb_apr_ref_data/vac.prmtop')
-        for rest in [rest1,rest2,rest3]:
-            if rest.mask1 and rest.mask2 and not rest.mask3 and not rest.mask4:
-                dist = pt.distance(traj, ' '.join([rest.mask1, rest.mask2]))
-                rest_dat[phase][-1].append(dist)
-            elif rest.mask1 and rest.mask2 and rest.mask3 and not rest.mask4:
-                angle = pt.angle(traj, ' '.join([rest.mask1, rest.mask2, rest.mask3]))
-                rest_dat[phase][-1].append(angle)
-            elif rest.mask1 and rest.mask2 and rest.mask3 and rest.mask4:
-                dihedral = pt.dihedral(traj, ' '.join([rest.mask1, rest.mask2, rest.mask3, rest.mask4]))
-                rest_dat[phase][-1].append(dihedral)
-            else:
-                pass
 
     fecalc = analysis.fe_calc()
-    fecalc.restraint_list = [rest1,rest2,rest3]
-    fecalc.simulation_values = rest_dat
+    fecalc.prmtop = 'cb6_but_gb_apr_ref_data/vac.prmtop'
+    fecalc.trajectory = '*.nc'
+    fecalc.path = 'cb6_but_gb_apr_ref_data/'
+    fecalc.restraint_list = [rest1, rest2, rest3]
+    fecalc.collect_data(single_prmtop=True)
     fecalc.compute_free_energy()
 
     # Test free energies and uncertainties
     test_vals = [
-                fecalc.results['attach']['mbar-block']['fe'],
-                fecalc.results['attach']['mbar-block']['sem'],
-                fecalc.results['pull']['mbar-block']['fe'],
-                fecalc.results['pull']['mbar-block']['sem']
-                ]
+        fecalc.results['attach']['mbar-block']['fe'], fecalc.results['attach']['mbar-block']['sem'],
+        fecalc.results['pull']['mbar-block']['fe'], fecalc.results['pull']['mbar-block']['sem']
+    ]
+
+    print(test_vals)
+
     ref_vals = [13.267731176, 0.16892084090, -2.1791430735, 0.93638948302]
 
     for i in range(len(test_vals)):
@@ -116,9 +105,13 @@ def test_fe_calc():
 
     test_vals = fecalc.results['pull']['mbar-block']['convergence']
 
-    ref_vals = np.array([0.2053769, 0.2053769, 0.1617423, 0.1747668, 0.5255023, 0.5255023, 0.1149945, 0.1707901, 0.2129136, 0.2129136, 0.1942189, 0.1768906, 0.1997338, 0.1997338, 0.2014766, 0.2014766, 0.1470727, 0.1442517, 0.1434395])
+    ref_vals = np.array([
+        0.2053769, 0.2053769, 0.1617423, 0.1747668, 0.5255023, 0.5255023, 0.1149945, 0.1707901, 0.2129136, 0.2129136,
+        0.1942189, 0.1768906, 0.1997338, 0.1997338, 0.2014766, 0.2014766, 0.1470727, 0.1442517, 0.1434395
+    ])
 
     for i in range(len(test_vals)):
         assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
 
-#test_fe_calc()
+
+test_fe_calc()
