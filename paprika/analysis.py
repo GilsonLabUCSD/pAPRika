@@ -187,8 +187,10 @@ class fe_calc(object):
         # Niel: I'm just checking if *one* restraint is `continuous_apr`,
         # which should be the same value for all restraints.
         if active_attach_restraints[0].continuous_apr and self.orders['attach'].any and self.orders['pull'].any:
-            log.debug('Appending     {} to {} for `continuous_apr`...'.format(ordered_pull_windows[0], ordered_attach_windows))
-            ordered_attach_windows.append(ordered_pull_windows[0])
+            # Maybe instead of append, I should replace, since currently it has a004 and it should be p000...
+            log.debug('Replacing {} with {} in {} for `continuous_apr`...'.format(ordered_attach_windows[-1],
+            ordered_pull_windows[0], ordered_attach_windows))
+            ordered_attach_windows[-1] = ordered_pull_windows[0]
 
 
         # This is inefficient and slow, but I just want to get it working for now.
