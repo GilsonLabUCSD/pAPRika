@@ -373,8 +373,8 @@ class fe_calc(object):
                     # TODO: create a test for this. It looks like it won't work to me.
                     # Un-reorder so that convergence easily matches up with original window order
                     # unreorder = np.argsort(self.orders[phase])
-                    # self.results[phase][method]['convergence'] =\
-                    #    self.results[phase][method]['ordered_convergence'][self.orders]
+                    self.results[phase][method]['convergence'] = \
+                        [self.results[phase][method]['ordered_convergence'][i] for i in self.orders[phase]]
 
 
 def get_factors(n):
