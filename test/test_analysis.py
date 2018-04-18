@@ -96,6 +96,8 @@ def test_fe_calc():
 
     test_vals = fecalc.results['attach']['mbar-block']['convergence']
 
+    print(test_vals)
+
     ref_vals = np.array([0.0198918, 0.0451676, 0.0564517, 0.1079282, 0.1079282])
 
     for i in range(len(test_vals)):
