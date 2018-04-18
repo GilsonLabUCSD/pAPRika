@@ -8,7 +8,8 @@ import pymbar
 
 class fe_calc(object):
     """
-    Computes the free energy for an APR transformation.
+    Computes the free energy for an APR transformation. After calling `compute_free_energy()`, the 
+    results are stored in a dictionary called `results` in kcal/mol.
 
     Attributes
     ----------
@@ -187,13 +188,12 @@ class fe_calc(object):
         # Niel: I'm just checking if *one* restraint is `continuous_apr`,
         # which should be the same value for all restraints.
         if active_attach_restraints[0].continuous_apr and self.orders['attach'].any and self.orders['pull'].any:
-            # Maybe instead of append, I should replace, since currently it has a004 and it should be p000...
             log.debug('Replacing {} with {} in {} for `continuous_apr`...'.format(ordered_attach_windows[-1],
             ordered_pull_windows[0], ordered_attach_windows))
             ordered_attach_windows[-1] = ordered_pull_windows[0]
 
 
-        # This is inefficient and slow, but I just want to get it working for now.
+        # This is inefficient and slow.
         # I am going to separately loop through the attach, then pull, then release windows.
         # Niel: I'm sure you can think of a better solution.
 
@@ -370,9 +370,6 @@ class fe_calc(object):
                                 max_val = right
                             self.results[phase][method]['ordered_convergence'][i] = max_val
 
-                    # TODO: create a test for this. It looks like it won't work to me.
-                    # Un-reorder so that convergence easily matches up with original window order
-                    # unreorder = np.argsort(self.orders[phase])
                     self.results[phase][method]['convergence'] = \
                         [self.results[phase][method]['ordered_convergence'][i] for i in self.orders[phase]]
 
@@ -499,7 +496,7 @@ def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=Fal
         The values for this restraint in this window
     """
 
-    log.debug('Reading restraint data for {} in {}...'.format(window, trajectory))
+    log.debug('Reading restraint data for {}...'.format(window, trajectory))
     if isinstance(prmtop, str) and not single_prmtop:
         traj = pt.iterload(os.path.join(window, trajectory), os.path.join(window, prmtop))
     elif isinstance(prmtop, str) and single_prmtop:
