@@ -68,7 +68,6 @@ class Simulation(object):
         self.ewald = None
         self.other_namelist = None # Could add other namelists as dicts
         self.wt = None    # or []
-        self.disang = self.restraint_file
         self.group = None    # or []
 
 
@@ -208,8 +207,8 @@ class Simulation(object):
                     for line in self.wt:
                         f.write(" " + line + "\n")
                 f.write(" &wt type = 'END', /\n")
-                if self.disang is not None:
-                    f.write("DISANG = {}\n".format(self.disang))
+                if self.restraint_file is not None:
+                    f.write("DISANG = {}\n".format(self.restraint_file))
                     f.write("LISTOUT = POUT\n\n")
             if self.group is not None:
                 f.write("{:s}".format(self.group))
