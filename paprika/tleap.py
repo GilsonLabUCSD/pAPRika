@@ -88,6 +88,10 @@ class System(object):
     wat_added_history : list
         The history of number of waters added which correlate to the values in buffer_val_history.
         Default: [0]
+    write_save_lines : bool
+        Whether or not to do saveamberparm and savepdb when tleap is executed. During optimization
+        loops it speeds up the process to set as False, but it must be returned to True for the final
+        execution. Default: True
     
     """
 
@@ -120,6 +124,7 @@ class System(object):
         self.kg_per_mol_solvent = 0.018
         self.buffer_val_history = [0]
         self.wat_added_history = [0]
+        self.write_save_lines = True
 
     def build(self):
         """
@@ -174,15 +179,9 @@ class System(object):
         self.template_lines = filtered_lines
 
 
-    def write_input(self, write_save_lines=True):
+    def write_input(self):
         """
         Write a tleap input file based on template_lines and other things we have set.
-
-        Parameters
-        ----------
-        write_save_lines : bool
-            If True, saveamberparm and savepdb lines will be written in the tleap input
-            file. If False, it saves some time for quick iteration.        
 
         """
 
@@ -220,7 +219,7 @@ class System(object):
             # Note, the execution of tleap is assumed to take place in the
             # same directory as all the associated input files, so we won't
             # put directory paths on the saveamberparm or savepdb commands.
-            if self.output_prefix and write_save_lines:
+            if self.output_prefix and self.write_save_lines:
                 f.write("savepdb {} {}.pdb\n".format(self.unit, self.output_prefix))
                 f.write("saveamberparm {} {}.prmtop {}.rst7\n".format(self.unit, self.output_prefix,
                                                                       self.output_prefix))
@@ -316,6 +315,9 @@ class System(object):
         if self.add_ions:
             self.set_additional_ions()
     
+        # Speed up the initial optimization loop by not writing prmtops and pdbs
+        self.write_save_lines = False
+
         # First, a coarse adjustment...
         # This will run for 50 iterations or until we (a) have more waters than the target and (b) are within ~12 waters
         # of the target (that can be manually removed).
@@ -336,15 +338,13 @@ class System(object):
             # If we've nailed it, break!
             if waters == self.target_waters:
                 # Run one more time and save files
-                self.write_input(write_save_lines=True)
-                self.run()
+                self.final_solvation_run()
                 return
             # If we are close, go to fine adjustment...
             elif waters > self.target_waters and (waters - self.target_waters) < self.manual_switch_thresh:
                 self.remove_waters_manually()
                 # Run once more and save files
-                self.write_input(write_save_lines=True)
-                self.run()
+                self.final_solvation_run()
                 return
             # Otherwise, try to keep adjusting the number of waters...
             else:
@@ -356,9 +356,9 @@ class System(object):
                 cycle += 1
     
         if cycle >= self.max_cycles and waters > self.target_waters:
+            log.debug("The added waters ({}) didn't reach the manual_switch_thresh ({}) with max_cycles ({}), but we'll try manual removal anyway.".format(waters, self.target_waters, self.max_cycles))
             self.remove_waters_manually()
-            self.write_input(write_save_lines=True)
-            self.run()
+            self.final_solvation_run()
     
         if cycle >= self.max_cycles and waters < self.target_waters:
             raise Exception("Automatic adjustment of the buffer value resulted in fewer waters \
@@ -366,6 +366,25 @@ class System(object):
         else:
             raise Exception("Automatic adjustment of the buffer value was unable to converge on \
                 a solution to within the specified manual_switch_thresh: {:.0f}".format(self.manual_switch_thresh))
+
+    def final_solvation_run(self):
+        """
+        Run the solvation with write_save_lines = True.
+
+        """
+
+        self.write_save_lines = True
+
+        # We'll put this in a loop in case addionsrand does something different than the
+        # last round, which indicated success. We only check waters, because addionsrand
+        # can replace water molecules sometimes, which messes up the count.
+        for i in range(50):
+            residues = self.count_residues(print_results=True)
+            if residues['WAT'] == self.target_waters:
+                break
+            if i == 49:
+                raise Exception('Unable to add the correct waters at 50 cycles during final_solvation_run()')
+            log.info('The final solvation step added the wrong number of waters. Repeating ...')
 
     def count_waters(self):
         """
@@ -379,7 +398,7 @@ class System(object):
         waters = self.count_residues()['WAT']
         return waters
 
-    def count_residues(self):
+    def count_residues(self, print_results=False):
         """
         Run and parse `tleap` output and return a dictionary of residues in the structure.
     
@@ -389,7 +408,7 @@ class System(object):
             Dictionary of added residues and their number
 
         """
-        self.write_input(write_save_lines=False)
+        self.write_input()
         output = self.run()
         # Return a dictionary of {'RES' : number of RES}
         residues = {}
@@ -406,7 +425,12 @@ class System(object):
                 # each time we find an instance.
                 elif residue_name in residues:
                     residues[residue_name] += 1
+
         #log.debug(residues)
+        if print_results:
+            for key, value in sorted(residues.items()):
+                log.info('{:10s} {:10.0f}'.format(key, value))
+
         return residues
 
     def set_additional_ions(self):
@@ -478,12 +502,22 @@ class System(object):
         """
     
         cycle = 0
-        max_cycles = 10
+        max_cycles = 100
         waters = self.wat_added_history[-1]
         while waters > self.target_waters:
             # Retrieve excess water residues
             water_surplus = (waters - self.target_waters)
             water_residues = self.list_waters()
+
+            # THIS IS HACKY. But if we've gone > 5 cycles, we're probably
+            # in a ping-pong convergence problem. So we'll try to solve it
+            # by increasing the water_surplus value, manually, and increase
+            # it as we go through more cycles.
+            if cycle > 5:
+                additional_water = int( float(cycle)/5.0 )
+                water_surplus += additional_water
+                log.debug('Detected trouble with manually removing water. Increasing the number of surplus waters by {}'.format(additional_water))
+
             self.waters_to_remove = water_residues[-1 * water_surplus:]
             log.debug('Manually removing waters... {}'.format(self.waters_to_remove))
 
@@ -493,8 +527,6 @@ class System(object):
             # Check if we reached target
             waters = residues['WAT']
             if waters == self.target_waters:
-                for key, value in sorted(residues.items()):
-                    log.info('{:10s} {:10.0f}'.format(key, value))
                 return
             cycle += 1
             if cycle > max_cycles:
