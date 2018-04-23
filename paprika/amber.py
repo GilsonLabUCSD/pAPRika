@@ -287,6 +287,7 @@ class Simulation(object):
                 log.info('Simulation execution does not appear to have completed')
 
         else:
+<<<<<<< HEAD
             log.info("Completed output detected ... Skipping. Use: run(overwrite=True) to overwrite")
 
     def has_timings(self, alternate_file=None):
@@ -319,6 +320,79 @@ class Simulation(object):
                 if (' TIMINGS' in strings):
                     timings = True
 
+=======
+            log.info('Running MD at {}'.format(self.path))
+
+        # Deal with overwrite here? -O
+        exec_list = self.executable.split() + ['-O', '-p', self.topology]
+        if self.ref is not None:
+            exec_list += ['-ref', self.ref]
+        exec_list += ['-c', self.inpcrd, '-i', self.input, '-o', self.output, '-r', self.restart]
+        if self.mdcrd is not None:
+            exec_list += ['-x', self.mdcrd]
+        if self.mdinfo is not None:
+            exec_list += ['-inf', self.mdinfo]
+        if self.mden is not None:
+            exec_list += ['-e', self.mden]
+
+
+        log.debug('Exec line: '+' '.join(exec_list))
+        if overwrite or not self.has_timings(self.path+'/'+self.output):
+            if self.CUDA_VISIBLE_DEVICES:
+                amber_output = sp.Popen(exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE,
+                                        env=dict(os.environ, CUDA_VISIBLE_DEVICES=str(self.CUDA_VISIBLE_DEVICES)))
+            else:
+                amber_output = sp.Popen(exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE)
+
+            amber_output = amber_output.stdout.read().splitlines()
+
+            # Report problems with simulations
+            if amber_output:
+                log.info('STDOUT/STDERR received from AMBER execution')
+                for line in amber_output:
+                    log.info(line)
+
+            # Check completion status
+            if self.cntrl['imin'] == 1 and self.has_timings(self.path+'/'+self.output):
+                log.info('Minimization completed...')
+            elif self.has_timings(self.path+'/'+self.output):
+                log.info('MD completed ...')
+            else:
+                log.info('Simulation execution does not appear to have completed')
+
+        else:
+            log.info("Completed output detected ... Skipping. Use: run(overwrite=True) to overwrite")
+
+    def has_timings(self, alternate_file=None):
+        """
+        Check for the string TIMINGS in self.ouput file.
+
+        Parameters
+        ----------
+        alternate_file : str
+            If present, check for TIMINGS in this file rather than self.output. Default: None
+
+        Returns
+        -------
+        timings : bool
+            True if 'TIMINGS' is found in file. False, otherwise. 
+
+        """
+
+        # Assume not completed
+        timings = False
+
+        if alternate_file:
+            output_file = alternate_file
+        else:
+            output_file = self.output
+
+        if os.path.isfile(output_file):
+            with open(output_file, 'r') as f:
+                strings = f.read()
+                if (' TIMINGS' in strings):
+                    timings = True
+>>>>>>> 269a3f4998a9d9eab9282132a932dba4e7d26b37
         return timings
 
 
