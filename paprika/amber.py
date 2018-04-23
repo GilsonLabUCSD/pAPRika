@@ -14,6 +14,7 @@ class Simulation(object):
         ### Setup simulation directory and files
         self.path = '.' # Assume everything will be created/executed in this path
         self.executable = 'sander'
+        self.CUDA_VISIBLE_DEVICES = None
         self.phase = None   
         self.window = None
         self.topology = 'prmtop'
@@ -260,13 +261,61 @@ class Simulation(object):
 
 
         log.debug('Exec line: '+' '.join(exec_list))
-        # DO BETTER OVERWRITE CHECKING!!!!
-        if overwrite or not os.path.isfile(self.path+'/'+self.restart):
-            sp.call(exec_list, cwd=self.path, stderr=sp.STDOUT)
-        if self.cntrl['imin'] == 1:
-            log.info('Minimization completed...')
-        else:
-            log.info('MD completed ...')
+        if overwrite or not self.has_timings(self.path+'/'+self.output):
+            if self.CUDA_VISIBLE_DEVICES:
+                amber_output = sp.Popen(exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE,
+                                        env=dict(os.environ, CUDA_VISIBLE_DEVICES=str(self.CUDA_VISIBLE_DEVICES)))
+            else:
+                amber_output = sp.Popen(exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE)
 
+            amber_output = amber_output.stdout.read().splitlines()
+
+            # Report problems with simulations
+            if amber_output:
+                log.info('STDOUT/STDERR received from AMBER execution')
+                for line in amber_output:
+                    log.info(line)
+
+            # Check completion status
+            if self.cntrl['imin'] == 1 and self.has_timings(self.path+'/'+self.output):
+                log.info('Minimization completed...')
+            elif self.has_timings(self.path+'/'+self.output):
+                log.info('MD completed ...')
+            else:
+                log.info('Simulation execution does not appear to have completed')
+
+        else:
+            log.info("Completed output detected ... Skipping. Use: run(overwrite=True) to overwrite")
+
+    def has_timings(self, alternate_file=None):
+        """
+        Check for the string TIMINGS in self.ouput file.
+
+        Parameters
+        ----------
+        alternate_file : str
+            If present, check for TIMINGS in this file rather than self.output. Default: None
+
+        Returns
+        -------
+        timings : bool
+            True if 'TIMINGS' is found in file. False, otherwise. 
+
+        """
+
+        # Assume not completed
+        timings = False
+
+        if alternate_file:
+            output_file = alternate_file
+        else:
+            output_file = self.output
+
+        if os.path.isfile(output_file):
+            with open(output_file, 'r') as f:
+                strings = f.read()
+                if (' TIMINGS' in strings):
+                    timings = True
+        return timings
 
 
