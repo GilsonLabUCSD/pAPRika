@@ -14,6 +14,7 @@ class Simulation(object):
         ### Setup simulation directory and files
         self.path = '.' # Assume everything will be created/executed in this path
         self.executable = 'sander'
+        self.CUDA_VISIBLE_DEVICES = None
         self.phase = None   
         self.window = None
         self.topology = 'prmtop'
@@ -223,50 +224,101 @@ class Simulation(object):
 
         """
 
-        # These settings hardcoded at the moment ... possibly expose for editing in the future
-        if soft_minimize:
-            # Set a burn in value that is 25% of the way between ncyc and maxcyc
-            ncyc = self.cntrl['ncyc']
-            maxcyc = self.cntrl['maxcyc']
-            burn_in = int(float(ncyc) + 0.20*(float(maxcyc) - float(ncyc)))
-            # If the burn_in value is nuts, then just set it to zero
-            if burn_in < 0 or burn_in >= maxcyc:
-                burn_in = 0
-            # Set an end_soft value that is 75% of way between ncyc and maxcyc
-            end_soft = int(float(ncyc) + 0.60*(float(maxcyc) - float(ncyc)))
-            self.wt = [
-                "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(burn_in),
-                "&wt type = 'NB', istep1={:.0f}, istep2={:.0f}, value1 = 0.0, value2=1.0, IINC=50, /".format(burn_in,end_soft)]
+        if overwrite or not self.has_timings():
 
-        #_amber_write_input_file(self.path+'/'+self.input, self.min, title='GB Minimization.')
-        self._amber_write_input_file()
+            # These settings hardcoded at the moment ... possibly expose for editing in the future
+            if soft_minimize:
+                # Set a burn in value that is 25% of the way between ncyc and maxcyc
+                ncyc = self.cntrl['ncyc']
+                maxcyc = self.cntrl['maxcyc']
+                burn_in = int(float(ncyc) + 0.20*(float(maxcyc) - float(ncyc)))
+                # If the burn_in value is nuts, then just set it to zero
+                if burn_in < 0 or burn_in >= maxcyc:
+                    burn_in = 0
+                # Set an end_soft value that is 75% of way between ncyc and maxcyc
+                end_soft = int(float(ncyc) + 0.60*(float(maxcyc) - float(ncyc)))
+                self.wt = [
+                    "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(burn_in),
+                    "&wt type = 'NB', istep1={:.0f}, istep2={:.0f}, value1 = 0.0, value2=1.0, IINC=50, /".format(burn_in,end_soft)]
+    
+            #_amber_write_input_file(self.path+'/'+self.input, self.min, title='GB Minimization.')
+            self._amber_write_input_file()
+    
+            if self.cntrl['imin'] == 1:
+                log.info('Running Minimization at {}'.format(self.path))
+            else:
+                log.info('Running MD at {}'.format(self.path))
+    
+            # Create executable list for subprocess
+            exec_list = self.executable.split() + ['-O', '-p', self.topology]
+            if self.ref is not None:
+                exec_list += ['-ref', self.ref]
+            exec_list += ['-c', self.inpcrd, '-i', self.input, '-o', self.output, '-r', self.restart]
+            if self.mdcrd is not None:
+                exec_list += ['-x', self.mdcrd]
+            if self.mdinfo is not None:
+                exec_list += ['-inf', self.mdinfo]
+            if self.mden is not None:
+                exec_list += ['-e', self.mden]
 
-        if self.cntrl['imin'] == 1:
-            log.info('Running Minimization at {}'.format(self.path))
+            log.debug('Exec line: '+' '.join(exec_list))
+
+            # Execute
+            if self.CUDA_VISIBLE_DEVICES:
+                amber_output = sp.Popen(exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE,
+                                        env=dict(os.environ, CUDA_VISIBLE_DEVICES=str(self.CUDA_VISIBLE_DEVICES)))
+            else:
+                amber_output = sp.Popen(exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE)
+
+            amber_output = amber_output.stdout.read().splitlines()
+
+            # Report any stdout/stderr which are output from execution
+            if amber_output:
+                log.info('STDOUT/STDERR received from AMBER execution')
+                for line in amber_output:
+                    log.info(line)
+
+            # Check completion status
+            if self.cntrl['imin'] == 1 and self.has_timings():
+                log.info('Minimization completed...')
+            elif self.has_timings():
+                log.info('MD completed ...')
+            else:
+                log.info('Simulation execution does not appear to have completed')
+
         else:
-            log.info('Running MD at {}'.format(self.path))
+            log.info("Completed output detected ... Skipping. Use: run(overwrite=True) to overwrite")
 
-        # Deal with overwrite here? -O
-        exec_list = self.executable.split() + ['-O', '-p', self.topology]
-        if self.ref is not None:
-            exec_list += ['-ref', self.ref]
-        exec_list += ['-c', self.inpcrd, '-i', self.input, '-o', self.output, '-r', self.restart]
-        if self.mdcrd is not None:
-            exec_list += ['-x', self.mdcrd]
-        if self.mdinfo is not None:
-            exec_list += ['-inf', self.mdinfo]
-        if self.mden is not None:
-            exec_list += ['-e', self.mden]
+    def has_timings(self, alternate_file=None):
+        """
+        Check for the string TIMINGS in self.ouput file.
 
+        Parameters
+        ----------
+        alternate_file : str
+            If present, check for TIMINGS in this file rather than self.output. Default: None
 
-        log.debug('Exec line: '+' '.join(exec_list))
-        # DO BETTER OVERWRITE CHECKING!!!!
-        if overwrite or not os.path.isfile(self.path+'/'+self.restart):
-            sp.call(exec_list, cwd=self.path, stderr=sp.STDOUT)
-        if self.cntrl['imin'] == 1:
-            log.info('Minimization completed...')
+        Returns
+        -------
+        timings : bool
+            True if 'TIMINGS' is found in file. False, otherwise. 
+
+        """
+
+        # Assume not completed
+        timings = False
+
+        if alternate_file:
+            output_file = alternate_file
         else:
-            log.info('MD completed ...')
+            output_file = os.path.join(self.path, self.output)
 
+        if os.path.isfile(output_file):
+            with open(output_file, 'r') as f:
+                strings = f.read()
+                if (' TIMINGS' in strings):
+                    timings = True
+
+        return timings
 
 
