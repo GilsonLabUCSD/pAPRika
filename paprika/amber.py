@@ -215,7 +215,7 @@ class Simulation(object):
                 f.write("{:s}".format(self.group))
 
     
-    def run(self, soft_minimize=False, overwrite=False):
+    def run(self, soft_minimize=False, overwrite=False, fail_ok=False):
         """
         Minimize the system.
 
@@ -286,7 +286,8 @@ class Simulation(object):
             else:
                 log.info('Simulation did not complete when executing the following ....')
                 log.info(' '.join(exec_list))
-                raise Exception('Exiting due to failed simulation! Check logging info.')
+                if not fail_ok:
+                    raise Exception('Exiting due to failed simulation! Check logging info.')
 
         else:
             log.info("Completed output detected ... Skipping. Use: run(overwrite=True) to overwrite")
