@@ -154,7 +154,7 @@ class fe_calc(object):
 
         return orders
 
-    def read_trajectories(self, single_prmtop=False):
+    def read_trajectories(self, single_prmtop=False, fraction=1.0):
         """For each each phase and window, and for each non-static restraint, parse the trajectories to 
         get the restraint values.
 
@@ -162,6 +162,8 @@ class fe_calc(object):
         ----------
         single_prmtop : {bool}
             Whether a single `prmtop` is read for all windows
+        fraction : {float}
+            Fraction of data to read, to check free energy convergence
 
         Returns
         -------
@@ -202,7 +204,7 @@ class fe_calc(object):
             for restraint_index, restraint in enumerate(active_attach_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(restraint, window, self.trajectory,
-                                                                                 self.prmtop, single_prmtop)
+                                                                                 self.prmtop, single_prmtop, fraction)
 
         for window_index, window in enumerate(ordered_pull_windows):
             phase = 'pull'
@@ -210,7 +212,7 @@ class fe_calc(object):
             for restraint_index, restraint in enumerate(active_pull_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(restraint, window, self.trajectory,
-                                                                                 self.prmtop, single_prmtop)
+                                                                                 self.prmtop, single_prmtop, fraction)
 
         for window_index, window in enumerate(ordered_release_windows):
             phase = 'release'
@@ -218,7 +220,7 @@ class fe_calc(object):
             for restraint_index, restraint in enumerate(active_release_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(restraint, window, self.trajectory,
-                                                                                 self.prmtop, single_prmtop)
+                                                                                 self.prmtop, single_prmtop, fraction)
 
         return data
 
