@@ -1,6 +1,5 @@
 import logging as log
 import os as os
-import math as math
 from itertools import compress
 import numpy as np
 import pytraj as pt
@@ -509,7 +508,7 @@ def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=Fal
 
     if fraction > 1:
         raise Exception('The fraction of data to analyze cannot be greater than 1.')
-    elif math.isclose(fraction, 1):
+    elif np.isclose(fraction, 1):
         pass
     else:
         log.debug('Loaded {} frames...'.format(traj.n_frames))
