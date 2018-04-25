@@ -69,14 +69,14 @@ class fe_calc(object):
         """Set updating of beta with new temperature."""
         self.beta = 1 / (self.k_B * new_temperature)
 
-    def collect_data(self, single_prmtop=False):
+    def collect_data(self, single_prmtop=False, fraction=1.0):
         """Gather simulation data on the distance, angle, and torsion restraints that change during the simulation.
 
         """
 
         self.changing_restraints = self.determine_static_restraints()
         self.orders = self.determine_window_order()
-        self.simulation_data = self.read_trajectories(single_prmtop=single_prmtop)
+        self.simulation_data = self.read_trajectories(single_prmtop=single_prmtop, fraction=fraction)
 
     def determine_static_restraints(self):
         """Figure out which restraints change during each phase of the calculation.
