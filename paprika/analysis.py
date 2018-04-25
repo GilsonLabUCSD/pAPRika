@@ -1,5 +1,6 @@
 import logging as log
 import os as os
+import math as math
 from itertools import compress
 import numpy as np
 import pytraj as pt
@@ -188,10 +189,9 @@ class fe_calc(object):
         # Niel: I'm just checking if *one* restraint is `continuous_apr`,
         # which should be the same value for all restraints.
         if active_attach_restraints[0].continuous_apr and self.orders['attach'].any and self.orders['pull'].any:
-            log.debug('Replacing {} with {} in {} for `continuous_apr`...'.format(ordered_attach_windows[-1],
-            ordered_pull_windows[0], ordered_attach_windows))
+            log.debug('Replacing {} with {} in {} for `continuous_apr`...'.format(
+                ordered_attach_windows[-1], ordered_pull_windows[0], ordered_attach_windows))
             ordered_attach_windows[-1] = ordered_pull_windows[0]
-
 
         # This is inefficient and slow.
         # I am going to separately loop through the attach, then pull, then release windows.
@@ -262,7 +262,7 @@ class fe_calc(object):
                 targets_T = np.asarray(targets).T[l, :, None]
 
                 for r, rest in enumerate(active_rest):  # Restraints
-                
+
                     # If this is a dihedral, we need to shift around restraint value
                     # on the periodic axis to make sure the lowest potential is used.
                     if rest.mask3 is not None and rest.mask4 is not None:
@@ -471,7 +471,7 @@ def get_subsampled_indices(N, g, conservative=False):
     return indices
 
 
-def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=False):
+def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=False, fraction=1.0):
     """Given a trajectory (or trajectories) and restraint, read the restraint values.
 
     Note this is *slow* because it will load the trajectory for *each* restraint. This is done on purpose,
@@ -490,6 +490,8 @@ def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=Fal
         The parameters for the simulation
     single_prmtop : {bool}
         Whether a single `prmtop` is read for all windows
+    fraction : {float}
+        Fraction of data to read, to check free energy convergence
     Returns
     -------
     data : {np.array}
@@ -504,6 +506,15 @@ def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=Fal
     else:
         # Try to load it directly...
         traj = pt.iterload(os.path.join(window, trajectory), prmtop)
+
+    if fraction > 1:
+        raise Exception('The fraction of data to analyze cannot be greater than 1.')
+    elif math.isclose(fraction, 1)
+        pass
+    else:
+        log.debug('Loaded {} frames...'.format(traj.n_frames))
+        traj = traj[0:int(fraction * traj.n_frames)]
+        log.debug('Analyzing {} frames...'.format(traj.n_frames))
 
     if restraint.mask1 and restraint.mask2 and \
             not restraint.mask3 and not restraint.mask4:
