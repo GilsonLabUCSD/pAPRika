@@ -69,14 +69,14 @@ class fe_calc(object):
         """Set updating of beta with new temperature."""
         self.beta = 1 / (self.k_B * new_temperature)
 
-    def collect_data(self, single_prmtop=False):
+    def collect_data(self, single_prmtop=False, fraction=1.0):
         """Gather simulation data on the distance, angle, and torsion restraints that change during the simulation.
 
         """
 
         self.changing_restraints = self.determine_static_restraints()
         self.orders = self.determine_window_order()
-        self.simulation_data = self.read_trajectories(single_prmtop=single_prmtop)
+        self.simulation_data = self.read_trajectories(single_prmtop=single_prmtop, fraction=fraction)
 
     def determine_static_restraints(self):
         """Figure out which restraints change during each phase of the calculation.
@@ -154,7 +154,7 @@ class fe_calc(object):
 
         return orders
 
-    def read_trajectories(self, single_prmtop=False):
+    def read_trajectories(self, single_prmtop=False, fraction=1.0):
         """For each each phase and window, and for each non-static restraint, parse the trajectories to 
         get the restraint values.
 
@@ -162,6 +162,8 @@ class fe_calc(object):
         ----------
         single_prmtop : {bool}
             Whether a single `prmtop` is read for all windows
+        fraction : {float}
+            Fraction of data to read, to check free energy convergence
 
         Returns
         -------
@@ -188,10 +190,9 @@ class fe_calc(object):
         # Niel: I'm just checking if *one* restraint is `continuous_apr`,
         # which should be the same value for all restraints.
         if active_attach_restraints[0].continuous_apr and self.orders['attach'].any and self.orders['pull'].any:
-            log.debug('Replacing {} with {} in {} for `continuous_apr`...'.format(ordered_attach_windows[-1],
-            ordered_pull_windows[0], ordered_attach_windows))
+            log.debug('Replacing {} with {} in {} for `continuous_apr`...'.format(
+                ordered_attach_windows[-1], ordered_pull_windows[0], ordered_attach_windows))
             ordered_attach_windows[-1] = ordered_pull_windows[0]
-
 
         # This is inefficient and slow.
         # I am going to separately loop through the attach, then pull, then release windows.
@@ -203,7 +204,7 @@ class fe_calc(object):
             for restraint_index, restraint in enumerate(active_attach_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(restraint, window, self.trajectory,
-                                                                                 self.prmtop, single_prmtop)
+                                                                                 self.prmtop, single_prmtop, fraction)
 
         for window_index, window in enumerate(ordered_pull_windows):
             phase = 'pull'
@@ -211,7 +212,7 @@ class fe_calc(object):
             for restraint_index, restraint in enumerate(active_pull_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(restraint, window, self.trajectory,
-                                                                                 self.prmtop, single_prmtop)
+                                                                                 self.prmtop, single_prmtop, fraction)
 
         for window_index, window in enumerate(ordered_release_windows):
             phase = 'release'
@@ -219,7 +220,7 @@ class fe_calc(object):
             for restraint_index, restraint in enumerate(active_release_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(restraint, window, self.trajectory,
-                                                                                 self.prmtop, single_prmtop)
+                                                                                 self.prmtop, single_prmtop, fraction)
 
         return data
 
@@ -262,7 +263,7 @@ class fe_calc(object):
                 targets_T = np.asarray(targets).T[l, :, None]
 
                 for r, rest in enumerate(active_rest):  # Restraints
-                
+
                     # If this is a dihedral, we need to shift around restraint value
                     # on the periodic axis to make sure the lowest potential is used.
                     if rest.mask3 is not None and rest.mask4 is not None:
@@ -343,6 +344,7 @@ class fe_calc(object):
                         log.debug('Skipping free energy calculation for %s' % phase)
                         break
                     prepared_data = self._prepare_data(phase)
+                    self.results[phase][method]['n_frames'] = np.sum(prepared_data[1])
                     self.results[phase][method]['fe_matrix'],self.results[phase][method]['sem_matrix']\
                         = self._run_mbar(prepared_data)
                     self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
@@ -471,7 +473,7 @@ def get_subsampled_indices(N, g, conservative=False):
     return indices
 
 
-def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=False):
+def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=False, fraction=1.0):
     """Given a trajectory (or trajectories) and restraint, read the restraint values.
 
     Note this is *slow* because it will load the trajectory for *each* restraint. This is done on purpose,
@@ -484,12 +486,14 @@ def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=Fal
         The restraint to analyze
     window : {str}
         The simulation window to analyze
-    trajectory : {str}
+    trajectory : {str} or {list}
         The name or names of the trajectory
     prmtop : {str} or ParmEd AmberParm
         The parameters for the simulation
     single_prmtop : {bool}
         Whether a single `prmtop` is read for all windows
+    fraction : {float}
+        Fraction of data to read, to check free energy convergence
     Returns
     -------
     data : {np.array}
@@ -497,13 +501,30 @@ def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=Fal
     """
 
     log.debug('Reading restraint data for {}...'.format(window, trajectory))
+    if isinstance(trajectory, str):
+        trajectory_path = os.path.join(window, trajectory)
+    elif isinstance(trajectory, list):
+        trajectory_path = [os.path.join(window, i) for i in trajectory]
+        log.debug('Received list of trajectories: {}'.format(trajectory_path))
+
     if isinstance(prmtop, str) and not single_prmtop:
-        traj = pt.iterload(os.path.join(window, trajectory), os.path.join(window, prmtop))
+        traj = pt.iterload(trajectory_path, os.path.join(window, prmtop))
     elif isinstance(prmtop, str) and single_prmtop:
-        traj = pt.iterload(os.path.join(window, trajectory), os.path.join(prmtop))
+        traj = pt.iterload(trajectory_path, os.path.join(prmtop))
     else:
-        # Try to load it directly...
-        traj = pt.iterload(os.path.join(window, trajectory), prmtop)
+        try:
+            traj = pt.iterload(trajectory_path, prmtop)
+        except:
+            raise Exception('Tried to load `prmtop` object directly and failed.')
+
+    if fraction > 1:
+        raise Exception('The fraction of data to analyze cannot be greater than 1.')
+    elif np.isclose(fraction, 1):
+        pass
+    else:
+        log.debug('Loaded {} frames...'.format(traj.n_frames))
+        traj = traj[0:int(fraction * traj.n_frames)]
+        log.debug('Analyzing {} frames...'.format(traj.n_frames))
 
     if restraint.mask1 and restraint.mask2 and \
             not restraint.mask3 and not restraint.mask4:
