@@ -344,6 +344,7 @@ class fe_calc(object):
                         log.debug('Skipping free energy calculation for %s' % phase)
                         break
                     prepared_data = self._prepare_data(phase)
+                    self.results[phase][method]['n_frames'] = np.sum(prepared_data[1])
                     self.results[phase][method]['fe_matrix'],self.results[phase][method]['sem_matrix']\
                         = self._run_mbar(prepared_data)
                     self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
