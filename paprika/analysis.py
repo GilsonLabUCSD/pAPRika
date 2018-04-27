@@ -485,7 +485,7 @@ def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=Fal
         The restraint to analyze
     window : {str}
         The simulation window to analyze
-    trajectory : {str}
+    trajectory : {str} or {list}
         The name or names of the trajectory
     prmtop : {str} or ParmEd AmberParm
         The parameters for the simulation
@@ -500,13 +500,21 @@ def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=Fal
     """
 
     log.debug('Reading restraint data for {}...'.format(window, trajectory))
+    if isinstance(trajectory, str):
+        trajectory_path = os.path.join(window, trajectory)
+    elif isinstance(trajectory, list):
+        trajectory_path = [os.path.join(window, i) for i in trajectory]
+        log.debug('Received list of trajectories: {}'.format(trajectory_path))
+
     if isinstance(prmtop, str) and not single_prmtop:
-        traj = pt.iterload(os.path.join(window, trajectory), os.path.join(window, prmtop))
+        traj = pt.iterload(trajectory_path, os.path.join(window, prmtop))
     elif isinstance(prmtop, str) and single_prmtop:
-        traj = pt.iterload(os.path.join(window, trajectory), os.path.join(prmtop))
+        traj = pt.iterload(trajectory_path, os.path.join(prmtop))
     else:
-        # Try to load it directly...
-        traj = pt.iterload(os.path.join(window, trajectory), prmtop)
+        try:
+            traj = pt.iterload(trajectory_path, prmtop)
+        except:
+            raise Exception('Tried to load `prmtop` object directly and failed.')
 
     if fraction > 1:
         raise Exception('The fraction of data to analyze cannot be greater than 1.')
