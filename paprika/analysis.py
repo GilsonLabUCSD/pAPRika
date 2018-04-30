@@ -332,6 +332,8 @@ class fe_calc(object):
         for phase in ['attach', 'pull', 'release']:
             self.results[phase] = {}
             for method in self.methods:
+                # Initialize some values that we will compute
+                # The matrix gives all possible fe/sem for any window to any other window
                 self.results[phase][method] = {}
                 self.results[phase][method]['fe'] = None
                 self.results[phase][method]['sem'] = None
@@ -374,6 +376,56 @@ class fe_calc(object):
 
                     self.results[phase][method]['convergence'] = \
                         [self.results[phase][method]['ordered_convergence'][i] for i in self.orders[phase]]
+
+
+    def compute_ref_state_work(self, restraints):
+        """
+        Compute the work to place a molecule at standard reference state conditions
+        starting from a state defined by up to six restraints. (see ref_state_work for
+        details)
+
+        Parameters
+        ----------
+        restraints : list [r, theta, phi, alpha, beta, gamma]
+            A list of paprika DAT_restraint objects in order of the six translational and
+            orientational restraints needed to describe the configuration of one molecule
+            relative to another. The six restraints are: r, theta, phi, alpha, beta, gamma.
+            If any of these coordinates is not being restrained, use a None in place of a
+            DAT_restraint object. (see ref_state_work for details on the six restraints)
+        """
+
+        if not restraints or restraints[0] is None:
+            raise Exception('At minimum, a single distance restraint must be supplied to compute_ref_state_work')
+
+        fcs = []
+        targs = []
+
+        for restraint in restraints:
+            if restraint is None:
+                fcs.append(None)
+                targs.append(None)
+            elif restraint.phase['release']['force_constants'] is not None:
+                fcs.append( np.sort(restraint.phase['release']['force_constants'])[-1] )
+                targs.append( np.sort(restraint.phase['release']['targets'])[-1] )
+            elif restraint.phase['pull']['force_constants'] is not None:
+                fcs.append( np.sort(restraint.phase['pull']['force_constants'])[-1] )
+                targs.append( np.sort(restraint.phase['pull']['targets'])[-1] )
+            else:
+                raise Exception('Restraints should have pull or release values initialized in order to compute_ref_state_work')
+
+        # Convert degrees to radians for theta, phi, alpha, beta, gamma
+        for i in range(1,5):
+            if targs[i] is not None:
+                targs[i] = np.radians(targs[i])
+
+
+        self.results['ref_state_work'] = ref_state_work(self.temperature,
+                                                        fcs[0], targs[0],
+                                                        fcs[1], targs[1],
+                                                        fcs[2], targs[2],
+                                                        fcs[3], targs[3],
+                                                        fcs[4], targs[4],
+                                                        fcs[5], targs[5])
 
 
 def get_factors(n):
@@ -537,3 +589,129 @@ def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=Fal
         data = pt.dihedral(traj, ' '.join([restraint.mask1, restraint.mask2, \
                                            restraint.mask3, restraint.mask4]))
     return data
+
+
+def ref_state_work(temperature,
+                   r_fc,  r_tg,
+                   th_fc, th_tg,
+                   ph_fc, ph_tg,
+                   a_fc,  a_tg,
+                   b_fc,  b_tg,
+                   g_fc,  g_tg):
+    """
+    Computes the free energy to release a molecule from some restrained translational
+    and orientational configuration (relative to another molecule or lab frame) into
+    the reference configuration: standard concentration (1.0/1660.5392 Angstom^3) and
+    unrestrained orientational freedom (8*pi^2).  (See Euler angles)
+
+    Assume two molecules (H and G). Three translational and three orientational degrees
+    of freedom define their relative configuration. In order to match experimentally
+    reported free energies, we often need to compute the work (free energy) of moving
+    a molecule (G) from a restrained configuration relative to H into the experimental
+    reference state (usually defined as 1 M, or 1 molecule per 1660.5 Angstrom^3)
+
+    H3
+      \        [a1]                [a2]
+       H2-------H1-------<d1>-------G1-------G2
+          {t1}           {t2}           {t3}   \
+                                                G3
+
+    Degrees of Freedom
+    -----------------------------------------------------------------
+     id   atoms        type, spherical coordinate/Euler angle
+    -----------------------------------------------------------------
+    <d1>: H1-G1         distance, r
+    [a1]: H2-H1-G1      angle, theta
+    {t1}: H3-H2-H1-G1   torsion, phi
+    {t2}: H2-H1-G1-G2   torsion, alpha
+    [a2]: H1-G1-G2      angle, beta
+    {t3}: H1-G1-G2-G3   torsion, gamma
+
+    Parameters
+    ----------
+    temperature : float
+        temperature (K) at which the reference state calculation will take place
+    r_fc, r_tg : float, float
+        The distance, r, restraint force constant and target values (Angstrom, kcal/mol-Angstom^2). The target range lies within 0 to infinity.
+    th_fc, th_tg : float, float
+        The angle, theta, restraint force constant and target values (radian, kcal/mol-radian^2). The target range is 0 to pi.
+    ph_fc, ph_tg : float, float
+        The torsion, phi, restraint force constant and target values (radian, kcal/mol-radian^2). The target range is 0 to 2*pi.
+    a_fc, a_tg : float, float
+        The torsion, alpha, restraint force constant and target values (radian, kcal/mol-radian^2). The target range is 0 to 2*pi.
+    b_fc, b_tg : float, float
+        The angle, beta, restraint force constant and target values (radian, kcal/mol-radian^2). The target range is 0 to pi.
+    g_fc, g_tg : float, float
+        The angle, gamma, restraint force constant and target values (radian, kcal/mol-radian^2). The target range is 0 to 2*pi.
+
+    """
+
+    R = 1.987204118e-3 # kcal/mol-K, a.k.a. boltzman constant
+    RT = R*temperature
+
+    # Distance Integration Function
+    def dist_int(RT, fc, targ):
+        def potential(arange, RT, fc, targ):
+            return (arange**2) * np.exp( (-1.0/RT)*fc*(arange - targ)**2 )
+        arange = np.arange(0.0, 100.0, 0.0001)
+        return np.trapz( potential(arange, RT, fc, targ), arange )
+
+    # Angle Integration Function
+    def ang_int(RT, fc, targ):
+        def potential(arange, RT, fc, targ):
+            return np.sin(arange) * np.exp( (-1.0/RT)*fc*(arange - targ)**2 )
+        arange = np.arange(0.0, np.pi, 0.00005)
+        return np.trapz( potential(arange, RT, fc, targ), arange )
+
+    # Torsion Integration Function
+    def tors_int(RT, fc, targ):
+        def potential(arange, RT, fc, targ):
+            return np.exp( (-1.0/RT)*fc*(arange - targ)**2 )
+        # Note, because of periodicity, I'm gonna wrap +/- pi around targ for integration
+        arange = np.arange(targ-np.pi, targ+np.pi, 0.00005)
+        return np.trapz( potential(arange, RT, fc, targ), arange )
+
+    # Distance restraint, r
+    if None in [r_fc, r_tg]:
+        raise Exception('Distance restraint info (r_fc, r_tg) must be specified')
+    else:
+        r_int  = dist_int( RT, r_fc,  r_tg  )
+
+    # Angle restraint, theta
+    if None in [th_fc, th_tg]:
+        th_int = 2.0
+    else:
+        th_int = ang_int(  RT, th_fc, th_tg )
+
+    # Torsion restraint, phi
+    if None in [ph_fc, ph_tg]:
+        ph_int = 2.0*np.pi
+    else:
+        ph_int = tors_int( RT, ph_fc, ph_tg )
+
+    # Torsion restraint, alpha
+    if None in [a_fc, a_tg]:
+        a_int = 2.0*np.pi
+    else:
+        a_int  = tors_int( RT, a_fc,  a_tg  )
+
+    # Angle restraint, beta
+    if None in [b_fc, b_tg]:
+        b_int = 2.0
+    else:
+        b_int  = ang_int(  RT, b_fc,  b_tg  )
+
+    # Torsion restraint, gamma
+    if None in [g_fc, g_tg]:
+        g_int = 2.0*np.pi
+    else:
+        g_int  = tors_int( RT, g_fc,  g_tg  )
+
+    # Concentration term
+    trans = r_int * th_int * ph_int * (1.0/1660.5392)   # C^o = 1/V^o
+    # Orientational term
+    orient = a_int * b_int * g_int / (8.0*(np.pi**2))
+
+    # Return the free energy
+    return RT*np.log( trans * orient )
+
