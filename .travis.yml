@@ -14,7 +14,7 @@ matrix:
 install:
     - chmod +x devtools/travis/install.sh
     - source devtools/travis/install.sh
-    - pip install .
+    - pip install --user .
     - python -c "import paprika; print(paprika.__version__)"
 
 script:
