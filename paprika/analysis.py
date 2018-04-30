@@ -339,7 +339,6 @@ class fe_calc(object):
                 self.results[phase][method]['sem'] = None
                 self.results[phase][method]['fe_matrix'] = None
                 self.results[phase][method]['sem_matrix'] = None
-<<<<<<< HEAD
 
                 # mbar with blocking are currently supported.
                 if method == 'mbar-block':
@@ -590,7 +589,6 @@ def read_restraint_data(restraint, window, trajectory, prmtop, single_prmtop=Fal
         data = pt.dihedral(traj, ' '.join([restraint.mask1, restraint.mask2, \
                                            restraint.mask3, restraint.mask4]))
     return data
-
 
 
 def ref_state_work(temperature,
