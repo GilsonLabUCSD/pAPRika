@@ -339,6 +339,7 @@ class fe_calc(object):
                 self.results[phase][method]['sem'] = None
                 self.results[phase][method]['fe_matrix'] = None
                 self.results[phase][method]['sem_matrix'] = None
+<<<<<<< HEAD
 
                 # mbar with blocking are currently supported.
                 if method == 'mbar-block':
@@ -426,7 +427,6 @@ class fe_calc(object):
                                                         fcs[3], targs[3],
                                                         fcs[4], targs[4],
                                                         fcs[5], targs[5])
-
 
 
 def get_factors(n):
