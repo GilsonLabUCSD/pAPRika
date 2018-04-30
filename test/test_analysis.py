@@ -115,5 +115,9 @@ def test_fe_calc():
     for i in range(len(test_vals)):
         assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
 
+    fecalc.compute_ref_state_work([rest1, rest2, rest3, None, None, None])
+
+    assert np.isclose(-4.34372240, fecalc.results['ref_state_work'])
+
 
 test_fe_calc()
