@@ -35,6 +35,11 @@ class fe_calc(object):
         Dictionary containing collected trajectory values for the relevant restraints and windows
     methods : {list}
         List of analysis methods to be performed (e.g., MBAR, TI, ...)
+    bootcycles : int
+        Number of bootstrap iterations for the TI methods.
+    quick_ti_matrix : bool
+        If True, only compute the first row and neighbors along the diagaonal. This is sufficient
+        to get the overall free energy and the convergence values. Default: False
     results : {dict}
         TODO: description
     """
@@ -56,6 +61,9 @@ class fe_calc(object):
 
         self.methods = ['mbar-block']  # mbar-autoc, mbar-none, ti-block, ti-autoc, ti-none
         # TODO: Add check that fe_methods and subsample_methods have correct keywords
+
+        self.bootcycles = 10000
+        self.quick_ti_matrix = False
 
         self.results = {}
 
@@ -229,7 +237,11 @@ class fe_calc(object):
         data_points = [len(np.asarray(x).T) for x in self.simulation_data[phase]]
         max_data_points = max(data_points)
         active_restraints = list(compress(self.restraint_list, self.changing_restraints[phase]))
-        force_constants = [i.phase[phase]['force_constants'] for i in active_restraints]
+        force_constants = [np.copy(i.phase[phase]['force_constants']) for i in active_restraints]
+        # Convert force constants from radians to degrees for angles/dihedrals
+        for r, rest in enumerate(active_restraints):
+            if rest.mask3 is not None:
+                force_constants[r] *= (np.pi / 180.0)**2
         targets = [i.phase[phase]['targets'] for i in active_restraints]
 
         return number_of_windows, data_points, max_data_points, active_restraints, force_constants, targets, self.simulation_data[
@@ -252,11 +264,6 @@ class fe_calc(object):
 
         # Note, the organization of k = coordinate windows, l = potential windows
         # seems to be opposite of the documentation. But I got wrong numbers the other way around.
-
-        for r, rest in enumerate(active_rest):
-            if rest.mask3 is not None:
-                force_constants[r] *= (np.pi / 180.0)**2
-
         for k in range(num_win):  # Coordinate windows
             for l in range(num_win):  # Potential Windows
                 force_constants_T = np.asarray(force_constants).T[l, :, None]
@@ -324,6 +331,151 @@ class fe_calc(object):
         # Return Matrix of free energies and uncertainties
         return Deltaf_ij, dDeltaf_ij
 
+    def _run_ti(self, phase, prepared_data):
+        """
+        Compute the free energy using the TI method.
+
+        We compute the partial derivative (ie forces), for each frame, with respect to the
+        changing parameter, either a lambda or target value. The force constants
+        are scaled by the lambda parameter which controls their strength: 0 to fc_max.
+        Potential:
+          U = lambda*fc_max*(values - target)**2
+        Forces Attach:
+          dU/dlambda = fc_max*(values - target)**2
+        Forces Pull:
+          dU/dtarget = 2*lambda*fc_max(values - target)
+        Forces Release:
+          (same as Attach)
+
+        Then we integrate over the interval covered by lambda or target.
+
+        ### WARNING!! I HAVE ONLY CONSIDERED WHETHER THIS WILL WORK FOR THE
+        ### CASE WHEN THE PULL PHASE IS A SINGLE DISTANCE RESTRAINT WITH A
+        ### CHANGING TARGET VALUE.  WILL NEED FURTHER THOUGHT FOR CHANGING
+        ### ANGLE OR DIHEDRAL.
+
+        """
+
+        # Unpack the prepared data
+        num_win, data_points, max_data_points, active_rest, force_constants, targets, ordered_values = prepared_data
+
+        # Setup Stuff
+
+        # Number of data points in each restraint value array
+        N_k = np.array(data_points) 
+
+        # The dU array to store the partial derivative of the potential with respect lambda or target,
+        # depending on the whether attach/release or pull. Data stored for each frame.  This just a
+        # temporary storage space.
+        dU = np.zeros([max_data_points], np.float64)
+
+        # The mean/sem dU value for each window
+        dU_avgs = np.zeros([num_win], np.float64)
+        dU_sems = np.zeros([num_win], np.float64)
+
+        # Array for sampling dU off mean and SEM
+        dU_samples = np.zeros([num_win, self.bootcycles], np.float64)
+
+        # Array for values of the changing coordinate (x-axis), either lambda or target.
+        # I'll name them dl_vals for dlambda values.
+        dl_vals = np.zeros([num_win], np.float64)
+
+        # Setup spline arrays
+        x_spline = np.zeros([0], np.float64) # We're gonna create this by appending
+        spline_idxs = np.zeros([num_win], np.int32) # Index to indicate the window locations in the spline
+        spline_idxs[0] = 0
+
+        # Integration matrix. Values stored for each bootstrap.
+        int_matrix = np.zeros([num_win, num_win, self.bootcycles], np.float64)
+
+        # Setup fe, sem matrices
+        fe_matrix = np.zeros([num_win, num_win], np.float64)
+        sem_matrix = np.zeros([num_win, num_win], np.float64)
+
+        # Store the max value
+        max_force_constants = np.zeros([len(active_rest)], np.float64)
+        for r, rest in enumerate(active_rest):
+            max_force_constants[r] = np.max(force_constants[r])
+
+        # Deal with dihedral wrapping and compute forces
+        for k in range(num_win):  # Coordinate windows
+            force_constants_T = np.asarray(force_constants).T[k, :, None]
+            targets_T = np.asarray(targets).T[k, :, None]
+
+            for r, rest in enumerate(active_rest):  # Restraints
+                # If this is a dihedral, we need to shift around restraint value
+                # on the periodic axis to make sure the lowest potential is used.
+                if rest.mask3 is not None and rest.mask4 is not None:
+                    target = np.asarray(targets).T[k][r]
+                    bool_list = ordered_values[k][r] < target - 180.0
+                    ordered_values[k][r][bool_list] += 360.0
+                    bool_list = ordered_values[k][r] > target + 180.0
+                    ordered_values[k][r][bool_list] -= 360.0
+
+            # Compute forces and store the values of the changing coordinate, either lambda or target
+            if phase == 'attach' or phase == 'release':
+                dU[0:N_k[k]] = np.sum(max_force_constants[:, None] * (ordered_values[k] - targets_T)**2, axis=0)
+                # this is lambda. assume the same scaling for all restraints
+                dl_vals[k] = force_constants_T[0]/max_force_constants[0]
+            else:
+                dU[0:N_k[k]] = np.sum(2.0 * max_force_constants[:, None] * (ordered_values[k] - targets_T), axis=0)
+                dl_vals[k] = targets_T[0]  # Currently assuming a single distance restraint
+
+            # Compute mean and sem
+            dU_avgs[k] = np.mean( dU[0:N_k[k]] )
+            dU_sems[k] = get_block_sem( dU[0:N_k[k]] )
+
+            # Generate bootstrapped samples based on dU mean and sem. These will be used for integration.
+            dU_samples[k,0:self.bootcycles] = np.random.normal(dU_avgs[k], dU_sems[k], self.bootcycles)
+
+            # Create the spline values by appending 100 points between each window.
+            # Start with k=1 so we don't double count.
+            if k > 0:
+                x_spline = np.append(x_spline,np.linspace(dl_vals[k-1], dl_vals[k], num=100, endpoint=False))
+                spline_idxs[k] = len(x_spline)
+
+        # Tack on the final value to the spline
+        x_spline = np.append(x_spline, dl_vals[-1])
+
+        # For some reason the attach/release work (integration) is positive, but the
+        # pull work needs a negative multiplier.  Like W = -f*d type thing.  I need
+        # an intuitive way to explain this.
+        if phase == 'attach' or phase == 'release':
+            int_sign = 1.0
+        else:
+            int_sign = -1.0
+
+        # Bootstrap the integration
+        for bcyc in range(self.bootcycles):
+            y_spline = interpolate(dl_vals, dU_samples[:,bcyc], x_spline)
+            for j in range(0,num_win):
+                for k in range(j+1,num_win):
+                    # If quick_ti_matrix, only do first row and neighbors in matrix
+                    if self.quick_ti_matrix and j != 0 and k-j > 1:
+                        continue
+                    beg = spline_idxs[j]
+                    end = spline_idxs[k]
+                    # Integrate
+                    int_matrix[j,k,bcyc] = int_sign*np.trapz( y_spline[beg:end], x_spline[beg:end] )
+
+        # Populate fe_matrix, sem_matrix
+        for j in range(0,num_win):
+            for k in range(j+1,num_win):
+                # If quick_ti_matrix, only populate first row and neighbors in matrix
+                if self.quick_ti_matrix and j != 0 and k-j > 1:
+                    fe_matrix[j, k] = None
+                    fe_matrix[k, j] = None
+                    sem_matrix[j, k] = None
+                    sem_matrix[k, j] = None
+                else:
+                    fe_matrix[j, k] = np.mean(int_matrix[j,k])
+                    fe_matrix[k, j] = -1.0*fe_matrix[j, k]
+                    sem_matrix[j, k] = np.std(int_matrix[j,k])
+                    sem_matrix[k, j] = sem_matrix[j, k]
+
+        return fe_matrix, sem_matrix
+
+
     def compute_free_energy(self):
         """
         Do free energy calc.
@@ -340,42 +492,100 @@ class fe_calc(object):
                 self.results[phase][method]['fe_matrix'] = None
                 self.results[phase][method]['sem_matrix'] = None
 
-                # mbar with blocking are currently supported.
+                # Prepare data
+                if sum(self.changing_restraints[phase]) == 0:
+                    log.debug('Skipping free energy calculation for %s' % phase)
+                    break
+                prepared_data = self._prepare_data(phase)
+                self.results[phase][method]['n_frames'] = np.sum(prepared_data[1])
+
+                # Run the method
                 if method == 'mbar-block':
-                    if sum(self.changing_restraints[phase]) == 0:
-                        log.debug('Skipping free energy calculation for %s' % phase)
-                        break
-                    prepared_data = self._prepare_data(phase)
-                    self.results[phase][method]['n_frames'] = np.sum(prepared_data[1])
-                    self.results[phase][method]['fe_matrix'],self.results[phase][method]['sem_matrix']\
-                        = self._run_mbar(prepared_data)
-                    self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
-                    self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0, -1]
+                    self.results[phase][method]['fe_matrix'],self.results[phase][method]['sem_matrix'] = self._run_mbar(prepared_data)
+                elif method == 'ti-block':
+                    self.results[phase][method]['fe_matrix'],self.results[phase][method]['sem_matrix'] = self._run_ti(phase, prepared_data)
+                else:
+                    raise Exception("The method '{}' is not valid for compute_free_energy".format(method))
 
-                    windows = len(self.results[phase][method]['sem_matrix'])
-                    self.results[phase][method]['convergence'] = np.ones([windows], np.float64) * -1.0
-                    self.results[phase][method]['ordered_convergence'] = np.ones([windows], np.float64) * -1.0
-                    log.info(phase + ': computing convergence for mbar-blocking')
-                    for i in range(windows):
-                        if i == 0:
-                            self.results[phase][method]['ordered_convergence'][i]\
-                                = self.results[phase][method]['sem_matrix'][i][i+1]
-                        elif i == windows - 1:
-                            self.results[phase][method]['ordered_convergence'][i]\
-                                = self.results[phase][method]['sem_matrix'][i][i-1]
+                # Store endpoint free energy and SEM
+                self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
+                self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0, -1]
+
+                # Store convergence values, which are helpful for running simulations
+                windows = len(self.results[phase][method]['sem_matrix'])
+                self.results[phase][method]['convergence'] = np.ones([windows], np.float64) * -1.0
+                self.results[phase][method]['ordered_convergence'] = np.ones([windows], np.float64) * -1.0
+                log.info(phase + ': computing convergence for '+method)
+                for i in range(windows):
+                    if i == 0:
+                        self.results[phase][method]['ordered_convergence'][i]\
+                            = self.results[phase][method]['sem_matrix'][i][i+1]
+                    elif i == windows - 1:
+                        self.results[phase][method]['ordered_convergence'][i]\
+                            = self.results[phase][method]['sem_matrix'][i][i-1]
+                    else:
+                        left = self.results[phase][method]['sem_matrix'][i][i - 1]
+                        right = self.results[phase][method]['sem_matrix'][i][i + 1]
+                        if left > right:
+                            max_val = left
+                        elif right > left:
+                            max_val = right
                         else:
-                            left = self.results[phase][method]['sem_matrix'][i][i - 1]
-                            right = self.results[phase][method]['sem_matrix'][i][i + 1]
-                            if left > right:
-                                max_val = left
-                            elif right > left:
-                                max_val = right
-                            else:
-                                max_val = right
-                            self.results[phase][method]['ordered_convergence'][i] = max_val
+                            max_val = right
+                        self.results[phase][method]['ordered_convergence'][i] = max_val
 
-                    self.results[phase][method]['convergence'] = \
-                        [self.results[phase][method]['ordered_convergence'][i] for i in self.orders[phase]]
+                self.results[phase][method]['convergence'] = \
+                    [self.results[phase][method]['ordered_convergence'][i] for i in self.orders[phase]]
+
+
+    def compute_ref_state_work(self, restraints):
+        """
+        Compute the work to place a molecule at standard reference state conditions
+        starting from a state defined by up to six restraints. (see ref_state_work for
+        details)
+
+        Parameters
+        ----------
+        restraints : list [r, theta, phi, alpha, beta, gamma]
+            A list of paprika DAT_restraint objects in order of the six translational and
+            orientational restraints needed to describe the configuration of one molecule
+            relative to another. The six restraints are: r, theta, phi, alpha, beta, gamma.
+            If any of these coordinates is not being restrained, use a None in place of a
+            DAT_restraint object. (see ref_state_work for details on the six restraints)
+        """
+
+        if not restraints or restraints[0] is None:
+            raise Exception('At minimum, a single distance restraint must be supplied to compute_ref_state_work')
+
+        fcs = []
+        targs = []
+
+        for restraint in restraints:
+            if restraint is None:
+                fcs.append(None)
+                targs.append(None)
+            elif restraint.phase['release']['force_constants'] is not None:
+                fcs.append( np.sort(restraint.phase['release']['force_constants'])[-1] )
+                targs.append( np.sort(restraint.phase['release']['targets'])[-1] )
+            elif restraint.phase['pull']['force_constants'] is not None:
+                fcs.append( np.sort(restraint.phase['pull']['force_constants'])[-1] )
+                targs.append( np.sort(restraint.phase['pull']['targets'])[-1] )
+            else:
+                raise Exception('Restraints should have pull or release values initialized in order to compute_ref_state_work')
+
+        # Convert degrees to radians for theta, phi, alpha, beta, gamma
+        for i in range(1,5):
+            if targs[i] is not None:
+                targs[i] = np.radians(targs[i])
+
+
+        self.results['ref_state_work'] = ref_state_work(self.temperature,
+                                                        fcs[0], targs[0],
+                                                        fcs[1], targs[1],
+                                                        fcs[2], targs[2],
+                                                        fcs[3], targs[3],
+                                                        fcs[4], targs[4],
+                                                        fcs[5], targs[5])
 
 
     def compute_ref_state_work(self, restraints):
@@ -714,4 +924,89 @@ def ref_state_work(temperature,
 
     # Return the free energy
     return RT*np.log( trans * orient )
+
+
+def interpolate(x, y, x_new):
+    """
+    Create an akima spline.
+
+    Parameters
+    ----------
+    x : list or np.array
+        The x values for your data
+    y : list or np.array
+        The y values for your data
+    x_new : list or np.array
+        The x values for your desired spline
+
+    Returns
+    -------
+    y_new : np.array
+        The y values for your spline
+    """
+    # Copyright (c) 2007-2015, Christoph Gohlke
+    # Copyright (c) 2007-2015, The Regents of the University of California
+    # Produced at the Laboratory for Fluorescence Dynamics
+    # All rights reserved.
+    #
+    # Redistribution and use in source and binary forms, with or without
+    # modification, are permitted provided that the following conditions are met:
+    #
+    # * Redistributions of source code must retain the above copyright
+    #   notice, this list of conditions and the following disclaimer.
+    # * Redistributions in binary form must reproduce the above copyright
+    #   notice, this list of conditions and the following disclaimer in the
+    #   documentation and/or other materials provided with the distribution.
+    # * Neither the name of the copyright holders nor the names of any
+    #   contributors may be used to endorse or promote products derived
+    #   from this software without specific prior written permission.
+    #
+    # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    # ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+    # LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    # CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    # SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    # INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+    # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    # POSSIBILITY OF SUCH DAMAGE.
+    x = np.array(x, dtype=np.float64, copy=True)
+    y = np.array(y, dtype=np.float64, copy=True)
+    xi = np.array(x_new, dtype=np.float64, copy=True)
+    if y.ndim != 1:
+        raise NotImplementedError("y.ndim != 1 is not supported!")
+    if x.ndim != 1 or xi.ndim != 1:
+        raise ValueError("x-arrays must be one dimensional")
+    n = len(x)
+    if n < 3:
+        raise ValueError("array too small")
+    if n != y.shape[-1]:
+        raise ValueError("size of x-array must match data shape")
+    dx = np.diff(x)
+    if any(dx <= 0.0):
+        raise ValueError("x-axis not valid")
+    if any(xi < x[0]) or any(xi > x[-1]):
+        raise ValueError("interpolation x-axis out of bounds")
+    m = np.diff(y) / dx
+    mm = 2.0 * m[0] - m[1]
+    mmm = 2.0 * mm - m[0]
+    mp = 2.0 * m[n - 2] - m[n - 3]
+    mpp = 2.0 * mp - m[n - 2]
+    m1 = np.concatenate(([mmm], [mm], m, [mp], [mpp]))
+    dm = np.abs(np.diff(m1))
+    f1 = dm[2:n + 2]
+    f2 = dm[0:n]
+    f12 = f1 + f2
+    ids = np.nonzero(f12 > 1e-9 * np.max(f12))[0]
+    b = m1[1:n + 1]
+    b[ids] = (f1[ids] * m1[ids + 1] + f2[ids] * m1[ids + 2]) / f12[ids]
+    c = (3.0 * m - 2.0 * b[0:n - 1] - b[1:n]) / dx
+    d = (b[0:n - 1] + b[1:n] - 2.0 * m) / dx ** 2
+    bins = np.digitize(xi, x)
+    bins = np.minimum(bins, n - 1) - 1
+    bb = bins[0:len(xi)]
+    wj = xi - x[bb]
+    return ((wj * d[bb] + c[bb]) * wj + b[bb]) * wj + y[bb]
 

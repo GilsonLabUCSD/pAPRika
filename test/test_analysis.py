@@ -76,48 +76,77 @@ def test_fe_calc():
     fecalc.trajectory = '*.nc'
     fecalc.path = 'cb6_but_gb_apr_ref_data/'
     fecalc.restraint_list = [rest1, rest2, rest3]
+    fecalc.methods = ['mbar-block', 'ti-block']
+    fecalc.bootcycles = 10000
+    fecalc.quick_ti_matrix = True
     fecalc.collect_data(single_prmtop=True)
     fecalc.compute_free_energy()
 
-    # Test free energies and uncertainties
+    ##################
+    # Test mbar-block
+    ##################
+
+    method = 'mbar-block'
+    # Test mbar-block free energies and uncertainties
     test_vals = [
-        fecalc.results['attach']['mbar-block']['fe'], fecalc.results['attach']['mbar-block']['sem'],
-        fecalc.results['pull']['mbar-block']['fe'], fecalc.results['pull']['mbar-block']['sem']
+        fecalc.results['attach'][method]['fe'], fecalc.results['attach'][method]['sem'],
+        fecalc.results['pull'][method]['fe'], fecalc.results['pull'][method]['sem']
     ]
-
-    print(test_vals)
-
     ref_vals = [13.267731176, 0.16892084090, -2.1791430735, 0.93638948302]
-
     for i in range(len(test_vals)):
         assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
 
-    # Test convergence values attach
-
-    test_vals = fecalc.results['attach']['mbar-block']['convergence']
-
-    print(test_vals)
-
+    # Test attach mbar-block convergence values
+    test_vals = fecalc.results['attach'][method]['convergence']
     ref_vals = np.array([0.0198918, 0.0451676, 0.0564517, 0.1079282, 0.1079282])
-
     for i in range(len(test_vals)):
         assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
 
-    # Test convergence values pull
-
-    test_vals = fecalc.results['pull']['mbar-block']['convergence']
-
+    # Test pull mbar-block convergence values
+    test_vals = fecalc.results['pull'][method]['convergence']
     ref_vals = np.array([
         0.2053769, 0.2053769, 0.1617423, 0.1747668, 0.5255023, 0.5255023, 0.1149945, 0.1707901, 0.2129136, 0.2129136,
         0.1942189, 0.1768906, 0.1997338, 0.1997338, 0.2014766, 0.2014766, 0.1470727, 0.1442517, 0.1434395
     ])
-
     for i in range(len(test_vals)):
         assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
 
-    fecalc.compute_ref_state_work([rest1, rest2, rest3, None, None, None])
+    ##################
+    # Test ti-block
+    ##################
 
+    method = 'ti-block'
+    # Test ti-block free energies and uncertainties
+    test_vals = [
+        fecalc.results['attach'][method]['fe'], fecalc.results['attach'][method]['sem'],
+        fecalc.results['pull'][method]['fe'], fecalc.results['pull'][method]['sem']
+    ]
+    ref_vals = [13.34454847395026, 0.23573439432545562, -1.8156302924094274, 0.78666294562005157]
+    for i in range(len(test_vals)):
+        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.02)
+
+    # Test attach ti-block convergence values
+    test_vals = fecalc.results['attach'][method]['convergence']
+    ref_vals = np.array([0.02627, 0.06126, 0.08698, 0.16453, 0.16453])
+    for i in range(len(test_vals)):
+        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.02)
+
+    # Test pull ti-block convergence values
+    test_vals = fecalc.results['pull'][method]['convergence']
+    ref_vals = np.array([
+        0.27939, 0.27939, 0.22557, 0.17753, 0.17753, 0.11311, 0.11000, 0.13295, 0.13295, 0.12684, 0.10401,
+        0.10443, 0.10443, 0.11589, 0.13318, 0.13318, 0.12609, 0.11529, 0.10876
+    ])
+    for i in range(len(test_vals)):
+        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.02)
+
+    #######################
+    # Test ref_state_work
+    #######################
+
+    # Test reference state calculation
+    fecalc.compute_ref_state_work([rest1, rest2, rest3, None, None, None])
     assert np.isclose(-4.34372240, fecalc.results['ref_state_work'])
 
 
-test_fe_calc()
+#test_fe_calc()
