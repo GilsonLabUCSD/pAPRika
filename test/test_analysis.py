@@ -123,13 +123,13 @@ def test_fe_calc():
     ]
     ref_vals = [13.34454847395026, 0.23573439432545562, -1.8156302924094274, 0.78666294562005157]
     for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.01)
+        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.02)
 
     # Test attach ti-block convergence values
     test_vals = fecalc.results['attach'][method]['convergence']
     ref_vals = np.array([0.02627, 0.06126, 0.08698, 0.16453, 0.16453])
     for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.01)
+        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.02)
 
     # Test pull ti-block convergence values
     test_vals = fecalc.results['pull'][method]['convergence']
@@ -138,7 +138,7 @@ def test_fe_calc():
         0.10443, 0.10443, 0.11589, 0.13318, 0.13318, 0.12609, 0.11529, 0.10876
     ])
     for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.01)
+        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.02)
 
     #######################
     # Test ref_state_work
