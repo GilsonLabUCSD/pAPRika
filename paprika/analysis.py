@@ -324,6 +324,61 @@ class fe_calc(object):
         # Return Matrix of free energies and uncertainties
         return Deltaf_ij, dDeltaf_ij
 
+    def _run_ti(self, phase, prepared_data):
+        """
+        Compute the free energy using the TI method.
+        """
+
+        # Unpack the prepared data
+        num_win, data_points, max_data_points, active_rest, force_constants, targets, ordered_values = prepared_data
+
+        # Number of data points in each restraint value array
+        N_k = np.array(data_points)
+
+        # Setup the dU array. ie, the partial derivative of the potential with respect force constant or target,
+        # depending on the whether attach/release or pull.
+        dU = np.zeros([max_data_points], np.float64)
+
+        # The mean/sem dU value for each window
+        dU_avgs = np.zeros([num_win], np.float64)
+        dU_sems = np.zeros([num_win], np.float64)
+
+        # Convert the force_constants to degrees
+        for r, rest in enumerate(active_rest):
+            if rest.mask3 is not None:
+                force_constants[r] *= (np.pi / 180.0)**2
+
+        # Deal with dihedral wrapping
+        for k in range(num_win):  # Coordinate windows
+            force_constants_T = np.asarray(force_constants).T[k, :, None]
+            targets_T = np.asarray(targets).T[k, :, None]
+
+            for r, rest in enumerate(active_rest):  # Restraints
+
+                # If this is a dihedral, we need to shift around restraint value
+                # on the periodic axis to make sure the lowest potential is used.
+                if rest.mask3 is not None and rest.mask4 is not None:
+                    target = np.asarray(targets).T[k][r]
+                    bool_list = ordered_values[k][r] < target - 180.0
+                    ordered_values[k][r][bool_list] += 360.0
+                    bool_list = ordered_values[k][r] > target + 180.0
+                    ordered_values[k][r][bool_list] -= 360.0
+
+            # Compute the partial derivative (ie forces) for each frame. The force constants
+            # are scaled by a lambda (l) parameter which controls their strength: 0 to max.
+            # Potential:         U = l*fc_max*(values - targets)**2
+            # Forces Attach: dU/dl = 
+            
+            if phase == 'attach' or phase == 'release':
+                dU[0:N_k[k]] = np.sum(force_constants_T * (ordered_values[k] - targets_T)**2, axis=0)
+            else:
+                dU[0:N_k[k]] = np.sum(2.0 * force_constants_T * (ordered_values[k] - targets_T), axis=0)
+
+            dU_avgs[k] = np.mean( dU[0:N_k[k]] )
+            dU_sems[k] = get_block_sem( dU[0:N_k[k]] )
+
+
+
     def compute_free_energy(self):
         """
         Do free energy calc.
