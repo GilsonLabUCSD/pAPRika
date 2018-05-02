@@ -494,10 +494,10 @@ def static_DAT_restraint(restraint_mask_list,
 
     # Release phase
     if num_window_list[2] is not None and num_window_list[2] != 0:
-        rest.attach['target'] = target
-        rest.attach['fc_initial'] = force_constant
-        rest.attach['fc_final'] = force_constant
-        rest.attach['num_windows'] = num_window_list[2]
+        rest.release['target'] = target
+        rest.release['fc_initial'] = force_constant
+        rest.release['fc_final'] = force_constant
+        rest.release['num_windows'] = num_window_list[2]
 
     rest.initialize()
 
