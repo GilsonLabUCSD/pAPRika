@@ -243,20 +243,9 @@ class System(object):
     
         self.check_for_leap_log()
         file_name = self.output_prefix + '.tleap.in'    
-#        p = sp.Popen(['tleap', '-s ', '-f ', file_name], stdout=sp.PIPE, bufsize=1, universal_newlines=True, cwd=self.output_path)
-#        output = []
-#        # Wait until process terminates...
-#        while p.poll() is None:
-#            line = p.communicate()[0]
-#            output.append(line)
-#        # The concern here is if tleap is executed without a 'quit' line?
-#        # Not 100% sure what this is doing for us.
-#        if p.poll() is None:
-#            p.kill()
 
         output =  sp.Popen(['tleap', '-s ', '-f ', file_name], stdout=sp.PIPE, stderr=sp.PIPE, cwd=self.output_path)
-
-        output = output.stdout.read().splitlines()
+        output = output.stdout.read().decode().splitlines()
 
         self.grep_leap_log()
         return output
@@ -419,7 +408,6 @@ class System(object):
         output = self.run()
         # Return a dictionary of {'RES' : number of RES}
         residues = {}
-#        for line in output[0].splitlines():
         for line in output:
             # Is this line a residue from `desc` command?
             match = re.search("^R<(.*) ", line)
@@ -494,7 +482,6 @@ class System(object):
         """
         output = self.run()
         # Return the total simulation volume
-#        for line in output[0].splitlines():
         for line in output:
             line = line.strip()
             if "Volume" in line:
@@ -557,7 +544,6 @@ class System(object):
     
         # Return a list of residue numbers for the waters
         water_residues = []
-#        for line in output[0].splitlines():
         for line in output:
             # Is this line a water?
             match = re.search("^R<WAT (.*)>", line)
