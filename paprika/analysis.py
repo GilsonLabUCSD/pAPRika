@@ -197,10 +197,17 @@ class fe_calc(object):
 
         # Niel: I'm just checking if *one* restraint is `continuous_apr`,
         # which should be the same value for all restraints.
-        if active_attach_restraints[0].continuous_apr and self.orders['attach'].any and self.orders['pull'].any:
-            log.debug('Replacing {} with {} in {} for `continuous_apr`...'.format(
-                ordered_attach_windows[-1], ordered_pull_windows[0], ordered_attach_windows))
-            ordered_attach_windows[-1] = ordered_pull_windows[0]
+        if len(active_attach_restraints) > 0:
+            if active_attach_restraints[0].continuous_apr and self.orders['attach'].any and self.orders['pull'].any:
+                log.debug('Replacing {} with {} in {} for `continuous_apr`...'.format(
+                    ordered_attach_windows[-1], ordered_pull_windows[0], ordered_attach_windows))
+                ordered_attach_windows[-1] = ordered_pull_windows[0]
+
+        if len(active_release_restraints) > 0:
+            if active_release_restraints[0].continuous_apr and self.orders['release'].any and self.orders['pull'].any:
+                log.debug('Replacing {} with {} in {} for `continuous_apr`...'.format(
+                    ordered_release_windows[-1], ordered_pull_windows[-1], ordered_release_windows))
+                ordered_release_windows[-1] = ordered_pull_windows[-1]
 
         # This is inefficient and slow.
         # I am going to separately loop through the attach, then pull, then release windows.
@@ -423,7 +430,8 @@ class fe_calc(object):
 
             # Compute mean and sem
             dU_avgs[k] = np.mean( dU[0:N_k[k]] )
-            dU_sems[k] = get_block_sem( dU[0:N_k[k]] )
+            nearest_max = get_nearest_max(N_k[k])
+            dU_sems[k] = get_block_sem( dU[0:nearest_max] )
 
             # Generate bootstrapped samples based on dU mean and sem. These will be used for integration.
             dU_samples[k,0:self.bootcycles] = np.random.normal(dU_avgs[k], dU_sems[k], self.bootcycles)
@@ -444,6 +452,8 @@ class fe_calc(object):
             int_sign = 1.0
         else:
             int_sign = -1.0
+
+        log.debug('Running boostrap calculations')
 
         # Bootstrap the integration
         for bcyc in range(self.bootcycles):
@@ -498,6 +508,8 @@ class fe_calc(object):
                     break
                 prepared_data = self._prepare_data(phase)
                 self.results[phase][method]['n_frames'] = np.sum(prepared_data[1])
+
+                log.debug("Running {} analysis on {} phase ...".format(method,phase))
 
                 # Run the method
                 if method == 'mbar-block':

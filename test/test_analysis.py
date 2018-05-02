@@ -71,13 +71,15 @@ def test_fe_calc():
     # Phase abbreviations
     phase_dict = {'a': 'attach', 'p': 'pull', 'r': 'release'}
 
+    np.random.seed(12345)
+
     fecalc = analysis.fe_calc()
     fecalc.prmtop = 'cb6_but_gb_apr_ref_data/vac.prmtop'
     fecalc.trajectory = '*.nc'
     fecalc.path = 'cb6_but_gb_apr_ref_data/'
     fecalc.restraint_list = [rest1, rest2, rest3]
     fecalc.methods = ['mbar-block', 'ti-block']
-    fecalc.bootcycles = 10000
+    fecalc.bootcycles = 100
     fecalc.quick_ti_matrix = True
     fecalc.collect_data(single_prmtop=True)
     fecalc.compute_free_energy()
@@ -121,24 +123,25 @@ def test_fe_calc():
         fecalc.results['attach'][method]['fe'], fecalc.results['attach'][method]['sem'],
         fecalc.results['pull'][method]['fe'], fecalc.results['pull'][method]['sem']
     ]
-    ref_vals = [13.34454847395026, 0.23573439432545562, -1.8156302924094274, 0.78666294562005157]
+    ref_vals = np.array([13.305162175530445, 0.27669393734269204, -1.8076363192165885, 0.87339001681638395])
     for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.02)
+        assert np.isclose(ref_vals[i], test_vals[i])
 
     # Test attach ti-block convergence values
     test_vals = fecalc.results['attach'][method]['convergence']
-    ref_vals = np.array([0.02627, 0.06126, 0.08698, 0.16453, 0.16453])
+    ref_vals = np.array([0.029299629107079127, 0.068227760638769536, 0.10349522392605789, 0.18973218712192189, 0.18973218712192189])
     for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.02)
+        assert np.isclose(ref_vals[i], test_vals[i])
 
     # Test pull ti-block convergence values
     test_vals = fecalc.results['pull'][method]['convergence']
     ref_vals = np.array([
-        0.27939, 0.27939, 0.22557, 0.17753, 0.17753, 0.11311, 0.11000, 0.13295, 0.13295, 0.12684, 0.10401,
-        0.10443, 0.10443, 0.11589, 0.13318, 0.13318, 0.12609, 0.11529, 0.10876
+        0.298113729226, 0.298113729226, 0.215766650517, 0.260030050083, 0.260030050083, 0.134490787229, 0.111565074939,
+        0.136435341389, 0.136686735825, 0.136686735825, 0.110195776953, 0.110414577953, 0.110414577953, 0.14436650726,
+        0.168235750367, 0.168235750367, 0.128278235279, 0.125751797848, 0.10138689671,
     ])
     for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.02)
+        assert np.isclose(ref_vals[i], test_vals[i])
 
     #######################
     # Test ref_state_work
