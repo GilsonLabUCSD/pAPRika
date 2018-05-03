@@ -258,7 +258,7 @@ class System(object):
         try:
             with open(self.output_path + 'leap.log', 'r') as file:
                 for line in file.readlines():
-                    if re.search('ERROR|WARNING|Warning|duplicate|FATAL|Could', line):
+                    if re.search('ERROR|WARNING|Warning|duplicate|FATAL|Could|Fatal|Error', line):
                         log.warning(
                             'It appears there was a problem with solvation: check `leap.log`...'
                         )
@@ -404,23 +404,29 @@ class System(object):
             Dictionary of added residues and their number
 
         """
-        self.write_input()
-        output = self.run()
-        # Return a dictionary of {'RES' : number of RES}
-        residues = {}
-        for line in output:
-            # Is this line a residue from `desc` command?
-            match = re.search("^R<(.*) ", line)
-            if match:
-                residue_name = match.group(1)
-                # If this residue is not in the dictionary, initialize and
-                # set the count to 1.
-                if residue_name not in residues:
-                    residues[residue_name] = 1
-                # If this residue is in the dictionary, increment the count
-                # each time we find an instance.
-                elif residue_name in residues:
-                    residues[residue_name] += 1
+        for attempt in range(10):
+            self.write_input()
+            output = self.run()
+            # Return a dictionary of {'RES' : number of RES}
+            residues = {}
+            for line in output:
+                # Is this line a residue from `desc` command?
+                match = re.search("^R<(.*) ", line)
+                if match:
+                    residue_name = match.group(1)
+                    # If this residue is not in the dictionary, initialize and
+                    # set the count to 1.
+                    if residue_name not in residues:
+                        residues[residue_name] = 1
+                    # If this residue is in the dictionary, increment the count
+                    # each time we find an instance.
+                    elif residue_name in residues:
+                        residues[residue_name] += 1
+            if residues:
+                break
+            if attempt == 9:
+                raise Exception('tleap was unable to successfully create the system after 10 attempts.'\
+                                +' Investigate the leap.log for errors.')
 
         #log.debug(residues)
         if print_results:

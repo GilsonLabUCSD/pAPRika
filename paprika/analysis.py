@@ -64,6 +64,7 @@ class fe_calc(object):
 
         self.bootcycles = 10000
         self.quick_ti_matrix = False
+        self.quicker_ti_matrix = False
 
         self.results = {}
 
@@ -462,6 +463,8 @@ class fe_calc(object):
                 for k in range(j+1,num_win):
                     # If quick_ti_matrix, only do first row and neighbors in matrix
                     if self.quick_ti_matrix and j != 0 and k-j > 1:
+                        continue
+                    if self.quicker_ti_matrix and j != 0 and k != num_win-1:
                         continue
                     beg = spline_idxs[j]
                     end = spline_idxs[k]
