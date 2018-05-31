@@ -141,7 +141,7 @@ class fe_calc(object):
         elif attach_orders:
             orders['attach'] = attach_orders[0]
         else:
-            orders['attach'] = []
+            orders['attach'] = np.empty(0)
 
         for restraint in active_pull_restraints:
             pull_orders.append(np.argsort(restraint.phase['pull']['targets']))
@@ -150,7 +150,7 @@ class fe_calc(object):
         elif pull_orders:
             orders['pull'] = pull_orders[0]
         else:
-            orders['pull'] = []
+            orders['pull'] = np.empty(0)
 
         for restraint in active_release_restraints:
             release_orders.append(np.argsort(restraint.phase['release']['force_constants']))
@@ -159,7 +159,7 @@ class fe_calc(object):
         elif release_orders:
             orders['release'] = release_orders[0]
         else:
-            orders['release'] = []
+            orders['release'] = np.empty(0)
 
         return orders
 
