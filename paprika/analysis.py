@@ -4,7 +4,7 @@ from itertools import compress
 import numpy as np
 import pytraj as pt
 import pymbar
-
+from scipy.interpolate import Akima1DInterpolator
 
 class fe_calc(object):
     """
@@ -37,9 +37,11 @@ class fe_calc(object):
         List of analysis methods to be performed (e.g., MBAR, TI, ...)
     bootcycles : int
         Number of bootstrap iterations for the TI methods.
-    quick_ti_matrix : bool
-        If True, only compute the first row and neighbors along the diagaonal. This is sufficient
-        to get the overall free energy and the convergence values. Default: False
+    ti_matrix : str
+        If 'full', the TI mean/sem free energy is computed between all windows. If 'diagonal',
+        the mean/sem free energy is computed between the first window and all other windows,
+        as well as between all neighboring windows. If 'endpoints', the free energy is
+        computed between only the first and last window.
     results : {dict}
         TODO: description
     """
@@ -63,8 +65,7 @@ class fe_calc(object):
         # TODO: Add check that fe_methods and subsample_methods have correct keywords
 
         self.bootcycles = 10000
-        self.quick_ti_matrix = False
-        self.quicker_ti_matrix = False
+        self.ti_matrix = 'full'
 
         self.results = {}
 
@@ -339,7 +340,7 @@ class fe_calc(object):
         # Return Matrix of free energies and uncertainties
         return Deltaf_ij, dDeltaf_ij
 
-    def _run_ti(self, phase, prepared_data):
+    def run_ti(self, phase, prepared_data):
         """
         Compute the free energy using the TI method.
 
@@ -377,44 +378,39 @@ class fe_calc(object):
         # temporary storage space.
         dU = np.zeros([max_data_points], np.float64)
 
-        # The mean/sem dU value for each window
+        # The mean, sem, std. dev, and number of uncorrelated dU values for each window
         dU_avgs = np.zeros([num_win], np.float64)
         dU_sems = np.zeros([num_win], np.float64)
-
-        # Array for sampling dU off mean and SEM
-        dU_samples = np.zeros([num_win, self.bootcycles], np.float64)
+        dU_stdv = np.zeros([num_win], np.float64)
+        dU_Nunc = np.zeros([num_win], np.float64)
 
         # Array for values of the changing coordinate (x-axis), either lambda or target.
         # I'll name them dl_vals for dlambda values.
         dl_vals = np.zeros([num_win], np.float64)
 
-        # Setup spline arrays
-        x_spline = np.zeros([0], np.float64) # We're gonna create this by appending
-        spline_idxs = np.zeros([num_win], np.int32) # Index to indicate the window locations in the spline
-        spline_idxs[0] = 0
+        # Setup interpolation array for the dLambda (dl) coordinate. We're gonna create
+        # this progressively by appending ...
+        dl_intp = np.zeros([0], np.float64)
 
-        # Integration matrix. Values stored for each bootstrap.
-        int_matrix = np.zeros([num_win, num_win, self.bootcycles], np.float64)
-
-        # Setup fe, sem matrices
-        fe_matrix = np.zeros([num_win, num_win], np.float64)
-        sem_matrix = np.zeros([num_win, num_win], np.float64)
-
-        # Store the max value
+        # Store the max force constant value.
         max_force_constants = np.zeros([len(active_rest)], np.float64)
         for r, rest in enumerate(active_rest):
             max_force_constants[r] = np.max(force_constants[r])
 
-        # Deal with dihedral wrapping and compute forces
-        for k in range(num_win):  # Coordinate windows
-            force_constants_T = np.asarray(force_constants).T[k, :, None]
-            targets_T = np.asarray(targets).T[k, :, None]
+        # Transpose force_constants and targets into "per window" format, instead of
+        # the "per restraint" format.
+        force_constants_T = np.asarray(force_constants).T
+        targets_T = np.asarray(targets).T
 
+        # For each window, do dihedral wrapping and compute forces
+        for k in range(num_win):  # Coordinate windows
+
+            # Wrap dihedrals so we get the right potential
             for r, rest in enumerate(active_rest):  # Restraints
                 # If this is a dihedral, we need to shift around restraint value
                 # on the periodic axis to make sure the lowest potential is used.
                 if rest.mask3 is not None and rest.mask4 is not None:
-                    target = np.asarray(targets).T[k][r]
+                    target = targets_T[k, r]
                     bool_list = ordered_values[k][r] < target - 180.0
                     ordered_values[k][r][bool_list] += 360.0
                     bool_list = ordered_values[k][r] > target + 180.0
@@ -422,69 +418,41 @@ class fe_calc(object):
 
             # Compute forces and store the values of the changing coordinate, either lambda or target
             if phase == 'attach' or phase == 'release':
-                dU[0:N_k[k]] = np.sum(max_force_constants[:, None] * (ordered_values[k] - targets_T)**2, axis=0)
+                dU[0:N_k[k]] = np.sum(max_force_constants[:, None] * (ordered_values[k] - targets_T[k, :, None])**2, axis=0)
                 # this is lambda. assume the same scaling for all restraints
-                dl_vals[k] = force_constants_T[0]/max_force_constants[0]
+                dl_vals[k] = force_constants_T[k, 0]/max_force_constants[0]
             else:
-                dU[0:N_k[k]] = np.sum(2.0 * max_force_constants[:, None] * (ordered_values[k] - targets_T), axis=0)
-                dl_vals[k] = targets_T[0]  # Currently assuming a single distance restraint
+                dU[0:N_k[k]] = np.sum(2.0 * max_force_constants[:, None] * (ordered_values[k] - targets_T[k, :, None]), axis=0)
+                # Currently assuming a single distance restraint
+                dl_vals[k] = targets_T[k, 0]
 
             # Compute mean and sem
             dU_avgs[k] = np.mean( dU[0:N_k[k]] )
             nearest_max = get_nearest_max(N_k[k])
             dU_sems[k] = get_block_sem( dU[0:nearest_max] )
+            dU_stdv[k] = np.std( dU[0:N_k[k]] )
+            # Rearrange SEM = StdDev/sqrt(N) to get N_uncorrelated
+            dU_Nunc[k] = ( dU_stdv[k] / dU_sems[k] )**2
 
-            # Generate bootstrapped samples based on dU mean and sem. These will be used for integration.
-            dU_samples[k,0:self.bootcycles] = np.random.normal(dU_avgs[k], dU_sems[k], self.bootcycles)
-
-            # Create the spline values by appending 100 points between each window.
+            # Create the interpolation by appending 100 points between each window.
             # Start with k=1 so we don't double count.
             if k > 0:
-                x_spline = np.append(x_spline,np.linspace(dl_vals[k-1], dl_vals[k], num=100, endpoint=False))
-                spline_idxs[k] = len(x_spline)
+                dl_intp = np.append(dl_intp,np.linspace(dl_vals[k-1], dl_vals[k], num=100, endpoint=False))
 
-        # Tack on the final value to the spline
-        x_spline = np.append(x_spline, dl_vals[-1])
-
-        # For some reason the attach/release work (integration) is positive, but the
-        # pull work needs a negative multiplier.  Like W = -f*d type thing.  I need
-        # an intuitive way to explain this.
-        if phase == 'attach' or phase == 'release':
-            int_sign = 1.0
-        else:
-            int_sign = -1.0
+        # Tack on the final value to the dl interpolation
+        dl_intp = np.append(dl_intp, dl_vals[-1])
 
         log.debug('Running boostrap calculations')
 
-        # Bootstrap the integration
-        for bcyc in range(self.bootcycles):
-            y_spline = interpolate(dl_vals, dU_samples[:,bcyc], x_spline)
-            for j in range(0,num_win):
-                for k in range(j+1,num_win):
-                    # If quick_ti_matrix, only do first row and neighbors in matrix
-                    if self.quick_ti_matrix and j != 0 and k-j > 1:
-                        continue
-                    if self.quicker_ti_matrix and j != 0 and k != num_win-1:
-                        continue
-                    beg = spline_idxs[j]
-                    end = spline_idxs[k]
-                    # Integrate
-                    int_matrix[j,k,bcyc] = int_sign*np.trapz( y_spline[beg:end], x_spline[beg:end] )
+        dU_samples = np.random.normal(dU_avgs, dU_sems, size=(self.bootcycles, dU_avgs.size))
 
-        # Populate fe_matrix, sem_matrix
-        for j in range(0,num_win):
-            for k in range(j+1,num_win):
-                # If quick_ti_matrix, only populate first row and neighbors in matrix
-                if self.quick_ti_matrix and j != 0 and k-j > 1:
-                    fe_matrix[j, k] = None
-                    fe_matrix[k, j] = None
-                    sem_matrix[j, k] = None
-                    sem_matrix[k, j] = None
-                else:
-                    fe_matrix[j, k] = np.mean(int_matrix[j,k])
-                    fe_matrix[k, j] = -1.0*fe_matrix[j, k]
-                    sem_matrix[j, k] = np.std(int_matrix[j,k])
-                    sem_matrix[k, j] = sem_matrix[j, k]
+        fe_matrix, sem_matrix = integrate_bootstraps(dl_vals, dU_samples, x_intp=dl_intp)
+
+        # The attach/release work (integration) yields appropriately positive work, but
+        # the pull work needs a negative multiplier.  Like W = -f*d type thing.  I need
+        # an intuitive way to explain this.
+        if phase == 'pull':
+            fe_matrix *= -1.0
 
         return fe_matrix, sem_matrix
 
@@ -518,7 +486,7 @@ class fe_calc(object):
                 if method == 'mbar-block':
                     self.results[phase][method]['fe_matrix'],self.results[phase][method]['sem_matrix'] = self._run_mbar(prepared_data)
                 elif method == 'ti-block':
-                    self.results[phase][method]['fe_matrix'],self.results[phase][method]['sem_matrix'] = self._run_ti(phase, prepared_data)
+                    self.results[phase][method]['fe_matrix'],self.results[phase][method]['sem_matrix'] = self.run_ti(phase, prepared_data)
                 else:
                     raise Exception("The method '{}' is not valid for compute_free_energy".format(method))
 
@@ -552,7 +520,6 @@ class fe_calc(object):
                 self.results[phase][method]['convergence'] = \
                     [self.results[phase][method]['ordered_convergence'][i] for i in self.orders[phase]]
 
-
     def compute_ref_state_work(self, restraints):
         """
         Compute the work to place a molecule at standard reference state conditions
@@ -592,57 +559,6 @@ class fe_calc(object):
         for i in range(1,5):
             if targs[i] is not None:
                 targs[i] = np.radians(targs[i])
-
-
-        self.results['ref_state_work'] = ref_state_work(self.temperature,
-                                                        fcs[0], targs[0],
-                                                        fcs[1], targs[1],
-                                                        fcs[2], targs[2],
-                                                        fcs[3], targs[3],
-                                                        fcs[4], targs[4],
-                                                        fcs[5], targs[5])
-
-
-    def compute_ref_state_work(self, restraints):
-        """
-        Compute the work to place a molecule at standard reference state conditions
-        starting from a state defined by up to six restraints. (see ref_state_work for
-        details)
-
-        Parameters
-        ----------
-        restraints : list [r, theta, phi, alpha, beta, gamma]
-            A list of paprika DAT_restraint objects in order of the six translational and
-            orientational restraints needed to describe the configuration of one molecule
-            relative to another. The six restraints are: r, theta, phi, alpha, beta, gamma.
-            If any of these coordinates is not being restrained, use a None in place of a
-            DAT_restraint object. (see ref_state_work for details on the six restraints)
-        """
-
-        if not restraints or restraints[0] is None:
-            raise Exception('At minimum, a single distance restraint must be supplied to compute_ref_state_work')
-
-        fcs = []
-        targs = []
-
-        for restraint in restraints:
-            if restraint is None:
-                fcs.append(None)
-                targs.append(None)
-            elif restraint.phase['release']['force_constants'] is not None:
-                fcs.append( np.sort(restraint.phase['release']['force_constants'])[-1] )
-                targs.append( np.sort(restraint.phase['release']['targets'])[-1] )
-            elif restraint.phase['pull']['force_constants'] is not None:
-                fcs.append( np.sort(restraint.phase['pull']['force_constants'])[-1] )
-                targs.append( np.sort(restraint.phase['pull']['targets'])[-1] )
-            else:
-                raise Exception('Restraints should have pull or release values initialized in order to compute_ref_state_work')
-
-        # Convert degrees to radians for theta, phi, alpha, beta, gamma
-        for i in range(1,5):
-            if targs[i] is not None:
-                targs[i] = np.radians(targs[i])
-
 
         self.results['ref_state_work'] = ref_state_work(self.temperature,
                                                         fcs[0], targs[0],
@@ -940,88 +856,101 @@ def ref_state_work(temperature,
     # Return the free energy
     return RT*np.log( trans * orient )
 
-
-def interpolate(x, y, x_new):
+def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
     """
-    Create an akima spline.
+    Integrate bootstraps.
 
     Parameters
     ----------
-    x : list or np.array
-        The x values for your data
-    y : list or np.array
-        The y values for your data
-    x_new : list or np.array
-        The x values for your desired spline
+    x : np.array of floats
+        The x coordinate of the curve to be integrated.
+    ys : np.array with shape = ( bootcycles, len(x) )
+        Two dimensional array in which the first dimension is bootcycles and the second
+        dimension contains the arrays of y values which correspond to the x values and will
+        be used for integration.
+    x_intp : np.array of floats
+        An array which finely interpolates the x values. If not provided, it will be generated
+        by adding 100 evenly spaced points between each x value. Default: None.
+    matrix : string
+        If 'full', the mean/sem integration is computed between x values. If 'diagonal',
+        the mean/sem integration is computed between the first value and all other values,
+        as well as the neighboring values to each value. If 'endpoints', the integration
+        is computed between only the first and last x value.
 
     Returns
     -------
-    y_new : np.array
-        The y values for your spline
+    avg_matrix : np.array of floats
+        Matrix of the integration mean between each x value (as specified by 'matrix')
+    sem_matrix : np.array of floats
+        Matrix of the uncertainty (SEM) between each x value (as specified by 'matrix')
+
     """
-    # Copyright (c) 2007-2015, Christoph Gohlke
-    # Copyright (c) 2007-2015, The Regents of the University of California
-    # Produced at the Laboratory for Fluorescence Dynamics
-    # All rights reserved.
-    #
-    # Redistribution and use in source and binary forms, with or without
-    # modification, are permitted provided that the following conditions are met:
-    #
-    # * Redistributions of source code must retain the above copyright
-    #   notice, this list of conditions and the following disclaimer.
-    # * Redistributions in binary form must reproduce the above copyright
-    #   notice, this list of conditions and the following disclaimer in the
-    #   documentation and/or other materials provided with the distribution.
-    # * Neither the name of the copyright holders nor the names of any
-    #   contributors may be used to endorse or promote products derived
-    #   from this software without specific prior written permission.
-    #
-    # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-    # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-    # ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-    # LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-    # CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-    # SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-    # INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-    # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-    # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    # POSSIBILITY OF SUCH DAMAGE.
-    x = np.array(x, dtype=np.float64, copy=True)
-    y = np.array(y, dtype=np.float64, copy=True)
-    xi = np.array(x_new, dtype=np.float64, copy=True)
-    if y.ndim != 1:
-        raise NotImplementedError("y.ndim != 1 is not supported!")
-    if x.ndim != 1 or xi.ndim != 1:
-        raise ValueError("x-arrays must be one dimensional")
-    n = len(x)
-    if n < 3:
-        raise ValueError("array too small")
-    if n != y.shape[-1]:
-        raise ValueError("size of x-array must match data shape")
-    dx = np.diff(x)
-    if any(dx <= 0.0):
-        raise ValueError("x-axis not valid")
-    if any(xi < x[0]) or any(xi > x[-1]):
-        raise ValueError("interpolation x-axis out of bounds")
-    m = np.diff(y) / dx
-    mm = 2.0 * m[0] - m[1]
-    mmm = 2.0 * mm - m[0]
-    mp = 2.0 * m[n - 2] - m[n - 3]
-    mpp = 2.0 * mp - m[n - 2]
-    m1 = np.concatenate(([mmm], [mm], m, [mp], [mpp]))
-    dm = np.abs(np.diff(m1))
-    f1 = dm[2:n + 2]
-    f2 = dm[0:n]
-    f12 = f1 + f2
-    ids = np.nonzero(f12 > 1e-9 * np.max(f12))[0]
-    b = m1[1:n + 1]
-    b[ids] = (f1[ids] * m1[ids + 1] + f2[ids] * m1[ids + 2]) / f12[ids]
-    c = (3.0 * m - 2.0 * b[0:n - 1] - b[1:n]) / dx
-    d = (b[0:n - 1] + b[1:n] - 2.0 * m) / dx ** 2
-    bins = np.digitize(xi, x)
-    bins = np.minimum(bins, n - 1) - 1
-    bb = bins[0:len(xi)]
-    wj = xi - x[bb]
-    return ((wj * d[bb] + c[bb]) * wj + b[bb]) * wj + y[bb]
+
+    if matrix not in ['full', 'diagnonal', 'endpoints']:
+        raise Exception("Method "+str(method)+" not supported by the integrate_bootstraps function")
+
+    num_x = len(x)
+    
+    # Prepare to store the index location of the x values in the x_intp array
+    x_idxs = np.zeros([num_x], np.int32)
+
+    # If not provided, generate x interpolation with 100 inpolated points between
+    # each x value. Store the index locations of the x values in the x_intp array.
+    if x_intp is None:
+        x_intp = np.zeros([0], np.float64)
+        for i in range(1, num_x):
+            x_intp = np.append( x_intp, np.linspace(x[i-1], x[i], num=100, endpoint=False) )
+            x_idxs = len(x_intp)
+        # Tack on the final value onto the interpolation
+        x_intp = np.append(x_intp, x[-1])
+    # If x_intp is provided, find the locations of x values in x_intp
+    else:
+        i = 0
+        for j in range(len(x_intp)):
+            if np.isclose(x[i], x_intp[j]):
+                x_idxs[i] = j
+                i += 1
+        if i != num_x:
+            raise Exception("One or more x values seem to be missing in the x_intp array,"+
+                            " or one of the lists is not monotonically increasing!")
+
+    cycles = len(ys)
+
+    # Setup array to store integration bootstraps
+    int_matrix = np.zeros([num_x, num_x, cycles], np.float64)
+
+    # Do the integration bootstraps
+    for cycle in range(cycles):
+        intp_func = Akima1DInterpolator(x, ys[cycle])
+        y_intp = intp_func(x_intp)
+        for i in range(0, num_x):
+            for j in range(i+1, num_x):
+                if matrix == 'diagonal' and i != 0 and j - i > 1:
+                    continue
+                if matrix == 'endpoints' and i != 0 and j != num_x - 1:
+                    continue
+                beg = x_idxs[i]
+                end = x_idxs[j]
+                int_matrix[i, j, cycle] = np.trapz( y_intp[beg:end], x_intp[beg:end] )
+
+    # Setup matrices to store the average/sem values.
+    # Is it bad that the default is 0.0 rather than None?
+    avg_matrix = np.zeros([num_x, num_x], np.float64)
+    sem_matrix = np.zeros([num_x, num_x], np.float64)
+
+    # Second pass to compute the mean and standard deviation.
+    for i in range(0, num_x):
+        for j in range(i+1, num_x):
+            # If quick_ti_matrix, only populate first row and neighbors in matrix
+            if matrix == 'diagonal' and i != 0 and j - i > 1:
+                continue
+            if matrix == 'endpoints' and i != 0 and j != num_x - 1:
+                continue
+            avg_matrix[i, j] = np.mean(int_matrix[i, j])
+            avg_matrix[j, i] = -1.0*avg_matrix[i, j]
+            sem_matrix[i, j] = np.std(int_matrix[i, j])
+            sem_matrix[j, i] = sem_matrix[i, j]
+
+    return avg_matrix, sem_matrix
+
 
