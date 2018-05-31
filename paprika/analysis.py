@@ -79,14 +79,14 @@ class fe_calc(object):
         """Set updating of beta with new temperature."""
         self.beta = 1 / (self.k_B * new_temperature)
 
-    def collect_data(self, single_prmtop=False, fraction=1.0):
+    def collect_data(self, single_prmtop=False):
         """Gather simulation data on the distance, angle, and torsion restraints that change during the simulation.
 
         """
 
         self.changing_restraints = self.identify_changing_restraints()
         self.orders = self.determine_window_order()
-        self.simulation_data = self.read_trajectories(single_prmtop=single_prmtop, fraction=fraction)
+        self.simulation_data = self.read_trajectories(single_prmtop=single_prmtop)
 
     def identify_changing_restraints(self):
         """Figure out which restraints change during each phase of the calculation.
@@ -164,7 +164,7 @@ class fe_calc(object):
 
         return orders
 
-    def read_trajectories(self, single_prmtop=False, fraction=1.0):
+    def read_trajectories(self, single_prmtop=False):
         """For each each phase and window, and for each non-static restraint, parse the trajectories to 
         get the restraint values.
 
@@ -172,8 +172,6 @@ class fe_calc(object):
         ----------
         single_prmtop : {bool}
             Whether a single `prmtop` is read for all windows
-        fraction : {float}
-            Fraction of data to read, to check free energy convergence
 
         Returns
         -------
