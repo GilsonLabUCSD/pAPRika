@@ -81,6 +81,7 @@ def test_fe_calc():
     fecalc.methods = ['mbar-block', 'ti-block']
     fecalc.bootcycles = 100
     fecalc.ti_matrix = 'diagonal'
+    #fecalc.fractions = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     fecalc.collect_data(single_prmtop=True)
     fecalc.compute_free_energy()
 
