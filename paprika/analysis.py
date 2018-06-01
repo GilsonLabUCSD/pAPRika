@@ -558,11 +558,15 @@ class fe_calc(object):
                 self.results[phase][method]['convergence'] = \
                     [self.results[phase][method]['ordered_convergence'][i] for i in self.orders[phase]]
 
-                # Niel: quick "hack" to make the release free energy negative,
-                # so all the free energies can be added together and we get the
-                # expected net \Delta G.
-                if self.results['release'][method]['fe'] is not None:
-                    self.results['release'][method]['fe'] *= -1.0
+        # Niel: quick "hack" to make the release free energy negative,
+        # so all the free energies can be added together and we get the
+        # expected net \Delta G. This is NOT the place for this, but putting it
+        # inside the two `for` loops doesn't work, because we go through method
+        # first, then phase, so self.results['release'] doesn't exist until the third
+        #  iteration.
+        for method in self.methods:
+            if self.results['release'][method]['fe'] is not None:
+                self.results['release'][method]['fe'] *= -1.0
 
 
     def compute_ref_state_work(self, restraints):
