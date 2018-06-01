@@ -250,7 +250,8 @@ def test_DAT_restraint():
     assert np.allclose(rest7.phase['release']['force_constants'], np.array([0.0, 0.66, 1.2, 2.0]))
     assert np.allclose(rest7.phase['release']['targets'], np.array([1.5, 1.5, 1.5, 1.5]))
     window_list = create_window_list([rest7])
-    assert window_list == ['a000', 'a001', 'a002', 'p000', 'p001', 'p002', 'p003', 'r000', 'r001', 'r002']
+    assert window_list == ['a000', 'a001', 'a002', 'p000', 'p001', 'p002', 'p003',
+                           'r001', 'r002', 'r003']
 
     # Just Attach
     log.info('### Testing restraint 8, just attach')

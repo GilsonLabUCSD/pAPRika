@@ -4,6 +4,7 @@ from itertools import compress
 import numpy as np
 import pytraj as pt
 import pymbar
+from scipy.interpolate import Akima1DInterpolator
 
 
 class fe_calc(object):
@@ -141,7 +142,7 @@ class fe_calc(object):
         elif attach_orders:
             orders['attach'] = attach_orders[0]
         else:
-            orders['attach'] = []
+            orders['attach'] = np.empty(0)
 
         for restraint in active_pull_restraints:
             pull_orders.append(np.argsort(restraint.phase['pull']['targets']))
@@ -150,7 +151,7 @@ class fe_calc(object):
         elif pull_orders:
             orders['pull'] = pull_orders[0]
         else:
-            orders['pull'] = []
+            orders['pull'] = np.empty(0)
 
         for restraint in active_release_restraints:
             release_orders.append(np.argsort(restraint.phase['release']['force_constants']))
@@ -159,7 +160,7 @@ class fe_calc(object):
         elif release_orders:
             orders['release'] = release_orders[0]
         else:
-            orders['release'] = []
+            orders['release'] = np.empty(0)
 
         return orders
 
@@ -252,8 +253,12 @@ class fe_calc(object):
                 force_constants[r] *= (np.pi / 180.0)**2
         targets = [i.phase[phase]['targets'] for i in active_restraints]
 
-        return number_of_windows, data_points, max_data_points, active_restraints, force_constants, targets, self.simulation_data[
-            phase]
+        ordered_force_constants = [i[self.orders[phase]] for i in force_constants]
+        ordered_targets = [i[self.orders[phase]] for i in targets]
+
+        return number_of_windows, data_points, max_data_points, active_restraints, \
+               ordered_force_constants, ordered_targets, \
+               self.simulation_data[phase]
 
     def _run_mbar(self, prepared_data, verbose=False):
         """
@@ -454,11 +459,12 @@ class fe_calc(object):
         else:
             int_sign = -1.0
 
-        log.debug('Running boostrap calculations')
+        log.debug('Running bootstrap calculations')
 
         # Bootstrap the integration
         for bcyc in range(self.bootcycles):
-            y_spline = interpolate(dl_vals, dU_samples[:,bcyc], x_spline)
+            interpolation = Akima1DInterpolator(dl_vals, dU_samples[:,bcyc])
+            y_spline = interpolation(x_spline)
             for j in range(0,num_win):
                 for k in range(j+1,num_win):
                     # If quick_ti_matrix, only do first row and neighbors in matrix
@@ -940,88 +946,4 @@ def ref_state_work(temperature,
     # Return the free energy
     return RT*np.log( trans * orient )
 
-
-def interpolate(x, y, x_new):
-    """
-    Create an akima spline.
-
-    Parameters
-    ----------
-    x : list or np.array
-        The x values for your data
-    y : list or np.array
-        The y values for your data
-    x_new : list or np.array
-        The x values for your desired spline
-
-    Returns
-    -------
-    y_new : np.array
-        The y values for your spline
-    """
-    # Copyright (c) 2007-2015, Christoph Gohlke
-    # Copyright (c) 2007-2015, The Regents of the University of California
-    # Produced at the Laboratory for Fluorescence Dynamics
-    # All rights reserved.
-    #
-    # Redistribution and use in source and binary forms, with or without
-    # modification, are permitted provided that the following conditions are met:
-    #
-    # * Redistributions of source code must retain the above copyright
-    #   notice, this list of conditions and the following disclaimer.
-    # * Redistributions in binary form must reproduce the above copyright
-    #   notice, this list of conditions and the following disclaimer in the
-    #   documentation and/or other materials provided with the distribution.
-    # * Neither the name of the copyright holders nor the names of any
-    #   contributors may be used to endorse or promote products derived
-    #   from this software without specific prior written permission.
-    #
-    # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-    # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-    # ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-    # LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-    # CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-    # SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-    # INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-    # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-    # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    # POSSIBILITY OF SUCH DAMAGE.
-    x = np.array(x, dtype=np.float64, copy=True)
-    y = np.array(y, dtype=np.float64, copy=True)
-    xi = np.array(x_new, dtype=np.float64, copy=True)
-    if y.ndim != 1:
-        raise NotImplementedError("y.ndim != 1 is not supported!")
-    if x.ndim != 1 or xi.ndim != 1:
-        raise ValueError("x-arrays must be one dimensional")
-    n = len(x)
-    if n < 3:
-        raise ValueError("array too small")
-    if n != y.shape[-1]:
-        raise ValueError("size of x-array must match data shape")
-    dx = np.diff(x)
-    if any(dx <= 0.0):
-        raise ValueError("x-axis not valid")
-    if any(xi < x[0]) or any(xi > x[-1]):
-        raise ValueError("interpolation x-axis out of bounds")
-    m = np.diff(y) / dx
-    mm = 2.0 * m[0] - m[1]
-    mmm = 2.0 * mm - m[0]
-    mp = 2.0 * m[n - 2] - m[n - 3]
-    mpp = 2.0 * mp - m[n - 2]
-    m1 = np.concatenate(([mmm], [mm], m, [mp], [mpp]))
-    dm = np.abs(np.diff(m1))
-    f1 = dm[2:n + 2]
-    f2 = dm[0:n]
-    f12 = f1 + f2
-    ids = np.nonzero(f12 > 1e-9 * np.max(f12))[0]
-    b = m1[1:n + 1]
-    b[ids] = (f1[ids] * m1[ids + 1] + f2[ids] * m1[ids + 2]) / f12[ids]
-    c = (3.0 * m - 2.0 * b[0:n - 1] - b[1:n]) / dx
-    d = (b[0:n - 1] + b[1:n] - 2.0 * m) / dx ** 2
-    bins = np.digitize(xi, x)
-    bins = np.minimum(bins, n - 1) - 1
-    bb = bins[0:len(xi)]
-    wj = xi - x[bb]
-    return ((wj * d[bb] + c[bb]) * wj + b[bb]) * wj + y[bb]
 
