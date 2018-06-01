@@ -561,7 +561,7 @@ class fe_calc(object):
                 # Niel: quick "hack" to make the release free energy negative,
                 # so all the free energies can be added together and we get the
                 # expected net \Delta G.
-                if self.results['release'][method]['fe']:
+                if self.results['release'][method]['fe'] is not None:
                     self.results['release'][method]['fe'] *= -1.0
 
 
