@@ -13,11 +13,6 @@ import paprika
 from paprika.restraints import *
 
 
-logger = log.getLogger()
-logger.setLevel(log.DEBUG)
-log.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
-
-
 def test_DAT_restraint():
     # Method 1
     log.info('### Testing restraint 1, Method 1')
