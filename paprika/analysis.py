@@ -558,55 +558,10 @@ class fe_calc(object):
                 self.results[phase][method]['convergence'] = \
                     [self.results[phase][method]['ordered_convergence'][i] for i in self.orders[phase]]
 
-
-    def compute_ref_state_work(self, restraints):
-        """
-        Compute the work to place a molecule at standard reference state conditions
-        starting from a state defined by up to six restraints. (see ref_state_work for
-        details)
-
-        Parameters
-        ----------
-        restraints : list [r, theta, phi, alpha, beta, gamma]
-            A list of paprika DAT_restraint objects in order of the six translational and
-            orientational restraints needed to describe the configuration of one molecule
-            relative to another. The six restraints are: r, theta, phi, alpha, beta, gamma.
-            If any of these coordinates is not being restrained, use a None in place of a
-            DAT_restraint object. (see ref_state_work for details on the six restraints)
-        """
-
-        if not restraints or restraints[0] is None:
-            raise Exception('At minimum, a single distance restraint must be supplied to compute_ref_state_work')
-
-        fcs = []
-        targs = []
-
-        for restraint in restraints:
-            if restraint is None:
-                fcs.append(None)
-                targs.append(None)
-            elif restraint.phase['release']['force_constants'] is not None:
-                fcs.append( np.sort(restraint.phase['release']['force_constants'])[-1] )
-                targs.append( np.sort(restraint.phase['release']['targets'])[-1] )
-            elif restraint.phase['pull']['force_constants'] is not None:
-                fcs.append( np.sort(restraint.phase['pull']['force_constants'])[-1] )
-                targs.append( np.sort(restraint.phase['pull']['targets'])[-1] )
-            else:
-                raise Exception('Restraints should have pull or release values initialized in order to compute_ref_state_work')
-
-        # Convert degrees to radians for theta, phi, alpha, beta, gamma
-        for i in range(1,5):
-            if targs[i] is not None:
-                targs[i] = np.radians(targs[i])
-
-
-        self.results['ref_state_work'] = ref_state_work(self.temperature,
-                                                        fcs[0], targs[0],
-                                                        fcs[1], targs[1],
-                                                        fcs[2], targs[2],
-                                                        fcs[3], targs[3],
-                                                        fcs[4], targs[4],
-                                                        fcs[5], targs[5])
+                # Niel: quick "hack" to make the release free energy negative,
+                # so all the free energies can be added together and we get the
+                # expected net \Delta G.
+                self.results['release'][method]['fe'] *= -1.0
 
 
     def compute_ref_state_work(self, restraints):
