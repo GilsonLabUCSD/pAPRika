@@ -547,23 +547,18 @@ def check_restraints(restraint_list, create_window_list=False):
                 if phase == 'attach' and all_continuous_apr:
                     window_list += [phase[0] + str('{:03.0f}'.format(val)) for val in
                                     np.arange(0, max_count - 1, 1)]
-                    log.debug('Attach + continuous')
                 elif phase == 'attach' and not all_continuous_apr:
                     window_list += [phase[0] + str('{:03.0f}'.format(val)) for val in
                                     np.arange(0, max_count, 1)]
-                    log.debug('Attach + not continuous')
                 elif phase == 'pull':
                     window_list += [phase[0] + str('{:03.0f}'.format(val)) for val in
                                     np.arange(0, max_count, 1)]
-                    log.debug('Pull')
                 elif phase == 'release' and all_continuous_apr:
                     window_list += [phase[0] + str('{:03.0f}'.format(val)) for val in
                                     np.arange(1, max_count, 1)]
-                    log.debug('Release + continuous')
                 elif phase == 'release' and not all_continuous_apr:
                     window_list += [phase[0] + str('{:03.0f}'.format(val)) for val in
                                     np.arange(0, max_count, 1)]
-                    log.debug('Release + not continuous')
         else:
             log.error('Restraints have unequal number of windows during the {} phase.'.format(phase))
             log.debug('Window counts for each restraint are as follows:')
