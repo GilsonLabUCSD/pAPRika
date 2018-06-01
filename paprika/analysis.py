@@ -253,8 +253,12 @@ class fe_calc(object):
                 force_constants[r] *= (np.pi / 180.0)**2
         targets = [i.phase[phase]['targets'] for i in active_restraints]
 
-        return number_of_windows, data_points, max_data_points, active_restraints, force_constants, targets, self.simulation_data[
-            phase]
+        ordered_force_constants = [i[self.orders[phase]] for i in force_constants]
+        ordered_targets = [i[self.orders[phase]] for i in targets]
+
+        return number_of_windows, data_points, max_data_points, active_restraints, \
+               ordered_force_constants, ordered_targets, \
+               self.simulation_data[phase]
 
     def _run_mbar(self, prepared_data, verbose=False):
         """
