@@ -514,7 +514,7 @@ class fe_calc(object):
                 # Prepare data
                 if sum(self.changing_restraints[phase]) == 0:
                     log.debug('Skipping free energy calculation for %s' % phase)
-                    break
+                    continue
                 prepared_data = self._prepare_data(phase)
                 self.results[phase][method]['n_frames'] = np.sum(prepared_data[1])
 
