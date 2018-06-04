@@ -41,6 +41,11 @@ class fe_calc(object):
         non-integer value is used. Default: False.
     bootcycles : int
         Number of bootstrap iterations for the TI methods.
+    compute_roi : bool
+        If True, compute the ROI value for each window. The more negative the ROI, the better the
+        return on investment of computing more frames for this particular window. Default: False.
+    compute_largest_neighbor : bool
+        If True, find and store the max SEM to the neighbor windows. Default: False.
     ti_matrix : str
         If 'full', the TI mean/sem free energy is computed between all windows. If 'diagonal',
         the mean/sem free energy is computed between the first window and all other windows,
@@ -73,6 +78,7 @@ class fe_calc(object):
         self.methods = ['mbar-block']  # mbar-autoc, mbar-nocor, ti-block, ti-autoc, ti-nocor
         self.conservative_subsample = False
         self.bootcycles = 10000
+        self.compute_roi = False
         self.ti_matrix = 'full'
         self.exact_sem_each_ti_fraction = False
         self.fractions = [1.0]
@@ -405,6 +411,7 @@ class fe_calc(object):
         dU_sems = np.zeros([num_win], np.float64)
         dU_stdv = np.zeros([num_win], np.float64)
         dU_Nunc = np.zeros([num_win], np.float64)
+        g = np.zeros([num_win], np.float64) # Statistical Inefficiency
 
         # Array for values of the changing coordinate (x-axis), either lambda or target.
         # I'll name them dl_vals for dlambda values.
@@ -446,17 +453,18 @@ class fe_calc(object):
                 # Currently assuming a single distance restraint
                 dl_vals[k] = targets_T[k, 0]
 
-            # Compute mean and sem
-#            dU_avgs[k] = np.mean( dU[k,0:N_k[k]] )
+            # Compute StdDevs and SEMs, unless we're going to do exact_sem_each_ti_fraction
+            dU_avgs[k] = np.mean( dU[k,0:N_k[k]] )
             dU_stdv[k] = np.std( dU[k,0:N_k[k]] )
-            if method == 'ti-block' and not self.exact_sem_each_ti_fraction:
+            if method == 'ti-block':
                 nearest_max = get_nearest_max(N_k[k])
                 dU_sems[k] = get_block_sem( dU[k,0:nearest_max] )
                 # Rearrange SEM = StdDev/sqrt(N) to get N_uncorrelated
                 dU_Nunc[k] = ( dU_stdv[k] / dU_sems[k] )**2
-            elif method == 'ti-nocor' and not self.exact_sem_each_ti_fraction:
+            elif method == 'ti-nocor':
                 dU_sems[k] = dU_stdv[k]/np.sqrt(N_k[k])    
                 dU_Nunc[k] = N_k[k]
+            g[k] = N_k[k]/dU_Nunc[k]
 
             # Create the interpolation by appending 100 points between each window.
             # Start with k=1 so we don't double count.
@@ -473,6 +481,8 @@ class fe_calc(object):
         self.results[phase][method]['fraction_fe_matrix'] = {}
         self.results[phase][method]['fraction_sem_matrix'] = {}
         for fraction in self.fractions:
+
+            log.debug('Working on fraction ... {}'.format(fraction))
 
             # Compute means for this fraction.
             frac_dU_avgs = np.array([np.mean(dU[k,0:int(fraction*n)]) for k,n in enumerate(N_k)])
@@ -491,11 +501,13 @@ class fe_calc(object):
                     frac_dU_sems[k] = np.std( dU[k,0:int(fraction*N_k[k])] )/np.sqrt(int(fraction*N_k[k]))
             else:
                 frac_dU_sems = dU_stdv/np.sqrt(fraction*dU_Nunc)
+
             dU_samples = np.random.normal(frac_dU_avgs, frac_dU_sems, size=(self.bootcycles, frac_dU_avgs.size))
+
             # Run bootstraps
             self.results[phase][method]['fraction_fe_matrix'][fraction],\
             self.results[phase][method]['fraction_sem_matrix'][fraction] \
-                = integrate_bootstraps(dl_vals, dU_samples, x_intp=dl_intp)
+                = integrate_bootstraps(dl_vals, dU_samples, x_intp=dl_intp, matrix=self.ti_matrix)
 
             # The attach/release work (integration) yields appropriately positive work, but
             # the pull work needs a negative multiplier.  Like W = -f*d type thing.  I need
@@ -503,7 +515,44 @@ class fe_calc(object):
             if phase == 'pull':
                 self.results[phase][method]['fraction_fe_matrix'][fraction] *= -1.0
 
-        # If convergence, do it here
+        if self.compute_roi:
+            log.info(phase + ': computing ROI for '+method)
+            # Do ROI calc
+            max_fraction = np.max(self.fractions)
+            # If we didn't compute fe/sem for fraction 1.0 already, do it now
+            dU_samples = np.random.normal(dU_avgs, dU_sems, size=(self.bootcycles, dU_avgs.size))
+            if not np.isclose(max_fraction, 1.0):
+                junk_fe, total_sem_matrix = integrate_bootstraps(dl_vals, dU_samples, x_intp=dl_intp, matrix=self.ti_matrix)
+            else:
+                total_sem_matrix = self.results[phase][method]['fraction_sem_matrix'][max_fraction]
+            self.results[phase][method]['roi'] = np.zeros([num_win], np.float64)
+            for k in range(num_win):
+                # Compute overall integrated SEM with 10% smaller SEM for dU[k]
+                cnvg_dU_samples = np.array(dU_samples)
+                cnvg_dU_samples[:,k] = np.random.normal(dU_avgs[k], 0.9*dU_sems[k], self.bootcycles)
+                junk_fe, cnvg_sem_matrix = integrate_bootstraps(dl_vals, cnvg_dU_samples, x_intp=dl_intp, matrix=self.ti_matrix)
+    
+                #         d( dG_sem )      d( dUdl_sem )
+                # ROI = --------------- * ---------------
+                #        d( dUdl_sem )     d( n_frames )
+                #
+                # Deriv1----^---^---^        ^---^---^----Deriv2
+    
+                # Deriv1:
+                deriv1 = (cnvg_sem_matrix[0,-1] - total_sem_matrix[0,-1])/(-0.1*dU_sems[k])
+    
+                # Deriv2:
+                #
+                # dUdl_sem = dUdl_stddev / sqrt(n_frames/g)
+                #
+                # d( dUdl_sem )              dUdl_stddev
+                # -------------- =  - --------------------------
+                # d( n_frames )          2g * (n_frames/g)**3/2
+    
+                deriv2 = -1.0*dU_stdv[k] / ( 2.0*g[k] * (N_k[k]/g[k])**(3.0/2.0) )
+    
+                # ROI
+                self.results[phase][method]['roi'][k] = deriv1 * deriv2            
 
     def compute_free_energy(self):
         """
@@ -516,6 +565,7 @@ class fe_calc(object):
 
         for phase in ['attach', 'pull', 'release']:
             self.results[phase] = {}
+            self.results[phase]['window_order'] = self.orders[phase]
             for method in self.methods:
                 # Initialize some values that we will compute
                 # The matrix gives all possible fe/sem for any window to any other window
@@ -524,7 +574,7 @@ class fe_calc(object):
                 # Prepare data
                 if sum(self.changing_restraints[phase]) == 0:
                     log.debug('Skipping free energy calculation for %s' % phase)
-                    break
+                    continue
                 prepared_data = self.prepare_data(phase)
                 self.results[phase][method]['n_frames'] = np.sum(prepared_data[1])
 
@@ -561,31 +611,30 @@ class fe_calc(object):
                 self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
                 self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0, -1]
 
-                # Store convergence values, which are helpful for running simulations
-                windows = len(self.results[phase][method]['sem_matrix'])
-                self.results[phase][method]['convergence'] = np.ones([windows], np.float64) * -1.0
-                self.results[phase][method]['ordered_convergence'] = np.ones([windows], np.float64) * -1.0
-                log.info(phase + ': computing convergence for '+method)
-                for i in range(windows):
-                    if i == 0:
-                        self.results[phase][method]['ordered_convergence'][i]\
-                            = self.results[phase][method]['sem_matrix'][i][i+1]
-                    elif i == windows - 1:
-                        self.results[phase][method]['ordered_convergence'][i]\
-                            = self.results[phase][method]['sem_matrix'][i][i-1]
-                    else:
-                        left = self.results[phase][method]['sem_matrix'][i][i - 1]
-                        right = self.results[phase][method]['sem_matrix'][i][i + 1]
-                        if left > right:
-                            max_val = left
-                        elif right > left:
-                            max_val = right
+                # Set largest neighbors.  This is a legacy approach, probably not useful.
+                if self.compute_largest_neighbor:
+                    # Store convergence values, which are helpful for running simulations
+                    windows = len(self.results[phase][method]['sem_matrix'])
+                    self.results[phase][method]['largest_neighbor'] = np.ones([windows], np.float64) * -1.0
+                    log.info(phase + ': computing largest_neighbor for '+method)
+                    for i in range(windows):
+                        if i == 0:
+                            self.results[phase][method]['largest_neighbor'][i]\
+                                = self.results[phase][method]['sem_matrix'][i][i+1]
+                        elif i == windows - 1:
+                            self.results[phase][method]['largest_neighbor'][i]\
+                                = self.results[phase][method]['sem_matrix'][i][i-1]
                         else:
-                            max_val = right
-                        self.results[phase][method]['ordered_convergence'][i] = max_val
+                            left = self.results[phase][method]['sem_matrix'][i][i - 1]
+                            right = self.results[phase][method]['sem_matrix'][i][i + 1]
+                            if left > right:
+                                max_val = left
+                            elif right > left:
+                                max_val = right
+                            else:
+                                max_val = right
+                            self.results[phase][method]['largest_neighbor'][i] = max_val
 
-                self.results[phase][method]['convergence'] = \
-                    [self.results[phase][method]['ordered_convergence'][i] for i in self.orders[phase]]
 
     def compute_ref_state_work(self, restraints):
         """
@@ -951,8 +1000,8 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
 
     """
 
-    if matrix not in ['full', 'diagnonal', 'endpoints']:
-        raise Exception("Method "+str(method)+" not supported by the integrate_bootstraps function")
+    if matrix not in ['full', 'diagonal', 'endpoints']:
+        raise Exception("Method "+str(matrix)+" not supported by the integrate_bootstraps function")
 
     num_x = len(x)
     
