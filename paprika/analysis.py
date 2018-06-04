@@ -157,7 +157,7 @@ class fe_calc(object):
         elif attach_orders:
             orders['attach'] = attach_orders[0]
         else:
-            orders['attach'] = []
+            orders['attach'] = np.empty(0)
 
         for restraint in active_pull_restraints:
             pull_orders.append(np.argsort(restraint.phase['pull']['targets']))
@@ -166,7 +166,7 @@ class fe_calc(object):
         elif pull_orders:
             orders['pull'] = pull_orders[0]
         else:
-            orders['pull'] = []
+            orders['pull'] = np.empty(0)
 
         for restraint in active_release_restraints:
             release_orders.append(np.argsort(restraint.phase['release']['force_constants']))
@@ -175,7 +175,7 @@ class fe_calc(object):
         elif release_orders:
             orders['release'] = release_orders[0]
         else:
-            orders['release'] = []
+            orders['release'] = np.empty(0)
 
         return orders
 
@@ -263,8 +263,12 @@ class fe_calc(object):
                 force_constants[r] *= (np.pi / 180.0)**2
         targets = [i.phase[phase]['targets'] for i in active_restraints]
 
-        return number_of_windows, data_points, max_data_points, active_restraints, force_constants, targets, self.simulation_data[
-            phase]
+        ordered_force_constants = [i[self.orders[phase]] for i in force_constants]
+        ordered_targets = [i[self.orders[phase]] for i in targets]
+
+        return number_of_windows, data_points, max_data_points, active_restraints, \
+               ordered_force_constants, ordered_targets, \
+               self.simulation_data[phase]
 
     def run_mbar(self, phase, prepared_data, method, verbose=False):
         """
@@ -474,7 +478,7 @@ class fe_calc(object):
         # Tack on the final value to the dl interpolation
         dl_intp = np.append(dl_intp, dl_vals[-1])
 
-        log.debug('Running boostrap calculations')
+        log.debug('Running bootstrap calculations')
 
         # Setup fractions. For simplicity, we'll always do this, even
         # if we're doing the total data, ie self.fractions=[1.0].
@@ -602,8 +606,6 @@ class fe_calc(object):
                     self.results[phase][method]['fraction_sem'][fraction] \
                         = self.results[phase][method]['fraction_sem_matrix'][fraction][0, -1]
 
-#                    print(fraction, self.results[phase][method]['fraction_fe'][fraction],'(',self.results[phase][method]['fraction_sem'][fraction],')')
-
                 # Set these higher level (total) values, which will be slightly easier to access
                 max_fraction = np.max(self.fractions)
                 self.results[phase][method]['fe_matrix'] = self.results[phase][method]['fraction_fe_matrix'][max_fraction]
@@ -634,7 +636,6 @@ class fe_calc(object):
                             else:
                                 max_val = right
                             self.results[phase][method]['largest_neighbor'][i] = max_val
-
 
     def compute_ref_state_work(self, restraints):
         """
@@ -1051,8 +1052,6 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
                 for j in range(i+1, num_x):
                     if matrix == 'diagonal' and i != 0 and j - i > 1:
                         continue
-#                    if matrix == 'endpoints' and i != 0 and j != num_x - 1:
-#                        continue
                     beg = x_idxs[i]
                     end = x_idxs[j]
                     int_matrix[i, j, cycle] = np.trapz( y_intp[beg:end], x_intp[beg:end] )
@@ -1076,5 +1075,4 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
             sem_matrix[j, i] = sem_matrix[i, j]
 
     return avg_matrix, sem_matrix
-
 
