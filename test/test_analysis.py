@@ -188,6 +188,7 @@ def reprint_values(results, method):
             # Comment this to make python 2.7 pass.  This is just for redoing the
             # the ref_vals anyway
 #            print("{:.8f}, ".format(val), end='')
+            pass
 
 
 #test_fe_calc()
