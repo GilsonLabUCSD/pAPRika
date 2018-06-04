@@ -185,7 +185,9 @@ def reprint_values(results, method):
         if val == 9999:
             print("")
         else:
-            print("{:.8f}, ".format(val), end='')
+            # Comment this to make python 2.7 pass.  This is just for redoing the
+            # the ref_vals anyway
+#            print("{:.8f}, ".format(val), end='')
 
 
 #test_fe_calc()
