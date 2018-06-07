@@ -80,7 +80,10 @@ def test_fe_calc():
     fecalc.restraint_list = [rest1, rest2, rest3]
     fecalc.methods = ['mbar-block', 'ti-block']
     fecalc.bootcycles = 100
-    fecalc.quick_ti_matrix = True
+    fecalc.ti_matrix = 'diagonal'
+    fecalc.compute_largest_neighbor = True
+    fecalc.compute_roi = True
+    #fecalc.fractions = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     fecalc.collect_data(single_prmtop=True)
     fecalc.compute_free_energy()
 
@@ -98,14 +101,14 @@ def test_fe_calc():
     for i in range(len(test_vals)):
         assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
 
-    # Test attach mbar-block convergence values
-    test_vals = fecalc.results['attach'][method]['convergence']
+    # Test attach mbar-block largest_neighbor values
+    test_vals = fecalc.results['attach'][method]['largest_neighbor']
     ref_vals = np.array([0.0198918, 0.0451676, 0.0564517, 0.1079282, 0.1079282])
     for i in range(len(test_vals)):
         assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
 
-    # Test pull mbar-block convergence values
-    test_vals = fecalc.results['pull'][method]['convergence']
+    # Test pull mbar-block largest_neighbor values
+    test_vals = fecalc.results['pull'][method]['largest_neighbor']
     ref_vals = np.array([
         0.2053769, 0.2053769, 0.1617423, 0.1747668, 0.5255023, 0.5255023, 0.1149945, 0.1707901, 0.2129136, 0.2129136,
         0.1942189, 0.1768906, 0.1997338, 0.1997338, 0.2014766, 0.2014766, 0.1470727, 0.1442517, 0.1434395
@@ -118,28 +121,37 @@ def test_fe_calc():
     ##################
 
     method = 'ti-block'
+
     # Test ti-block free energies and uncertainties
     test_vals = [
         fecalc.results['attach'][method]['fe'], fecalc.results['attach'][method]['sem'],
         fecalc.results['pull'][method]['fe'], fecalc.results['pull'][method]['sem']
     ]
-    ref_vals = np.array([13.305162175530445, 0.27669393734269204, -1.8076363192165885, 0.87339001681638395])
+    ref_vals = np.array([13.35823327, 0.25563407, -1.77873259, 0.95162741])
     for i in range(len(test_vals)):
         assert np.isclose(ref_vals[i], test_vals[i])
 
-    # Test attach ti-block convergence values
-    test_vals = fecalc.results['attach'][method]['convergence']
-    ref_vals = np.array([0.029299629107079127, 0.068227760638769536, 0.10349522392605789, 0.18973218712192189, 0.18973218712192189])
+    # Test attach roi values
+    test_vals = fecalc.results['attach'][method]['roi']
+    ref_vals = np.array([-0.00027503, -0.00020536, 0.00000691, -0.00062548, -0.00029785])
     for i in range(len(test_vals)):
         assert np.isclose(ref_vals[i], test_vals[i])
 
-    # Test pull ti-block convergence values
-    test_vals = fecalc.results['pull'][method]['convergence']
-    ref_vals = np.array([
-        0.298113729226, 0.298113729226, 0.215766650517, 0.260030050083, 0.260030050083, 0.134490787229, 0.111565074939,
-        0.136435341389, 0.136686735825, 0.136686735825, 0.110195776953, 0.110414577953, 0.110414577953, 0.14436650726,
-        0.168235750367, 0.168235750367, 0.128278235279, 0.125751797848, 0.10138689671,
-    ])
+    # Test pull roi values
+    test_vals = fecalc.results['pull'][method]['roi']
+    ref_vals = np.array([-0.00191275, -0.00047460, -0.00284036, -0.00144093, -0.00199245, -0.00160141, -0.00071836, -0.00188979, -0.00162371, -0.00108091, -0.00197727, -0.00223339, -0.00144556, -0.00272537, -0.00098154, -0.00071218, -0.00073691, -0.00195884, -0.00155617])
+    for i in range(len(test_vals)):
+        assert np.isclose(ref_vals[i], test_vals[i])
+
+    # Test attach ti-block largest_neighbor values
+    test_vals = fecalc.results['attach'][method]['largest_neighbor']
+    ref_vals = np.array([0.02809982, 0.07439878, 0.09719278, 0.16782417, 0.16782417])
+    for i in range(len(test_vals)):
+        assert np.isclose(ref_vals[i], test_vals[i])
+
+    # Test pull ti-block largest_neighbor values
+    test_vals = fecalc.results['pull'][method]['largest_neighbor']
+    ref_vals = np.array([0.31296449, 0.31296449, 0.23297017, 0.24211187, 0.24211187, 0.13217678, 0.11879266, 0.15423428, 0.15423428, 0.12861334, 0.11276903, 0.11276903, 0.11150722, 0.13483801, 0.17510575, 0.17510575, 0.14725404, 0.12972769, 0.11803089])
     for i in range(len(test_vals)):
         assert np.isclose(ref_vals[i], test_vals[i])
 
@@ -150,6 +162,33 @@ def test_fe_calc():
     # Test reference state calculation
     fecalc.compute_ref_state_work([rest1, rest2, rest3, None, None, None])
     assert np.isclose(-4.34372240, fecalc.results['ref_state_work'])
+
+
+def reprint_values(results, method):
+    """
+    Hack method to reprint values when I rearrange things and mess up the order of random
+    number generation.
+    """
+    reprint = np.concatenate((
+                np.array([ results['attach'][method]['fe'], results['attach'][method]['sem'], results['pull'][method]['fe'], results['pull'][method]['sem'] ]),
+                np.array([9999]),
+                results['attach'][method]['roi'],
+                np.array([9999]),
+                results['pull'][method]['roi'],
+                np.array([9999]),
+                results['attach'][method]['largest_neighbor'],
+                np.array([9999]),
+                results['pull'][method]['largest_neighbor'],
+                np.array([9999]),
+              ))
+    for val in reprint:
+        if val == 9999:
+            print("")
+        else:
+            # Comment this to make python 2.7 pass.  This is just for redoing the
+            # the ref_vals anyway
+#            print("{:.8f}, ".format(val), end='')
+            pass
 
 
 #test_fe_calc()
