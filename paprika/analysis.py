@@ -79,6 +79,7 @@ class fe_calc(object):
         self.conservative_subsample = False
         self.bootcycles = 10000
         self.compute_roi = False
+        self.compute_largest_neighbor = False
         self.ti_matrix = 'full'
         self.exact_sem_each_ti_fraction = False
         self.fractions = [1.0]
