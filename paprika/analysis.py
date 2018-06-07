@@ -1042,9 +1042,10 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
         for cycle in range(cycles):
             intp_func = Akima1DInterpolator(x, ys[cycle])
             y_intp = intp_func(x_intp)
-            for i in range(0, num_x):
-                for j in range(i+1, num_x):
-                    int_matrix[i, j, cycle] = np.trapz( y_intp, x_intp )
+#            for i in range(0, num_x):
+#                for j in range(i+1, num_x):
+#                    int_matrix[i, j, cycle] = np.trapz( y_intp, x_intp )
+            int_matrix[0,num_x-1, cycle] = np.trapz( y_intp, x_intp )
     else:
         for cycle in range(cycles):
             intp_func = Akima1DInterpolator(x, ys[cycle])
