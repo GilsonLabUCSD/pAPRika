@@ -375,7 +375,7 @@ class fe_calc(object):
             self.results[phase][method]['fraction_sem_matrix'][fraction] = dDeltaf_ij
 
 
-    def run_ti(self, phase, prepared_data, method, fraction=1.0):
+    def run_ti(self, phase, prepared_data, method):
         """
         Compute the free energy using the TI method.
 
