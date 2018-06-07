@@ -559,7 +559,7 @@ class fe_calc(object):
                 # ROI
                 self.results[phase][method]['roi'][k] = deriv1 * deriv2            
 
-    def compute_free_energy(self):
+    def compute_free_energy(self, phases=['attach', 'pull', 'release']):
         """
         Do free energy calc.
         """
@@ -568,7 +568,7 @@ class fe_calc(object):
             if fraction <= 0.0 or fraction > 1.0:
                 raise Exception('The fraction of data to analyze must be 0 < fraction <= 1.0.')
 
-        for phase in ['attach', 'pull', 'release']:
+        for phase in phases:
             self.results[phase] = {}
             self.results[phase]['window_order'] = self.orders[phase]
             for method in self.methods:
