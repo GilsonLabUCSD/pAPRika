@@ -143,7 +143,6 @@ class Simulation(object):
         self.cntrl['imin'] = 0
         self.cntrl['ntx'] = 1
         self.cntrl['irest'] = 0
-        self.cntrl['iwrap'] = 1
         self.cntrl['maxcyc'] = 0
         self.cntrl['ncyc'] = 0
         self.cntrl['dt'] = 0.002
