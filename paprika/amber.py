@@ -143,7 +143,6 @@ class Simulation(object):
         self.cntrl['imin'] = 0
         self.cntrl['ntx'] = 1
         self.cntrl['irest'] = 0
-        self.cntrl['iwrap'] = 1
         self.cntrl['maxcyc'] = 0
         self.cntrl['ncyc'] = 0
         self.cntrl['dt'] = 0.002
@@ -182,6 +181,7 @@ class Simulation(object):
         self.title = 'PBC MD Simulation'
         self.cntrl['cut'] = 8.0
         self.cntrl['igb'] = 0
+        self.cntrl['iwrap'] = 1
         self.cntrl['ntp'] = 1
         self.cntrl['barostat'] = 2
 
