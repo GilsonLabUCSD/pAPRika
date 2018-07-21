@@ -322,6 +322,10 @@ class Simulation(object):
                 strings = f.read()
                 if (' TIMINGS' in strings):
                     timings = True
+        if timings:
+            log.debug('{} has TIMINGS'.format(output_file))
+        else:
+            log.debug('{} does not have TIMINGS'.format(output_file))
 
         return timings
 
