@@ -182,6 +182,7 @@ class Simulation(object):
         self.title = 'PBC MD Simulation'
         self.cntrl['cut'] = 8.0
         self.cntrl['igb'] = 0
+        self.cntrl['iwrap'] = 1
         self.cntrl['ntp'] = 1
         self.cntrl['barostat'] = 2
 
@@ -322,6 +323,10 @@ class Simulation(object):
                 strings = f.read()
                 if (' TIMINGS' in strings):
                     timings = True
+        if timings:
+            log.debug('{} has TIMINGS'.format(output_file))
+        else:
+            log.debug('{} does not have TIMINGS'.format(output_file))
 
         return timings
 
