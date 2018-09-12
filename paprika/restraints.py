@@ -31,13 +31,15 @@ class DAT_restraint(object):
         self.index3 = None
         self.index4 = None
 
-        # In the case of a non-harmonic restraint, the pre-calculated values can be overridden with ones from this dictionary.
+        # In the case of a non-harmonic restraint, the pre-calculated values can be overridden with
+        # ones from this dictionary.
         self.custom_restraint_values = {}
 
         self.auto_apr = (
             False
         )  # If True, sets some pull and release values automatically.
-        # If True, the first window of pull is re-used as last window of attach and the last window of pull is re-used as first window of release.
+        # If True, the first window of pull is re-used as last window of attach and the last window
+        # of pull is re-used as first window of release.
         self.continuous_apr = True
         self.amber_index = False
 
@@ -96,7 +98,7 @@ class DAT_restraint(object):
             dct["topology"] = None
         log.debug(self_dictionary)
         log.debug(other_dictionary)
-        keys = self_dictionary.keys() & other_dictionary.keys()
+        keys = set(self_dictionary.keys()) & set(other_dictionary.keys())
         for key in keys:
             if key != "phase":
                 assert self_dictionary[key] == other_dictionary[key]

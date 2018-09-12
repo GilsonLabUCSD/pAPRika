@@ -7,7 +7,7 @@ import os
 
 import paprika
 from paprika.restraints import *
-from paprika.json import *
+from paprika.restraints_json import *
 
 
 class TestJSON(unittest.TestCase):
