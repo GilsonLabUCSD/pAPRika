@@ -1,4 +1,4 @@
-rm -rf "$HOME/miniconda"
+# rm -rf "$HOME/miniconda"
 if [ -d "$HOME/miniconda/bin/python" ]; then
       export PATH="$HOME/miniconda/bin:$PATH"
       conda list
