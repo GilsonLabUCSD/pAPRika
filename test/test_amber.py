@@ -73,7 +73,7 @@ def test_amber_single_window_gbmin():
     with open(path+'restraints.in', 'w') as f:
         for rest in [rest1,rest2,rest3]:
             # Testing just window p001
-            f.write(restraints.amber_restraint_line(rest,'pull',1))
+            f.write(restraints.amber_restraint_line(rest, "p001"))
 
     # Copy build files for tleap
     files = 'cb6.mol2 cb6.frcmod but.mol2 but.frcmod cb6-but-minimized.pdb'.split()
