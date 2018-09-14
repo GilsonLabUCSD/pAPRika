@@ -720,7 +720,7 @@ def create_window_list(restraint_list):
     return check_restraints(restraint_list, create_window_list=True)
 
 
-def amber_restraint_line(restraint, phase, window):
+def amber_restraint_line(restraint, window):
     """
     Return an AMBER restraint line a specific phase/window combination.
     For example:
@@ -774,6 +774,16 @@ def amber_restraint_line(restraint, phase, window):
         igr4 = ""
         for index in restraint.index4:
             igr4 += "{},".format(index)
+
+    if window[0] == "a":
+        phase = "attach"
+    elif window[0] == "p":
+        phase = "pull"
+    elif window[0] == "r":
+        phase = "release"
+    else:
+        raise Exception("Cannot determine the phase for this restraint.")
+    window = int(window[1:])
 
     # Set upper/lower bounds depending on whether distance, angle, or torsion
     lower_bound = 0.0
