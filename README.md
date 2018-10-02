@@ -18,6 +18,8 @@ conda activate paprika
 
 In this example, we will setup and simulate butane (BUT) as a guest molecule for the host [cucurbit[6]uril](https://en.wikipedia.org/wiki/Cucurbituril) (CB6). CBs are rigid, symmetric, cyclic host molecules with oxygen atoms around the portal edge of the cavity. We will run the simulation in implicit solvent, using the [Generalized-Born](https://en.wikipedia.org/wiki/Implicit_solvation#Generalized_Born) model, for speed and simplicity, using AMBER. This tutorial assumes familiarity with basic MD procedures.
 
+The `complex` folder referred to below are in the `tutorial` directory.
+
 ## Initial Setup
 
 The very first step in the calculation is creating a coordinate file for the bound host-guest complex (we usually use PDB format for this part because it works well with `tleap`). This does not have to perfectly match the bound state by any means (we will later minimize and equilibrate), but this should be a reasonable illustration of the bound complex. This file can be created by hand (in a program like Chimera, VMD, or PyMOL) or by docking the guest into the host cavity (with MOE, AutoDock, DOCK, ...).
