@@ -1,0 +1,17 @@
+source leaprc.gaff
+loadamberparams cb6.frcmod
+loadamberparams dummy.frcmod
+CB6 = loadmol2 cb6.mol2
+BUT = loadmol2 but.mol2
+DM1 = loadmol2 dm1.mol2
+DM2 = loadmol2 dm2.mol2
+DM3 = loadmol2 dm3.mol2
+model = loadpdb aligned_with_dummy.pdb
+check model
+savepdb model cb6-but-dum.pdb
+saveamberparm model cb6-but-dum.prmtop cb6-but-dum.rst7
+# Skipping solvation ...
+savepdb model build.pdb
+saveamberparm model build.prmtop build.rst7
+desc model
+quit
