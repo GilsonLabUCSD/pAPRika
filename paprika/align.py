@@ -2,6 +2,7 @@ import parmed as pmd
 import logging as log
 import numpy as np
 
+
 def zalign(structure, mask1, mask2, translate=True, save=False, filename=None):
     """
     Align the mask1 -- mask2 vector to the z axis.
@@ -17,8 +18,10 @@ def zalign(structure, mask1, mask2, translate=True, save=False, filename=None):
     mask2_com = pmd.geometry.center_of_mass(np.asarray(mask2_coordinates),
                                             np.asarray(mask2_masses))
 
-    log.info('Moving {} ({} atoms) to the origin...'.format(mask1, len(mask1_coordinates)))
-    log.info('Aligning {} ({} atoms) with the z axis...'.format(mask2, len(mask2_coordinates)))
+    log.info('Moving {} ({} atoms) to the origin...'.format(
+        mask1, len(mask1_coordinates)))
+    log.info('Aligning {} ({} atoms) with the z axis...'.format(
+        mask2, len(mask2_coordinates)))
 
     axis = np.array([0.0, 0.0, 1.0])
 
@@ -28,25 +31,28 @@ def zalign(structure, mask1, mask2, translate=True, save=False, filename=None):
     mask2_com = mask2_com + -1.0 * mask1_com
 
     # 2. Find axis and angle between the mask vector and the axis using cross and dot products.
-    x     = np.cross(mask2_com, axis) / np.linalg.norm(np.cross(mask2_com, axis))
-    theta = np.arccos(np.dot(mask2_com, axis)/(np.linalg.norm(mask2_com) * np.linalg.norm(axis)))
+    x = np.cross(mask2_com, axis) / np.linalg.norm(np.cross(mask2_com, axis))
+    theta = np.arccos(np.dot(mask2_com, axis) /
+                      (np.linalg.norm(mask2_com) * np.linalg.norm(axis)))
     # 3. Find the rotation matrix
-    A = np.array([[0,        -1.0*x[2],     x[1] ],
-                  [x[2],      0,       -1.0*x[0] ],
-                  [-1.0*x[1], x[0],           0  ]])
+    A = np.array([[0,        -1.0 * x[2],     x[1]],
+                  [x[2],      0,       -1.0 * x[0]],
+                  [-1.0 * x[1], x[0],           0]])
 
-    rotation_matrix = I + np.dot(np.sin(theta), A) + np.dot((1.0 - np.cos(theta)), np.dot(A, A))
+    rotation_matrix = I + np.dot(np.sin(theta), A) + \
+        np.dot((1.0 - np.cos(theta)), np.dot(A, A))
 
     # This is certainly not the fastest approach, but it is explicit.
     aligned_coords = np.empty_like(structure.coordinates)
-    for atom in range(len(structure.atoms)):          
+    for atom in range(len(structure.atoms)):
         aligned_coords[atom] = structure.coordinates[atom] + -1.0 * mask1_com
         aligned_coords[atom] = np.dot(rotation_matrix, aligned_coords[atom])
     structure.coordinates = aligned_coords
 
     if save:
         if not filename:
-            log.warning('Unable to save aligned coordinates (no filename provided)...')
+            log.warning(
+                'Unable to save aligned coordinates (no filename provided)...')
         else:
             log.info('Saved aligned coordinates to {}'.format(filename))
             # This seems to write out HETATM in place of ATOM
@@ -54,6 +60,7 @@ def zalign(structure, mask1, mask2, translate=True, save=False, filename=None):
             structure.write_pdb(filename)
 
     return structure
+
 
 def get_theta(structure, mask1, mask2, axis):
     if 'x' in axis.lower():
@@ -74,25 +81,27 @@ def get_theta(structure, mask1, mask2, axis):
                                             np.asarray(mask2_masses))
 
     vector = mask2_com + -1.0 * mask1_com
-    theta = np.arccos(np.dot(vector, axis)/(np.linalg.norm(vector) * np.linalg.norm(axis)))
+    theta = np.arccos(np.dot(vector, axis) /
+                      (np.linalg.norm(vector) * np.linalg.norm(axis)))
 
     return theta
 
 
 def rotate_about_z(structure, theta, save=False, filename=None):
 
-    R = np.array([[np.cos(theta),  -1*np.sin(theta),   0 ],
-                  [np.sin(theta),     np.cos(theta),   0 ],
-                  [0,                             0,   1 ]])
+    R = np.array([[np.cos(theta),  -1 * np.sin(theta),   0],
+                  [np.sin(theta),     np.cos(theta),   0],
+                  [0,                             0,   1]])
 
     rotated_coords = np.empty_like(structure.coordinates)
-    for atom in range(len(structure.atoms)):          
+    for atom in range(len(structure.atoms)):
         rotated_coords[atom] = np.dot(R, structure.coordinates[atom])
     structure.coordinates = rotated_coords
 
     if save:
         if not filename:
-            log.warning('Unable to save aligned coordinates (no filename provided)...')
+            log.warning(
+                'Unable to save aligned coordinates (no filename provided)...')
         else:
             log.info('Saved aligned coordinates to {}'.format(filename))
             # This seems to write out HETATM in place of ATOM
@@ -109,8 +118,9 @@ def check_coordinates(structure, mask):
     mask_coordinates = structure[mask].coordinates
     mask_masses = [atom.mass for atom in structure[mask].atoms]
     mask_com = pmd.geometry.center_of_mass(np.asarray(mask_coordinates),
-                                            np.asarray(mask_masses))
+                                           np.asarray(mask_masses))
     return mask_com
+
 
 def offset_structure(structure, offset):
     """
@@ -122,4 +132,3 @@ def offset_structure(structure, offset):
     structure.coordinates = offset_coords
     log.info('Added offset of {} to atomic coordinates...'.format(offset))
     return structure
-

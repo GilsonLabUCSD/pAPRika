@@ -8,6 +8,7 @@ import numpy as np
 N_A = 6.0221409 * 10 ** 23
 ANGSTROM_CUBED_TO_LITERS = 1 * 10 ** -27
 
+
 class System(object):
     """
     Class for building AMBER prmtop/rst7 files with tleap.
@@ -90,12 +91,12 @@ class System(object):
         Whether or not to do saveamberparm and savepdb when tleap is executed. During optimization
         loops it speeds up the process to set as False, but it must be returned to True for the final
         execution. Default: True
-    
+
     """
 
     def __init__(self):
 
-        ### User Settings: Defaults
+        # User Settings: Defaults
         self.template_file = None
         self.template_lines = None
         self.loadpdb_file = None
@@ -104,13 +105,13 @@ class System(object):
         self.target_waters = None
         self.water_box = 'TIP3PBOX'
         self.neutralize = True
-        self.counter_cation='Na+'
-        self.counter_anion='Cl-'
+        self.counter_cation = 'Na+'
+        self.counter_anion = 'Cl-'
         self.add_ions = None
-        self.output_path='./'
-        self.output_prefix='build'
+        self.output_path = './'
+        self.output_prefix = 'build'
 
-        ### Advanced Settings: Defaults
+        # Advanced Settings: Defaults
         self.unit = 'model'
         self.exponent = 1
         self.min_exponent_limit = -5
@@ -134,15 +135,17 @@ class System(object):
 
         # Check input
         if self.template_file and self.template_lines:
-            raise Exception('template_file and template_lines cannot both be specified')
+            raise Exception(
+                'template_file and template_lines cannot both be specified')
         elif self.template_file:
             with open(self.template_file, 'r') as f:
                 self.template_lines = f.read().splitlines()
         elif self.template_lines:
-            for i,line in enumerate(self.template_lines):
+            for i, line in enumerate(self.template_lines):
                 self.template_lines[i] = line.rstrip()
         else:
-            raise Exception('Either template_file or template_lines needs to be specified')
+            raise Exception(
+                'Either template_file or template_lines needs to be specified')
 
         # Filter out any interfering lines
         self.filter_template()
@@ -168,7 +171,8 @@ class System(object):
                 if self.loadpdb_file is None:
                     self.loadpdb_file = words[2]
                 self.unit = words[0]
-                filtered_lines.append("{} = loadpdb {}".format(self.unit, self.loadpdb_file))
+                filtered_lines.append("{} = loadpdb {}".format(
+                    self.unit, self.loadpdb_file))
             # Remove any included solvation and ionization commands if pbc_type is not None
             elif self.pbc_type is not None:
                 if not re.search(r"^\s*(addions|addions2|addionsrand|desc|quit|solvate|save)", line, re.IGNORECASE):
@@ -178,49 +182,57 @@ class System(object):
 
         self.template_lines = filtered_lines
 
-
     def write_input(self):
         """
         Write a tleap input file based on template_lines and other things we have set.
 
         """
 
-        file_path = os.path.join(self.output_path, self.output_prefix + '.tleap.in')
+        file_path = os.path.join(
+            self.output_path, self.output_prefix + '.tleap.in')
         with open(file_path, 'w') as f:
             for line in self.template_lines:
-                f.write(line+"\n")
+                f.write(line + "\n")
 
             if self.pbc_type == 'cubic':
-                f.write("solvatebox {} {} {} iso\n".format(self.unit, self.water_box, self.buffer_value))
+                f.write("solvatebox {} {} {} iso\n".format(
+                    self.unit, self.water_box, self.buffer_value))
             elif self.pbc_type == 'rectangular':
-                f.write("solvatebox {} {} {{10.0 10.0 {}}}\n".format(self.unit, self.water_box, self.buffer_value))
+                f.write("solvatebox {} {} {{10.0 10.0 {}}}\n".format(
+                    self.unit, self.water_box, self.buffer_value))
             elif self.pbc_type == 'octahedral':
-                f.write("solvateoct {} {} {} iso\n".format(self.unit, self.water_box, self.buffer_value))
+                f.write("solvateoct {} {} {} iso\n".format(
+                    self.unit, self.water_box, self.buffer_value))
             elif self.pbc_type is None:
                 f.write("# Skipping solvation ...\n")
             else:
                 raise Exception(
-                    "Incorrect pbctype value provided: " + str(self.pbc_type) \
+                    "Incorrect pbctype value provided: " + str(self.pbc_type)
                     + ". Only `cubic`, `rectangular`, `octahedral`, and None are valid")
             if self.neutralize:
-                f.write("addionsrand {} {} 0\n".format(self.unit, self.counter_cation))
-                f.write("addionsrand {} {} 0\n".format(self.unit, self.counter_anion))
+                f.write("addionsrand {} {} 0\n".format(
+                    self.unit, self.counter_cation))
+                f.write("addionsrand {} {} 0\n".format(
+                    self.unit, self.counter_anion))
             # Additional ions should be specified as a list, with residue name and number of ions in pairs, like ['NA',
             # 5] for five additional sodium ions. By this point, if the user specified a molality or molarity,
             # it should already have been converted into a number.
             if self.add_ion_residues:
                 for residue, amount in zip(self.add_ion_residues[0::2],
                                            self.add_ion_residues[1::2]):
-                    f.write("addionsrand {} {} {}\n".format(self.unit, residue, amount))
+                    f.write("addionsrand {} {} {}\n".format(
+                        self.unit, residue, amount))
             if self.waters_to_remove:
                 for water_number in self.waters_to_remove:
-                    f.write("remove {} {}.{}\n".format(self.unit, self.unit, water_number))
+                    f.write("remove {} {}.{}\n".format(
+                        self.unit, self.unit, water_number))
 
             # Note, the execution of tleap is assumed to take place in the
             # same directory as all the associated input files, so we won't
             # put directory paths on the saveamberparm or savepdb commands.
             if self.output_prefix and self.write_save_lines:
-                f.write("savepdb {} {}.pdb\n".format(self.unit, self.output_prefix))
+                f.write("savepdb {} {}.pdb\n".format(
+                    self.unit, self.output_prefix))
                 f.write("saveamberparm {} {}.prmtop {}.rst7\n".format(self.unit, self.output_prefix,
                                                                       self.output_prefix))
             else:
@@ -236,13 +248,14 @@ class System(object):
         -------
         output : list
             The tleap stdout returned as a list.
-    
+
         """
 
         self.check_for_leap_log()
-        file_name = self.output_prefix + '.tleap.in'    
+        file_name = self.output_prefix + '.tleap.in'
 
-        output =  sp.Popen(['tleap', '-s ', '-f ', file_name], stdout=sp.PIPE, stderr=sp.PIPE, cwd=self.output_path)
+        output = sp.Popen(['tleap', '-s ', '-f ', file_name],
+                          stdout=sp.PIPE, stderr=sp.PIPE, cwd=self.output_path)
         output = output.stdout.read().decode().splitlines()
 
         self.grep_leap_log()
@@ -276,7 +289,7 @@ class System(object):
         log_file_path = os.path.join(self.output_path, log_file)
         try:
             os.remove(log_file_path)
-            log.debug('Deleted existing leap logfile: '+log_file_path)
+            log.debug('Deleted existing leap logfile: ' + log_file_path)
         except OSError:
             pass
 
@@ -301,10 +314,12 @@ class System(object):
         # to the target_waters. This will control when we can start manually deleting
         # waters rather than adjusting the buffer_value.
         if self.manual_switch_thresh is None:
-            self.manual_switch_thresh = int(np.ceil(self.target_waters**(1./3.)))
+            self.manual_switch_thresh = int(
+                np.ceil(self.target_waters**(1. / 3.)))
             if self.manual_switch_thresh < 12:
                 self.manual_switch_thresh = 12
-            log.debug("manual_switch_thresh is set to: {:.0f}".format(self.manual_switch_thresh))
+            log.debug("manual_switch_thresh is set to: {:.0f}".format(
+                self.manual_switch_thresh))
 
         if self.add_ions:
             self.set_additional_ions()
@@ -324,7 +339,8 @@ class System(object):
             waters = self.count_waters()
             self.wat_added_history.append(waters)
             self.buffer_val_history.append(self.buffer_value)
-            log.debug("Cycle {:02.0f} {:.0f} {:10.7f} {:6.0f} ({:6.0f})".format(cycle, self.exponent,self.buffer_value, waters, self.target_waters))
+            log.debug("Cycle {:02.0f} {:.0f} {:10.7f} {:6.0f} ({:6.0f})".format(
+                cycle, self.exponent, self.buffer_value, waters, self.target_waters))
 
             # Possible location of a switch to adjust the buffer_value by polynomial
             # fit approach.
@@ -350,7 +366,8 @@ class System(object):
                 cycle += 1
 
         if cycle >= self.max_cycles and waters > self.target_waters:
-            log.debug("The added waters ({}) didn't reach the manual_switch_thresh ({}) with max_cycles ({}), but we'll try manual removal anyway.".format(waters, self.target_waters, self.max_cycles))
+            log.debug("The added waters ({}) didn't reach the manual_switch_thresh ({}) with max_cycles ({}), but we'll try manual removal anyway.".format(
+                waters, self.target_waters, self.max_cycles))
             self.remove_waters_manually()
             self.final_solvation_run()
 
@@ -377,8 +394,10 @@ class System(object):
             if residues['WAT'] == self.target_waters:
                 break
             if i == 49:
-                raise Exception('Unable to add the correct waters at 50 cycles during final_solvation_run()')
-            log.info('The final solvation step added the wrong number of waters. Repeating ...')
+                raise Exception(
+                    'Unable to add the correct waters at 50 cycles during final_solvation_run()')
+            log.info(
+                'The final solvation step added the wrong number of waters. Repeating ...')
 
     def count_waters(self):
         """
@@ -395,7 +414,7 @@ class System(object):
     def count_residues(self, print_results=False):
         """
         Run and parse `tleap` output and return a dictionary of residues in the structure.
-    
+
         Returns
         -------
         residues : dict
@@ -423,10 +442,10 @@ class System(object):
             if residues:
                 break
             if attempt == 9:
-                raise Exception('tleap was unable to successfully create the system after 10 attempts.'\
-                                +' Investigate the leap.log for errors.')
+                raise Exception('tleap was unable to successfully create the system after 10 attempts.'
+                                + ' Investigate the leap.log for errors.')
 
-        #log.debug(residues)
+        # log.debug(residues)
         if print_results:
             for key, value in sorted(residues.items()):
                 log.info('{:10s} {:10.0f}'.format(key, value))
@@ -436,7 +455,7 @@ class System(object):
     def set_additional_ions(self):
         """
         Determine whether additional ions (instead of or in addition to neutralization) are requested...
-    
+
         Sets
         -------
         self.add_ion_residues : list
@@ -459,7 +478,8 @@ class System(object):
             elif isinstance(amount, str) and amount[-1] == 'm':
                 # User specifies molality...
                 # number to add = (molality) x (number waters) x (kg/mol solvent)
-                number_to_add = int(np.ceil(float(amount[:-1]) * self.target_waters * self.kg_per_mol_solvent))
+                number_to_add = int(
+                    np.ceil(float(amount[:-1]) * self.target_waters * self.kg_per_mol_solvent))
                 self.add_ion_residues.append(number_to_add)
             elif isinstance(amount, str) and amount[-1] == 'M':
                 # User specifies molarity...
@@ -472,12 +492,13 @@ class System(object):
                 number_to_add = int(np.ceil(number_of_atoms * liters))
                 self.add_ion_residues.append(number_to_add)
             else:
-                raise Exception('Unanticipated error calculating how many ions to add.')
+                raise Exception(
+                    'Unanticipated error calculating how many ions to add.')
 
     def get_volume(self):
         """
         Run and parse `tleap` output and return the volume of the structure.
-    
+
         Returns
         -------
         volume : float
@@ -514,12 +535,14 @@ class System(object):
             # by increasing the water_surplus value, manually, and increase
             # it as we go through more cycles.
             if cycle > 5:
-                additional_water = int( float(cycle)/5.0 )
+                additional_water = int(float(cycle) / 5.0)
                 water_surplus += additional_water
-                log.debug('Detected trouble with manually removing water. Increasing the number of surplus waters by {}'.format(additional_water))
+                log.debug('Detected trouble with manually removing water. Increasing the number of surplus waters by {}'.format(
+                    additional_water))
 
             self.waters_to_remove = water_residues[-1 * water_surplus:]
-            log.debug('Manually removing waters... {}'.format(self.waters_to_remove))
+            log.debug('Manually removing waters... {}'.format(
+                self.waters_to_remove))
 
             # Get counts for all residues
             residues = self.count_residues()
@@ -537,7 +560,7 @@ class System(object):
     def list_waters(self):
         """
         Run and parse `tleap` output and return the a list of water residues.
-    
+
         Returns
         -------
         water_residues : list
@@ -558,7 +581,7 @@ class System(object):
     def adjust_buffer_value(self):
         """
         Determine whether to increase or decrease the buffer thickness to match a desired number of waters.
-    
+
         Sets
         -------
         self.buffer_value : float
@@ -577,11 +600,13 @@ class System(object):
             if self.cyc_since_last_exp_change > 1:
                 log.debug('Adjustment loop 1a')
                 self.exponent -= 1
-                self.buffer_value = self.buffer_val_history[-1] + -5 * (10**self.exponent)
+                self.buffer_value = self.buffer_val_history[-1] + -5 * (
+                    10**self.exponent)
                 self.cyc_since_last_exp_change = 0
             else:
                 log.debug('Adjustment loop 1b')
-                self.buffer_value = self.buffer_val_history[-1] + -1 * (10**self.exponent)
+                self.buffer_value = self.buffer_val_history[-1] + -1 * (
+                    10**self.exponent)
                 self.cyc_since_last_exp_change += 1
         # If the number of waters was greater than the target and is now less than the target, make the buffer bigger
         elif self.wat_added_history[-2] > self.target_waters and self.wat_added_history[-1] < self.target_waters:
@@ -589,21 +614,25 @@ class System(object):
             if self.cyc_since_last_exp_change > 1:
                 log.debug('Adjustment loop 2a')
                 self.exponent -= 1
-                self.buffer_value = self.buffer_val_history[-1] + 5 * (10**self.exponent)
+                self.buffer_value = self.buffer_val_history[-1] + 5 * (
+                    10**self.exponent)
                 self.cyc_since_last_exp_change = 0
             else:
                 log.debug('Adjustment loop 2b')
-                self.buffer_value = self.buffer_val_history[-1] + 1 * (10**self.exponent)
+                self.buffer_value = self.buffer_val_history[-1] + 1 * (
+                    10**self.exponent)
                 self.cyc_since_last_exp_change += 1
         # If the last two rounds of solvation have too many waters, make the buffer smaller...
         elif self.wat_added_history[-2] > self.target_waters and self.wat_added_history[-1] > self.target_waters:
             log.debug('Adjustment loop 3')
-            self.buffer_value = self.buffer_val_history[-1] + -1 * (10**self.exponent)
+            self.buffer_value = self.buffer_val_history[-1] + -1 * (
+                10**self.exponent)
             self.cyc_since_last_exp_change += 1
         # If the last two rounds of solvation had too few waters, make the buffer bigger...
         elif self.wat_added_history[-2] < self.target_waters and self.wat_added_history[-1] < self.target_waters:
             log.debug('Adjustment loop 4')
-            self.buffer_value = self.buffer_val_history[-1] + 1 * (10**self.exponent)
+            self.buffer_value = self.buffer_val_history[-1] + 1 * (
+                10**self.exponent)
             self.cyc_since_last_exp_change += 1
         else:
             raise Exception(

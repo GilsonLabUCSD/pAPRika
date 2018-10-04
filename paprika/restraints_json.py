@@ -81,7 +81,8 @@ def load_restraints(filepath="restraints.json"):
             log.debug("Setting topology from file name.")
             tmp.topology = pmd.load_file(loaded["topology"], structure=True)
         except IOError:
-            log.debug("Unable to set topology information after loading from JSON.")
+            log.debug(
+                "Unable to set topology information after loading from JSON.")
             log.debug("Topology is set to the file name of the topology file.")
             tmp.topology = loaded["topology"]
         restraints.append(tmp)

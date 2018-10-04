@@ -49,9 +49,12 @@ class DAT_restraint(object):
             "fc_final": None,  # The final force constant (optional)
             "num_windows": None,  # The number of windows (optional)
             "fc_increment": None,  # The force constant increment (optional)
-            "fraction_increment": None,  # The percentage of the force constant increment (optional)
-            "fraction_list": None,  # The list of force constant percentages (optional)
-            "fc_list": None,  # The list of force constants (will be created if not given)
+            # The percentage of the force constant increment (optional)
+            "fraction_increment": None,
+            # The list of force constant percentages (optional)
+            "fraction_list": None,
+            # The list of force constants (will be created if not given)
+            "fc_list": None,
         }
 
         self.pull = {
@@ -60,9 +63,12 @@ class DAT_restraint(object):
             "target_final": None,  # The final target value (optional)
             "num_windows": None,  # The number of windows (optional)
             "target_increment": None,  # The target value increment (optional)
-            "fraction_increment": None,  # The percentage of the target value increment (optional)
-            "fraction_list": None,  # The list of target value percentages (optional)
-            "target_list": None,  # The list of target values (will be created if not given)
+            # The percentage of the target value increment (optional)
+            "fraction_increment": None,
+            # The list of target value percentages (optional)
+            "fraction_list": None,
+            # The list of target values (will be created if not given)
+            "target_list": None,
         }
 
         self.release = {
@@ -71,9 +77,12 @@ class DAT_restraint(object):
             "fc_final": None,  # The final force constant (optional)
             "num_windows": None,  # The number of windows (optional)
             "fc_increment": None,  # The force constant increment (optional)
-            "fraction_increment": None,  # The percentage of the force constant increment (optional)
-            "fraction_list": None,  # The list of force constant percentages (optional)
-            "fc_list": None  # The list of force constants (will be created if not
+            # The percentage of the force constant increment (optional)
+            "fraction_increment": None,
+            # The list of force constant percentages (optional)
+            "fraction_list": None,
+            # The list of force constants (will be created if not
+            "fc_list": None
             # given)
         }
 
@@ -131,7 +140,8 @@ class DAT_restraint(object):
 
         # Attach/Release, Force Constant Method 1a
         elif phase in ("a", "r") and meth == "1a":
-            force_constants = np.linspace(0.0, rdict["fc_final"], rdict["num_windows"])
+            force_constants = np.linspace(
+                0.0, rdict["fc_final"], rdict["num_windows"])
 
         # Attach/Release, Force Constant Method 2
         elif phase in ("a", "r") and meth == "2":
@@ -144,19 +154,22 @@ class DAT_restraint(object):
         # Attach/Release, Force Constant Method 2a
         elif phase in ("a", "r") and meth == "2a":
             force_constants = np.arange(
-                0.0, rdict["fc_final"] + rdict["fc_increment"], rdict["fc_increment"]
+                0.0, rdict["fc_final"] +
+                rdict["fc_increment"], rdict["fc_increment"]
             )
 
         # Attach/Release, Force Constant Method 3
         elif phase in ("a", "r") and meth == "3":
             force_constants = np.asarray(
-                [fraction * rdict["fc_final"] for fraction in rdict["fraction_list"]]
+                [fraction * rdict["fc_final"]
+                    for fraction in rdict["fraction_list"]]
             )
 
         # Attach/Release, Force Constant Method 4
         elif phase in ("a", "r") and meth == "4":
             fractions = np.arange(
-                0, 1.0 + rdict["fraction_increment"], rdict["fraction_increment"]
+                0, 1.0 +
+                rdict["fraction_increment"], rdict["fraction_increment"]
             )
             force_constants = np.asarray(
                 [fraction * rdict["fc_final"] for fraction in fractions]
@@ -178,7 +191,8 @@ class DAT_restraint(object):
 
         # Pull, Target Method 1a
         elif phase == "p" and meth == "1a":
-            targets = np.linspace(0.0, rdict["target_final"], rdict["num_windows"])
+            targets = np.linspace(
+                0.0, rdict["target_final"], rdict["num_windows"])
 
         # Pull, Target Method 2
         elif phase == "p" and meth == "2":
@@ -208,7 +222,8 @@ class DAT_restraint(object):
         # Pull, Target Method 4
         elif phase == "p" and meth == "4":
             fractions = np.arange(
-                0, 1.0 + rdict["fraction_increment"], rdict["fraction_increment"]
+                0, 1.0 +
+                rdict["fraction_increment"], rdict["fraction_increment"]
             )
             targets = np.asarray(
                 [fraction * rdict["target_final"] for fraction in fractions]
@@ -224,7 +239,8 @@ class DAT_restraint(object):
 
         if force_constants is None and targets is None:
             log.error("Unsupported Phase/Method: {} / {}".format(phase, meth))
-            raise Exception("Unexpected phase/method combination passed to _calc_meth")
+            raise Exception(
+                "Unexpected phase/method combination passed to _calc_meth")
 
         return force_constants, targets
 
@@ -254,7 +270,7 @@ class DAT_restraint(object):
             Method 5:   target_list
         """
 
-        ### Setup. These are the lists that will be most used by other modules
+        # Setup. These are the lists that will be most used by other modules
         self.phase = {
             "attach": {"force_constants": None, "targets": None},
             "pull": {"force_constants": None, "targets": None},
@@ -263,7 +279,7 @@ class DAT_restraint(object):
         # ------------------------------------ ATTACH ------------------------------------ #
         log.debug("Calculating attach targets and force constants...")
 
-        ### Temporary variables to improve readability
+        # Temporary variables to improve readability
         force_constants = None
         targets = None
 
@@ -274,11 +290,13 @@ class DAT_restraint(object):
             if self.attach["fc_initial"] is not None:
                 ### METHOD 1 ###
                 log.debug("Attach, Method #1")
-                force_constants, targets = self._calc_meth("a", self.attach, "1")
+                force_constants, targets = self._calc_meth(
+                    "a", self.attach, "1")
             else:
                 ### METHOD 1a ###
                 log.debug("Attach, Method #1a")
-                force_constants, targets = self._calc_meth("a", self.attach, "1a")
+                force_constants, targets = self._calc_meth(
+                    "a", self.attach, "1a")
 
         elif (
             self.attach["fc_increment"] is not None
@@ -287,11 +305,13 @@ class DAT_restraint(object):
             if self.attach["fc_initial"] is not None:
                 ### METHOD 2 ###
                 log.debug("Attach, Method #2")
-                force_constants, targets = self._calc_meth("a", self.attach, "2")
+                force_constants, targets = self._calc_meth(
+                    "a", self.attach, "2")
             else:
                 ### METHOD 2a ###
                 log.debug("Attach, Method #2a")
-                force_constants, targets = self._calc_meth("a", self.attach, "2a")
+                force_constants, targets = self._calc_meth(
+                    "a", self.attach, "2a")
 
         elif (
             self.attach["fraction_list"] is not None
@@ -352,7 +372,8 @@ class DAT_restraint(object):
             else:
                 ### METHOD 1a ###
                 log.debug("Pull, Method #1a")
-                force_constants, targets = self._calc_meth("p", self.pull, "1a")
+                force_constants, targets = self._calc_meth(
+                    "p", self.pull, "1a")
 
         elif (
             self.pull["target_increment"] is not None
@@ -365,7 +386,8 @@ class DAT_restraint(object):
             else:
                 ### METHOD 2a ###
                 log.debug("Pull, Method #2a")
-                force_constants, targets = self._calc_meth("p", self.pull, "2a")
+                force_constants, targets = self._calc_meth(
+                    "p", self.pull, "2a")
 
         elif (
             self.pull["fraction_list"] is not None
@@ -435,11 +457,13 @@ class DAT_restraint(object):
             if self.release["fc_initial"] is not None:
                 ### METHOD 1 ###
                 log.debug("Release, Method #1")
-                force_constants, targets = self._calc_meth("r", self.release, "1")
+                force_constants, targets = self._calc_meth(
+                    "r", self.release, "1")
             else:
                 ### METHOD 1a ###
                 log.debug("Release, Method #1a")
-                force_constants, targets = self._calc_meth("r", self.release, "1a")
+                force_constants, targets = self._calc_meth(
+                    "r", self.release, "1a")
 
         elif (
             self.release["fc_increment"] is not None
@@ -448,11 +472,13 @@ class DAT_restraint(object):
             if self.release["fc_initial"] is not None:
                 ### METHOD 2 ###
                 log.debug("Release, Method #2")
-                force_constants, targets = self._calc_meth("r", self.release, "2")
+                force_constants, targets = self._calc_meth(
+                    "r", self.release, "2")
             else:
                 ### METHOD 2a ###
                 log.debug("Release, Method #2a")
-                force_constants, targets = self._calc_meth("r", self.release, "2a")
+                force_constants, targets = self._calc_meth(
+                    "r", self.release, "2a")
 
         elif (
             self.release["fraction_list"] is not None
@@ -498,17 +524,21 @@ class DAT_restraint(object):
             if self.phase[phase]["targets"] is not None:
                 window_count = len(self.phase[phase]["targets"])
                 # DAT_restraint.window_counts[phase].append(window_count)
-                log.debug("Number of {} windows = {}".format(phase, window_count))
+                log.debug("Number of {} windows = {}".format(
+                    phase, window_count))
             else:
                 # DAT_restraint.window_counts[phase].append(None)
                 log.debug(
-                    "This restraint will be skipped in the {} phase".format(phase)
+                    "This restraint will be skipped in the {} phase".format(
+                        phase)
                 )
 
         # ---------------------------------- ATOM MASKS ---------------------------------- #
         log.debug("Assigning atom indices...")
-        self.index1 = utils.index_from_mask(self.topology, self.mask1, self.amber_index)
-        self.index2 = utils.index_from_mask(self.topology, self.mask2, self.amber_index)
+        self.index1 = utils.index_from_mask(
+            self.topology, self.mask1, self.amber_index)
+        self.index2 = utils.index_from_mask(
+            self.topology, self.mask2, self.amber_index)
         if self.mask3:
             self.index3 = utils.index_from_mask(
                 self.topology, self.mask3, self.amber_index
@@ -641,8 +671,9 @@ def check_restraints(restraint_list, create_window_list=False):
         all_continuous_apr = False
     else:
         log.error("All restraints must have the same setting for .continuous_apr")
-        ### Should we do the following?
-        raise Exception("All restraints must have the same setting for .continuous_apr")
+        # Should we do the following?
+        raise Exception(
+            "All restraints must have the same setting for .continuous_apr")
 
     window_list = []
     phases = ["attach", "pull", "release"]
@@ -863,7 +894,8 @@ def setup_openmm_restraints(system, restraint, phase, window):
                 * unit.kilocalorie_per_mole
                 / unit.angstrom ** 2
             )
-            bond_restraint.addBond(restraint.index1[0], restraint.index2[0], [k, r_0])
+            bond_restraint.addBond(
+                restraint.index1[0], restraint.index2[0], [k, r_0])
             bond_restraint.setForceGroup(1)
             system.addForce(bond_restraint)
             log.debug(
@@ -936,7 +968,8 @@ def setup_openmm_restraints(system, restraint, phase, window):
             / unit.radian ** 2
         )
         angle_restraint.addAngle(
-            restraint.index1[0], restraint.index2[0], restraint.index3[0], [k, theta_0]
+            restraint.index1[0], restraint.index2[0], restraint.index3[0], [
+                k, theta_0]
         )
         system.addForce(angle_restraint)
 

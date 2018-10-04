@@ -23,8 +23,9 @@ def check_restraints(restraint_list, create_window_list=False):
         all_continuous_apr = False
     else:
         log.error("All restraints must have the same setting for .continuous_apr")
-        ### Should we do the following?
-        raise Exception("All restraints must have the same setting for .continuous_apr")
+        # Should we do the following?
+        raise Exception(
+            "All restraints must have the same setting for .continuous_apr")
 
     window_list = []
     phases = ["attach", "pull", "release"]
@@ -220,7 +221,8 @@ def setup_openmm_restraints(system, restraint, phase, window):
                 * unit.kilocalorie_per_mole
                 / unit.angstrom ** 2
             )
-            bond_restraint.addBond(restraint.index1[0], restraint.index2[0], [k, r_0])
+            bond_restraint.addBond(
+                restraint.index1[0], restraint.index2[0], [k, r_0])
             bond_restraint.setForceGroup(1)
             system.addForce(bond_restraint)
             log.debug(
@@ -293,7 +295,8 @@ def setup_openmm_restraints(system, restraint, phase, window):
             / unit.radian ** 2
         )
         angle_restraint.addAngle(
-            restraint.index1[0], restraint.index2[0], restraint.index3[0], [k, theta_0]
+            restraint.index1[0], restraint.index2[0], restraint.index3[0], [
+                k, theta_0]
         )
         system.addForce(angle_restraint)
 
@@ -377,7 +380,8 @@ def to_json(restraint_list):
                 try:
                     dictionary["phase"][phase][array] = self.phase[array].tolist()
                 except:
-                    print("Could not convert {} to list".format(self.phase[array]))
+                    print("Could not convert {} to list".format(
+                        self.phase[array]))
         return json.dumps(dictionary)
 
 

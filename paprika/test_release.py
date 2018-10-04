@@ -83,7 +83,8 @@ guest_restraint_target_final = [24.0, 180.0, 180.0]
 guest_restraint_distance_fc = 5.0
 guest_restraint_angle_fc = 100.0
 
-host_conformational_template = [["O5", "C1", "O1", "C4"], ["C1", "O1", "C4", "C5"]]
+host_conformational_template = [
+    ["O5", "C1", "O1", "C4"], ["C1", "O1", "C4", "C5"]]
 
 host_residues = len(hg[":MGO"].residues)
 first_host_residue = hg[":MGO"].residues[0].number + 1
@@ -261,7 +262,8 @@ analyze.quicker_ti_matrix = True
 analyze.bootcycles = 1000
 analyze.compute_free_energy()
 analyze.compute_ref_state_work(
-    [guest_restraints[0], guest_restraints[1], None, None, guest_restraints[2], None]
+    [guest_restraints[0], guest_restraints[1],
+        None, None, guest_restraints[2], None]
 )
 
 attach_fe = analyze.results["attach"]["ti-block"]["fe"]

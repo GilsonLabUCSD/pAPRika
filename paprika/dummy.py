@@ -50,7 +50,8 @@ def add_dummy(structure,
     elif isinstance(structure, ParmedStructureClass):
         pass
     else:
-        raise Exception('add_dummy does not support the type associated with structure: ' + type(structure))
+        raise Exception(
+            'add_dummy does not support the type associated with structure: ' + type(structure))
 
     # Create an atom object
     dum = pmd.topologyobjects.Atom()

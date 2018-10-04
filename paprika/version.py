@@ -8,12 +8,14 @@ def find_version():
     try:
         # Try to use git to find current commit.
         path = os.path.dirname(os.path.realpath(__file__))
-        p = sp.Popen(["git", "describe", "--always"], cwd=path, stdout=sp.PIPE, stderr=sp.PIPE)
+        p = sp.Popen(["git", "describe", "--always"],
+                     cwd=path, stdout=sp.PIPE, stderr=sp.PIPE)
         output, error = p.communicate()
         git_describe = output.decode("utf-8").strip()
         git_hash = re.sub('-g[0-9a-f]*$', '', git_describe)
 
-        p = sp.Popen(["git", "log", "-1", "--format=%cd", "--date=iso"], cwd=path, stdout=sp.PIPE, stderr=sp.PIPE)
+        p = sp.Popen(["git", "log", "-1", "--format=%cd", "--date=iso"],
+                     cwd=path, stdout=sp.PIPE, stderr=sp.PIPE)
         output, error = p.communicate()
         git_date = output.decode("utf-8").strip()
         date_time = '_'.join(git_date.split(' '))

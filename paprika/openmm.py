@@ -189,7 +189,8 @@ class OpenMM_GB_simulation:
         nb_force = forces["NonbondedForce"]
         for scale in np.linspace(0, 1.0, int(0.4 * self.min["max_iterations"])):
             for particle in range(nb_force.getNumParticles()):
-                [charge, sigma, epsilon] = nb_force.getParticleParameters(particle)
+                [charge, sigma, epsilon] = nb_force.getParticleParameters(
+                    particle)
                 nb_force.setParticleParameters(
                     particle, charge * scale, sigma, epsilon * scale
                 )

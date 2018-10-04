@@ -3,6 +3,7 @@ import subprocess as sp
 from collections import OrderedDict
 import os
 
+
 class Simulation(object):
     """
     AMBER simulation class.
@@ -10,18 +11,18 @@ class Simulation(object):
 
     def __init__(self):
 
-        ### Setup simulation directory and files
-        self.path = '.' # Assume everything will be created/executed in this path
+        # Setup simulation directory and files
+        self.path = '.'  # Assume everything will be created/executed in this path
         self.executable = 'sander'
         self.CUDA_VISIBLE_DEVICES = None
-        self.phase = None   
+        self.phase = None
         self.window = None
         self.topology = 'prmtop'
         self.restraint_file = 'restraints.in'
         self.title = 'PBC MD Simulation'
         self.converged = False
 
-        ### File names
+        # File names
         self._prefix = 'md'
         self.input = self._prefix + '.in'
         self.inpcrd = self._prefix + '.inpcrd'
@@ -32,7 +33,7 @@ class Simulation(object):
         self.mdcrd = self._prefix + '.nc'
         self.mden = self._prefix + '.mden'
 
-        ### Input file cntrl settings (Default = NTP)
+        # Input file cntrl settings (Default = NTP)
         self.cntrl = OrderedDict()
         self.cntrl['imin'] = 0
         self.cntrl['ntx'] = 1
@@ -66,15 +67,15 @@ class Simulation(object):
 
         # Other input file sections
         self.ewald = None
-        self.other_namelist = None # Could add other namelists as dicts
+        self.other_namelist = None  # Could add other namelists as dicts
         self.wt = None    # or []
         self.group = None    # or []
 
-
-    ### Refresh file names if prefix changes
+    # Refresh file names if prefix changes
     @property
     def prefix(self):
         return self._prefix
+
     @prefix.setter
     def prefix(self, new_prefix):
         self._prefix = new_prefix
@@ -113,7 +114,6 @@ class Simulation(object):
         self.mdcrd = None
         self.mden = None
 
-
     def config_pbc_min(self):
         """
         Configure input settings to minimization in periodic boundary conditions.
@@ -122,7 +122,6 @@ class Simulation(object):
         self.title = 'PBC Minimization'
         self.cntrl['cut'] = 8.0
         self.cntrl['igb'] = 0
-
 
     def config_gb_min(self):
         """
@@ -133,7 +132,6 @@ class Simulation(object):
         self.title = 'GB Minimization'
         self.cntrl['cut'] = 999.0
         self.cntrl['igb'] = 1
-
 
     def _config_md(self):
         """
@@ -170,7 +168,6 @@ class Simulation(object):
         self.cntrl['ntp'] = 0
         self.cntrl['barostat'] = 0
 
-
     def config_pbc_md(self):
         """
         Configure input settings to default NTP.
@@ -190,10 +187,9 @@ class Simulation(object):
                 f.write("  {:15s} {:s},\n".format(key + ' =', str(val)))
         f.write(" /\n")
 
-
     def _amber_write_input_file(self):
         log.debug('Writing {}'.format(self.input))
-        with open(self.path+'/'+self.input, 'w') as f:
+        with open(self.path + '/' + self.input, 'w') as f:
             f.write("{}\n".format(self.title))
 
             f.write(" &cntrl\n")
@@ -214,7 +210,6 @@ class Simulation(object):
             if self.group is not None:
                 f.write("{:s}".format(self.group))
 
-
     def run(self, soft_minimize=False, overwrite=False, fail_ok=False):
         """
         Minimize the system.
@@ -231,15 +226,18 @@ class Simulation(object):
                 # Set a burn in value that is 25% of the way between ncyc and maxcyc
                 ncyc = self.cntrl['ncyc']
                 maxcyc = self.cntrl['maxcyc']
-                burn_in = int(float(ncyc) + 0.20*(float(maxcyc) - float(ncyc)))
+                burn_in = int(float(ncyc) + 0.20 *
+                              (float(maxcyc) - float(ncyc)))
                 # If the burn_in value is nuts, then just set it to zero
                 if burn_in < 0 or burn_in >= maxcyc:
                     burn_in = 0
                 # Set an end_soft value that is 75% of way between ncyc and maxcyc
-                end_soft = int(float(ncyc) + 0.60*(float(maxcyc) - float(ncyc)))
+                end_soft = int(float(ncyc) + 0.60 *
+                               (float(maxcyc) - float(ncyc)))
                 self.wt = [
-                    "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(burn_in),
-                    "&wt type = 'NB', istep1={:.0f}, istep2={:.0f}, value1 = 0.0, value2=1.0, IINC=50, /".format(burn_in,end_soft)]
+                    "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(
+                        burn_in),
+                    "&wt type = 'NB', istep1={:.0f}, istep2={:.0f}, value1 = 0.0, value2=1.0, IINC=50, /".format(burn_in, end_soft)]
 
             #_amber_write_input_file(self.path+'/'+self.input, self.min, title='GB Minimization.')
             self._amber_write_input_file()
@@ -253,7 +251,8 @@ class Simulation(object):
             exec_list = self.executable.split() + ['-O', '-p', self.topology]
             if self.ref is not None:
                 exec_list += ['-ref', self.ref]
-            exec_list += ['-c', self.inpcrd, '-i', self.input, '-o', self.output, '-r', self.restart]
+            exec_list += ['-c', self.inpcrd, '-i', self.input,
+                          '-o', self.output, '-r', self.restart]
             if self.mdcrd is not None:
                 exec_list += ['-x', self.mdcrd]
             if self.mdinfo is not None:
@@ -261,14 +260,15 @@ class Simulation(object):
             if self.mden is not None:
                 exec_list += ['-e', self.mden]
 
-            log.debug('Exec line: '+' '.join(exec_list))
+            log.debug('Exec line: ' + ' '.join(exec_list))
 
             # Execute
             if self.CUDA_VISIBLE_DEVICES:
                 amber_output = sp.Popen(exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE,
                                         env=dict(os.environ, CUDA_VISIBLE_DEVICES=str(self.CUDA_VISIBLE_DEVICES)))
             else:
-                amber_output = sp.Popen(exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE)
+                amber_output = sp.Popen(
+                    exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE)
 
             amber_output = amber_output.stdout.read().splitlines()
 
@@ -284,13 +284,16 @@ class Simulation(object):
             elif self.has_timings():
                 log.info('MD completed ...')
             else:
-                log.info('Simulation did not complete when executing the following ....')
+                log.info(
+                    'Simulation did not complete when executing the following ....')
                 log.info(' '.join(exec_list))
                 if not fail_ok:
-                    raise Exception('Exiting due to failed simulation! Check logging info.')
+                    raise Exception(
+                        'Exiting due to failed simulation! Check logging info.')
 
         else:
-            log.info("Completed output detected ... Skipping. Use: run(overwrite=True) to overwrite")
+            log.info(
+                "Completed output detected ... Skipping. Use: run(overwrite=True) to overwrite")
 
     def has_timings(self, alternate_file=None):
         """
@@ -327,5 +330,3 @@ class Simulation(object):
             log.debug('{} does not have TIMINGS'.format(output_file))
 
         return timings
-
-
