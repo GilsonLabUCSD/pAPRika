@@ -345,22 +345,22 @@ class fe_calc(object):
             # another MBAR calculation later with subsampling to estimate the
             # uncertainty.
             frac_N_k = np.array([int(fraction*n) for n in N_k], dtype=np.int32)
-                
+
             mbar = pymbar.MBAR(u_kln, frac_N_k, verbose=verbose)
             Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(compute_uncertainty=True)
 
             if method == 'mbar-block':
                 # Create subsampled indices and count their lengths
                 frac_N_ss = np.array([int(fraction*n) for n in N_ss], dtype=np.int32)
-    
+
                 # Create a new potential array for the uncertainty calculation (are we using too much memory?)
                 u_kln_err = np.zeros([num_win, num_win, np.max(frac_N_ss)], np.float64)
-    
+
                 # Populate the subsampled array, drawing the appropriate fraction of subsamples from the original
                 for k in range(num_win):
                     for l in range(num_win):
                         u_kln_err[k, l, 0:frac_N_ss[k]] = u_kln[k, l, ss_indices[k][0:frac_N_ss[k]]]
-    
+
                 # We toss junk_Deltaf_ij, because we got a better estimate for it from above using all data.
                 # But dDeltaf_ij will replace the previous, because it correctly accounts for the
                 # correlation in the data.
@@ -536,16 +536,16 @@ class fe_calc(object):
                 cnvg_dU_samples = np.array(dU_samples)
                 cnvg_dU_samples[:,k] = np.random.normal(dU_avgs[k], 0.9*dU_sems[k], self.bootcycles)
                 junk_fe, cnvg_sem_matrix = integrate_bootstraps(dl_vals, cnvg_dU_samples, x_intp=dl_intp, matrix=self.ti_matrix)
-    
+
                 #         d( dG_sem )      d( dUdl_sem )
                 # ROI = --------------- * ---------------
                 #        d( dUdl_sem )     d( n_frames )
                 #
                 # Deriv1----^---^---^        ^---^---^----Deriv2
-    
+
                 # Deriv1:
                 deriv1 = (cnvg_sem_matrix[0,-1] - total_sem_matrix[0,-1])/(-0.1*dU_sems[k])
-    
+
                 # Deriv2:
                 #
                 # dUdl_sem = dUdl_stddev / sqrt(n_frames/g)
@@ -553,9 +553,9 @@ class fe_calc(object):
                 # d( dUdl_sem )              dUdl_stddev
                 # -------------- =  - --------------------------
                 # d( n_frames )          2g * (n_frames/g)**3/2
-    
+
                 deriv2 = -1.0*dU_stdv[k] / ( 2.0*g[k] * (N_k[k]/g[k])**(3.0/2.0) )
-    
+
                 # ROI
                 self.results[phase][method]['roi'][k] = deriv1 * deriv2            
 
@@ -1006,7 +1006,7 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
         raise Exception("Method "+str(matrix)+" not supported by the integrate_bootstraps function")
 
     num_x = len(x)
-    
+
     # Prepare to store the index location of the x values in the x_intp array
     x_idxs = np.zeros([num_x], np.int32)
 

@@ -21,7 +21,7 @@ def zalign(structure, mask1, mask2, translate=True, save=False, filename=None):
     log.info('Aligning {} ({} atoms) with the z axis...'.format(mask2, len(mask2_coordinates)))
 
     axis = np.array([0.0, 0.0, 1.0])
-    
+
     I = np.identity(3)
     # https://math.stackexchange.com/questions/293116/rotating-one-3d-vector-to-another
     # 1. Define the vector from mask1 to mask2.
@@ -84,7 +84,7 @@ def rotate_about_z(structure, theta, save=False, filename=None):
     R = np.array([[np.cos(theta),  -1*np.sin(theta),   0 ],
                   [np.sin(theta),     np.cos(theta),   0 ],
                   [0,                             0,   1 ]])
-        
+
     rotated_coords = np.empty_like(structure.coordinates)
     for atom in range(len(structure.atoms)):          
         rotated_coords[atom] = np.dot(R, structure.coordinates[atom])
@@ -98,7 +98,7 @@ def rotate_about_z(structure, theta, save=False, filename=None):
             # This seems to write out HETATM in place of ATOM
             # We should offer the option of writing a mol2 file, directly.
             structure.write_pdb(filename)
-    
+
     return structure
 
 

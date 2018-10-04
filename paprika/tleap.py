@@ -189,7 +189,7 @@ class System(object):
         with open(file_path, 'w') as f:
             for line in self.template_lines:
                 f.write(line+"\n")
-    
+
             if self.pbc_type == 'cubic':
                 f.write("solvatebox {} {} {} iso\n".format(self.unit, self.water_box, self.buffer_value))
             elif self.pbc_type == 'rectangular':
@@ -215,7 +215,7 @@ class System(object):
             if self.waters_to_remove:
                 for water_number in self.waters_to_remove:
                     f.write("remove {} {}.{}\n".format(self.unit, self.unit, water_number))
-    
+
             # Note, the execution of tleap is assumed to take place in the
             # same directory as all the associated input files, so we won't
             # put directory paths on the saveamberparm or savepdb commands.
@@ -238,7 +238,7 @@ class System(object):
             The tleap stdout returned as a list.
     
         """
-    
+
         self.check_for_leap_log()
         file_name = self.output_prefix + '.tleap.in'    
 
@@ -305,10 +305,10 @@ class System(object):
             if self.manual_switch_thresh < 12:
                 self.manual_switch_thresh = 12
             log.debug("manual_switch_thresh is set to: {:.0f}".format(self.manual_switch_thresh))
-    
+
         if self.add_ions:
             self.set_additional_ions()
-    
+
         # Speed up the initial optimization loop by not writing prmtops and pdbs
         self.write_save_lines = False
 
@@ -325,10 +325,10 @@ class System(object):
             self.wat_added_history.append(waters)
             self.buffer_val_history.append(self.buffer_value)
             log.debug("Cycle {:02.0f} {:.0f} {:10.7f} {:6.0f} ({:6.0f})".format(cycle, self.exponent,self.buffer_value, waters, self.target_waters))
-    
+
             # Possible location of a switch to adjust the buffer_value by polynomial
             # fit approach.
-    
+
             # If we've nailed it, break!
             if waters == self.target_waters:
                 # Run one more time and save files
@@ -348,12 +348,12 @@ class System(object):
                 if self.add_ions and cycle % 10 == 0:
                     self.set_additional_ions()
                 cycle += 1
-    
+
         if cycle >= self.max_cycles and waters > self.target_waters:
             log.debug("The added waters ({}) didn't reach the manual_switch_thresh ({}) with max_cycles ({}), but we'll try manual removal anyway.".format(waters, self.target_waters, self.max_cycles))
             self.remove_waters_manually()
             self.final_solvation_run()
-    
+
         if cycle >= self.max_cycles and waters < self.target_waters:
             raise Exception("Automatic adjustment of the buffer value resulted in fewer waters \
                 added than targeted by `buffer_water`. Try increasing manual_switch_thresh")
@@ -500,7 +500,7 @@ class System(object):
         Remove a few water molecules manually with `tleap` to exactly match a desired number of waters.
 
         """
-    
+
         cycle = 0
         max_cycles = 100
         waters = self.wat_added_history[-1]
@@ -545,7 +545,7 @@ class System(object):
 
         """
         output = self.run()
-    
+
         # Return a list of residue numbers for the waters
         water_residues = []
         for line in output:
@@ -569,7 +569,7 @@ class System(object):
             Resets this value to 0 when exponent value is changed to help with the logic gates.
 
         """
-    
+
         # If the number of waters was less than the target and is now greater than the target, make the buffer smaller
         # smaller
         if self.wat_added_history[-2] < self.target_waters and self.wat_added_history[-1] > self.target_waters:

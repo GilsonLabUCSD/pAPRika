@@ -214,7 +214,7 @@ class Simulation(object):
             if self.group is not None:
                 f.write("{:s}".format(self.group))
 
-    
+
     def run(self, soft_minimize=False, overwrite=False, fail_ok=False):
         """
         Minimize the system.
@@ -240,15 +240,15 @@ class Simulation(object):
                 self.wt = [
                     "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(burn_in),
                     "&wt type = 'NB', istep1={:.0f}, istep2={:.0f}, value1 = 0.0, value2=1.0, IINC=50, /".format(burn_in,end_soft)]
-    
+
             #_amber_write_input_file(self.path+'/'+self.input, self.min, title='GB Minimization.')
             self._amber_write_input_file()
-    
+
             if self.cntrl['imin'] == 1:
                 log.info('Running Minimization at {}'.format(self.path))
             else:
                 log.info('Running MD at {}'.format(self.path))
-    
+
             # Create executable list for subprocess
             exec_list = self.executable.split() + ['-O', '-p', self.topology]
             if self.ref is not None:
