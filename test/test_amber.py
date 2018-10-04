@@ -2,7 +2,6 @@ import parmed as pmd
 from paprika import tleap
 from paprika import restraints
 from paprika import amber
-from paprika import utils
 import numpy as np
 import os
 import shutil

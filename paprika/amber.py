@@ -2,7 +2,6 @@ import logging as log
 import subprocess as sp
 from collections import OrderedDict
 import os
-import time
 
 class Simulation(object):
     """

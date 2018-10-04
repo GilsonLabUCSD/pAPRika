@@ -1,10 +1,6 @@
 import logging as log
 import numpy as np
 import parmed as pmd
-import pytraj as pt
-from parmed.structure import Structure as ParmedStructureClass
-from collections import defaultdict
-from paprika import utils
 
 try:
     import simtk.openmm as mm

@@ -1,9 +1,7 @@
 import os
 import sys
-import re
-import codecs
 
-from setuptools import setup, find_packages
+from setuptools import setup
 from paprika.version import find_version
 
 if sys.version_info < (2, 7):

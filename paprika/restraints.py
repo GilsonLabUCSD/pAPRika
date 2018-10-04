@@ -1008,4 +1008,3 @@ def clean_restraints_file(restraints, filename="restraints.in"):
 
 def error_checking():
     print("Error checking needs to be implemented.")
-    pass

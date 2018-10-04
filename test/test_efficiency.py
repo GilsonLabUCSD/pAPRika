@@ -1,5 +1,4 @@
 import parmed as pmd
-import pytraj as pt
 import numpy as np
 import logging as log
 

@@ -3,12 +3,7 @@ Tests basic OpenMM simulations.
 """
 
 import unittest
-import warnings
-import numpy as np
 import logging as log
-import subprocess as sp
-import random as random
-import parmed as pmd
 import paprika
 from paprika.openmm_simulate import *
 from paprika.restraints import *

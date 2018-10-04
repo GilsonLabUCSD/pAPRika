@@ -1,9 +1,6 @@
 import logging as log
-import subprocess as sp
-from collections import OrderedDict
 
 import numpy as np
-import parmed as pmd
 from paprika.restraints import *
 
 import simtk.openmm as mm
@@ -84,7 +81,7 @@ class OpenMM_GB_simulation():
         """
 
         prmtop = app.AmberPrmtopFile(self.topology)
-        inpcrd = app.AmberInpcrdFile(settings['coordinates'])
+        app.AmberInpcrdFile(settings['coordinates'])
         self.integrator = mm.LangevinIntegrator(settings['temperature'],
                                                 settings['friction'],
                                                 settings['timestep'])

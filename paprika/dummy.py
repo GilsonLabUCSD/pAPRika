@@ -1,9 +1,5 @@
 import os as os
-import re as re
-import subprocess as sp
 
-import logging as log
-import numpy as np
 import parmed as pmd
 from parmed.structure import Structure as ParmedStructureClass
 from paprika import utils

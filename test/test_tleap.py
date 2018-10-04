@@ -2,19 +2,15 @@
 Tests tleap tools.
 """
 
-import warnings
 import numpy as np
 import logging as log
 import subprocess as sp
 import random as random
 import parmed as pmd
-import paprika
 from paprika.align import *
 from paprika.dummy import *
 from paprika.tleap import *
 import os
-import shutil
-import sys
 import filecmp
 import pytest
 

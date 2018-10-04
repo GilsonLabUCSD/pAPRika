@@ -86,7 +86,6 @@ class TestJSON(unittest.TestCase):
         assert rest1 == restraints[0]
         assert rest2 == restraints[1]
 
-
     def test_AmberParm(self):
         """ Test we can save a simple restraint """
         topology = pmd.load_file("./cb6-but/vac.prmtop")
@@ -115,6 +114,7 @@ class TestJSON(unittest.TestCase):
         restraints = load_restraints("rest1.json")
         os.remove("rest1.json")
         assert rest1 == restraints[0]
+
 
 if __name__ == "__main__":
     log.debug("{}".format(paprika.__version__))

@@ -8,8 +8,6 @@ from datetime import datetime
 
 global HAS_OPENMM
 try:
-    import simtk.openmm as mm
-    import simtk.openmm.app as app
     import simtk.unit as unit
     log.debug('OpenMM support: Yes')
     HAS_OPENMM = True

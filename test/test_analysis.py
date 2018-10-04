@@ -1,5 +1,4 @@
 import parmed as pmd
-import pytraj as pt
 import numpy as np
 import logging as log
 
@@ -66,7 +65,7 @@ def test_fe_calc():
     rest3.initialize()
 
     # Create window directories
-    window_list = restraints.create_window_list([rest1, rest2, rest3])
+    restraints.create_window_list([rest1, rest2, rest3])
 
     # Phase abbreviations
     phase_dict = {'a': 'attach', 'p': 'pull', 'r': 'release'}

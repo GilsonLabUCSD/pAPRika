@@ -1,14 +1,5 @@
-import unittest
-import warnings
-import numpy as np
-import logging as log
-import subprocess as sp
-import random as random
-import parmed as pmd
-import paprika
 from paprika.openmm_simulate import *
 from paprika.restraints import *
-from paprika.utils import HAS_OPENMM, decompose_openmm_energy
 
 
 def extensive_test_openmm_single_restraint():
@@ -40,7 +31,7 @@ def extensive_test_openmm_single_restraint():
 
     result = my_simulation.run_md(simulation, seed=42, save=True)
     state = result.context.getState(getEnergy=True)
-    energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
+    state.getPotentialEnergy() / unit.kilocalories_per_mole
     # Needs to pass a structure...
     # print(decompose_openmm_energy(my_simulation.topology, my_simulation.context))
 

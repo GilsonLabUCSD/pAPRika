@@ -15,7 +15,6 @@ except ImportError:
         " newer version of Chimera; update your version"
     )
 checkVersion([1, 12, 41613])
-import chimera
 from chimera import replyobj
 
 replyobj.status("Restoring session...", blankAfter=0)
@@ -309,7 +308,6 @@ except:
 
 
 try:
-    import StructMeasure
     from StructMeasure.DistMonitor import restoreDistances
 
     registerAfterModelsCB(restoreDistances, 1)
