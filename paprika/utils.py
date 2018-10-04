@@ -9,10 +9,11 @@ from datetime import datetime
 global HAS_OPENMM
 try:
     import simtk.unit as unit
-    log.debug('OpenMM support: Yes')
+
+    log.debug("OpenMM support: Yes")
     HAS_OPENMM = True
 except ImportError:
-    log.debug('OpenMM support: No')
+    log.debug("OpenMM support: No")
     HAS_OPENMM = False
 
 
@@ -24,9 +25,9 @@ def return_parmed_structure(filename):
     # .inpcrd/.prmtop files with the same function call.
     try:
         structure = pmd.load_file(filename)
-        log.info('Loaded {}...'.format(filename))
+        log.info("Loaded {}...".format(filename))
     except BaseException:
-        log.error('Unable to load file: {}'.format(filename))
+        log.error("Unable to load file: {}".format(filename))
     return structure
 
 
@@ -44,18 +45,20 @@ def index_from_mask(structure, mask, amber_index=False):
         pass
     else:
         raise Exception(
-            'index_from_mask does not support the type associated with structure:' + type(structure))
+            "index_from_mask does not support the type associated with structure:"
+            + type(structure)
+        )
     # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
     indices = [
-        i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()]
-    log.debug(
-        'There are {} atoms in the mask {}  ...'.format(
-            len(indices), mask))
+        i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()
+    ]
+    log.debug("There are {} atoms in the mask {}  ...".format(len(indices), mask))
     return indices
 
 
-def make_window_dirs(window_list, stash_existing=False,
-                     path='./', window_dir_name='windows'):
+def make_window_dirs(
+    window_list, stash_existing=False, path="./", window_dir_name="windows"
+):
     """
     Make a series of directories to hold the simulation setup files
     and the data. Here we could check if the directories already exist and prompt
@@ -66,7 +69,8 @@ def make_window_dirs(window_list, stash_existing=False,
 
     if stash_existing and os.path.isdir(win_dir):
         stash_dir = os.path.join(
-            path, window_dir_name + "_{:%Y.%m.%d_%H.%M.%S}".format(datetime.now()))
+            path, window_dir_name + "_{:%Y.%m.%d_%H.%M.%S}".format(datetime.now())
+        )
         shutil.move(win_dir, stash_dir)
 
     for window in window_list:
@@ -75,8 +79,9 @@ def make_window_dirs(window_list, stash_existing=False,
             os.makedirs(window_path)
 
 
-def decompose_openmm_energy(simulation, groups=[0, 1], names=[
-                            'non-restraint', 'restraint']):
+def decompose_openmm_energy(
+    simulation, groups=[0, 1], names=["non-restraint", "restraint"]
+):
     """Return individual energy components.
     """
 
@@ -84,7 +89,7 @@ def decompose_openmm_energy(simulation, groups=[0, 1], names=[
     # Get the total potential energy
     state = simulation.context.getState(getEnergy=True)
     energy = state.getPotentialEnergy() / unit.kilocalorie_per_mole
-    energies.update({'total': energy})
+    energies.update({"total": energy})
 
     for index, group in enumerate(groups):
         state = simulation.context.getState(getEnergy=True, groups={group})
@@ -94,7 +99,7 @@ def decompose_openmm_energy(simulation, groups=[0, 1], names=[
     return energies
 
 
-def strip_prmtop(prmtop, mask=':WAT,:Na+,:Cl-'):
+def strip_prmtop(prmtop, mask=":WAT,:Na+,:Cl-"):
     """Strip residues from a structure and write a new parameter file. This could probably also be done with ParmEd.
 
     Parameters:

@@ -5,15 +5,16 @@ from parmed.structure import Structure as ParmedStructureClass
 from paprika import utils
 
 
-def add_dummy(structure,
-              atom_name='DUM',
-              residue_name='DUM',
-              mass=208.00,
-              atomic_number=82,
-              x=0.000,
-              y=0.000,
-              z=0.000,
-              ):
+def add_dummy(
+    structure,
+    atom_name="DUM",
+    residue_name="DUM",
+    mass=208.00,
+    atomic_number=82,
+    x=0.000,
+    y=0.000,
+    z=0.000,
+):
     """Add a dummy atom at the specified coordinates to the end of a structure.
 
     Parameters:
@@ -51,7 +52,9 @@ def add_dummy(structure,
         pass
     else:
         raise Exception(
-            'add_dummy does not support the type associated with structure: ' + type(structure))
+            "add_dummy does not support the type associated with structure: "
+            + type(structure)
+        )
 
     # Create an atom object
     dum = pmd.topologyobjects.Atom()
@@ -87,8 +90,9 @@ def add_dummy(structure,
     return structure
 
 
-def write_dummy_frcmod(atom_type='Du', mass='208.00',
-                       path='./', filename='dummy.frcmod', filepath=None):
+def write_dummy_frcmod(
+    atom_type="Du", mass="208.00", path="./", filename="dummy.frcmod", filepath=None
+):
     """Write a `frcmod` file for dummy atoms.
 
     Parameters:
@@ -109,8 +113,9 @@ def write_dummy_frcmod(atom_type='Du', mass='208.00',
     if filepath is None:
         filepath = os.path.join(path, filename)
 
-    with open(filepath, 'w') as f:
-        f.write("""\
+    with open(filepath, "w") as f:
+        f.write(
+            """\
 Parameters for dummy atom with type {0}
 MASS
 {0}     {1}
@@ -125,15 +130,20 @@ IMPROPER
 
 NONBON
   {0}       0.000     0.0000000
-""".format(atom_type, mass))
+""".format(
+                atom_type, mass
+            )
+        )
 
 
-def write_dummy_mol2(atom_name='DUM',
-                     atom_type='Du',
-                     residue_name='DUM',
-                     path='./',
-                     filename='dummy.mol2',
-                     filepath=None):
+def write_dummy_mol2(
+    atom_name="DUM",
+    atom_type="Du",
+    residue_name="DUM",
+    path="./",
+    filename="dummy.mol2",
+    filepath=None,
+):
     """Write a `mol2` file for dummy atoms.
 
     Parameters:
@@ -156,8 +166,9 @@ def write_dummy_mol2(atom_name='DUM',
     if filepath is None:
         filepath = os.path.join(path, filename)
 
-    with open(filepath, 'w') as f:
-        f.write("""\
+    with open(filepath, "w") as f:
+        f.write(
+            """\
 @<TRIPOS>MOLECULE
 {0}
     1     0     1     0     1
@@ -169,4 +180,7 @@ USER_CHARGES
 @<TRIPOS>BOND
 @<TRIPOS>SUBSTRUCTURE
       1  {0}              1 ****               0 ****  ****    0 ROOT
-""".format(residue_name[0:3], atom_name, atom_type[0:2]))
+""".format(
+                residue_name[0:3], atom_name, atom_type[0:2]
+            )
+        )

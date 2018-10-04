@@ -24,8 +24,7 @@ def check_restraints(restraint_list, create_window_list=False):
     else:
         log.error("All restraints must have the same setting for .continuous_apr")
         # Should we do the following?
-        raise Exception(
-            "All restraints must have the same setting for .continuous_apr")
+        raise Exception("All restraints must have the same setting for .continuous_apr")
 
     window_list = []
     phases = ["attach", "pull", "release"]
@@ -180,8 +179,7 @@ def amber_restraint_line(restraint, phase, window):
         + " rk3= {0:10.5f},".format(amber_restraint_values["rk3"])
     )
 
-    if any([restraint.group1, restraint.group2,
-            restraint.group3, restraint.group4]):
+    if any([restraint.group1, restraint.group2, restraint.group3, restraint.group4]):
         string += "\n    "
         if restraint.group1:
             string += " igr1= {}".format(igr1)
@@ -222,8 +220,7 @@ def setup_openmm_restraints(system, restraint, phase, window):
                 * unit.kilocalorie_per_mole
                 / unit.angstrom ** 2
             )
-            bond_restraint.addBond(
-                restraint.index1[0], restraint.index2[0], [k, r_0])
+            bond_restraint.addBond(restraint.index1[0], restraint.index2[0], [k, r_0])
             bond_restraint.setForceGroup(1)
             system.addForce(bond_restraint)
             log.debug(
@@ -296,8 +293,7 @@ def setup_openmm_restraints(system, restraint, phase, window):
             / unit.radian ** 2
         )
         angle_restraint.addAngle(
-            restraint.index1[0], restraint.index2[0], restraint.index3[0], [
-                k, theta_0]
+            restraint.index1[0], restraint.index2[0], restraint.index3[0], [k, theta_0]
         )
         system.addForce(angle_restraint)
 
@@ -357,8 +353,7 @@ def clean_restraints_file(restraints, filename="restraints.in"):
 
     log.warning("`clean_restraints_file()` needs to be tested.")
     for restraint in restraints:
-        for window, _ in enumerate(
-                restraint.phase["attach"]["force_constants"]):
+        for window, _ in enumerate(restraint.phase["attach"]["force_constants"]):
             directory = "./windows/a{0:03d}".format(window)
             os.remove(directory + "/" + filename)
 
@@ -383,8 +378,7 @@ def to_json(restraint_list):
                 try:
                     dictionary["phase"][phase][array] = self.phase[array].tolist()
                 except BaseException:
-                    print("Could not convert {} to list".format(
-                        self.phase[array]))
+                    print("Could not convert {} to list".format(self.phase[array]))
         return json.dumps(dictionary)
 
 

@@ -77,12 +77,12 @@ class fe_calc(object):
         self.orders = None
         self.simulation_data = None
         # mbar-autoc, mbar-nocor, ti-block, ti-autoc, ti-nocor
-        self.methods = ['mbar-block']
+        self.methods = ["mbar-block"]
         self.conservative_subsample = False
         self.bootcycles = 10000
         self.compute_roi = False
         self.compute_largest_neighbor = False
-        self.ti_matrix = 'full'
+        self.ti_matrix = "full"
         self.exact_sem_each_ti_fraction = False
         self.fractions = [1.0]
         self.results = {}
@@ -104,8 +104,7 @@ class fe_calc(object):
 
         self.changing_restraints = self.identify_changing_restraints()
         self.orders = self.determine_window_order()
-        self.simulation_data = self.read_trajectories(
-            single_prmtop=single_prmtop)
+        self.simulation_data = self.read_trajectories(single_prmtop=single_prmtop)
 
     def identify_changing_restraints(self):
         """Figure out which restraints change during each phase of the calculation.
@@ -116,19 +115,19 @@ class fe_calc(object):
             A dictionary containing which restraints change during which phase of the calculation
         """
 
-        changing_restraints = {'attach': [], 'pull': [], 'release': []}
+        changing_restraints = {"attach": [], "pull": [], "release": []}
 
-        for phase in ['attach', 'pull', 'release']:
-            if phase == 'attach' or phase == 'release':
-                changing_parameter = 'force_constants'
+        for phase in ["attach", "pull", "release"]:
+            if phase == "attach" or phase == "release":
+                changing_parameter = "force_constants"
             else:
-                changing_parameter = 'targets'
+                changing_parameter = "targets"
             for restraint in self.restraint_list:
                 if restraint.phase[phase][changing_parameter] is not None:
                     static = all(
-                        np.isclose(
-                            x, restraint.phase[phase][changing_parameter][0])
-                        for x in restraint.phase[phase][changing_parameter])
+                        np.isclose(x, restraint.phase[phase][changing_parameter][0])
+                        for x in restraint.phase[phase][changing_parameter]
+                    )
                 else:
                     static = True
 
@@ -146,51 +145,57 @@ class fe_calc(object):
             The sorted order of windows for analysis
         """
 
-        orders = {'attach': [], 'pull': [], 'release': []}
+        orders = {"attach": [], "pull": [], "release": []}
         active_attach_restraints = np.asarray(self.restraint_list)[
-            self.changing_restraints['attach']]
+            self.changing_restraints["attach"]
+        ]
         active_pull_restraints = np.asarray(self.restraint_list)[
-            self.changing_restraints['pull']]
+            self.changing_restraints["pull"]
+        ]
         active_release_restraints = np.asarray(self.restraint_list)[
-            self.changing_restraints['release']]
+            self.changing_restraints["release"]
+        ]
 
         attach_orders = []
         pull_orders = []
         release_orders = []
 
         for restraint in active_attach_restraints:
-            attach_orders.append(np.argsort(
-                restraint.phase['attach']['force_constants']))
-        if not all([np.array_equal(attach_orders[0], i)
-                    for i in attach_orders]):
+            attach_orders.append(
+                np.argsort(restraint.phase["attach"]["force_constants"])
+            )
+        if not all([np.array_equal(attach_orders[0], i) for i in attach_orders]):
             raise Exception(
-                'The order of increasing force constants is not the same in all restraints.')
+                "The order of increasing force constants is not the same in all restraints."
+            )
         elif attach_orders:
-            orders['attach'] = attach_orders[0]
+            orders["attach"] = attach_orders[0]
         else:
-            orders['attach'] = np.empty(0)
+            orders["attach"] = np.empty(0)
 
         for restraint in active_pull_restraints:
-            pull_orders.append(np.argsort(restraint.phase['pull']['targets']))
+            pull_orders.append(np.argsort(restraint.phase["pull"]["targets"]))
         if not all([np.array_equal(pull_orders[0], i) for i in pull_orders]):
             raise Exception(
-                'The order of increasing target distances is not the same in all restraints.')
+                "The order of increasing target distances is not the same in all restraints."
+            )
         elif pull_orders:
-            orders['pull'] = pull_orders[0]
+            orders["pull"] = pull_orders[0]
         else:
-            orders['pull'] = np.empty(0)
+            orders["pull"] = np.empty(0)
 
         for restraint in active_release_restraints:
-            release_orders.append(np.argsort(
-                restraint.phase['release']['force_constants']))
-        if not all([np.array_equal(release_orders[0], i)
-                    for i in release_orders]):
+            release_orders.append(
+                np.argsort(restraint.phase["release"]["force_constants"])
+            )
+        if not all([np.array_equal(release_orders[0], i) for i in release_orders]):
             raise Exception(
-                'The order of increasing force constants is not the same in all restraints.')
+                "The order of increasing force constants is not the same in all restraints."
+            )
         elif release_orders:
-            orders['release'] = release_orders[0]
+            orders["release"] = release_orders[0]
         else:
-            orders['release'] = np.empty(0)
+            orders["release"] = np.empty(0)
 
         return orders
 
@@ -209,96 +214,126 @@ class fe_calc(object):
             Dictionary containing restraint values for analysis
         """
 
-        data = {'attach': [], 'pull': [], 'release': []}
+        data = {"attach": [], "pull": [], "release": []}
 
         ordered_attach_windows = [
-            os.path.join(self.path, 'a{:03d}'.format(i)) for i in self.orders['attach'] if i is not None
+            os.path.join(self.path, "a{:03d}".format(i))
+            for i in self.orders["attach"]
+            if i is not None
         ]
         ordered_pull_windows = [
-            os.path.join(self.path, 'p{:03d}'.format(i)) for i in self.orders['pull'] if i is not None
+            os.path.join(self.path, "p{:03d}".format(i))
+            for i in self.orders["pull"]
+            if i is not None
         ]
         ordered_release_windows = [
-            os.path.join(self.path, 'r{:03d}'.format(i)) for i in self.orders['release'] if i is not None
+            os.path.join(self.path, "r{:03d}".format(i))
+            for i in self.orders["release"]
+            if i is not None
         ]
 
         active_attach_restraints = np.asarray(self.restraint_list)[
-            self.changing_restraints['attach']]
+            self.changing_restraints["attach"]
+        ]
         active_pull_restraints = np.asarray(self.restraint_list)[
-            self.changing_restraints['pull']]
+            self.changing_restraints["pull"]
+        ]
         active_release_restraints = np.asarray(self.restraint_list)[
-            self.changing_restraints['release']]
+            self.changing_restraints["release"]
+        ]
 
         # Niel: I'm just checking if *one* restraint is `continuous_apr`,
         # which should be the same value for all restraints.
         if len(active_attach_restraints) > 0:
-            if active_attach_restraints[0].continuous_apr and self.orders['attach'].any and self.orders['pull'].any:
-                log.debug('Replacing {} with {} in {} for `continuous_apr`...'.format(
-                    ordered_attach_windows[-1], ordered_pull_windows[0], ordered_attach_windows))
+            if (
+                active_attach_restraints[0].continuous_apr
+                and self.orders["attach"].any
+                and self.orders["pull"].any
+            ):
+                log.debug(
+                    "Replacing {} with {} in {} for `continuous_apr`...".format(
+                        ordered_attach_windows[-1],
+                        ordered_pull_windows[0],
+                        ordered_attach_windows,
+                    )
+                )
                 ordered_attach_windows[-1] = ordered_pull_windows[0]
 
         if len(active_release_restraints) > 0:
-            if active_release_restraints[0].continuous_apr and self.orders['release'].any and self.orders['pull'].any:
-                log.debug('Replacing {} with {} in {} for `continuous_apr`...'.format(
-                    ordered_release_windows[-1], ordered_pull_windows[-1], ordered_release_windows))
+            if (
+                active_release_restraints[0].continuous_apr
+                and self.orders["release"].any
+                and self.orders["pull"].any
+            ):
+                log.debug(
+                    "Replacing {} with {} in {} for `continuous_apr`...".format(
+                        ordered_release_windows[-1],
+                        ordered_pull_windows[-1],
+                        ordered_release_windows,
+                    )
+                )
                 ordered_release_windows[-1] = ordered_pull_windows[-1]
 
         for window_index, window in enumerate(ordered_attach_windows):
-            phase = 'attach'
+            phase = "attach"
             data[phase].append([])
-            traj = load_trajectory(
-                window, self.trajectory, self.prmtop, single_prmtop)
-            for restraint_index, restraint in enumerate(
-                    active_attach_restraints):
+            traj = load_trajectory(window, self.trajectory, self.prmtop, single_prmtop)
+            for restraint_index, restraint in enumerate(active_attach_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(
-                    traj, restraint)
+                    traj, restraint
+                )
 
         for window_index, window in enumerate(ordered_pull_windows):
-            phase = 'pull'
+            phase = "pull"
             data[phase].append([])
-            traj = load_trajectory(
-                window, self.trajectory, self.prmtop, single_prmtop)
-            for restraint_index, restraint in enumerate(
-                    active_pull_restraints):
+            traj = load_trajectory(window, self.trajectory, self.prmtop, single_prmtop)
+            for restraint_index, restraint in enumerate(active_pull_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(
-                    traj, restraint)
+                    traj, restraint
+                )
 
         for window_index, window in enumerate(ordered_release_windows):
-            phase = 'release'
+            phase = "release"
             data[phase].append([])
-            traj = load_trajectory(
-                window, self.trajectory, self.prmtop, single_prmtop)
-            for restraint_index, restraint in enumerate(
-                    active_release_restraints):
+            traj = load_trajectory(window, self.trajectory, self.prmtop, single_prmtop)
+            for restraint_index, restraint in enumerate(active_release_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(
-                    traj, restraint)
+                    traj, restraint
+                )
 
         return data
 
     def prepare_data(self, phase):
         number_of_windows = len(self.simulation_data[phase])
-        data_points = [len(np.asarray(x).T)
-                       for x in self.simulation_data[phase]]
+        data_points = [len(np.asarray(x).T) for x in self.simulation_data[phase]]
         max_data_points = max(data_points)
         active_restraints = list(
-            compress(self.restraint_list, self.changing_restraints[phase]))
-        force_constants = [np.copy(i.phase[phase]['force_constants'])
-                           for i in active_restraints]
+            compress(self.restraint_list, self.changing_restraints[phase])
+        )
+        force_constants = [
+            np.copy(i.phase[phase]["force_constants"]) for i in active_restraints
+        ]
         # Convert force constants from radians to degrees for angles/dihedrals
         for r, rest in enumerate(active_restraints):
             if rest.mask3 is not None:
-                force_constants[r] *= (np.pi / 180.0)**2
-        targets = [i.phase[phase]['targets'] for i in active_restraints]
+                force_constants[r] *= (np.pi / 180.0) ** 2
+        targets = [i.phase[phase]["targets"] for i in active_restraints]
 
-        ordered_force_constants = [i[self.orders[phase]]
-                                   for i in force_constants]
+        ordered_force_constants = [i[self.orders[phase]] for i in force_constants]
         ordered_targets = [i[self.orders[phase]] for i in targets]
 
-        return number_of_windows, data_points, max_data_points, active_restraints, \
-            ordered_force_constants, ordered_targets, \
-            self.simulation_data[phase]
+        return (
+            number_of_windows,
+            data_points,
+            max_data_points,
+            active_restraints,
+            ordered_force_constants,
+            ordered_targets,
+            self.simulation_data[phase],
+        )
 
     def run_mbar(self, phase, prepared_data, method, verbose=False):
         """
@@ -306,7 +341,9 @@ class fe_calc(object):
         """
 
         # Unpack the prepared data
-        num_win, data_points, max_data_points, active_rest, force_constants, targets, ordered_values = prepared_data
+        num_win, data_points, max_data_points, active_rest, force_constants, targets, ordered_values = (
+            prepared_data
+        )
 
         # Number of data points in each restraint value array
         N_k = np.array(data_points)
@@ -341,13 +378,17 @@ class fe_calc(object):
                 # Compute the potential ... for each frame, sum the contributions for each restraint
                 # Note, we multiply by beta, and do some extra [l,:,None] to
                 # get the math operation correct.
-                u_kln[k, l, 0:N_k[k]] = np.sum(
-                    self.beta * force_constants_T[l, :, None] * (ordered_values[k] - targets_T[l, :, None])**2, axis=0)
+                u_kln[k, l, 0 : N_k[k]] = np.sum(
+                    self.beta
+                    * force_constants_T[l, :, None]
+                    * (ordered_values[k] - targets_T[l, :, None]) ** 2,
+                    axis=0,
+                )
 
         g_k = np.ones([num_win], np.float64)
         # Should I subsample based on the restraint coordinate values? Here I'm
         # doing it on the potential.  Should be pretty close ....
-        if method == 'mbar-block':
+        if method == "mbar-block":
             # We want to use all possible data to get the free energy estimates Deltaf_ij,
             # but for uncertainty estimates we'll subsample to create
             # uncorrelated data.
@@ -356,13 +397,13 @@ class fe_calc(object):
                 # If the potential is zero everywhere, we can't estimate the uncertainty, so
                 # check the next *potential* window which probably had non-zero
                 # force constants
-                while not u_kln[k, l, 0:N_k[k]].any():
+                while not u_kln[k, l, 0 : N_k[k]].any():
                     l += 1
                 # Now compute statistical inefficiency: g = N*(SEM**2)/variance
                 nearest_max = get_nearest_max(N_k[k])
                 sem = get_block_sem(u_kln[k, l, 0:nearest_max])
-                variance = np.var(u_kln[k, l, 0:N_k[k]])
-                g_k[k] = (N_k[k] * (sem**2) / variance)
+                variance = np.var(u_kln[k, l, 0 : N_k[k]])
+                g_k[k] = N_k[k] * (sem ** 2) / variance
 
         # Create subsampled indices and count their lengths. If g=1, ie no correlation,
         # then subsampling will return identical indices to original
@@ -370,54 +411,57 @@ class fe_calc(object):
         ss_indices = []
         N_ss = np.zeros([num_win], np.int32)  # N_subsample
         for k in range(num_win):
-            ss_indices.append(get_subsampled_indices(
-                N_k[k], g_k[k], conservative=self.conservative_subsample))
+            ss_indices.append(
+                get_subsampled_indices(
+                    N_k[k], g_k[k], conservative=self.conservative_subsample
+                )
+            )
             N_ss[k] = len(ss_indices[k])
 
-        self.results[phase][method]['fraction_fe_matrix'] = {}
-        self.results[phase][method]['fraction_sem_matrix'] = {}
+        self.results[phase][method]["fraction_fe_matrix"] = {}
+        self.results[phase][method]["fraction_sem_matrix"] = {}
         for fraction in self.fractions:
             # Setup mbar calc, and get matrix of free energies, uncertainties
             # To estimate the free energy, we won't do subsampling.  We'll do
             # another MBAR calculation later with subsampling to estimate the
             # uncertainty.
-            frac_N_k = np.array([int(fraction * n)
-                                 for n in N_k], dtype=np.int32)
+            frac_N_k = np.array([int(fraction * n) for n in N_k], dtype=np.int32)
 
             mbar = pymbar.MBAR(u_kln, frac_N_k, verbose=verbose)
             Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(
-                compute_uncertainty=True)
+                compute_uncertainty=True
+            )
 
-            if method == 'mbar-block':
+            if method == "mbar-block":
                 # Create subsampled indices and count their lengths
-                frac_N_ss = np.array([int(fraction * n)
-                                      for n in N_ss], dtype=np.int32)
+                frac_N_ss = np.array([int(fraction * n) for n in N_ss], dtype=np.int32)
 
                 # Create a new potential array for the uncertainty calculation
                 # (are we using too much memory?)
-                u_kln_err = np.zeros(
-                    [num_win, num_win, np.max(frac_N_ss)], np.float64)
+                u_kln_err = np.zeros([num_win, num_win, np.max(frac_N_ss)], np.float64)
 
                 # Populate the subsampled array, drawing the appropriate
                 # fraction of subsamples from the original
                 for k in range(num_win):
                     for l in range(num_win):
-                        u_kln_err[k, l, 0:frac_N_ss[k]] = u_kln[k,
-                                                                l, ss_indices[k][0:frac_N_ss[k]]]
+                        u_kln_err[k, l, 0 : frac_N_ss[k]] = u_kln[
+                            k, l, ss_indices[k][0 : frac_N_ss[k]]
+                        ]
 
                 # We toss junk_Deltaf_ij, because we got a better estimate for it from above using all data.
                 # But dDeltaf_ij will replace the previous, because it correctly accounts for the
                 # correlation in the data.
                 mbar = pymbar.MBAR(u_kln_err, frac_N_ss, verbose=verbose)
                 junk_Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(
-                    compute_uncertainty=True)
+                    compute_uncertainty=True
+                )
 
             # Put back into kcal/mol
             Deltaf_ij /= self.beta
             dDeltaf_ij /= self.beta
 
-            self.results[phase][method]['fraction_fe_matrix'][fraction] = Deltaf_ij
-            self.results[phase][method]['fraction_sem_matrix'][fraction] = dDeltaf_ij
+            self.results[phase][method]["fraction_fe_matrix"][fraction] = Deltaf_ij
+            self.results[phase][method]["fraction_sem_matrix"][fraction] = dDeltaf_ij
 
     def run_ti(self, phase, prepared_data, method):
         """
@@ -445,7 +489,9 @@ class fe_calc(object):
         """
 
         # Unpack the prepared data
-        num_win, data_points, max_data_points, active_rest, force_constants, targets, ordered_values = prepared_data
+        num_win, data_points, max_data_points, active_rest, force_constants, targets, ordered_values = (
+            prepared_data
+        )
 
         # Number of data points in each restraint value array
         N_k = np.array(data_points)
@@ -473,7 +519,8 @@ class fe_calc(object):
 
         # Store the max force constant value for each restraint.
         max_force_constants = np.array(
-            [np.max(force_constants[r]) for r in range(len(active_rest))])
+            [np.max(force_constants[r]) for r in range(len(active_rest))]
+        )
 
         # Transpose force_constants and targets into "per window" format, instead of
         # the "per restraint" format.
@@ -497,27 +544,34 @@ class fe_calc(object):
 
             # Compute forces and store the values of the changing coordinate,
             # either lambda or target
-            if phase == 'attach' or phase == 'release':
-                dU[k, 0:N_k[k]] = np.sum(
-                    max_force_constants[:, None] * (ordered_values[k] - targets_T[k, :, None])**2, axis=0)
+            if phase == "attach" or phase == "release":
+                dU[k, 0 : N_k[k]] = np.sum(
+                    max_force_constants[:, None]
+                    * (ordered_values[k] - targets_T[k, :, None]) ** 2,
+                    axis=0,
+                )
                 # this is lambda. assume the same scaling for all restraints
                 dl_vals[k] = force_constants_T[k, 0] / max_force_constants[0]
             else:
-                dU[k, 0:N_k[k]] = np.sum(
-                    2.0 * max_force_constants[:, None] * (ordered_values[k] - targets_T[k, :, None]), axis=0)
+                dU[k, 0 : N_k[k]] = np.sum(
+                    2.0
+                    * max_force_constants[:, None]
+                    * (ordered_values[k] - targets_T[k, :, None]),
+                    axis=0,
+                )
                 # Currently assuming a single distance restraint
                 dl_vals[k] = targets_T[k, 0]
 
             # Compute StdDevs and SEMs, unless we're going to do
             # exact_sem_each_ti_fraction
-            dU_avgs[k] = np.mean(dU[k, 0:N_k[k]])
-            dU_stdv[k] = np.std(dU[k, 0:N_k[k]])
-            if method == 'ti-block':
+            dU_avgs[k] = np.mean(dU[k, 0 : N_k[k]])
+            dU_stdv[k] = np.std(dU[k, 0 : N_k[k]])
+            if method == "ti-block":
                 nearest_max = get_nearest_max(N_k[k])
                 dU_sems[k] = get_block_sem(dU[k, 0:nearest_max])
                 # Rearrange SEM = StdDev/sqrt(N) to get N_uncorrelated
-                dU_Nunc[k] = (dU_stdv[k] / dU_sems[k])**2
-            elif method == 'ti-nocor':
+                dU_Nunc[k] = (dU_stdv[k] / dU_sems[k]) ** 2
+            elif method == "ti-nocor":
                 dU_sems[k] = dU_stdv[k] / np.sqrt(N_k[k])
                 dU_Nunc[k] = N_k[k]
             g[k] = N_k[k] / dU_Nunc[k]
@@ -525,77 +579,89 @@ class fe_calc(object):
             # Create the interpolation by appending 100 points between each window.
             # Start with k=1 so we don't double count.
             if k > 0:
-                dl_intp = np.append(dl_intp, np.linspace(
-                    dl_vals[k - 1], dl_vals[k], num=100, endpoint=False))
+                dl_intp = np.append(
+                    dl_intp,
+                    np.linspace(dl_vals[k - 1], dl_vals[k], num=100, endpoint=False),
+                )
 
         # Tack on the final value to the dl interpolation
         dl_intp = np.append(dl_intp, dl_vals[-1])
 
-        log.debug('Running bootstrap calculations')
+        log.debug("Running bootstrap calculations")
 
         # Setup fractions. For simplicity, we'll always do this, even
         # if we're doing the total data, ie self.fractions=[1.0].
-        self.results[phase][method]['fraction_fe_matrix'] = {}
-        self.results[phase][method]['fraction_sem_matrix'] = {}
+        self.results[phase][method]["fraction_fe_matrix"] = {}
+        self.results[phase][method]["fraction_sem_matrix"] = {}
         for fraction in self.fractions:
 
-            log.debug('Working on fraction ... {}'.format(fraction))
+            log.debug("Working on fraction ... {}".format(fraction))
 
             # Compute means for this fraction.
             frac_dU_avgs = np.array(
-                [np.mean(dU[k, 0:int(fraction * n)]) for k, n in enumerate(N_k)])
+                [np.mean(dU[k, 0 : int(fraction * n)]) for k, n in enumerate(N_k)]
+            )
 
             # If self.exact_sem_each_ti_fraction, we're gonna recomputelf.exact_sem_each_ti_fraction the SEM for each fraction
             # rather than estimating it from the standard deviation (dU_stdv) and number of
             # uncorrelated data points (dU_Nunc) from the total data set.
-            if method == 'ti-block' and self.exact_sem_each_ti_fraction:
+            if method == "ti-block" and self.exact_sem_each_ti_fraction:
                 frac_dU_sems = np.zero([k], np.float64)
                 for k in range(num_win):
                     nearest_max = get_nearest_max(int(fraction * N_k[k]))
                     frac_dU_sems[k] = get_block_sem(dU[k, 0:nearest_max])
-            elif method == 'ti-nocor' and self.exact_sem_each_ti_fraction:
+            elif method == "ti-nocor" and self.exact_sem_each_ti_fraction:
                 frac_dU_sems = np.zero([k], np.float64)
                 for k in range(num_win):
                     frac_dU_sems[k] = np.std(
-                        dU[k, 0:int(fraction * N_k[k])]) / np.sqrt(int(fraction * N_k[k]))
+                        dU[k, 0 : int(fraction * N_k[k])]
+                    ) / np.sqrt(int(fraction * N_k[k]))
             else:
                 frac_dU_sems = dU_stdv / np.sqrt(fraction * dU_Nunc)
 
             dU_samples = np.random.normal(
-                frac_dU_avgs, frac_dU_sems, size=(self.bootcycles, frac_dU_avgs.size))
+                frac_dU_avgs, frac_dU_sems, size=(self.bootcycles, frac_dU_avgs.size)
+            )
 
             # Run bootstraps
-            self.results[phase][method]['fraction_fe_matrix'][fraction],\
-                self.results[phase][method]['fraction_sem_matrix'][fraction] \
-                = integrate_bootstraps(dl_vals, dU_samples, x_intp=dl_intp, matrix=self.ti_matrix)
+            self.results[phase][method]["fraction_fe_matrix"][fraction], self.results[
+                phase
+            ][method]["fraction_sem_matrix"][fraction] = integrate_bootstraps(
+                dl_vals, dU_samples, x_intp=dl_intp, matrix=self.ti_matrix
+            )
 
             # The attach/release work (integration) yields appropriately positive work, but
             # the pull work needs a negative multiplier.  Like W = -f*d type thing.  I need
             # an intuitive way to explain this.
-            if phase == 'pull':
-                self.results[phase][method]['fraction_fe_matrix'][fraction] *= -1.0
+            if phase == "pull":
+                self.results[phase][method]["fraction_fe_matrix"][fraction] *= -1.0
 
         if self.compute_roi:
-            log.info(phase + ': computing ROI for ' + method)
+            log.info(phase + ": computing ROI for " + method)
             # Do ROI calc
             max_fraction = np.max(self.fractions)
             # If we didn't compute fe/sem for fraction 1.0 already, do it now
             dU_samples = np.random.normal(
-                dU_avgs, dU_sems, size=(self.bootcycles, dU_avgs.size))
+                dU_avgs, dU_sems, size=(self.bootcycles, dU_avgs.size)
+            )
             if not np.isclose(max_fraction, 1.0):
                 junk_fe, total_sem_matrix = integrate_bootstraps(
-                    dl_vals, dU_samples, x_intp=dl_intp, matrix=self.ti_matrix)
+                    dl_vals, dU_samples, x_intp=dl_intp, matrix=self.ti_matrix
+                )
             else:
-                total_sem_matrix = self.results[phase][method]['fraction_sem_matrix'][max_fraction]
-            self.results[phase][method]['roi'] = np.zeros(
-                [num_win], np.float64)
+                total_sem_matrix = self.results[phase][method]["fraction_sem_matrix"][
+                    max_fraction
+                ]
+            self.results[phase][method]["roi"] = np.zeros([num_win], np.float64)
             for k in range(num_win):
                 # Compute overall integrated SEM with 10% smaller SEM for dU[k]
                 cnvg_dU_samples = np.array(dU_samples)
                 cnvg_dU_samples[:, k] = np.random.normal(
-                    dU_avgs[k], 0.9 * dU_sems[k], self.bootcycles)
+                    dU_avgs[k], 0.9 * dU_sems[k], self.bootcycles
+                )
                 junk_fe, cnvg_sem_matrix = integrate_bootstraps(
-                    dl_vals, cnvg_dU_samples, x_intp=dl_intp, matrix=self.ti_matrix)
+                    dl_vals, cnvg_dU_samples, x_intp=dl_intp, matrix=self.ti_matrix
+                )
 
                 #         d( dG_sem )      d( dUdl_sem )
                 # ROI = --------------- * ---------------
@@ -604,8 +670,9 @@ class fe_calc(object):
                 # Deriv1----^---^---^        ^---^---^----Deriv2
 
                 # Deriv1:
-                deriv1 = (
-                    cnvg_sem_matrix[0, -1] - total_sem_matrix[0, -1]) / (-0.1 * dU_sems[k])
+                deriv1 = (cnvg_sem_matrix[0, -1] - total_sem_matrix[0, -1]) / (
+                    -0.1 * dU_sems[k]
+                )
 
                 # Deriv2:
                 #
@@ -615,13 +682,14 @@ class fe_calc(object):
                 # -------------- =  - --------------------------
                 # d( n_frames )          2g * (n_frames/g)**3/2
 
-                deriv2 = -1.0 * dU_stdv[k] / \
-                    (2.0 * g[k] * (N_k[k] / g[k])**(3.0 / 2.0))
+                deriv2 = (
+                    -1.0 * dU_stdv[k] / (2.0 * g[k] * (N_k[k] / g[k]) ** (3.0 / 2.0))
+                )
 
                 # ROI
-                self.results[phase][method]['roi'][k] = deriv1 * deriv2
+                self.results[phase][method]["roi"][k] = deriv1 * deriv2
 
-    def compute_free_energy(self, phases=['attach', 'pull', 'release']):
+    def compute_free_energy(self, phases=["attach", "pull", "release"]):
         """
         Do free energy calc.
         """
@@ -629,11 +697,12 @@ class fe_calc(object):
         for fraction in self.fractions:
             if fraction <= 0.0 or fraction > 1.0:
                 raise Exception(
-                    'The fraction of data to analyze must be 0 < fraction <= 1.0.')
+                    "The fraction of data to analyze must be 0 < fraction <= 1.0."
+                )
 
         for phase in phases:
             self.results[phase] = {}
-            self.results[phase]['window_order'] = self.orders[phase]
+            self.results[phase]["window_order"] = self.orders[phase]
             for method in self.methods:
                 # Initialize some values that we will compute
                 # The matrix gives all possible fe/sem for any window to any
@@ -642,75 +711,89 @@ class fe_calc(object):
 
                 # Prepare data
                 if sum(self.changing_restraints[phase]) == 0:
-                    log.debug(
-                        'Skipping free energy calculation for %s' %
-                        phase)
+                    log.debug("Skipping free energy calculation for %s" % phase)
                     continue
                 prepared_data = self.prepare_data(phase)
-                self.results[phase][method]['n_frames'] = np.sum(
-                    prepared_data[1])
+                self.results[phase][method]["n_frames"] = np.sum(prepared_data[1])
 
-                log.debug(
-                    "Running {} analysis on {} phase ...".format(method, phase))
+                log.debug("Running {} analysis on {} phase ...".format(method, phase))
 
                 # Run the method
-                if method == 'mbar-block':
+                if method == "mbar-block":
                     self.run_mbar(phase, prepared_data, method)
-                elif method == 'ti-block':
+                elif method == "ti-block":
                     self.run_ti(phase, prepared_data, method)
                 else:
                     raise Exception(
-                        "The method '{}' is not valid for compute_free_energy".format(method))
+                        "The method '{}' is not valid for compute_free_energy".format(
+                            method
+                        )
+                    )
 
                 # Store endpoint free energy and SEM for each fraction
-                self.results[phase][method]['fraction_n_frames'] = {}
-                self.results[phase][method]['fraction_fe'] = {}
-                self.results[phase][method]['fraction_sem'] = {}
+                self.results[phase][method]["fraction_n_frames"] = {}
+                self.results[phase][method]["fraction_fe"] = {}
+                self.results[phase][method]["fraction_sem"] = {}
                 for fraction in self.fractions:
-                    self.results[phase][method]['fraction_n_frames'][fraction] \
-                        = int(fraction * self.results[phase][method]['n_frames'])
+                    self.results[phase][method]["fraction_n_frames"][fraction] = int(
+                        fraction * self.results[phase][method]["n_frames"]
+                    )
 
-                    self.results[phase][method]['fraction_fe'][fraction] \
-                        = self.results[phase][method]['fraction_fe_matrix'][fraction][0, -1]
+                    self.results[phase][method]["fraction_fe"][fraction] = self.results[
+                        phase
+                    ][method]["fraction_fe_matrix"][fraction][0, -1]
 
-                    self.results[phase][method]['fraction_sem'][fraction] \
-                        = self.results[phase][method]['fraction_sem_matrix'][fraction][0, -1]
+                    self.results[phase][method]["fraction_sem"][
+                        fraction
+                    ] = self.results[phase][method]["fraction_sem_matrix"][fraction][
+                        0, -1
+                    ]
 
                 # Set these higher level (total) values, which will be slightly
                 # easier to access
                 max_fraction = np.max(self.fractions)
-                self.results[phase][method]['fe_matrix'] = self.results[phase][method]['fraction_fe_matrix'][max_fraction]
-                self.results[phase][method]['sem_matrix'] = self.results[phase][method]['fraction_sem_matrix'][max_fraction]
-                self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
-                self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0, -1]
+                self.results[phase][method]["fe_matrix"] = self.results[phase][method][
+                    "fraction_fe_matrix"
+                ][max_fraction]
+                self.results[phase][method]["sem_matrix"] = self.results[phase][method][
+                    "fraction_sem_matrix"
+                ][max_fraction]
+                self.results[phase][method]["fe"] = self.results[phase][method][
+                    "fe_matrix"
+                ][0, -1]
+                self.results[phase][method]["sem"] = self.results[phase][method][
+                    "sem_matrix"
+                ][0, -1]
 
                 # Set largest neighbors.  This is a legacy approach, probably
                 # not useful.
                 if self.compute_largest_neighbor:
                     # Store convergence values, which are helpful for running
                     # simulations
-                    windows = len(self.results[phase][method]['sem_matrix'])
-                    self.results[phase][method]['largest_neighbor'] = np.ones(
-                        [windows], np.float64) * -1.0
-                    log.info(
-                        phase + ': computing largest_neighbor for ' + method)
+                    windows = len(self.results[phase][method]["sem_matrix"])
+                    self.results[phase][method]["largest_neighbor"] = (
+                        np.ones([windows], np.float64) * -1.0
+                    )
+                    log.info(phase + ": computing largest_neighbor for " + method)
                     for i in range(windows):
                         if i == 0:
-                            self.results[phase][method]['largest_neighbor'][i]\
-                                = self.results[phase][method]['sem_matrix'][i][i + 1]
+                            self.results[phase][method]["largest_neighbor"][
+                                i
+                            ] = self.results[phase][method]["sem_matrix"][i][i + 1]
                         elif i == windows - 1:
-                            self.results[phase][method]['largest_neighbor'][i]\
-                                = self.results[phase][method]['sem_matrix'][i][i - 1]
+                            self.results[phase][method]["largest_neighbor"][
+                                i
+                            ] = self.results[phase][method]["sem_matrix"][i][i - 1]
                         else:
-                            left = self.results[phase][method]['sem_matrix'][i][i - 1]
-                            right = self.results[phase][method]['sem_matrix'][i][i + 1]
+                            left = self.results[phase][method]["sem_matrix"][i][i - 1]
+                            right = self.results[phase][method]["sem_matrix"][i][i + 1]
                             if left > right:
                                 max_val = left
                             elif right > left:
                                 max_val = right
                             else:
                                 max_val = right
-                            self.results[phase][method]['largest_neighbor'][i] = max_val
+                            self.results[phase][method]["largest_neighbor"][i] = max_val
 
     def compute_ref_state_work(self, restraints):
         """
@@ -730,7 +813,8 @@ class fe_calc(object):
 
         if not restraints or restraints[0] is None:
             raise Exception(
-                'At minimum, a single distance restraint must be supplied to compute_ref_state_work')
+                "At minimum, a single distance restraint must be supplied to compute_ref_state_work"
+            )
 
         fcs = []
         targs = []
@@ -739,31 +823,37 @@ class fe_calc(object):
             if restraint is None:
                 fcs.append(None)
                 targs.append(None)
-            elif restraint.phase['release']['force_constants'] is not None:
-                fcs.append(
-                    np.sort(restraint.phase['release']['force_constants'])[-1])
-                targs.append(
-                    np.sort(restraint.phase['release']['targets'])[-1])
-            elif restraint.phase['pull']['force_constants'] is not None:
-                fcs.append(
-                    np.sort(restraint.phase['pull']['force_constants'])[-1])
-                targs.append(np.sort(restraint.phase['pull']['targets'])[-1])
+            elif restraint.phase["release"]["force_constants"] is not None:
+                fcs.append(np.sort(restraint.phase["release"]["force_constants"])[-1])
+                targs.append(np.sort(restraint.phase["release"]["targets"])[-1])
+            elif restraint.phase["pull"]["force_constants"] is not None:
+                fcs.append(np.sort(restraint.phase["pull"]["force_constants"])[-1])
+                targs.append(np.sort(restraint.phase["pull"]["targets"])[-1])
             else:
                 raise Exception(
-                    'Restraints should have pull or release values initialized in order to compute_ref_state_work')
+                    "Restraints should have pull or release values initialized in order to compute_ref_state_work"
+                )
 
         # Convert degrees to radians for theta, phi, alpha, beta, gamma
         for i in range(1, 5):
             if targs[i] is not None:
                 targs[i] = np.radians(targs[i])
 
-        self.results['ref_state_work'] = ref_state_work(self.temperature,
-                                                        fcs[0], targs[0],
-                                                        fcs[1], targs[1],
-                                                        fcs[2], targs[2],
-                                                        fcs[3], targs[3],
-                                                        fcs[4], targs[4],
-                                                        fcs[5], targs[5])
+        self.results["ref_state_work"] = ref_state_work(
+            self.temperature,
+            fcs[0],
+            targs[0],
+            fcs[1],
+            targs[1],
+            fcs[2],
+            targs[2],
+            fcs[3],
+            targs[3],
+            fcs[4],
+            targs[4],
+            fcs[5],
+            targs[5],
+        )
 
 
 def get_factors(n):
@@ -830,12 +920,12 @@ def get_block_sem(data_array):
             data_beg_idx = blk_idx * block_sizes[size_idx]
             data_end_idx = (blk_idx + 1) * block_sizes[size_idx]
             # Compute the mean of this block and store in array
-            block_means[blk_idx] = np.mean(
-                data_array[data_beg_idx:data_end_idx])
+            block_means[blk_idx] = np.mean(data_array[data_beg_idx:data_end_idx])
         # Compute the standard deviation across all blocks, devide by
         # num_blocks-1 for SEM
-        sems[size_idx] = np.std(block_means[0:num_blocks],
-                                ddof=0) / np.sqrt(num_blocks - 1)
+        sems[size_idx] = np.std(block_means[0:num_blocks], ddof=0) / np.sqrt(
+            num_blocks - 1
+        )
         # Hmm or should ddof=1? I think 0, see Flyvbjerg -----^
 
     # Return the max SEM found ... this is a conservative approach.
@@ -885,12 +975,12 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
         The values for this restraint in this window
     """
 
-    log.debug('Load trajectories from {}...'.format(window, trajectory))
+    log.debug("Load trajectories from {}...".format(window, trajectory))
     if isinstance(trajectory, str):
         trajectory_path = os.path.join(window, trajectory)
     elif isinstance(trajectory, list):
         trajectory_path = [os.path.join(window, i) for i in trajectory]
-        log.debug('Received list of trajectories: {}'.format(trajectory_path))
+        log.debug("Received list of trajectories: {}".format(trajectory_path))
 
     if isinstance(prmtop, str) and not single_prmtop:
         traj = pt.iterload(trajectory_path, os.path.join(window, prmtop))
@@ -900,10 +990,9 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
         try:
             traj = pt.iterload(trajectory_path, prmtop)
         except BaseException:
-            raise Exception(
-                'Tried to load `prmtop` object directly and failed.')
+            raise Exception("Tried to load `prmtop` object directly and failed.")
 
-    log.debug('Loaded {} frames...'.format(traj.n_frames))
+    log.debug("Loaded {} frames...".format(traj.n_frames))
 
     return traj
 
@@ -924,24 +1013,44 @@ def read_restraint_data(traj, restraint):
         The values for this restraint in this window
     """
 
-    if restraint.mask1 and restraint.mask2 and not restraint.mask3 and not restraint.mask4:
-        data = pt.distance(traj, ' '.join([restraint.mask1, restraint.mask2]))
-    elif restraint.mask1 and restraint.mask2 and restraint.mask3 and not restraint.mask4:
-        data = pt.angle(traj, ' '.join(
-            [restraint.mask1, restraint.mask2, restraint.mask3]))
+    if (
+        restraint.mask1
+        and restraint.mask2
+        and not restraint.mask3
+        and not restraint.mask4
+    ):
+        data = pt.distance(traj, " ".join([restraint.mask1, restraint.mask2]))
+    elif (
+        restraint.mask1 and restraint.mask2 and restraint.mask3 and not restraint.mask4
+    ):
+        data = pt.angle(
+            traj, " ".join([restraint.mask1, restraint.mask2, restraint.mask3])
+        )
     elif restraint.mask1 and restraint.mask2 and restraint.mask3 and restraint.mask4:
-        data = pt.dihedral(traj, ' '.join(
-            [restraint.mask1, restraint.mask2, restraint.mask3, restraint.mask4]))
+        data = pt.dihedral(
+            traj,
+            " ".join(
+                [restraint.mask1, restraint.mask2, restraint.mask3, restraint.mask4]
+            ),
+        )
     return data
 
 
-def ref_state_work(temperature,
-                   r_fc, r_tg,
-                   th_fc, th_tg,
-                   ph_fc, ph_tg,
-                   a_fc, a_tg,
-                   b_fc, b_tg,
-                   g_fc, g_tg):
+def ref_state_work(
+    temperature,
+    r_fc,
+    r_tg,
+    th_fc,
+    th_tg,
+    ph_fc,
+    ph_tg,
+    a_fc,
+    a_tg,
+    b_fc,
+    b_tg,
+    g_fc,
+    g_tg,
+):
     """
     Computes the free energy to release a molecule from some restrained translational
     and orientational configuration (relative to another molecule or lab frame) into
@@ -996,22 +1105,24 @@ def ref_state_work(temperature,
     # Distance Integration Function
     def dist_int(RT, fc, targ):
         def potential(arange, RT, fc, targ):
-            return (arange**2) * np.exp((-1.0 / RT) * fc * (arange - targ)**2)
+            return (arange ** 2) * np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
+
         arange = np.arange(0.0, 100.0, 0.0001)
         return np.trapz(potential(arange, RT, fc, targ), arange)
 
     # Angle Integration Function
     def ang_int(RT, fc, targ):
         def potential(arange, RT, fc, targ):
-            return np.sin(arange) * np.exp((-1.0 / RT)
-                                           * fc * (arange - targ)**2)
+            return np.sin(arange) * np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
+
         arange = np.arange(0.0, np.pi, 0.00005)
         return np.trapz(potential(arange, RT, fc, targ), arange)
 
     # Torsion Integration Function
     def tors_int(RT, fc, targ):
         def potential(arange, RT, fc, targ):
-            return np.exp((-1.0 / RT) * fc * (arange - targ)**2)
+            return np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
+
         # Note, because of periodicity, I'm gonna wrap +/- pi around targ for
         # integration
         arange = np.arange(targ - np.pi, targ + np.pi, 0.00005)
@@ -1019,8 +1130,7 @@ def ref_state_work(temperature,
 
     # Distance restraint, r
     if None in [r_fc, r_tg]:
-        raise Exception(
-            'Distance restraint info (r_fc, r_tg) must be specified')
+        raise Exception("Distance restraint info (r_fc, r_tg) must be specified")
     else:
         r_int = dist_int(RT, r_fc, r_tg)
 
@@ -1055,15 +1165,15 @@ def ref_state_work(temperature,
         g_int = tors_int(RT, g_fc, g_tg)
 
     # Concentration term
-    trans = r_int * th_int * ph_int * (1.0 / 1660.5392)   # C^o = 1/V^o
+    trans = r_int * th_int * ph_int * (1.0 / 1660.5392)  # C^o = 1/V^o
     # Orientational term
-    orient = a_int * b_int * g_int / (8.0 * (np.pi**2))
+    orient = a_int * b_int * g_int / (8.0 * (np.pi ** 2))
 
     # Return the free energy
     return RT * np.log(trans * orient)
 
 
-def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
+def integrate_bootstraps(x, ys, x_intp=None, matrix="full"):
     """
     Integrate bootstraps.
 
@@ -1093,9 +1203,12 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
 
     """
 
-    if matrix not in ['full', 'diagonal', 'endpoints']:
-        raise Exception("Method " + str(matrix) +
-                        " not supported by the integrate_bootstraps function")
+    if matrix not in ["full", "diagonal", "endpoints"]:
+        raise Exception(
+            "Method "
+            + str(matrix)
+            + " not supported by the integrate_bootstraps function"
+        )
 
     num_x = len(x)
 
@@ -1108,8 +1221,9 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
     if x_intp is None:
         x_intp = np.zeros([0], np.float64)
         for i in range(1, num_x):
-            x_intp = np.append(x_intp, np.linspace(
-                x[i - 1], x[i], num=100, endpoint=False))
+            x_intp = np.append(
+                x_intp, np.linspace(x[i - 1], x[i], num=100, endpoint=False)
+            )
             x_idxs = len(x_intp)
         # Tack on the final value onto the interpolation
         x_intp = np.append(x_intp, x[-1])
@@ -1121,8 +1235,10 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
                 x_idxs[i] = j
                 i += 1
         if i != num_x:
-            raise Exception("One or more x values seem to be missing in the x_intp array," +
-                            " or one of the lists is not monotonically increasing!")
+            raise Exception(
+                "One or more x values seem to be missing in the x_intp array,"
+                + " or one of the lists is not monotonically increasing!"
+            )
 
     cycles = len(ys)
 
@@ -1132,13 +1248,13 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
     # Do the integration bootstraps. Originally, I had matrix=endpoints in the loop
     # below with everthing else, but I'll split it out here in case that's faster
     # due to avoiding the if statements.
-    if matrix == 'endpoints':
+    if matrix == "endpoints":
         for cycle in range(cycles):
             intp_func = Akima1DInterpolator(x, ys[cycle])
             y_intp = intp_func(x_intp)
-#            for i in range(0, num_x):
-#                for j in range(i+1, num_x):
-#                    int_matrix[i, j, cycle] = np.trapz( y_intp, x_intp )
+            #            for i in range(0, num_x):
+            #                for j in range(i+1, num_x):
+            #                    int_matrix[i, j, cycle] = np.trapz( y_intp, x_intp )
             int_matrix[0, num_x - 1, cycle] = np.trapz(y_intp, x_intp)
     else:
         for cycle in range(cycles):
@@ -1146,12 +1262,11 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
             y_intp = intp_func(x_intp)
             for i in range(0, num_x):
                 for j in range(i + 1, num_x):
-                    if matrix == 'diagonal' and i != 0 and j - i > 1:
+                    if matrix == "diagonal" and i != 0 and j - i > 1:
                         continue
                     beg = x_idxs[i]
                     end = x_idxs[j]
-                    int_matrix[i, j, cycle] = np.trapz(
-                        y_intp[beg:end], x_intp[beg:end])
+                    int_matrix[i, j, cycle] = np.trapz(y_intp[beg:end], x_intp[beg:end])
 
     # Setup matrices to store the average/sem values.
     # Is it bad that the default is 0.0 rather than None?
@@ -1163,9 +1278,9 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
         for j in range(i + 1, num_x):
             # If quick_ti_matrix, only populate first row and neighbors in
             # matrix
-            if matrix == 'diagonal' and i != 0 and j - i > 1:
+            if matrix == "diagonal" and i != 0 and j - i > 1:
                 continue
-            if matrix == 'endpoints' and i != 0 and j != num_x - 1:
+            if matrix == "endpoints" and i != 0 and j != num_x - 1:
                 continue
             avg_matrix[i, j] = np.mean(int_matrix[i, j])
             avg_matrix[j, i] = -1.0 * avg_matrix[i, j]
