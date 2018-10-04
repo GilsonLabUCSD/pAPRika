@@ -106,7 +106,8 @@ def write_dummy_frcmod(
     filename : {str}, optional
         The name of the output file, if `filepath` is not specified (the default is 'dummy.frcmod')
     filepath : {str}, optional
-        The full path (directory and file) of the output (the default is None, which means `path` and `filename` will be used)
+        The full path (directory and file) of the output (the default is None, which means `path` and
+        `filename` will be used)
 
     """
 
@@ -159,7 +160,8 @@ def write_dummy_mol2(
     filename : {str}, optional
         The name of the output file, if `filepath` is not specified (the default is 'dummy.mol2')
     filepath : {str}, optional
-        The full path (directory and file) of the output (the default is None, which means `path` and `filename` will be used)
+        The full path (directory and file) of the output (the default is None, which means
+        `path` and `filename` will be used)
 
     """
 
