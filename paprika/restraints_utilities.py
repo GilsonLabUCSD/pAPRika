@@ -180,7 +180,8 @@ def amber_restraint_line(restraint, phase, window):
         + " rk3= {0:10.5f},".format(amber_restraint_values["rk3"])
     )
 
-    if any([restraint.group1, restraint.group2, restraint.group3, restraint.group4]):
+    if any([restraint.group1, restraint.group2,
+            restraint.group3, restraint.group4]):
         string += "\n    "
         if restraint.group1:
             string += " igr1= {}".format(igr1)
@@ -356,7 +357,8 @@ def clean_restraints_file(restraints, filename="restraints.in"):
 
     log.warning("`clean_restraints_file()` needs to be tested.")
     for restraint in restraints:
-        for window, _ in enumerate(restraint.phase["attach"]["force_constants"]):
+        for window, _ in enumerate(
+                restraint.phase["attach"]["force_constants"]):
             directory = "./windows/a{0:03d}".format(window)
             os.remove(directory + "/" + filename)
 
@@ -370,7 +372,8 @@ def to_json(restraint_list):
     for restraint in restraint_list:
         dictionary = restraint.__dict__
         # Get rid of the `topology` key if it is a ParmEd AmberParm, which is not natively
-        # serializable (although this could be unpacked itself into another dictionary).
+        # serializable (although this could be unpacked itself into another
+        # dictionary).
         print(dictionary)
         if isinstance(dictionary["topology"], pmd.amber.AmberParm):
             print("Removing pmd.AmberParm from json")
@@ -379,7 +382,7 @@ def to_json(restraint_list):
             for array in ["force_constants", "targets"]:
                 try:
                     dictionary["phase"][phase][array] = self.phase[array].tolist()
-                except:
+                except BaseException:
                     print("Could not convert {} to list".format(
                         self.phase[array]))
         return json.dumps(dictionary)

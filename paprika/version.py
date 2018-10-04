@@ -21,6 +21,6 @@ def find_version():
         date_time = '_'.join(git_date.split(' '))
 
         __version__ = date_time + '-' + git_hash + '-' + version_prefix
-    except:
+    except BaseException:
         __version__ = version_prefix
     return __version__

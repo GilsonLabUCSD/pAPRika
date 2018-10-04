@@ -221,9 +221,11 @@ class Simulation(object):
 
         if overwrite or not self.has_timings():
 
-            # These settings hardcoded at the moment ... possibly expose for editing in the future
+            # These settings hardcoded at the moment ... possibly expose for
+            # editing in the future
             if soft_minimize:
-                # Set a burn in value that is 25% of the way between ncyc and maxcyc
+                # Set a burn in value that is 25% of the way between ncyc and
+                # maxcyc
                 ncyc = self.cntrl['ncyc']
                 maxcyc = self.cntrl['maxcyc']
                 burn_in = int(float(ncyc) + 0.20 *
@@ -231,7 +233,8 @@ class Simulation(object):
                 # If the burn_in value is nuts, then just set it to zero
                 if burn_in < 0 or burn_in >= maxcyc:
                     burn_in = 0
-                # Set an end_soft value that is 75% of way between ncyc and maxcyc
+                # Set an end_soft value that is 75% of way between ncyc and
+                # maxcyc
                 end_soft = int(float(ncyc) + 0.60 *
                                (float(maxcyc) - float(ncyc)))
                 self.wt = [
@@ -307,7 +310,7 @@ class Simulation(object):
         Returns
         -------
         timings : bool
-            True if 'TIMINGS' is found in file. False, otherwise. 
+            True if 'TIMINGS' is found in file. False, otherwise.
 
         """
 

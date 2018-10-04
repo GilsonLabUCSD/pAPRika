@@ -45,7 +45,7 @@ class System(object):
     counter_anion : str
         If neuralize=True, this negative ion will be used. Default: Cl-
     add_ions : list
-        A list of additional ions to be added to the system, specified by the residue name and 
+        A list of additional ions to be added to the system, specified by the residue name and
         an indication of the amount: an integer number, the molarity (M), or the molality (m).
         For example, the following list shows valid examples:
         add_ions = ['MG', 2, 'Cl-', 4, 'K', '0.150M', 'BR', '0.150M', 'NA', '0.050m', 'F', '0.050m']
@@ -173,9 +173,11 @@ class System(object):
                 self.unit = words[0]
                 filtered_lines.append("{} = loadpdb {}".format(
                     self.unit, self.loadpdb_file))
-            # Remove any included solvation and ionization commands if pbc_type is not None
+            # Remove any included solvation and ionization commands if pbc_type
+            # is not None
             elif self.pbc_type is not None:
-                if not re.search(r"^\s*(addions|addions2|addionsrand|desc|quit|solvate|save)", line, re.IGNORECASE):
+                if not re.search(
+                        r"^\s*(addions|addions2|addionsrand|desc|quit|solvate|save)", line, re.IGNORECASE):
                     filtered_lines.append(line)
             else:
                 filtered_lines.append(line)
@@ -269,11 +271,12 @@ class System(object):
         try:
             with open(self.output_path + 'leap.log', 'r') as file:
                 for line in file.readlines():
-                    if re.search('ERROR|WARNING|Warning|duplicate|FATAL|Could|Fatal|Error', line):
+                    if re.search(
+                            'ERROR|WARNING|Warning|duplicate|FATAL|Could|Fatal|Error', line):
                         log.warning(
                             'It appears there was a problem with solvation: check `leap.log`...'
                         )
-        except:
+        except BaseException:
             return
 
     def check_for_leap_log(self, log_file='leap.log'):
@@ -324,7 +327,8 @@ class System(object):
         if self.add_ions:
             self.set_additional_ions()
 
-        # Speed up the initial optimization loop by not writing prmtops and pdbs
+        # Speed up the initial optimization loop by not writing prmtops and
+        # pdbs
         self.write_save_lines = False
 
         # First, a coarse adjustment...
@@ -477,7 +481,8 @@ class System(object):
                 self.add_ion_residues.append(amount)
             elif isinstance(amount, str) and amount[-1] == 'm':
                 # User specifies molality...
-                # number to add = (molality) x (number waters) x (kg/mol solvent)
+                # number to add = (molality) x (number waters) x (kg/mol
+                # solvent)
                 number_to_add = int(
                     np.ceil(float(amount[:-1]) * self.target_waters * self.kg_per_mol_solvent))
                 self.add_ion_residues.append(number_to_add)
@@ -596,7 +601,8 @@ class System(object):
         # If the number of waters was less than the target and is now greater than the target, make the buffer smaller
         # smaller
         if self.wat_added_history[-2] < self.target_waters and self.wat_added_history[-1] > self.target_waters:
-            # If its been more than one round since last exponent change, change exponent
+            # If its been more than one round since last exponent change,
+            # change exponent
             if self.cyc_since_last_exp_change > 1:
                 log.debug('Adjustment loop 1a')
                 self.exponent -= 1
@@ -608,9 +614,11 @@ class System(object):
                 self.buffer_value = self.buffer_val_history[-1] + -1 * (
                     10**self.exponent)
                 self.cyc_since_last_exp_change += 1
-        # If the number of waters was greater than the target and is now less than the target, make the buffer bigger
+        # If the number of waters was greater than the target and is now less
+        # than the target, make the buffer bigger
         elif self.wat_added_history[-2] > self.target_waters and self.wat_added_history[-1] < self.target_waters:
-            # If its been more than one round since last exponent change, change exponent
+            # If its been more than one round since last exponent change,
+            # change exponent
             if self.cyc_since_last_exp_change > 1:
                 log.debug('Adjustment loop 2a')
                 self.exponent -= 1
@@ -622,13 +630,15 @@ class System(object):
                 self.buffer_value = self.buffer_val_history[-1] + 1 * (
                     10**self.exponent)
                 self.cyc_since_last_exp_change += 1
-        # If the last two rounds of solvation have too many waters, make the buffer smaller...
+        # If the last two rounds of solvation have too many waters, make the
+        # buffer smaller...
         elif self.wat_added_history[-2] > self.target_waters and self.wat_added_history[-1] > self.target_waters:
             log.debug('Adjustment loop 3')
             self.buffer_value = self.buffer_val_history[-1] + -1 * (
                 10**self.exponent)
             self.cyc_since_last_exp_change += 1
-        # If the last two rounds of solvation had too few waters, make the buffer bigger...
+        # If the last two rounds of solvation had too few waters, make the
+        # buffer bigger...
         elif self.wat_added_history[-2] < self.target_waters and self.wat_added_history[-1] < self.target_waters:
             log.debug('Adjustment loop 4')
             self.buffer_value = self.buffer_val_history[-1] + 1 * (

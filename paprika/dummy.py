@@ -58,14 +58,18 @@ def add_dummy(structure,
     dum.name = atom_name
     dum.mass = mass
     dum.atomic_number = atomic_number
-    # This may be a problem if these coordinates are outside the periodic box dimensions and ParmEd does not recalculate the box vectors before saving `inpcrd`...
+    # This may be a problem if these coordinates are outside the periodic box
+    # dimensions and ParmEd does not recalculate the box vectors before saving
+    # `inpcrd`...
     dum.xx = x
     dum.xy = y
     dum.xz = z
 
-    # Assume that the last atom in the structure has the highest atom index, so the new atom will be at the end.
+    # Assume that the last atom in the structure has the highest atom index,
+    # so the new atom will be at the end.
     dum.number = structure.atoms[-1].number + 1
-    # Assume that the last residue in the structure has the highest residue number, so the new atom will be at the end.
+    # Assume that the last residue in the structure has the highest residue
+    # number, so the new atom will be at the end.
     residue_num = structure.residues[-1].number + 1
 
     structure.add_atom(dum, residue_name, residue_num)
@@ -83,7 +87,8 @@ def add_dummy(structure,
     return structure
 
 
-def write_dummy_frcmod(atom_type='Du', mass='208.00', path='./', filename='dummy.frcmod', filepath=None):
+def write_dummy_frcmod(atom_type='Du', mass='208.00',
+                       path='./', filename='dummy.frcmod', filepath=None):
     """Write a `frcmod` file for dummy atoms.
 
     Parameters:

@@ -690,7 +690,8 @@ def check_restraints(restraint_list, create_window_list=False):
             log.info("Window name zero padding only applied up to 999.")
 
         # For each restraint, make sure the number of windows is either 0 (the restraint
-        # is not active) or equal to the maximum number of windows for any restraint.
+        # is not active) or equal to the maximum number of windows for any
+        # restraint.
         if all(count == 0 or count == max_count for count in win_counts):
             if max_count > 0:
                 # `continuous_apr` during attach means that the final attach window
@@ -853,7 +854,8 @@ def amber_restraint_line(restraint, window):
         + " rk3= {0:10.5f},".format(amber_restraint_values["rk3"])
     )
 
-    if any([restraint.group1, restraint.group2, restraint.group3, restraint.group4]):
+    if any([restraint.group1, restraint.group2,
+            restraint.group3, restraint.group4]):
         string += "\n    "
         if restraint.group1:
             string += " igr1= {}".format(igr1)
@@ -1029,7 +1031,8 @@ def clean_restraints_file(restraints, filename="restraints.in"):
 
     log.warning("`clean_restraints_file()` needs to be tested.")
     for restraint in restraints:
-        for window, _ in enumerate(restraint.phase["attach"]["force_constants"]):
+        for window, _ in enumerate(
+                restraint.phase["attach"]["force_constants"]):
             directory = "./windows/a{0:03d}".format(window)
             os.remove(directory + "/" + filename)
 

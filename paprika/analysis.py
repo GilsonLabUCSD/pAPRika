@@ -9,7 +9,7 @@ from scipy.interpolate import Akima1DInterpolator
 
 class fe_calc(object):
     """
-    Computes the free energy for an APR transformation. After calling `compute_free_energy()`, the 
+    Computes the free energy for an APR transformation. After calling `compute_free_energy()`, the
     results are stored in a dictionary called `results` in kcal/mol.
 
     Attributes
@@ -161,7 +161,8 @@ class fe_calc(object):
         for restraint in active_attach_restraints:
             attach_orders.append(np.argsort(
                 restraint.phase['attach']['force_constants']))
-        if not all([np.array_equal(attach_orders[0], i) for i in attach_orders]):
+        if not all([np.array_equal(attach_orders[0], i)
+                    for i in attach_orders]):
             raise Exception(
                 'The order of increasing force constants is not the same in all restraints.')
         elif attach_orders:
@@ -182,7 +183,8 @@ class fe_calc(object):
         for restraint in active_release_restraints:
             release_orders.append(np.argsort(
                 restraint.phase['release']['force_constants']))
-        if not all([np.array_equal(release_orders[0], i) for i in release_orders]):
+        if not all([np.array_equal(release_orders[0], i)
+                    for i in release_orders]):
             raise Exception(
                 'The order of increasing force constants is not the same in all restraints.')
         elif release_orders:
@@ -193,7 +195,7 @@ class fe_calc(object):
         return orders
 
     def read_trajectories(self, single_prmtop=False):
-        """For each each phase and window, and for each non-static restraint, parse the trajectories to 
+        """For each each phase and window, and for each non-static restraint, parse the trajectories to
         get the restraint values.
 
         Parameters
@@ -204,7 +206,7 @@ class fe_calc(object):
         Returns
         -------
         data : {dict}
-            Dictionary containing restraint values for analysis 
+            Dictionary containing restraint values for analysis
         """
 
         data = {'attach': [], 'pull': [], 'release': []}
@@ -245,7 +247,8 @@ class fe_calc(object):
             data[phase].append([])
             traj = load_trajectory(
                 window, self.trajectory, self.prmtop, single_prmtop)
-            for restraint_index, restraint in enumerate(active_attach_restraints):
+            for restraint_index, restraint in enumerate(
+                    active_attach_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(
                     traj, restraint)
@@ -255,7 +258,8 @@ class fe_calc(object):
             data[phase].append([])
             traj = load_trajectory(
                 window, self.trajectory, self.prmtop, single_prmtop)
-            for restraint_index, restraint in enumerate(active_pull_restraints):
+            for restraint_index, restraint in enumerate(
+                    active_pull_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(
                     traj, restraint)
@@ -265,7 +269,8 @@ class fe_calc(object):
             data[phase].append([])
             traj = load_trajectory(
                 window, self.trajectory, self.prmtop, single_prmtop)
-            for restraint_index, restraint in enumerate(active_release_restraints):
+            for restraint_index, restraint in enumerate(
+                    active_release_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(
                     traj, restraint)
@@ -316,13 +321,15 @@ class fe_calc(object):
         targets_T = np.asarray(targets).T
 
         # Note, the organization of k = coordinate windows, l = potential windows
-        # seems to be opposite of the documentation. But I got wrong numbers the other way around.
+        # seems to be opposite of the documentation. But I got wrong numbers
+        # the other way around.
         for k in range(num_win):  # Coordinate windows
             for l in range(num_win):  # Potential Windows
 
                 for r, rest in enumerate(active_rest):  # Restraints
                     # If this is a dihedral, we need to shift around restraint value
-                    # on the periodic axis to make sure the lowest potential is used.
+                    # on the periodic axis to make sure the lowest potential is
+                    # used.
                     if rest.mask3 is not None and rest.mask4 is not None:
                         target = targets_T[l, r]
                         # Coords from coord window, k
@@ -332,7 +339,8 @@ class fe_calc(object):
                         ordered_values[k][r][bool_list] -= 360.0
 
                 # Compute the potential ... for each frame, sum the contributions for each restraint
-                # Note, we multiply by beta, and do some extra [l,:,None] to get the math operation correct.
+                # Note, we multiply by beta, and do some extra [l,:,None] to
+                # get the math operation correct.
                 u_kln[k, l, 0:N_k[k]] = np.sum(
                     self.beta * force_constants_T[l, :, None] * (ordered_values[k] - targets_T[l, :, None])**2, axis=0)
 
@@ -341,11 +349,13 @@ class fe_calc(object):
         # doing it on the potential.  Should be pretty close ....
         if method == 'mbar-block':
             # We want to use all possible data to get the free energy estimates Deltaf_ij,
-            # but for uncertainty estimates we'll subsample to create uncorrelated data.
+            # but for uncertainty estimates we'll subsample to create
+            # uncorrelated data.
             for k in range(num_win):
                 l = k
                 # If the potential is zero everywhere, we can't estimate the uncertainty, so
-                # check the next *potential* window which probably had non-zero force constants
+                # check the next *potential* window which probably had non-zero
+                # force constants
                 while not u_kln[k, l, 0:N_k[k]].any():
                     l += 1
                 # Now compute statistical inefficiency: g = N*(SEM**2)/variance
@@ -355,7 +365,8 @@ class fe_calc(object):
                 g_k[k] = (N_k[k] * (sem**2) / variance)
 
         # Create subsampled indices and count their lengths. If g=1, ie no correlation,
-        # then subsampling will return identical indices to original (hopefully)
+        # then subsampling will return identical indices to original
+        # (hopefully)
         ss_indices = []
         N_ss = np.zeros([num_win], np.int32)  # N_subsample
         for k in range(num_win):
@@ -382,11 +393,13 @@ class fe_calc(object):
                 frac_N_ss = np.array([int(fraction * n)
                                       for n in N_ss], dtype=np.int32)
 
-                # Create a new potential array for the uncertainty calculation (are we using too much memory?)
+                # Create a new potential array for the uncertainty calculation
+                # (are we using too much memory?)
                 u_kln_err = np.zeros(
                     [num_win, num_win, np.max(frac_N_ss)], np.float64)
 
-                # Populate the subsampled array, drawing the appropriate fraction of subsamples from the original
+                # Populate the subsampled array, drawing the appropriate
+                # fraction of subsamples from the original
                 for k in range(num_win):
                     for l in range(num_win):
                         u_kln_err[k, l, 0:frac_N_ss[k]] = u_kln[k,
@@ -442,7 +455,8 @@ class fe_calc(object):
         # temporary storage space.
         dU = np.zeros([num_win, max_data_points], np.float64)
 
-        # The mean, sem, std. dev, and number of uncorrelated dU values for each window
+        # The mean, sem, std. dev, and number of uncorrelated dU values for
+        # each window
         dU_avgs = np.zeros([num_win], np.float64)
         dU_sems = np.zeros([num_win], np.float64)
         dU_stdv = np.zeros([num_win], np.float64)
@@ -472,7 +486,8 @@ class fe_calc(object):
             # Wrap dihedrals so we get the right potential
             for r, rest in enumerate(active_rest):  # Restraints
                 # If this is a dihedral, we need to shift around restraint value
-                # on the periodic axis to make sure the lowest potential is used.
+                # on the periodic axis to make sure the lowest potential is
+                # used.
                 if rest.mask3 is not None and rest.mask4 is not None:
                     target = targets_T[k, r]
                     bool_list = ordered_values[k][r] < target - 180.0
@@ -480,7 +495,8 @@ class fe_calc(object):
                     bool_list = ordered_values[k][r] > target + 180.0
                     ordered_values[k][r][bool_list] -= 360.0
 
-            # Compute forces and store the values of the changing coordinate, either lambda or target
+            # Compute forces and store the values of the changing coordinate,
+            # either lambda or target
             if phase == 'attach' or phase == 'release':
                 dU[k, 0:N_k[k]] = np.sum(
                     max_force_constants[:, None] * (ordered_values[k] - targets_T[k, :, None])**2, axis=0)
@@ -492,7 +508,8 @@ class fe_calc(object):
                 # Currently assuming a single distance restraint
                 dl_vals[k] = targets_T[k, 0]
 
-            # Compute StdDevs and SEMs, unless we're going to do exact_sem_each_ti_fraction
+            # Compute StdDevs and SEMs, unless we're going to do
+            # exact_sem_each_ti_fraction
             dU_avgs[k] = np.mean(dU[k, 0:N_k[k]])
             dU_stdv[k] = np.std(dU[k, 0:N_k[k]])
             if method == 'ti-block':
@@ -619,12 +636,15 @@ class fe_calc(object):
             self.results[phase]['window_order'] = self.orders[phase]
             for method in self.methods:
                 # Initialize some values that we will compute
-                # The matrix gives all possible fe/sem for any window to any other window
+                # The matrix gives all possible fe/sem for any window to any
+                # other window
                 self.results[phase][method] = {}
 
                 # Prepare data
                 if sum(self.changing_restraints[phase]) == 0:
-                    log.debug('Skipping free energy calculation for %s' % phase)
+                    log.debug(
+                        'Skipping free energy calculation for %s' %
+                        phase)
                     continue
                 prepared_data = self.prepare_data(phase)
                 self.results[phase][method]['n_frames'] = np.sum(
@@ -656,20 +676,24 @@ class fe_calc(object):
                     self.results[phase][method]['fraction_sem'][fraction] \
                         = self.results[phase][method]['fraction_sem_matrix'][fraction][0, -1]
 
-                # Set these higher level (total) values, which will be slightly easier to access
+                # Set these higher level (total) values, which will be slightly
+                # easier to access
                 max_fraction = np.max(self.fractions)
                 self.results[phase][method]['fe_matrix'] = self.results[phase][method]['fraction_fe_matrix'][max_fraction]
                 self.results[phase][method]['sem_matrix'] = self.results[phase][method]['fraction_sem_matrix'][max_fraction]
                 self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
                 self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0, -1]
 
-                # Set largest neighbors.  This is a legacy approach, probably not useful.
+                # Set largest neighbors.  This is a legacy approach, probably
+                # not useful.
                 if self.compute_largest_neighbor:
-                    # Store convergence values, which are helpful for running simulations
+                    # Store convergence values, which are helpful for running
+                    # simulations
                     windows = len(self.results[phase][method]['sem_matrix'])
                     self.results[phase][method]['largest_neighbor'] = np.ones(
                         [windows], np.float64) * -1.0
-                    log.info(phase + ': computing largest_neighbor for ' + method)
+                    log.info(
+                        phase + ': computing largest_neighbor for ' + method)
                     for i in range(windows):
                         if i == 0:
                             self.results[phase][method]['largest_neighbor'][i]\
@@ -808,7 +832,8 @@ def get_block_sem(data_array):
             # Compute the mean of this block and store in array
             block_means[blk_idx] = np.mean(
                 data_array[data_beg_idx:data_end_idx])
-        # Compute the standard deviation across all blocks, devide by num_blocks-1 for SEM
+        # Compute the standard deviation across all blocks, devide by
+        # num_blocks-1 for SEM
         sems[size_idx] = np.std(block_means[0:num_blocks],
                                 ddof=0) / np.sqrt(num_blocks - 1)
         # Hmm or should ddof=1? I think 0, see Flyvbjerg -----^
@@ -874,7 +899,7 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
     else:
         try:
             traj = pt.iterload(trajectory_path, prmtop)
-        except:
+        except BaseException:
             raise Exception(
                 'Tried to load `prmtop` object directly and failed.')
 
@@ -911,12 +936,12 @@ def read_restraint_data(traj, restraint):
 
 
 def ref_state_work(temperature,
-                   r_fc,  r_tg,
+                   r_fc, r_tg,
                    th_fc, th_tg,
                    ph_fc, ph_tg,
-                   a_fc,  a_tg,
-                   b_fc,  b_tg,
-                   g_fc,  g_tg):
+                   a_fc, a_tg,
+                   b_fc, b_tg,
+                   g_fc, g_tg):
     """
     Computes the free energy to release a molecule from some restrained translational
     and orientational configuration (relative to another molecule or lab frame) into
@@ -978,7 +1003,8 @@ def ref_state_work(temperature,
     # Angle Integration Function
     def ang_int(RT, fc, targ):
         def potential(arange, RT, fc, targ):
-            return np.sin(arange) * np.exp((-1.0 / RT) * fc * (arange - targ)**2)
+            return np.sin(arange) * np.exp((-1.0 / RT)
+                                           * fc * (arange - targ)**2)
         arange = np.arange(0.0, np.pi, 0.00005)
         return np.trapz(potential(arange, RT, fc, targ), arange)
 
@@ -986,7 +1012,8 @@ def ref_state_work(temperature,
     def tors_int(RT, fc, targ):
         def potential(arange, RT, fc, targ):
             return np.exp((-1.0 / RT) * fc * (arange - targ)**2)
-        # Note, because of periodicity, I'm gonna wrap +/- pi around targ for integration
+        # Note, because of periodicity, I'm gonna wrap +/- pi around targ for
+        # integration
         arange = np.arange(targ - np.pi, targ + np.pi, 0.00005)
         return np.trapz(potential(arange, RT, fc, targ), arange)
 
@@ -995,7 +1022,7 @@ def ref_state_work(temperature,
         raise Exception(
             'Distance restraint info (r_fc, r_tg) must be specified')
     else:
-        r_int = dist_int(RT, r_fc,  r_tg)
+        r_int = dist_int(RT, r_fc, r_tg)
 
     # Angle restraint, theta
     if None in [th_fc, th_tg]:
@@ -1013,19 +1040,19 @@ def ref_state_work(temperature,
     if None in [a_fc, a_tg]:
         a_int = 2.0 * np.pi
     else:
-        a_int = tors_int(RT, a_fc,  a_tg)
+        a_int = tors_int(RT, a_fc, a_tg)
 
     # Angle restraint, beta
     if None in [b_fc, b_tg]:
         b_int = 2.0
     else:
-        b_int = ang_int(RT, b_fc,  b_tg)
+        b_int = ang_int(RT, b_fc, b_tg)
 
     # Torsion restraint, gamma
     if None in [g_fc, g_tg]:
         g_int = 2.0 * np.pi
     else:
-        g_int = tors_int(RT, g_fc,  g_tg)
+        g_int = tors_int(RT, g_fc, g_tg)
 
     # Concentration term
     trans = r_int * th_int * ph_int * (1.0 / 1660.5392)   # C^o = 1/V^o
@@ -1076,7 +1103,8 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
     x_idxs = np.zeros([num_x], np.int32)
 
     # If not provided, generate x interpolation with 100 inpolated points between
-    # each x value. Store the index locations of the x values in the x_intp array.
+    # each x value. Store the index locations of the x values in the x_intp
+    # array.
     if x_intp is None:
         x_intp = np.zeros([0], np.float64)
         for i in range(1, num_x):
@@ -1133,7 +1161,8 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix='full'):
     # Second pass to compute the mean and standard deviation.
     for i in range(0, num_x):
         for j in range(i + 1, num_x):
-            # If quick_ti_matrix, only populate first row and neighbors in matrix
+            # If quick_ti_matrix, only populate first row and neighbors in
+            # matrix
             if matrix == 'diagonal' and i != 0 and j - i > 1:
                 continue
             if matrix == 'endpoints' and i != 0 and j != num_x - 1:

@@ -25,7 +25,7 @@ def return_parmed_structure(filename):
     try:
         structure = pmd.load_file(filename)
         log.info('Loaded {}...'.format(filename))
-    except:
+    except BaseException:
         log.error('Unable to load file: {}'.format(filename))
     return structure
 
@@ -48,11 +48,14 @@ def index_from_mask(structure, mask, amber_index=False):
     # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
     indices = [
         i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()]
-    log.debug('There are {} atoms in the mask {}  ...'.format(len(indices), mask))
+    log.debug(
+        'There are {} atoms in the mask {}  ...'.format(
+            len(indices), mask))
     return indices
 
 
-def make_window_dirs(window_list, stash_existing=False, path='./', window_dir_name='windows'):
+def make_window_dirs(window_list, stash_existing=False,
+                     path='./', window_dir_name='windows'):
     """
     Make a series of directories to hold the simulation setup files
     and the data. Here we could check if the directories already exist and prompt
@@ -72,7 +75,8 @@ def make_window_dirs(window_list, stash_existing=False, path='./', window_dir_na
             os.makedirs(window_path)
 
 
-def decompose_openmm_energy(simulation, groups=[0, 1], names=['non-restraint', 'restraint']):
+def decompose_openmm_energy(simulation, groups=[0, 1], names=[
+                            'non-restraint', 'restraint']):
     """Return individual energy components.
     """
 
