@@ -31,6 +31,12 @@ class TestAlignment(unittest.TestCase):
             np.allclose(test_coordinates, np.zeros(3)),
             msg='{}'.format(test_coordinates))
 
+    def test_theta_after_alignment(self):
+        """ Test that molecule is properly aligned after random offset. """
+        cb6 = pmd.load_file('./cb6-but/vac.pdb')
+        aligned_cb6 = zalign(cb6, ':CB6', ':BUT')
+        self.assertTrue(get_theta(cb6, ":CB6", ":BUT", axis="z") == 0)
+
 
 if __name__ == '__main__':
     log.debug('{}'.format(paprika.__version__))

@@ -350,6 +350,13 @@ def test_DAT_restraint():
     with pytest.raises(Exception) as e_info:
         window_list = create_window_list([rest1, rest10])
 
+def test_static_DAT_restraint():
+    structure = pmd.load_file("./cb6-but/vac.prmtop", "./cb6-but/vac.rst7")
+    r = static_DAT_restraint(restraint_mask_list=[":BUT@C3", ":CB6@O"],
+                                        num_window_list=[10,10,10],
+                                        ref_structure=structure,
+                                        force_constant=5.0,
+                                        amber_index=True)
 
 if __name__ == '__main__':
     log.debug('{}'.format(paprika.__version__))

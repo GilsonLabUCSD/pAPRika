@@ -37,27 +37,6 @@ class NumpyEncoder(json.JSONEncoder):
                 dtype=str(obj.dtype),
                 shape=obj.shape,
             )
-        elif isinstance(
-            obj,
-            (
-                np.int_,
-                np.intc,
-                np.intp,
-                np.int8,
-                np.int16,
-                np.int32,
-                np.int64,
-                np.uint8,
-                np.uint16,
-                np.uint32,
-                np.uint64,
-            ),
-        ):
-            return int(obj)
-        elif isinstance(obj, (np.float_, np.float16, np.float32, np.float64)):
-            return float(obj)
-        elif isinstance(obj, (np.ndarray,)):
-            return obj.tolist()
 
         # Let the base class default method raise the TypeError
         # return json.JSONEncoder(self, obj)
