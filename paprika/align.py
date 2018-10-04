@@ -30,14 +30,15 @@ def zalign(structure, mask1, mask2, translate=True, save=False, filename=None):
     # 1. Define the vector from mask1 to mask2.
     mask2_com = mask2_com + -1.0 * mask1_com
 
-    # 2. Find axis and angle between the mask vector and the axis using cross and dot products.
+    # 2. Find axis and angle between the mask vector and the axis using cross
+    # and dot products.
     x = np.cross(mask2_com, axis) / np.linalg.norm(np.cross(mask2_com, axis))
     theta = np.arccos(np.dot(mask2_com, axis) /
                       (np.linalg.norm(mask2_com) * np.linalg.norm(axis)))
     # 3. Find the rotation matrix
-    A = np.array([[0,        -1.0 * x[2],     x[1]],
-                  [x[2],      0,       -1.0 * x[0]],
-                  [-1.0 * x[1], x[0],           0]])
+    A = np.array([[0, -1.0 * x[2], x[1]],
+                  [x[2], 0, -1.0 * x[0]],
+                  [-1.0 * x[1], x[0], 0]])
 
     rotation_matrix = I + np.dot(np.sin(theta), A) + \
         np.dot((1.0 - np.cos(theta)), np.dot(A, A))
@@ -89,9 +90,9 @@ def get_theta(structure, mask1, mask2, axis):
 
 def rotate_about_z(structure, theta, save=False, filename=None):
 
-    R = np.array([[np.cos(theta),  -1 * np.sin(theta),   0],
-                  [np.sin(theta),     np.cos(theta),   0],
-                  [0,                             0,   1]])
+    R = np.array([[np.cos(theta), -1 * np.sin(theta), 0],
+                  [np.sin(theta), np.cos(theta), 0],
+                  [0, 0, 1]])
 
     rotated_coords = np.empty_like(structure.coordinates)
     for atom in range(len(structure.atoms)):
@@ -112,7 +113,7 @@ def rotate_about_z(structure, theta, save=False, filename=None):
 
 
 def check_coordinates(structure, mask):
-    """ 
+    """
     Return the coordinates of an atom selection.
     """
     mask_coordinates = structure[mask].coordinates
