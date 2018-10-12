@@ -110,3 +110,6 @@ local/
 
 # VIM swap
 *.swp
+
+# Tutorial windows
+tutorial/windows
