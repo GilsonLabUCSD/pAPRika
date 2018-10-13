@@ -98,8 +98,8 @@ ENV/
 windows/
 
 # Local testing in jupyter-notebooks
-*.ipynb
 local/
+test/
 
 # pycharm
 .idea/
