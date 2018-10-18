@@ -217,10 +217,10 @@ These values will be used to measure distance relative to the first dummy atom, 
 
 
 ```python
-release_fractions = None
+release_fractions = []
 ```
 
-I will explain below why there are no release windows in this calculation.
+Later, I will explain below why there are no release windows in this calculation.
 
 ```python
 windows = [len(attach_fractions), len(pull_distances), len(release_fractions)]
@@ -765,12 +765,16 @@ But what about release? The guest's rotational and translational degrees of free
 
 ```python
 
-releasee = free_energy.compute_ref_state_work(guest_restraints)
+free_energy.compute_ref_state_work([
+        guest_restraints[0], guest_restraints[1], None, None,
+        guest_restraints[2], None
+])
 
 binding_affinity = -1 * (
 free_energy.results["attach"]["ti-block"]["fe"] + \
-free_energy.results["pull"]["ti-block"]["fe"] - \
-release
+free_energy.results["pull"]["ti-block"]["fe"] + \
+free_energy.results["ref_state_work"]
+
 )
 
 sem = np.sqrt(
@@ -784,7 +788,7 @@ free_energy.results["pull"]["ti-block"]["sem"]**2
 print(f"The binding affinity for butane and cucurbit[6]uril = {binding_affinity:0.2f} +/- {sem:0.2f} kcal/mol")
 ```
 
-    The binding affinity for butane and cucurbit[6]uril = -5.76 +/- 5.53 kcal/mol
+    The binding affinity for butane and cucurbit[6]uril = -9.00 +/- 5.53 kcal/mol
 
 
 There is a large uncertainty associated with this calculation because we only simulated for a very short amount of time in each window and we used a large amount of spacing between each window in the pull phase, but the uncertainty will go down with more time.
