@@ -196,9 +196,9 @@ Now we have AMBER coordinates and parameters for the `cb6-but` system with dummy
 
 ## Determine the number of windows
 
-Before we add the restraints, it is helpful to set the $\lambda$ fractions that control the strength of the force constants during attach and release, and to define the distances for the pulling phase.
+Before we add the restraints, it is helpful to set the λ fractions that control the strength of the force constants during attach and release, and to define the distances for the pulling phase.
 
-The attach fractions go from 0 to 1 and we place more points at the bottom of the range to sample the curvature of $dU/d \lambda$. Next, we generally apply a distance restraint until the guest is ~18 Angstroms away from the host, in increments of 0.4 Angstroms. This distance should be at least twice the Lennard-Jones cutoff in the system. These values have worked well for us, but this is one aspect that should be carefully checked for new systems.
+The attach fractions go from 0 to 1 and we place more points at the bottom of the range to sample the curvature of ∂U/∂λ. Next, we generally apply a distance restraint until the guest is about 18 Å away from the host, in increments of 0.4 Å. This distance should be at least twice the Lennard-Jones cutoff in the system. These values have worked well for us, but this is one aspect that should be carefully checked for new systems.
 
 
 ```python
@@ -217,16 +217,17 @@ These values will be used to measure distance relative to the first dummy atom, 
 
 
 ```python
-release_fractions = attach_fractions[::-1]
+release_fractions = []
 ```
 
+Later, I will explain below why there are no release windows in this calculation.
 
 ```python
 windows = [len(attach_fractions), len(pull_distances), len(release_fractions)]
 print(f"There are {windows} windows in this attach-pull-release calculation.")
 ```
 
-    There are [15, 18, 15] windows in this attach-pull-release calculation.
+    There are [15, 18, 0] windows in this attach-pull-release calculation.
 
 
 Alternatively, we could specify the number of windows for each phase and the force constants and targets will be linearly interpolated. Other ways of specifying these values are documented in the code.
@@ -397,10 +398,6 @@ r.attach["fc_final"] = 5.0                          # kcal/mol/Angstroms**2
 r.pull["target_final"] = 24.0                       # Angstroms
 r.pull["num_windows"] = windows[1]
 
-r.release["target"] = 6.0                           # Angstroms
-r.release["fraction_list"] = attach_fractions[::-1]
-r.release["fc_final"] = 5.0
-
 r.initialize()
 guest_restraints.append(r)
 ```
@@ -423,10 +420,6 @@ r.attach["fc_final"] = 100.0                        # kcal/mol/radian**2
 r.pull["target_final"] = 180.0                      # Degrees
 r.pull["num_windows"] = windows[1]
 
-r.release["target"] = 180.0                         # Degrees
-r.release["fraction_list"] = attach_fractions[::-1]
-r.release["fc_final"] = 100.0                       # kcal/mol/radian**2
-
 r.initialize()
 guest_restraints.append(r)
 ```
@@ -448,10 +441,6 @@ r.attach["fc_final"] = 100.0                        # kcal/mol/radian**2
 
 r.pull["target_final"] = 180.0                      # Degrees
 r.pull["num_windows"] = windows[1]
-
-r.release["target"] = 180.0                         # Degrees
-r.release["fraction_list"] = attach_fractions[::-1]
-r.release["fc_final"] = 100.0                       # kcal/mol/radian**2
 
 r.initialize()
 guest_restraints.append(r)
@@ -513,11 +502,6 @@ for window in window_list:
                 atom.xz += target_difference
         structure.save(f"windows/{window}/cb6-but-dum.prmtop")
         structure.save(f"windows/{window}/cb6-but-dum.rst7")
-    elif window[0] == "r":
-        shutil.copy(f"windows/{window_list[windows[0] - 1 + windows[1] - 1]}/cb6-but-dum.prmtop",
-                    f"windows/{window}/cb6-but-dum.prmtop")
-        shutil.copy(f"windows/{window_list[windows[0] - 1 + windows[1] - 1]}/cb6-but-dum.rst7",
-                    f"windows/{window}/cb6-but-dum.rst7")
 ```
 
     In window p000 we will translate the guest 0.0 Angstroms.
@@ -657,35 +641,6 @@ for window in window_list:
     2018-09-17 10:52:35 AM Running Minimization at windows/p016/
     2018-09-17 10:52:45 AM Minimization completed...
     2018-09-17 10:52:45 AM Running Minimization at windows/p017/
-    2018-09-17 10:52:56 AM Minimization completed...
-    2018-09-17 10:52:56 AM Running Minimization at windows/r001/
-    2018-09-17 10:53:06 AM Minimization completed...
-    2018-09-17 10:53:06 AM Running Minimization at windows/r002/
-    2018-09-17 10:53:16 AM Minimization completed...
-    2018-09-17 10:53:16 AM Running Minimization at windows/r003/
-    2018-09-17 10:53:27 AM Minimization completed...
-    2018-09-17 10:53:27 AM Running Minimization at windows/r004/
-    2018-09-17 10:53:37 AM Minimization completed...
-    2018-09-17 10:53:37 AM Running Minimization at windows/r005/
-    2018-09-17 10:53:47 AM Minimization completed...
-    2018-09-17 10:53:47 AM Running Minimization at windows/r006/
-    2018-09-17 10:53:58 AM Minimization completed...
-    2018-09-17 10:53:58 AM Running Minimization at windows/r007/
-    2018-09-17 10:54:08 AM Minimization completed...
-    2018-09-17 10:54:08 AM Running Minimization at windows/r008/
-    2018-09-17 10:54:18 AM Minimization completed...
-    2018-09-17 10:54:18 AM Running Minimization at windows/r009/
-    2018-09-17 10:54:29 AM Minimization completed...
-    2018-09-17 10:54:29 AM Running Minimization at windows/r010/
-    2018-09-17 10:54:40 AM Minimization completed...
-    2018-09-17 10:54:40 AM Running Minimization at windows/r011/
-    2018-09-17 10:54:50 AM Minimization completed...
-    2018-09-17 10:54:50 AM Running Minimization at windows/r012/
-    2018-09-17 10:55:01 AM Minimization completed...
-    2018-09-17 10:55:01 AM Running Minimization at windows/r013/
-    2018-09-17 10:55:11 AM Minimization completed...
-    2018-09-17 10:55:11 AM Running Minimization at windows/r014/
-    2018-09-17 10:55:22 AM Minimization completed...
 
 
 For simplicity, I am going to skip equilibration and go straight to production!
@@ -777,34 +732,6 @@ for window in window_list:
     2018-09-17 10:56:09 AM MD completed ...
     2018-09-17 10:56:09 AM Running MD at windows/p017/
     2018-09-17 10:56:11 AM MD completed ...
-    2018-09-17 10:56:11 AM Running MD at windows/r001/
-    2018-09-17 10:56:12 AM MD completed ...
-    2018-09-17 10:56:12 AM Running MD at windows/r002/
-    2018-09-17 10:56:14 AM MD completed ...
-    2018-09-17 10:56:14 AM Running MD at windows/r003/
-    2018-09-17 10:56:16 AM MD completed ...
-    2018-09-17 10:56:16 AM Running MD at windows/r004/
-    2018-09-17 10:56:17 AM MD completed ...
-    2018-09-17 10:56:17 AM Running MD at windows/r005/
-    2018-09-17 10:56:19 AM MD completed ...
-    2018-09-17 10:56:19 AM Running MD at windows/r006/
-    2018-09-17 10:56:20 AM MD completed ...
-    2018-09-17 10:56:20 AM Running MD at windows/r007/
-    2018-09-17 10:56:22 AM MD completed ...
-    2018-09-17 10:56:22 AM Running MD at windows/r008/
-    2018-09-17 10:56:23 AM MD completed ...
-    2018-09-17 10:56:23 AM Running MD at windows/r009/
-    2018-09-17 10:56:25 AM MD completed ...
-    2018-09-17 10:56:25 AM Running MD at windows/r010/
-    2018-09-17 10:56:26 AM MD completed ...
-    2018-09-17 10:56:26 AM Running MD at windows/r011/
-    2018-09-17 10:56:28 AM MD completed ...
-    2018-09-17 10:56:28 AM Running MD at windows/r012/
-    2018-09-17 10:56:29 AM MD completed ...
-    2018-09-17 10:56:29 AM Running MD at windows/r013/
-    2018-09-17 10:56:31 AM MD completed ...
-    2018-09-17 10:56:31 AM Running MD at windows/r014/
-    2018-09-17 10:56:32 AM MD completed ...
 
 
 ## Analysis
@@ -834,18 +761,25 @@ free_energy.bootcycles = 1000
 free_energy.compute_free_energy()
 ```
 
+But what about release? The guest's rotational and translational degrees of freedom are still restrained releative to the frame of reference of the host. The work to release these restraints is the difference between the chemical potential of this state, and the chemical potentials of the separate host and guest at standard concentration. This can be calculated analytically without doing additional simulation (see [equation 8](https://pubs.acs.org/doi/10.1021/acs.jctc.5b00405)), using the function `compute_ref_state_work`.
 
 ```python
+
+free_energy.compute_ref_state_work([
+        guest_restraints[0], guest_restraints[1], None, None,
+        guest_restraints[2], None
+])
+
 binding_affinity = -1 * (
 free_energy.results["attach"]["ti-block"]["fe"] + \
-free_energy.results["pull"]["ti-block"]["fe"] - \
-free_energy.results["release"]["ti-block"]["fe"]
+free_energy.results["pull"]["ti-block"]["fe"] + \
+free_energy.results["ref_state_work"]
+
 )
 
 sem = np.sqrt(
 free_energy.results["attach"]["ti-block"]["sem"]**2 + \
-free_energy.results["pull"]["ti-block"]["sem"]**2 + \
-free_energy.results["release"]["ti-block"]["sem"]**2
+free_energy.results["pull"]["ti-block"]["sem"]**2
 )
 ```
 
@@ -854,7 +788,7 @@ free_energy.results["release"]["ti-block"]["sem"]**2
 print(f"The binding affinity for butane and cucurbit[6]uril = {binding_affinity:0.2f} +/- {sem:0.2f} kcal/mol")
 ```
 
-    The binding affinity for butane and cucurbit[6]uril = -5.76 +/- 5.53 kcal/mol
+    The binding affinity for butane and cucurbit[6]uril = -9.00 +/- 5.53 kcal/mol
 
 
 There is a large uncertainty associated with this calculation because we only simulated for a very short amount of time in each window and we used a large amount of spacing between each window in the pull phase, but the uncertainty will go down with more time.
