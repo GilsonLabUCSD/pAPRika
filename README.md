@@ -26,7 +26,7 @@ The very first step in the calculation is creating a coordinate file for the bou
 
 In this example, this file is called `cb6-but.pdb`, in the `complex/` directory, and this is what it looks like.
 
-![](images/cb6-but.png)
+![](tutorial/images/cb6-but.png)
 
 In addition to the coordinate file, we need separate `mol2` files for the host and guest molecule that contain the partial atomic charges. For cyclic hosts like CB6, you can specify either a single residue for the entire molecule (this is what we do here) or you can provide coordinates and charges for a single monomer and have `tleap` build the structure (this is a little more tricky).
 
@@ -113,7 +113,7 @@ aligned_structure.save("complex/aligned.rst7", overwrite=True)
 
 Here, the origin is shown as a grey sphere, with the $z$ axis drawn as a blue arrow. The coordinates used for this example were already aligned, so Python warns that the cross product is zero, but this won't be the case in general.
 
-![](images/aligned.png)
+![](tutorial/images/aligned.png)
 
 Next, we add the dummy atoms. The dummy atoms will be fixed in place during the simulation and are used to orient the host and guest in the lab frame. The dummy atoms are placed along the $z$ axis, behind the host. The dummy atoms are used in distance, angle, and torsion restraints and therefore, the exact positioning of these atoms affects the value of those restraints. For a typical host-guest system, like the one here, we generally place the first dummy atom 6 Angstroms behind the origin, the second dummy atom 9 Angstroms behind the origin, and the third dummy atom 11.2 Angstroms behind the origin and offset about 2.2 Angstroms along the $y$ axis. After we add restraints, the positioning of the dummy atoms should be more clear.
 
@@ -147,7 +147,7 @@ structure.save("complex/aligned_with_dummy.rst7", overwrite=True)
 structure.save("complex/aligned_with_dummy.pdb", overwrite=True)
 ```
 
-![](images/aligned_with_dummy.png)
+![](tutorial/images/aligned_with_dummy.png)
 
 When we solvate the system in `tleap`, we will need `frcmod` files for the dummy atoms (otherwise `tleap` will use GAFF parameters and the dummy atoms will *not* be non-interacting). There is a convenient method in `paprika` to write a `frcmod` file that only contains a `MASS` section. For convenience, I am also going to write `mol2` files for each of the dummy atoms. This makes it easy to build up the system, piece-by-piece, if we have a separate `mol2` file for each component of the system: host, guest, dummy atoms.
 
@@ -192,7 +192,7 @@ system.build()
 
 Now we have AMBER coordinates and parameters for the `cb6-but` system with dummy atoms in the appropriate place and with the proper "dummy" parametesr.
 
-![](images/anchor-atoms-diagram2.png)
+![](tutorial/images/anchor-atoms-diagram2.png)
 
 ## Determine the number of windows
 
@@ -276,7 +276,7 @@ The first three static restraints affect the translational distance, angle, and 
 
 There is no *correct* value for the force constants. From experience, we know that a distance force constant of 5.0 kcal/mol/Angstrom$^2$ won't nail down the host and yet it also won't wander away. Likewise, we have had good results using 100.0 kcal/mol/radian$^2$ for the angle force constant.
 
-![](images/static-restraints-1.png)
+![](tutorial/images/static-restraints-1.png)
 
 
 ```python
@@ -327,7 +327,7 @@ static_restraints.append(r)
 
 The next three restraints control the orientation of the host relative to the dummy atoms. These angle and torsion restraints prevent the host from rotating relative to the dummy atoms.
 
-![](images/static-restraints-2.png)
+![](tutorial/images/static-restraints-2.png)
 
 
 ```python
@@ -364,7 +364,7 @@ static_restraints.append(r)
 
 Next, we add restraints on the guest. These restraints control the position of the guest and are the key to the attach-pull-release method. During the attach phase, the *force constants* for these restraints is increased from zero. During the pull phase, the *target* for the distance restraint is increased (in the orange box, below), translating the guest away from the host cavity. And during the release phase, the *force constants* are reduced from their "full" value back down to zero.
 
-![](images/guest-restraints.png)
+![](tutorial/images/guest-restraints.png)
 
 We use the class `DAT_restraint` to create these three restraints. We will use the same anchor atoms as before, with the same distance and angle force constants. Note that unlike `static_DAT_restraint`, we will first create the restraint, *then* set the attributes, *then* initialize the restraint which does some checks to make sure everything is copacetic.
 
