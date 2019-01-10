@@ -91,6 +91,10 @@ class Simulation(object):
     def _config_min(self):
         """
         Configure input settings for minimization.
+
+        Returns
+        -------
+        
         """
         self.cntrl["imin"] = 1
         self.cntrl["ntx"] = 1
