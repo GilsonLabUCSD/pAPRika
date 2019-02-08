@@ -8,7 +8,6 @@ Advanced toolkit for binding free energy calculations
 from __future__ import absolute_import
 
 # Add imports here
-from .paprika import *
 
 # Handle versioneer
 from ._version import get_versions
