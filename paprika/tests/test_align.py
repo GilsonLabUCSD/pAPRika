@@ -23,8 +23,9 @@ def test_alignment_after_offset():
     test_coordinates = check_coordinates(aligned_cb6, ":CB6")
     assert np.allclose(test_coordinates, np.zeros(3))
 
+
 def test_theta_after_alignment():
     """ Test that molecule is properly aligned after random offset. """
     cb6 = pmd.load_file("../data/cb6-but/vac.pdb")
     aligned_cb6 = zalign(cb6, ":CB6", ":BUT")
-    assert get_theta(cb6, ":CB6", ":BUT", axis="z") == 0
+    assert get_theta(aligned_cb6, ":CB6", ":BUT", axis="z") == 0
