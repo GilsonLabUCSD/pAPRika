@@ -1,0 +1,25 @@
+name: test
+channels:
+  - conda-forge
+  - omnia
+  - http://ambermd.org/downloads/ambertools/conda/
+dependencies:
+    # Base depends
+  - python
+  - pip
+  - numpy
+  - scipy
+  - mdtraj
+  - pymbar
+  - openmm
+  # Eventually we can/should migrate away from this, once AMBER gets onto omnia/conda-forge.
+  # See https://openforcefieldgroup.slack.com/archives/C8NE3J96U/p1549403299386500
+  - ambertools=17
+
+    # Testing
+  - pytest
+  - pytest-cov
+
+    # Pip-only installs
+  - pip:
+    - codecov
