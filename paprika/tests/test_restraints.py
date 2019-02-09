@@ -500,8 +500,3 @@ def test_static_DAT_restraint():
         force_constant=5.0,
         amber_index=True,
     )
-
-
-if __name__ == "__main__":
-    log.debug("{}".format(paprika.__version__))
-    unittest.main()
