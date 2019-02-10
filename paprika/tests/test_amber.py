@@ -1,12 +1,21 @@
-import parmed as pmd
-from paprika import tleap
-from paprika import restraints
-from paprika import amber
-import numpy as np
 import os
-import shutil
 import re
+import shutil
 
+import numpy as np
+import parmed as pmd
+
+from paprika import amber
+from paprika import restraints
+from paprika import tleap
+from paprika.tests import addons
+
+print(addons.using_sander)
+print(addons.using_pmemd_cuda)
+
+
+@addons.using_sander
+@addons.using_pmemd_cuda
 def test_amber_single_window_gbmin():
     # Align PDB to Z-axis
     inputpdb = pmd.load_file('cb6-but/cb6-but-minimized.pdb')
