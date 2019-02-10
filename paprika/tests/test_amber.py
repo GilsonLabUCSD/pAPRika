@@ -10,15 +10,22 @@ from paprika import restraints
 from paprika import tleap
 from paprika.tests import addons
 
-print(addons.using_sander)
-print(addons.using_pmemd_cuda)
+@pytest.fixture(scope="function", autouse=True)
+def clean_files(directory="tmp"):
+    # This happens before the test function call
+    if os.path.isdir(directory):
+        shutil.rmtree(directory)
+    os.makedirs(directory)
+    yield
+    # This happens after the test function call
+    shutil.rmtree(directory)
 
 
 @addons.using_sander
 @addons.using_pmemd_cuda
-def test_amber_single_window_gbmin():
+def test_amber_single_window_gbmin(clean_files):
     # Align PDB to Z-axis
-    inputpdb = pmd.load_file('cb6-but/cb6-but-minimized.pdb')
+    inputpdb = pmd.load_file('../data/cb6-but/cb6-but-minimized.pdb')
     
     # Distance restraint
     rest1 = restraints.DAT_restraint()
@@ -71,14 +78,8 @@ def test_amber_single_window_gbmin():
     rest3.pull['num_windows'] = 29
     rest3.initialize()
 
-    # Create working directory
-    if os.path.exists('amber_test'):
-        shutil.rmtree('amber_test')
-    os.makedirs('amber_test')
-    path = './amber_test/'
-
     # Write restraints file for amber
-    with open(path+'restraints.in', 'w') as f:
+    with open(os.path.join("tmp", 'restraints.in'), 'w') as f:
         for rest in [rest1,rest2,rest3]:
             # Testing just window p001
             f.write(restraints.amber_restraint_line(rest, "p001"))
@@ -86,7 +87,7 @@ def test_amber_single_window_gbmin():
     # Copy build files for tleap
     files = 'cb6.mol2 cb6.frcmod but.mol2 but.frcmod cb6-but-minimized.pdb'.split()
     for file in files:
-        shutil.copy('cb6-but/'+file,path+file)
+        shutil.copy('../data/cb6-but/'+file,path+file)
 
     # Build prmtop/inpcrd
     sys = tleap.System()
@@ -188,9 +189,3 @@ def test_amber_single_window_gbmin():
 
     for i in range(len(ref_vals)):
         assert np.isclose(test_vals[i], ref_vals[i], rtol=0.0, atol=0.0001)
-
-    shutil.rmtree('amber_test')
-
-
-#test_amber_single_window()
-
