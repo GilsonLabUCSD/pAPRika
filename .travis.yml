@@ -39,8 +39,11 @@ install:
   - python setup.py develop --no-deps
 
 
+before_script:
+  - cd paprika
+
 script:
-  - cd tests && pytest -v --cov=paprika paprika/tests/
+  - pytest -v --cov=paprika tests/
 
 notifications:
     email: false
