@@ -40,10 +40,10 @@ install:
 
 
 before_script:
-  - cd paprika
+  - cd paprika/tests
 
 script:
-  - pytest -v --cov=paprika tests/
+  - pytest -v --cov=paprika .
 
 notifications:
     email: false
