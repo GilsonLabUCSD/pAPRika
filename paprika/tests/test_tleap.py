@@ -14,6 +14,7 @@ import os
 import filecmp
 import pytest
 
+
 @pytest.fixture
 def clean_files(directory):
     files = [
@@ -41,6 +42,7 @@ def clean_files(directory):
             os.remove(os.path.join(directory, file))
     if os.path.isdir(directory):
         os.rmdir(directory)
+
 
 @pytest.mark.slow
 def test_solvation_simple():
@@ -183,17 +185,11 @@ def test_solvation_by_M_and_m():
 
     # Molarity Check
     obs_num_na = sp.check_output(
-        [
-            "grep -A 99 RESIDUE_LABEL ./tmp/solvate.prmtop | "
-            + "grep -oh 'NA ' | wc -w"
-        ],
+        ["grep -A 99 RESIDUE_LABEL ./tmp/solvate.prmtop | " + "grep -oh 'NA ' | wc -w"],
         shell=True,
     )
     obs_num_cl = sp.check_output(
-        [
-            "grep -A 99 RESIDUE_LABEL ./tmp/solvate.prmtop | "
-            + "grep -oh 'CL ' | wc -w"
-        ],
+        ["grep -A 99 RESIDUE_LABEL ./tmp/solvate.prmtop | " + "grep -oh 'CL ' | wc -w"],
         shell=True,
     )
 
@@ -206,17 +202,11 @@ def test_solvation_by_M_and_m():
 
     # Molality Check
     obs_num_k = sp.check_output(
-        [
-            "grep -A 99 RESIDUE_LABEL ./tmp/solvate.prmtop | "
-            + "grep -oh 'K ' | wc -w"
-        ],
+        ["grep -A 99 RESIDUE_LABEL ./tmp/solvate.prmtop | " + "grep -oh 'K ' | wc -w"],
         shell=True,
     )
     obs_num_br = sp.check_output(
-        [
-            "grep -A 99 RESIDUE_LABEL ./tmp/solvate.prmtop | "
-            + "grep -oh 'BR ' | wc -w"
-        ],
+        ["grep -A 99 RESIDUE_LABEL ./tmp/solvate.prmtop | " + "grep -oh 'BR ' | wc -w"],
         shell=True,
     )
     calc_num_waters = sys.count_residues()["WAT"]
@@ -250,7 +240,9 @@ def test_alignment_workflow():
 
 def test_add_dummy():
     """ Test that dummy atoms get added correctly """
-    host_guest = pmd.load_file("../data/cb6-but/cb6-but-notcentered.pdb", structure=True)
+    host_guest = pmd.load_file(
+        "../data/cb6-but/cb6-but-notcentered.pdb", structure=True
+    )
     host_guest = zalign(host_guest, ":BUT@C", ":BUT@C3", save=False)
     host_guest = add_dummy(host_guest, residue_name="DM1", z=-11.000, y=2.000, x=-1.500)
     if not os.path.exists("./tmp"):

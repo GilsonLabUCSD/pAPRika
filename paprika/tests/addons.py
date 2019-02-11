@@ -6,12 +6,14 @@ import pkgutil
 import pytest
 import shutil
 
+
 def _plugin_import(plug):
     plug_spec = pkgutil.find_loader(plug)
     if plug_spec is None:
         return False
     else:
         return True
+
 
 def _find_executable(exe):
     if shutil.which(exe) is not None:
@@ -20,19 +22,25 @@ def _find_executable(exe):
         return False
 
 
-_import_message = "Cannot import module {}. Install package if necessary and add to PYTHONPATH"
+_import_message = (
+    "Cannot import module {}. Install package if necessary and add to PYTHONPATH"
+)
 _exe_message = "Cannot detect executable {}. Install package if necessary."
 
-using_openmm = pytest.mark.skipif(_plugin_import("simtk.openmm") is False,
-                                  reason=_import_message.format('OpenMM'))
-using_sander = pytest.mark.skipif(_find_executable("sander") is False,
-                                  reason=_import_message.format('sander'))
-using_pmemd_cuda = pytest.mark.skipif(_find_executable("pmemd.cuda") is False,
-                                      reason=_import_message.format(
-    'pmemd.cuda'))
-using_tleap = pytest.mark.skipif(_find_executable("tleap") is False,
-                                 reason=_import_message.format('tLEaP'))
+using_openmm = pytest.mark.skipif(
+    _plugin_import("simtk.openmm") is False, reason=_import_message.format("OpenMM")
+)
+using_sander = pytest.mark.skipif(
+    _find_executable("sander") is False, reason=_import_message.format("sander")
+)
+using_pmemd_cuda = pytest.mark.skipif(
+    _find_executable("pmemd.cuda") is False, reason=_import_message.format("pmemd.cuda")
+)
+using_tleap = pytest.mark.skipif(
+    _find_executable("tleap") is False, reason=_import_message.format("tLEaP")
+)
 
 
-using_parmed = pytest.mark.skipif(_plugin_import("parmed") is False,
-                                  reason=_import_message.format('ParmEd'))
+using_parmed = pytest.mark.skipif(
+    _plugin_import("parmed") is False, reason=_import_message.format("ParmEd")
+)

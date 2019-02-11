@@ -9,6 +9,7 @@ from paprika.restraints import *
 from paprika.io import *
 import pytest
 
+
 @pytest.fixture(scope="function", autouse=True)
 def clean_files(directory="tmp"):
     # This happens before the test function call
@@ -45,6 +46,7 @@ def test_save_and_load_single_restraint(clean_files):
     save_restraints([rest], os.path.join("tmp", "rest.json"))
     restraints = load_restraints(os.path.join("tmp", "rest.json"))
     assert rest == restraints[0]
+
 
 def test_save_and_load_list_restraint(clean_files):
     """ Test we can save and load a list of restraints """

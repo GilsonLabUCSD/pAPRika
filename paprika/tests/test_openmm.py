@@ -9,15 +9,15 @@ from paprika.openmm_simulate import *
 import pytest
 import os
 
+
 @addons.using_openmm
 def test_minimization_finishes():
     """ Test that we can minimize CB6-BUT with OpenMM. """
 
-
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = '../data/cb6-but/vac.topo'
-    my_simulation.min['platform'] = "Reference"
-    my_simulation.min['coordinates'] = '../data/cb6-but/vac.crds'
+    my_simulation.topology = "../data/cb6-but/vac.topo"
+    my_simulation.min["platform"] = "Reference"
+    my_simulation.min["coordinates"] = "../data/cb6-but/vac.crds"
 
     system = my_simulation.setup_system(my_simulation.min)
     simulation = my_simulation.setup_simulation(system, my_simulation.min)
@@ -27,15 +27,16 @@ def test_minimization_finishes():
     energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
     np.testing.assert_almost_equal(energy, -821.306, decimal=2)
 
+
 @addons.using_openmm
 def test_soft_minimization():
     """ Test that we can minimize CB6-BUT with OpenMM, turning on interactions slowly. """
 
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = '../data/cb6-but/vac.topo'
-    my_simulation.min['platform'] = "Reference"
-    my_simulation.min['coordinates'] = '../data/cb6-but/vac.crds'
-    my_simulation.min['max_iterations'] = 100
+    my_simulation.topology = "../data/cb6-but/vac.topo"
+    my_simulation.min["platform"] = "Reference"
+    my_simulation.min["coordinates"] = "../data/cb6-but/vac.crds"
+    my_simulation.min["max_iterations"] = 100
 
     system = my_simulation.setup_system(my_simulation.min)
     simulation = my_simulation.setup_simulation(system, my_simulation.min)
@@ -45,30 +46,30 @@ def test_soft_minimization():
     energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
     np.testing.assert_almost_equal(energy, -821.306, decimal=2)
 
+
 @addons.using_openmm
 def test_openmm_single_restraint():
     """ Test that we can impose restraints with OpenMM. """
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = '../data/cb6-but/vac.topo'
-    my_simulation.md['platform'] = 'Reference'
-    my_simulation.md['coordinates'] = '../data/cb6-but/vac.crds'
-    my_simulation.md['steps'] = 1000
+    my_simulation.topology = "../data/cb6-but/vac.topo"
+    my_simulation.md["platform"] = "Reference"
+    my_simulation.md["coordinates"] = "../data/cb6-but/vac.crds"
+    my_simulation.md["steps"] = 1000
 
-    system = my_simulation.setup_system(my_simulation.md,)
+    system = my_simulation.setup_system(my_simulation.md)
 
     restraint = DAT_restraint()
     restraint.topology = my_simulation.topology
-    restraint.mask1 = ':BUT'
-    restraint.mask2 = ':CB6'
-    restraint.attach['target'] = 3.0
-    restraint.attach['num_windows'] = 4
-    restraint.attach['fc_initial'] = 0.0
-    restraint.attach['fc_final'] = 3.0
+    restraint.mask1 = ":BUT"
+    restraint.mask2 = ":CB6"
+    restraint.attach["target"] = 3.0
+    restraint.attach["num_windows"] = 4
+    restraint.attach["fc_initial"] = 0.0
+    restraint.attach["fc_final"] = 3.0
     restraint.auto_apr = False
     restraint.initialize()
 
-    my_simulation.add_openmm_restraints(
-        system, [restraint], phase='attach', window=3)
+    my_simulation.add_openmm_restraints(system, [restraint], phase="attach", window=3)
 
     simulation = my_simulation.setup_simulation(system, my_simulation.md)
 
@@ -77,41 +78,43 @@ def test_openmm_single_restraint():
     energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
     # np.testing.assert_almost_equal(energy, -709.6, decimal=1)
 
+
 @addons.using_openmm
 def test_openmm_two_restraints():
     """ Test that we can impose restraints with OpenMM. """
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = '../data/cb6-but/vac.topo'
-    my_simulation.md['platform'] = 'Reference'
-    my_simulation.md['coordinates'] = '../data/cb6-but/vac.crds'
-    my_simulation.md['steps'] = 1000
+    my_simulation.topology = "../data/cb6-but/vac.topo"
+    my_simulation.md["platform"] = "Reference"
+    my_simulation.md["coordinates"] = "../data/cb6-but/vac.crds"
+    my_simulation.md["steps"] = 1000
 
     system = my_simulation.setup_system(my_simulation.md)
 
     restraint_1 = DAT_restraint()
     restraint_1.topology = my_simulation.topology
-    restraint_1.mask1 = ':BUT'
-    restraint_1.mask2 = ':CB6'
-    restraint_1.attach['target'] = 3.0
-    restraint_1.attach['num_windows'] = 4
-    restraint_1.attach['fc_initial'] = 0.0
-    restraint_1.attach['fc_final'] = 3.0
+    restraint_1.mask1 = ":BUT"
+    restraint_1.mask2 = ":CB6"
+    restraint_1.attach["target"] = 3.0
+    restraint_1.attach["num_windows"] = 4
+    restraint_1.attach["fc_initial"] = 0.0
+    restraint_1.attach["fc_final"] = 3.0
     restraint_1.auto_apr = False
     restraint_1.initialize()
 
     restraint_2 = DAT_restraint()
     restraint_2.topology = my_simulation.topology
-    restraint_2.mask1 = ':CB6@O'
-    restraint_2.mask2 = ':CB6@O6'
-    restraint_2.attach['target'] = 8.0
-    restraint_2.attach['num_windows'] = 4
-    restraint_2.attach['fc_initial'] = 0.0
-    restraint_2.attach['fc_final'] = 30.0
+    restraint_2.mask1 = ":CB6@O"
+    restraint_2.mask2 = ":CB6@O6"
+    restraint_2.attach["target"] = 8.0
+    restraint_2.attach["num_windows"] = 4
+    restraint_2.attach["fc_initial"] = 0.0
+    restraint_2.attach["fc_final"] = 30.0
     restraint_2.auto_apr = False
     restraint_2.initialize()
 
     my_simulation.add_openmm_restraints(
-        system, [restraint_1, restraint_2], phase='attach', window=3)
+        system, [restraint_1, restraint_2], phase="attach", window=3
+    )
 
     simulation = my_simulation.setup_simulation(system, my_simulation.md)
 
@@ -126,6 +129,6 @@ def test_openmm_two_restraints():
     # np.testing.assert_almost_equal(energies['restraint'], 1.6, decimal=1)
     # np.testing.assert_almost_equal(energies['non-restraint'], -711.1, decimal=1)
 
-    for filename in ['md.nc', 'md.csv']:
-        if os.path.isfile('./'+filename):
-            os.remove('./'+filename)
+    for filename in ["md.nc", "md.csv"]:
+        if os.path.isfile("./" + filename):
+            os.remove("./" + filename)
