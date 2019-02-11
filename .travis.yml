@@ -40,7 +40,7 @@ install:
 
 
 script:
-  - cd paprika/tests && pytest -v --cov=paprika paprika/tests/
+  - cd tests && pytest -v --cov=paprika paprika/tests/
 
 notifications:
     email: false
