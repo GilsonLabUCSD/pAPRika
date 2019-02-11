@@ -195,6 +195,12 @@ class System(object):
         """
 
         file_path = os.path.join(self.output_path, self.output_prefix + ".tleap.in")
+        if not os.path.exists(os.path.dirname(file_path)):
+            try:
+                os.makedirs(os.path.dirname(file_path))
+            except OSError as e:
+                raise
+
         with open(file_path, "w") as f:
             for line in self.template_lines:
                 f.write(line + "\n")

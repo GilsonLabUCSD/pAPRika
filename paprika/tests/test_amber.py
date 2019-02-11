@@ -10,6 +10,8 @@ from paprika import restraints
 from paprika import tleap
 from paprika.tests import addons
 
+import pytest
+
 @pytest.fixture(scope="function", autouse=True)
 def clean_files(directory="tmp"):
     # This happens before the test function call
@@ -22,7 +24,7 @@ def clean_files(directory="tmp"):
 
 
 @addons.using_sander
-@addons.using_pmemd_cuda
+# @addons.using_pmemd_cuda
 def test_amber_single_window_gbmin(clean_files):
     # Align PDB to Z-axis
     inputpdb = pmd.load_file('../data/cb6-but/cb6-but-minimized.pdb')
@@ -87,12 +89,12 @@ def test_amber_single_window_gbmin(clean_files):
     # Copy build files for tleap
     files = 'cb6.mol2 cb6.frcmod but.mol2 but.frcmod cb6-but-minimized.pdb'.split()
     for file in files:
-        shutil.copy('../data/cb6-but/'+file,path+file)
+        shutil.copy(os.path.join('../data/cb6-but/', file), os.path.join("tmp", file))
 
     # Build prmtop/inpcrd
     sys = tleap.System()
-    sys.template_file = './cb6-but/tleap_gb.in'
-    sys.output_path = path
+    sys.template_file = '../data/cb6-but/tleap_gb.in'
+    sys.output_path = "tmp"
     sys.output_prefix = 'vac'
     sys.pbc_type = None
     sys.loadpdb_file = 'cb6-but-minimized.pdb'
@@ -100,7 +102,7 @@ def test_amber_single_window_gbmin(clean_files):
 
     # Create Simulation
     gbsim = amber.Simulation()
-    gbsim.path = path
+    gbsim.path = "tmp"
     gbsim.executable = 'sander'
     gbsim.topology = 'vac.prmtop'
     gbsim.prefix = 'minimize'
@@ -112,7 +114,7 @@ def test_amber_single_window_gbmin(clean_files):
 
     # Collect values
     test_vals = []
-    with open(path+'minimize.out', 'r') as f:
+    with open(os.path.join("tmp", 'minimize.out'), 'r') as f:
         filelines = f.readlines()
         for i,line in enumerate(filelines):
             if re.search('^ BOND ', line):
@@ -153,7 +155,7 @@ def test_amber_single_window_gbmin(clean_files):
     gbsim.run()
 
     test_vals = []
-    with open(path+'md.out', 'r') as f:
+    with open(os.path.join("tmp", 'md.out'), 'r') as f:
         filelines = f.readlines()
         for i,line in enumerate(filelines):
             if re.search('^ NSTEP =        1 ', line):

@@ -1,17 +1,29 @@
 import parmed as pmd
 import numpy as np
-import logging as log
+import os
+import shutil
 
 from paprika import restraints
 from paprika import analysis
 
-logger = log.getLogger()
-logger.setLevel(log.DEBUG)
-log.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
+from paprika.tests import addons
 
-def test_fe_calc():
+import pytest
 
-    inputpdb = pmd.load_file('cb6_but_gb_apr_ref_data/vac.pdb')
+@pytest.fixture(scope="function", autouse=True)
+def clean_files(directory="tmp"):
+    # This happens before the test function call
+    if os.path.isdir(directory):
+        shutil.rmtree(directory)
+    os.makedirs(directory)
+    yield
+    # This happens after the test function call
+    shutil.rmtree(directory)
+
+
+def test_fe_calc(clean_files):
+
+    inputpdb = pmd.load_file('../data/cb6-but/vac.pdb')
 
     # Distance restraint
     rest1 = restraints.DAT_restraint()
@@ -73,16 +85,15 @@ def test_fe_calc():
     np.random.seed(12345)
 
     fecalc = analysis.fe_calc()
-    fecalc.prmtop = 'cb6_but_gb_apr_ref_data/vac.prmtop'
+    fecalc.prmtop = '../data/cb6-but-apr/vac.prmtop'
     fecalc.trajectory = '*.nc'
-    fecalc.path = 'cb6_but_gb_apr_ref_data/'
+    fecalc.path = '../data/cb6-but-apr/'
     fecalc.restraint_list = [rest1, rest2, rest3]
     fecalc.methods = ['mbar-block', 'ti-block']
     fecalc.bootcycles = 100
     fecalc.ti_matrix = 'diagonal'
     fecalc.compute_largest_neighbor = True
     fecalc.compute_roi = True
-    #fecalc.fractions = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     fecalc.collect_data(single_prmtop=True)
     fecalc.compute_free_energy()
 
@@ -188,6 +199,3 @@ def reprint_values(results, method):
             # the ref_vals anyway
 #            print("{:.8f}, ".format(val), end='')
             pass
-
-
-#test_fe_calc()
