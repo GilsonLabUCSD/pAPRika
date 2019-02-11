@@ -2,7 +2,6 @@
 Tests the alignment of residues to the z axis.
 """
 
-import numpy as np
 from paprika.align import *
 
 

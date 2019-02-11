@@ -7,6 +7,8 @@ import logging as log
 import subprocess as sp
 import random as random
 import parmed as pmd
+import shutil
+
 from paprika.align import *
 from paprika.dummy import *
 from paprika.tleap import *
@@ -16,36 +18,18 @@ import pytest
 
 
 @pytest.fixture
-def clean_files(directory):
-    files = [
-        "solvate.pdb",
-        "solvate.prmtop",
-        "solvate.rst7",
-        "tleap_apr_solvate.in",
-        "leap.log",
-        "tmp.pdb",
-        "cb6-but-dum.tleap.in",
-        "cb6-but-dum.pdb",
-        "cb6-but-dum.prmtop",
-        "cb6-but-dum.rst7",
-        "tleap.in",
-        "dm1.mol2",
-        "dummy.frcmod",
-        "solvate.in",
-        "solvate.tleap.in",
-        "full.topo",
-        "full.crds",
-        "full.pdb",
-    ]
-    for file in files:
-        if os.path.isfile(os.path.join(directory, file)):
-            os.remove(os.path.join(directory, file))
+def clean_files(directory="tmp"):
+    # This happens before the test function call
     if os.path.isdir(directory):
-        os.rmdir(directory)
+        shutil.rmtree(directory)
+    os.makedirs(directory)
+    yield
+    # This happens after the test function call
+    shutil.rmtree(directory)
 
 
 @pytest.mark.slow
-def test_solvation_simple():
+def test_solvation_simple(clean_files):
     """ Test that we can solvate CB6-BUT using default settings. """
     waters = np.random.randint(100, 10000)
     log.debug("Trying {} waters with default settings...".format(waters))
@@ -59,11 +43,10 @@ def test_solvation_simple():
         ["grep -oh 'WAT' ./tmp/solvate.prmtop | wc -w"], shell=True
     )
     assert int(grepped_waters) == waters
-    clean_files(directory="tmp")
 
 
 @pytest.mark.parametrize("shape", ["octahedral", "cubic"])
-def test_solvation_shapes(shape):
+def test_solvation_shapes(shape, clean_files):
     """ Test that we can solvate CB6-BUT with a truncated octahedron. """
     waters = np.random.randint(1000, 10000)
     log.debug("Trying {} waters in a truncated octahedron...".format(waters))
@@ -79,11 +62,10 @@ def test_solvation_shapes(shape):
         ["grep -oh 'WAT' ./tmp/solvate.prmtop | wc -w"], shell=True
     )
     assert int(grepped_waters) == waters
-    clean_files(directory="tmp")
 
 
 @pytest.mark.slow
-def test_solvation_spatial_size():
+def test_solvation_spatial_size(clean_files):
     """ Test that we can solvate CB6-BUT with an buffer size in Angstroms. """
     random_int = np.random.randint(10, 20)
     random_size = random_int * np.random.random_sample(1) + random_int
@@ -100,11 +82,10 @@ def test_solvation_spatial_size():
         ["grep -oh 'WAT' ./tmp/solvate.prmtop | wc -w"], shell=True
     )
     assert int(grepped_waters) == sys.target_waters
-    clean_files(directory="tmp")
 
 
 @pytest.mark.slow
-def test_solvation_potassium_control():
+def test_solvation_potassium_control(clean_files):
     """ Test there is no potassium by default. A negative control. """
     waters = np.random.randint(1000, 10000)
     log.debug("Trying {} waters with potassium...".format(waters))
@@ -120,11 +101,10 @@ def test_solvation_potassium_control():
         ["grep -oh 'K+' ./tmp/solvate.prmtop | wc -w"], shell=True
     )
     assert int(potassium) == 0
-    clean_files(directory="tmp")
 
 
 @pytest.mark.slow
-def test_solvation_with_additional_ions():
+def test_solvation_with_additional_ions(clean_files):
     """ Test that we can solvate CB6-BUT with additional ions. """
     waters = np.random.randint(1000, 10000)
     cations = ["LI", "Na+", "K+", "RB", "CS"]
@@ -166,10 +146,9 @@ def test_solvation_with_additional_ions():
     log.debug("              n_anions={}".format(anion_number))
 
     assert int(cation_number) == n_cations and int(anion_number) == n_anions
-    clean_files(directory="tmp")
 
 
-def test_solvation_by_M_and_m():
+def test_solvation_by_M_and_m(clean_files):
     """ Test that we can solvate CB6-BUT through molarity and molality. """
     log.debug("Trying 10 A buffer with 150 mM NaCl...")
     sys = System()
@@ -214,11 +193,10 @@ def test_solvation_by_M_and_m():
     calc_num_br = np.ceil(0.100 * calc_num_waters * 0.018)
     assert int(obs_num_k) == int(calc_num_k)
     assert int(obs_num_br) == int(calc_num_br)
-    clean_files(directory="tmp")
 
 
 @pytest.mark.slow
-def test_alignment_workflow():
+def test_alignment_workflow(clean_files):
     """ Test that we can solvate CB6-BUT after alignment. """
     cb6 = pmd.load_file("../data/cb6-but/cb6-but-notcentered.pdb")
     zalign(cb6, ":CB6", ":BUT", save=True, filename="./tmp/tmp.pdb")
@@ -235,10 +213,9 @@ def test_alignment_workflow():
         ["grep -oh 'WAT' ./tmp/solvate.prmtop | wc -w"], shell=True
     )
     assert int(grepped_waters) == waters
-    clean_files(directory="tmp")
 
 
-def test_add_dummy():
+def test_add_dummy(clean_files):
     """ Test that dummy atoms get added correctly """
     host_guest = pmd.load_file(
         "../data/cb6-but/cb6-but-notcentered.pdb", structure=True
@@ -277,10 +254,6 @@ def test_add_dummy():
     sys.pbc_type = None
     sys.build()
 
-    # assert filecmp.cmp(
-    #     "cb6-but/REF_cb6-but-dum.rst7", "cb6-but/cb6-but-dum.rst7", shallow=False
-    # )
-
-    # WHAT TO DO ABOUT THIS!????????????????????
-
-    clean_files(directory="tmp")
+    assert filecmp.cmp(
+        "../data/cb6-but/REF_cb6-but-dum.rst7", "tmp/cb6-but-dum.rst7", shallow=False
+    )
