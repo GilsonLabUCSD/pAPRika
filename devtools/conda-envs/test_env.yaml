@@ -2,7 +2,10 @@ name: test
 channels:
   - conda-forge
   - omnia
+  # AmberTools seem to live at this repository...
   - http://ambermd.org/downloads/ambertools/conda/
+  # ...while PyTraj wants this second one.
+  - ambermd
 dependencies:
     # Base depends
   - python
