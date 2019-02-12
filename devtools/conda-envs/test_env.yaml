@@ -9,6 +9,7 @@ dependencies:
   - pip
   - numpy
   - scipy
+  - parmed
   - mdtraj
   - pymbar
   - openmm
