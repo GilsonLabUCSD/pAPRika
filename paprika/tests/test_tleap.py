@@ -34,7 +34,7 @@ def test_solvation_simple(clean_files):
     waters = np.random.randint(100, 10000)
     log.debug("Trying {} waters with default settings...".format(waters))
     sys = System()
-    sys.template_file = "../data/cb6-but/tleap_solvate.in"
+    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
     sys.output_path = "tmp"
     sys.target_waters = waters
     sys.output_prefix = "solvate"
@@ -51,9 +51,9 @@ def test_solvation_shapes(shape, clean_files):
     waters = np.random.randint(1000, 10000)
     log.debug("Trying {} waters in a truncated octahedron...".format(waters))
     sys = System()
-    sys.template_file = "../data/cb6-but/tleap_solvate.in"
+    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
     sys.output_path = "tmp"
-    sys.loadpdb_file = "../../data/cb6-but/cb6-but.pdb"
+    sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb")
     sys.target_waters = waters
     sys.output_prefix = "solvate"
     sys.pbc_type = shape
@@ -71,9 +71,9 @@ def test_solvation_spatial_size(clean_files):
     random_size = random_int * np.random.random_sample(1) + random_int
     log.debug("Trying buffer size of {} A...".format(random_size[0]))
     sys = System()
-    sys.template_file = "../data/cb6-but/tleap_solvate.in"
+    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
     sys.output_path = "tmp"
-    sys.loadpdb_file = "../../data/cb6-but/cb6-but.pdb"
+    sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb")
     sys.buffer_value = float(random_size[0])
     sys.output_prefix = "solvate"
     sys.pbc_type = "cubic"
@@ -90,9 +90,9 @@ def test_solvation_potassium_control(clean_files):
     waters = np.random.randint(1000, 10000)
     log.debug("Trying {} waters with potassium...".format(waters))
     sys = System()
-    sys.template_file = "../data/cb6-but/tleap_solvate.in"
+    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
     sys.output_path = "tmp"
-    sys.loadpdb_file = "../../data/cb6-but/cb6-but.pdb"
+    sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb")
     sys.target_waters = waters
     sys.output_prefix = "solvate"
     sys.counter_cation = "K+"
@@ -115,9 +115,9 @@ def test_solvation_with_additional_ions(clean_files):
     random_anion = random.choice(anions)
     log.debug("Trying {} waters with additional ions...".format(waters))
     sys = System()
-    sys.template_file = "../data/cb6-but/tleap_solvate.in"
+    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
     sys.output_path = "tmp"
-    sys.loadpdb_file = "../../data/cb6-but/cb6-but.pdb"
+    sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb")
     sys.target_waters = waters
     sys.output_prefix = "solvate"
     sys.neutralize = False
@@ -152,9 +152,9 @@ def test_solvation_by_M_and_m(clean_files):
     """ Test that we can solvate CB6-BUT through molarity and molality. """
     log.debug("Trying 10 A buffer with 150 mM NaCl...")
     sys = System()
-    sys.template_file = "../data/cb6-but/tleap_solvate.in"
+    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
     sys.output_path = "tmp"
-    sys.loadpdb_file = "../../data/cb6-but/cb6-but.pdb"
+    sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb")
     sys.buffer_value = 10.0
     sys.output_prefix = "solvate"
     sys.neutralize = False
@@ -198,11 +198,11 @@ def test_solvation_by_M_and_m(clean_files):
 @pytest.mark.slow
 def test_alignment_workflow(clean_files):
     """ Test that we can solvate CB6-BUT after alignment. """
-    cb6 = pmd.load_file("../data/cb6-but/cb6-but-notcentered.pdb")
+    cb6 = pmd.load_file(os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"))
     zalign(cb6, ":CB6", ":BUT", save=True, filename="./tmp/tmp.pdb")
     waters = np.random.randint(1000, 10000)
     sys = System()
-    sys.template_file = "../data/cb6-but/tleap_solvate.in"
+    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
     sys.output_path = "tmp"
     sys.loadpdb_file = "tmp.pdb"
     sys.target_waters = waters
@@ -218,7 +218,7 @@ def test_alignment_workflow(clean_files):
 def test_add_dummy(clean_files):
     """ Test that dummy atoms get added correctly """
     host_guest = pmd.load_file(
-        "../data/cb6-but/cb6-but-notcentered.pdb", structure=True
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"), structure=True
     )
     host_guest = zalign(host_guest, ":BUT@C", ":BUT@C3", save=False)
     host_guest = add_dummy(host_guest, residue_name="DM1", z=-11.000, y=2.000, x=-1.500)
@@ -241,10 +241,10 @@ def test_add_dummy(clean_files):
     sys = System()
     sys.template_lines = [
         "source leaprc.gaff",
-        "loadamberparams ../../data/cb6-but/cb6.frcmod",
-        "CB6 = loadmol2 ../../data/cb6-but/cb6.mol2",
-        "loadamberparams ../../data/cb6-but/but.frcmod",
-        "BUT = loadmol2 ../../data/cb6-but/but.mol2",
+        "loadamberparams ../paprika/data/cb6-but/cb6.frcmod",
+        "CB6 = loadmol2 ../paprika/data/cb6-but/cb6.mol2",
+        "loadamberparams ../paprika/data/cb6-but/but.frcmod",
+        "BUT = loadmol2 ../paprika/data/cb6-but/but.mol2",
         "loadamberparams dummy.frcmod",
         "DM1 = loadmol2 dm1.mol2",
         "model = loadpdb cb6-but-dum.pdb",
@@ -255,5 +255,6 @@ def test_add_dummy(clean_files):
     sys.build()
 
     assert filecmp.cmp(
-        "../data/cb6-but/REF_cb6-but-dum.rst7", "tmp/cb6-but-dum.rst7", shallow=False
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"),
+        "tmp/cb6-but-dum.rst7", shallow=False
     )

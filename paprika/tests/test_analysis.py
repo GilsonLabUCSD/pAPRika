@@ -24,7 +24,7 @@ def clean_files(directory="tmp"):
 
 def test_fe_calc(clean_files):
 
-    inputpdb = pmd.load_file("../data/cb6-but/vac.pdb")
+    inputpdb = pmd.load_file(os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb"))
 
     # Distance restraint
     rest1 = restraints.DAT_restraint()
@@ -86,9 +86,9 @@ def test_fe_calc(clean_files):
     np.random.seed(12345)
 
     fecalc = analysis.fe_calc()
-    fecalc.prmtop = "../data/cb6-but-apr/vac.prmtop"
+    fecalc.prmtop = os.path.join(os.path.dirname(__file__), "../data/cb6-but-apr/vac.prmtop")
     fecalc.trajectory = "*.nc"
-    fecalc.path = "../data/cb6-but-apr/"
+    fecalc.path = os.path.join(os.path.dirname(__file__), "../data/cb6-but-apr/")
     fecalc.restraint_list = [rest1, rest2, rest3]
     fecalc.methods = ["mbar-block", "ti-block"]
     fecalc.bootcycles = 100

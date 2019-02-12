@@ -16,6 +16,7 @@ matrix:
       python: 3.6
       env: PYTHON_VER=3.6
     - os: linux
+      dist: xenial
       python: 3.7
       env: PYTHON_VER=3.7
 
@@ -39,11 +40,8 @@ install:
   - python setup.py develop --no-deps
 
 
-before_script:
-  - cd paprika
-
 script:
-  - pytest -v --cov=paprika tests/
+  - pytest -v --cov=paprika paprika/tests/
 
 notifications:
     email: false

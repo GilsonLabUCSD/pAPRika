@@ -15,9 +15,9 @@ def test_minimization_finishes():
     """ Test that we can minimize CB6-BUT with OpenMM. """
 
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = "../data/cb6-but/vac.topo"
+    my_simulation.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.topo")
     my_simulation.min["platform"] = "Reference"
-    my_simulation.min["coordinates"] = "../data/cb6-but/vac.crds"
+    my_simulation.min["coordinates"] = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.crds")
 
     system = my_simulation.setup_system(my_simulation.min)
     simulation = my_simulation.setup_simulation(system, my_simulation.min)
@@ -33,9 +33,9 @@ def test_soft_minimization():
     """ Test that we can minimize CB6-BUT with OpenMM, turning on interactions slowly. """
 
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = "../data/cb6-but/vac.topo"
+    my_simulation.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.topo")
     my_simulation.min["platform"] = "Reference"
-    my_simulation.min["coordinates"] = "../data/cb6-but/vac.crds"
+    my_simulation.min["coordinates"] = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.crds")
     my_simulation.min["max_iterations"] = 100
 
     system = my_simulation.setup_system(my_simulation.min)
@@ -51,9 +51,9 @@ def test_soft_minimization():
 def test_openmm_single_restraint():
     """ Test that we can impose restraints with OpenMM. """
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = "../data/cb6-but/vac.topo"
+    my_simulation.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.topo")
     my_simulation.md["platform"] = "Reference"
-    my_simulation.md["coordinates"] = "../data/cb6-but/vac.crds"
+    my_simulation.md["coordinates"] = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.crds")
     my_simulation.md["steps"] = 1000
 
     system = my_simulation.setup_system(my_simulation.md)
@@ -83,9 +83,9 @@ def test_openmm_single_restraint():
 def test_openmm_two_restraints():
     """ Test that we can impose restraints with OpenMM. """
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = "../data/cb6-but/vac.topo"
+    my_simulation.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.topo")
     my_simulation.md["platform"] = "Reference"
-    my_simulation.md["coordinates"] = "../data/cb6-but/vac.crds"
+    my_simulation.md["coordinates"] = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.crds")
     my_simulation.md["steps"] = 1000
 
     system = my_simulation.setup_system(my_simulation.md)
