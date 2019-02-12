@@ -16,6 +16,7 @@ dependencies:
   # Eventually we can/should migrate away from this, once AMBER gets onto omnia/conda-forge.
   # See https://openforcefieldgroup.slack.com/archives/C8NE3J96U/p1549403299386500
   - ambertools=17
+  - pytraj
 
     # Testing
   - pytest
