@@ -145,7 +145,7 @@ def test_amber_single_window_gbmin(clean_files):
     ref_vals = np.array(
         [
             0.9209,
-            107.7555,
+            107.7444,
             52.3356,
             -68.1311,
             1331.1371,
