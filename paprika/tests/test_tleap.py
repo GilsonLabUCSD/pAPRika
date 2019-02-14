@@ -249,8 +249,8 @@ def test_add_dummy(clean_files):
         "source leaprc.gaff",
         f"loadamberparams {cb6_frcmod}",
         f"CB6 = loadmol2 {cb6_mol2}",
-        f"loadamberparams {but_frcmod}",
-        f"BUT = loadmol2 {but_mol2}",
+        "loadamberparams {but_frcmod}",
+        "BUT = loadmol2 {but_mol2}",
         "loadamberparams dummy.frcmod",
         "DM1 = loadmol2 dm1.mol2",
         "model = loadpdb cb6-but-dum.pdb",
@@ -262,5 +262,5 @@ def test_add_dummy(clean_files):
 
     assert filecmp.cmp(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"),
-        "tmp/cb6-but-dum.rst7", shallow=False
+        os.path.join(os.path.dirname(__file__), "./tmp/cb6-but-dum.rst7"), shallow=False
     )
