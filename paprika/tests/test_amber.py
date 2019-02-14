@@ -8,20 +8,41 @@ import parmed as pmd
 from paprika import amber
 from paprika import restraints
 from paprika import tleap
+from paprika import align
 from paprika.tests import addons
 
 import pytest
 
 
-@pytest.fixture(scope="function", autouse=True)
-def clean_files(directory="tmp"):
-    # This happens before the test function call
-    if os.path.isdir(directory):
-        shutil.rmtree(directory)
-    os.makedirs(directory)
-    yield
-    # This happens after the test function call
-    shutil.rmtree(directory)
+# @pytest.fixture(scope="function", autouse=True)
+# def clean_files(directory="tmp"):
+#     # This happens before the test function call
+#     if os.path.isdir(directory):
+#         shutil.rmtree(directory)
+#     os.makedirs(directory)
+#     yield
+#     # This happens after the test function call
+#     shutil.rmtree(directory)
+
+
+def test_k_cl():
+    k_cl = pmd.load_file(os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb"))
+    align.zalign(k_cl, ":K+", ":Cl-", save=True, filename="./tmp/tmp.pdb")
+    sys = tleap.System()
+    sys.template_lines = [
+        "source leaprc.water.tip3p",
+        # f"loadoff {os.path.join(os.path.dirname(__file__), '../../data/k-cl/atomic_ions.lib')}",
+        "loadamberparams frcmod.ionsjc_tip3p",
+        f"model = loadpdb tmp.pdb",
+    ]
+
+    sys.output_path = "tmp"
+    sys.output_prefix = "vac"
+    sys.pbc_type = None
+    sys.waters = 2000
+    # sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    sys.build()
+
 
 
 @addons.using_sander
@@ -161,7 +182,7 @@ def test_amber_single_window_gbmin(clean_files):
     )
 
     for i in range(len(ref_vals)):
-        assert np.isclose(test_vals[i], ref_vals[i], rtol=0.0, atol=0.01)
+        assert np.isclose(test_vals[i], ref_vals[i], rtol=0.0, atol=0.1)
 
     gbsim.config_gb_md()
     gbsim.prefix = "md"
@@ -227,4 +248,4 @@ def test_amber_single_window_gbmin(clean_files):
     )
 
     for i in range(len(ref_vals)):
-        assert np.isclose(test_vals[i], ref_vals[i], rtol=0.0, atol=0.01)
+        assert np.isclose(test_vals[i], ref_vals[i], rtol=0.0, atol=0.1)
