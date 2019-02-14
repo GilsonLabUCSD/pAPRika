@@ -239,12 +239,18 @@ def test_add_dummy(clean_files):
     write_dummy_frcmod(path="./tmp/")
     write_dummy_mol2(path="./tmp/", filename="dm1.mol2", residue_name="DM1")
     sys = System()
+    cb6_frcmod = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.frcmod"))
+    cb6_mol2 = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.mol2"))
+    but_frcmod = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.frcmod"))
+    but_mol2 = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.mol2"))
+
+
     sys.template_lines = [
         "source leaprc.gaff",
-        "loadamberparams ../paprika/data/cb6-but/cb6.frcmod",
-        "CB6 = loadmol2 ../paprika/data/cb6-but/cb6.mol2",
-        "loadamberparams ../paprika/data/cb6-but/but.frcmod",
-        "BUT = loadmol2 ../paprika/data/cb6-but/but.mol2",
+        f"loadamberparams {cb6_frcmod}",
+        f"CB6 = loadmol2 {cb6_mol2}",
+        f"loadamberparams {but_frcmod}",
+        f"BUT = loadmol2 {but_mol2}",
         "loadamberparams dummy.frcmod",
         "DM1 = loadmol2 dm1.mol2",
         "model = loadpdb cb6-but-dum.pdb",
