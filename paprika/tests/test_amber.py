@@ -161,7 +161,7 @@ def test_amber_single_window_gbmin(clean_files):
     )
 
     for i in range(len(ref_vals)):
-        assert np.isclose(test_vals[i], ref_vals[i], rtol=0.0, atol=0.0001)
+        assert np.isclose(test_vals[i], ref_vals[i], rtol=0.0, atol=0.01)
 
     gbsim.config_gb_md()
     gbsim.prefix = "md"
@@ -227,4 +227,4 @@ def test_amber_single_window_gbmin(clean_files):
     )
 
     for i in range(len(ref_vals)):
-        assert np.isclose(test_vals[i], ref_vals[i], rtol=0.0, atol=0.0001)
+        assert np.isclose(test_vals[i], ref_vals[i], rtol=0.0, atol=0.01)
