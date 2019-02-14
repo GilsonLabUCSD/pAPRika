@@ -14,35 +14,15 @@ from paprika.tests import addons
 import pytest
 
 
-# @pytest.fixture(scope="function", autouse=True)
-# def clean_files(directory="tmp"):
-#     # This happens before the test function call
-#     if os.path.isdir(directory):
-#         shutil.rmtree(directory)
-#     os.makedirs(directory)
-#     yield
-#     # This happens after the test function call
-#     shutil.rmtree(directory)
-
-
-def test_k_cl():
-    k_cl = pmd.load_file(os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb"))
-    align.zalign(k_cl, ":K+", ":Cl-", save=True, filename="./tmp/tmp.pdb")
-    sys = tleap.System()
-    sys.template_lines = [
-        "source leaprc.water.tip3p",
-        # f"loadoff {os.path.join(os.path.dirname(__file__), '../../data/k-cl/atomic_ions.lib')}",
-        "loadamberparams frcmod.ionsjc_tip3p",
-        f"model = loadpdb tmp.pdb",
-    ]
-
-    sys.output_path = "tmp"
-    sys.output_prefix = "vac"
-    sys.pbc_type = None
-    sys.waters = 2000
-    # sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
-    sys.build()
-
+@pytest.fixture(scope="function", autouse=True)
+def clean_files(directory="tmp"):
+    # This happens before the test function call
+    if os.path.isdir(directory):
+        shutil.rmtree(directory)
+    os.makedirs(directory)
+    yield
+    # This happens after the test function call
+    shutil.rmtree(directory)
 
 
 @addons.using_sander
