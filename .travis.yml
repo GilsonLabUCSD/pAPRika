@@ -1,33 +1,50 @@
-sudo: false
-
 language: python
 
+# Run jobs on container-based infrastructure, can be overridden per job
+
 matrix:
-     include:
-         - os: linux
-           python: 2.7
-           env: PYTHON_VERSION=2.7
-         - os: linux
-           python: 3.6
-           env: PYTHON_VERSION=3.6
+  include:
+    # Extra includes for OSX since python language is not available by default on OSX
+    - os: osx
+      language: generic
+      env: PYTHON_VER=3.6
+#    - os: osx
+#      language: generic
+#      env: PYTHON_VER=3.7
+
+    - os: linux
+      python: 3.6
+      env: PYTHON_VER=3.6
+#    - os: linux
+#      dist: xenial
+#      python: 3.7
+#      env: PYTHON_VER=3.7
+
+before_install:
+    # Additional info about the build
+  - uname -a
+  - df -h
+  - ulimit -a
+
+    # Install the Python environment
+  - source devtools/travis-ci/before_install.sh
+  - python -V
 
 install:
-    - chmod +x devtools/travis/install.sh
-    - source devtools/travis/install.sh
-    - pip install --user .
-    - python -c "import paprika; print(paprika.__version__)"
+
+    # Create test environment for package
+  - python devtools/scripts/create_conda_env.py -n=test -p=$PYTHON_VER devtools/conda-envs/test_env.yaml
+    # Activate the test environment
+  - conda activate test
+    # Build and install package
+  - python setup.py develop --no-deps
+
 
 script:
-    - source devtools/travis/runtest.sh
-    - codecov
-cache:
-    directories:
-        - $HOME/.cache/pip
-        - $HOME/miniconda
-before_cache:
-    - rm -rf $HOME/miniconda/conda-bld
-    - rm -f $HOME/miniconda/pkgs/*.tar.bz2
-    - rm -f $HOME/.cache/pip/log/debug.log
+  - pytest -v --cov=paprika paprika/tests/
+
+notifications:
+    email: false
 
 after_success:
-    - codecov
+  - codecov

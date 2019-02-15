@@ -1,25 +1,51 @@
-import os
-import sys
-
+"""
+pAPRika
+Advanced toolkit for binding free energy calculations
+"""
 from setuptools import setup
-from paprika.version import find_version
+import versioneer
 
-if sys.version_info < (2, 7):
-    sys.stderr.write('You must have at least Python 2.7 for pAPRika to work '
-                     'correctly, although we have only tested with Python 3.0.\n')
-    sys.exit(1)
+short_description = __doc__.split("\n")
 
-# https://packaging.python.org/guides/single-sourcing-package-version/#single-sourcing-the-version
-here = os.path.abspath(os.path.dirname(__file__))
+try:
+    with open("README.md", "r") as handle:
+        long_description = handle.read()
+except:
+    long_description = "\n".join(short_description[2:]),
 
-if __name__ == '__main__':
 
-    setup(
-        name='pAPRika',
-        version=find_version(),
-        description='Attach-pull-release free energy calculations',
-        author='',
-        author_email='',
-        url='',
-        license='',
-        packages=['paprika'])
+setup(
+    # Self-descriptive entries which should always be present
+    name='paprika',
+    author='David R. Slochower and Niel M. Henriksen',
+    author_email='slochower@gmail.com, shireham@gmail.com',
+    description=short_description[0],
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
+    license='BSD-3-Clause',
+
+    # Which Python importable modules should be included when your package is installed
+    packages=['paprika', "paprika.tests"],
+
+    # Optional include package data to ship with your package
+    # Comment out this line to prevent the files from being packaged with your software
+    # Extend/modify the list to include/exclude other items as need be
+    package_data={'paprika': ["data/*.dat"]
+                  },
+
+    # Additional entries you may want simply uncomment the lines you want and fill in the data
+    # author_email='me@place.org',      # Author email
+    # url='http://www.my_package.com',  # Website
+    # install_requires=[],              # Required packages, pulls from pip if needed; do not use for Conda deployment
+    # platforms=['Linux',
+    #            'Mac OS-X',
+    #            'Unix',
+    #            'Windows'],            # Valid platforms your code works on, adjust to your flavor
+    # python_requires=">=3.5",          # Python version restrictions
+
+    # Manual control if final package is compressible or not, set False to prevent the .egg from being made
+    # zip_safe=False,
+
+)

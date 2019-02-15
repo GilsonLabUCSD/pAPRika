@@ -3,6 +3,7 @@ pAPRika is a toolkit for setting up, running, and analyzing free energy molecula
 
 # Badges
 [![Build Status](https://travis-ci.org/slochower/pAPRika.svg?branch=master)](https://travis-ci.org/slochower/pAPRika)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/slochower/pAPRika.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/slochower/pAPRika/context:python)
 [![codecov](https://codecov.io/gh/slochower/pAPRika/branch/master/graph/badge.svg)](https://codecov.io/gh/slochower/pAPRika)
 
 # Installation

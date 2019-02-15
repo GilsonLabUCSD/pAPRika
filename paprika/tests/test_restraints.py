@@ -2,12 +2,8 @@
 Tests the restraints utilities.
 """
 
-import unittest
-import numpy as np
-import logging as log
-import parmed as pmd
 import pytest
-import paprika
+
 from paprika.restraints import *
 
 
@@ -18,7 +14,7 @@ def test_DAT_restraint():
     rest1.amber_index = True
     rest1.continuous_apr = False
     rest1.auto_apr = False
-    rest1.topology = "./cb6-but/cb6-but-notcentered.pdb"
+    rest1.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest1.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
     rest1.mask2 = ":BUT@C3"
     rest1.attach["target"] = 3.0
@@ -74,7 +70,7 @@ def test_DAT_restraint():
     rest2.amber_index = True
     rest2.continuous_apr = False
     rest2.auto_apr = False
-    rest2.topology = "./cb6-but/cb6-but-notcentered.pdb"
+    rest2.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest2.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
     rest2.mask2 = ":BUT@C3"
     rest2.mask3 = ":BUT@C"
@@ -132,7 +128,7 @@ def test_DAT_restraint():
     rest3.amber_index = True
     rest3.continuous_apr = False
     rest3.auto_apr = True
-    rest3.topology = "./cb6-but/cb6-but-notcentered.pdb"
+    rest3.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest3.mask1 = ":CB6@O2"
     rest3.mask2 = ":CB6@O"
     rest3.mask3 = ":BUT@C3"
@@ -189,7 +185,7 @@ def test_DAT_restraint():
     rest4.amber_index = True
     rest4.continuous_apr = False
     rest4.auto_apr = False
-    rest4.topology = "./cb6-but/cb6-but-notcentered.pdb"
+    rest4.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest4.mask1 = ":CB6@O2"
     rest4.mask2 = ":CB6@O"
     rest4.mask3 = ":BUT@C3"
@@ -244,7 +240,7 @@ def test_DAT_restraint():
     rest5.amber_index = True
     rest5.continuous_apr = False
     rest5.auto_apr = False
-    rest5.topology = "./cb6-but/cb6-but-notcentered.pdb"
+    rest5.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest5.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
     rest5.mask2 = ":BUT@C*"
     rest5.attach["target"] = 0.0
@@ -296,7 +292,7 @@ def test_DAT_restraint():
     rest6.amber_index = True
     rest6.continuous_apr = False
     rest6.auto_apr = False
-    rest6.topology = "./cb6-but/cb6-but-notcentered.pdb"
+    rest6.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest6.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
     rest6.mask2 = ":BUT@C*"
     rest6.attach["target"] = 0.0
@@ -353,7 +349,7 @@ def test_DAT_restraint():
     rest7.amber_index = True
     rest7.continuous_apr = True
     rest7.auto_apr = False
-    rest7.topology = "./cb6-but/cb6-but-notcentered.pdb"
+    rest7.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest7.mask1 = ":1@O,O1,:BUT@H1"
     rest7.mask2 = ":CB6@N"
     rest7.attach["target"] = 0.0
@@ -401,7 +397,7 @@ def test_DAT_restraint():
     rest8.amber_index = True
     rest8.continuous_apr = False
     rest8.auto_apr = False
-    rest8.topology = "./cb6-but/cb6-but-notcentered.pdb"
+    rest8.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest8.mask1 = ":CB6@O"
     rest8.mask2 = ":BUT@C3"
     rest8.attach["target"] = 0.0
@@ -430,7 +426,7 @@ def test_DAT_restraint():
     rest9.amber_index = True
     rest9.continuous_apr = False
     rest9.auto_apr = False
-    rest9.topology = "./cb6-but/cb6-but-notcentered.pdb"
+    rest9.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest9.mask1 = ":CB6@O"
     rest9.mask2 = ":BUT@C3"
     rest9.pull["fc"] = 3.0
@@ -459,7 +455,7 @@ def test_DAT_restraint():
     rest10.amber_index = True
     rest10.continuous_apr = False
     rest10.auto_apr = False
-    rest10.topology = "./cb6-but/cb6-but-notcentered.pdb"
+    rest10.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest10.mask1 = ":CB6@O"
     rest10.mask2 = ":BUT@C3"
     rest10.release["target"] = 0.0
@@ -492,7 +488,8 @@ def test_DAT_restraint():
 
 
 def test_static_DAT_restraint():
-    structure = pmd.load_file("./cb6-but/vac.prmtop", "./cb6-but/vac.rst7")
+    structure = pmd.load_file(os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.prmtop"),
+                              os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.rst7"))
     r = static_DAT_restraint(
         restraint_mask_list=[":BUT@C3", ":CB6@O"],
         num_window_list=[10, 10, 10],
@@ -500,8 +497,3 @@ def test_static_DAT_restraint():
         force_constant=5.0,
         amber_index=True,
     )
-
-
-if __name__ == "__main__":
-    log.debug("{}".format(paprika.__version__))
-    unittest.main()

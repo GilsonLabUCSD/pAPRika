@@ -113,3 +113,6 @@ test/
 
 # Tutorial windows
 tutorial/windows
+
+# DS_Store
+.DS_Store
