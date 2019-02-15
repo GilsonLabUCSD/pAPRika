@@ -18,7 +18,7 @@ import pytest
 
 
 @pytest.fixture
-def clean_files(directory="tmp"):
+def clean_files(directory=os.path.join(os.path.dirname(__file__), "tmp")):
     # This happens before the test function call
     if os.path.isdir(directory):
         shutil.rmtree(directory)
@@ -215,18 +215,17 @@ def test_alignment_workflow(clean_files):
     assert int(grepped_waters) == waters
 
 
-def test_add_dummy():
+def test_add_dummy(clean_files):
     """ Test that dummy atoms get added correctly """
+    temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
     host_guest = pmd.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"), structure=True
     )
     host_guest = zalign(host_guest, ":BUT@C", ":BUT@C3", save=False)
     host_guest = add_dummy(host_guest, residue_name="DM1", z=-11.000, y=2.000, x=-1.500)
-    if not os.path.exists("./tmp"):
-        print("Making tmp")
-        os.makedirs("./tmp")
-    host_guest.write_pdb("./tmp/cb6-but-dum.pdb", renumber=False)
-    with open("./tmp/cb6-but-dum.pdb", "r") as f:
+
+    host_guest.write_pdb(os.path.join(temporary_directory, "cb6-but-dum.pdb"), renumber=False)
+    with open(os.path.join(temporary_directory, "cb6-but-dum.pdb"), "r") as f:
         lines = f.readlines()
         test_line1 = lines[123].rstrip()
         test_line2 = lines[124].rstrip()
@@ -237,8 +236,8 @@ def test_add_dummy():
     assert ref_line1 == test_line1
     assert ref_line2 == test_line2
 
-    write_dummy_frcmod(path="./tmp/")
-    write_dummy_mol2(path="./tmp/", filename="dm1.mol2", residue_name="DM1")
+    write_dummy_frcmod(path=temporary_directory)
+    write_dummy_mol2(path=temporary_directory, filename="dm1.mol2", residue_name="DM1")
     sys = System()
     cb6_frcmod = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.frcmod"))
     cb6_mol2 = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.mol2"))
@@ -256,13 +255,16 @@ def test_add_dummy():
         "DM1 = loadmol2 dm1.mol2",
         "model = loadpdb cb6-but-dum.pdb",
     ]
-    sys.output_path = "tmp"
+    sys.output_path = temporary_directory
     sys.output_prefix = "cb6-but-dum"
     sys.pbc_type = None
     sys.neutralize = False
     sys.build()
+    with open(os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"), "r") as f:
+        contents = f.read()
+        reference = [float(i) for i in contents.split()[2:]]
 
-    assert filecmp.cmp(
-        os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"),
-        os.path.join(os.path.dirname(__file__), "./tmp/cb6-but-dum.rst7"), shallow=False
-    )
+    with open(os.path.join(temporary_directory, "cb6-but-dum.rst7"), "r") as f:
+        contents = f.read()
+        new = [float(i) for i in contents.split()[2:]]
+    assert np.allclose(reference, new)
