@@ -215,7 +215,7 @@ def test_alignment_workflow(clean_files):
     assert int(grepped_waters) == waters
 
 
-def test_add_dummy(clean_files):
+def test_add_dummy():
     """ Test that dummy atoms get added correctly """
     host_guest = pmd.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"), structure=True
@@ -223,6 +223,7 @@ def test_add_dummy(clean_files):
     host_guest = zalign(host_guest, ":BUT@C", ":BUT@C3", save=False)
     host_guest = add_dummy(host_guest, residue_name="DM1", z=-11.000, y=2.000, x=-1.500)
     if not os.path.exists("./tmp"):
+        print("Making tmp")
         os.makedirs("./tmp")
     host_guest.write_pdb("./tmp/cb6-but-dum.pdb", renumber=False)
     with open("./tmp/cb6-but-dum.pdb", "r") as f:
@@ -249,8 +250,8 @@ def test_add_dummy(clean_files):
         "source leaprc.gaff",
         f"loadamberparams {cb6_frcmod}",
         f"CB6 = loadmol2 {cb6_mol2}",
-        "loadamberparams {but_frcmod}",
-        "BUT = loadmol2 {but_mol2}",
+        f"loadamberparams {but_frcmod}",
+        f"BUT = loadmol2 {but_mol2}",
         "loadamberparams dummy.frcmod",
         "DM1 = loadmol2 dm1.mol2",
         "model = loadpdb cb6-but-dum.pdb",
@@ -258,6 +259,7 @@ def test_add_dummy(clean_files):
     sys.output_path = "tmp"
     sys.output_prefix = "cb6-but-dum"
     sys.pbc_type = None
+    sys.neutralize = False
     sys.build()
 
     assert filecmp.cmp(
