@@ -1,0 +1,17 @@
+name: test
+channels:
+  - conda-forge
+  - omnia
+
+dependencies:
+  
+  # Base depends
+  - python
+  - pip
+  - numpy
+  - scipy
+  
+  # Documentation
+  - sphinx
+  - sphinx_rtd_theme
+
