@@ -42,6 +42,9 @@ release = ''
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.napoleon',
+    
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -159,3 +162,8 @@ texinfo_documents = [
 
 
 # -- Extension configuration -------------------------------------------------
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/', None),
+    'numpy': ('http://docs.scipy.org/doc/numpy/', None),
+    'parmed': ('https://parmed.github.io/ParmEd/', None)
+}
