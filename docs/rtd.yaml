@@ -2,7 +2,7 @@ name: test
 
 channels:
   - omnia
-  - ambermd
+  - http://ambermd.org/downloads/ambertools/conda/
 dependencies:
   
   # Base depends
@@ -11,7 +11,9 @@ dependencies:
   - numpy
   - scipy
   - parmed
-  - ambertools
+  - mdtraj
+  - pymbar
+  - ambertools=18
 
   
   # Documentation
