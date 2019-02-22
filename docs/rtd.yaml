@@ -13,6 +13,7 @@ dependencies:
   - parmed
   - mdtraj
   - pymbar
+  - openmm
   - ambertools=18
 
   
