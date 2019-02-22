@@ -1,5 +1,9 @@
 name: test
 
+channels:
+  - omnia
+  - ambermd
+
 dependencies:
   
   # Base depends
@@ -7,6 +11,9 @@ dependencies:
   - pip
   - numpy
   - scipy
+  - parmed
+  - pytraj
+
   
   # Documentation
   - sphinx
