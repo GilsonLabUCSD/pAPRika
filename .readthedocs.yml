@@ -1,3 +1,5 @@
+version: 2
+
 conda:
     environment: docs/rtd.yaml 
 
