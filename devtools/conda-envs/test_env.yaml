@@ -5,7 +5,8 @@ channels:
   # AmberTools seem to live at this repository...
   - http://ambermd.org/downloads/ambertools/conda/
 dependencies:
-    # Base depends
+  
+  # Base depends
   - python
   - pip
   - numpy
@@ -17,11 +18,15 @@ dependencies:
   # Eventually we can/should migrate away from this, once AMBER gets onto omnia/conda-forge.
   # See https://openforcefieldgroup.slack.com/archives/C8NE3J96U/p1549403299386500
   - ambertools=18
+  
+  # Documentation
+  - sphinx
+  - sphinx_rtd_theme
 
-    # Testing
+  # Testing
   - pytest
   - pytest-cov
 
-    # Pip-only installs
+  # Pip-only installs
   - pip:
     - codecov

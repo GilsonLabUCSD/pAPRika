@@ -1,0 +1,22 @@
+name: test
+
+channels:
+  - omnia
+  - http://ambermd.org/downloads/ambertools/conda/
+dependencies:
+  
+  # Base depends
+  - python
+  - pip
+  - numpy
+  - scipy
+  - parmed
+  - mdtraj
+  - pymbar
+  - openmm
+  - ambertools=18
+
+  
+  # Documentation
+  - sphinx
+  - sphinx_rtd_theme

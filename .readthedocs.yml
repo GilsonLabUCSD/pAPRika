@@ -1,0 +1,10 @@
+version: 2
+
+conda:
+    environment: docs/rtd.yaml 
+
+python:
+    version: 3
+    install:
+    - method: pip
+      path: .
