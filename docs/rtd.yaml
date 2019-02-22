@@ -2,7 +2,6 @@ name: test
 
 channels:
   - omnia
-  - ambermd
 
 dependencies:
   
@@ -12,10 +11,13 @@ dependencies:
   - numpy
   - scipy
   - parmed
-  - pytraj
 
   
   # Documentation
   - sphinx
   - sphinx_rtd_theme
 
+  # Pip-only installs
+  - pip:
+    - pytraj
+  
