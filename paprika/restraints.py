@@ -596,7 +596,7 @@ def static_DAT_restraint(
     mask_string = " ".join(restraint_mask_list)
     if len(restraint_mask_list) == 2:
         # Distance restraint
-        target = pt.distance(ref_traj, mask_string)[0]
+        target = pt.distance(ref_traj, mask_string, image=True)[0]
     elif len(restraint_mask_list) == 3:
         # Angle restraint
         target = pt.angle(ref_traj, mask_string)[0]
