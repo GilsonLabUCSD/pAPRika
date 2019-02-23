@@ -1019,7 +1019,7 @@ def read_restraint_data(traj, restraint):
         and not restraint.mask3
         and not restraint.mask4
     ):
-        data = pt.distance(traj, " ".join([restraint.mask1, restraint.mask2]))
+        data = pt.distance(traj, " ".join([restraint.mask1, restraint.mask2]), image=True)
     elif (
         restraint.mask1 and restraint.mask2 and restraint.mask3 and not restraint.mask4
     ):
