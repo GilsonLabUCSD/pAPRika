@@ -3,18 +3,34 @@ pAPRika is a toolkit for setting up, running, and analyzing free energy molecula
 
 # Badges
 [![Build Status](https://travis-ci.org/slochower/pAPRika.svg?branch=master)](https://travis-ci.org/slochower/pAPRika)
+[![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=latest)](https://paprika.readthedocs.io/en/latest/?badge=latest)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/paprika/badges/installer/conda.svg)](https://conda.anaconda.org/conda-forge)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/slochower/pAPRika.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/slochower/pAPRika/context:python)
 [![codecov](https://codecov.io/gh/slochower/pAPRika/branch/master/graph/badge.svg)](https://codecov.io/gh/slochower/pAPRika)
-[![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=latest)](https://paprika.readthedocs.io/en/latest/?badge=latest)
+
 
 # Installation
 
-To install pAPRika, either clone this `git` repository or download [the latest release](https://github.com/slochower/pAPRika/releases).  Due to the potential for interactions with AMBER's own Miniconda installation, the recommended way to run pAPRika is through a dedicated `conda` environment. To create and use this environment, inside the `paprika` directory, run:
+We recommend installing pAPRika in a fresh `conda` environment if possible. There are three ways to install this package:
 
-```
-conda env create -f build/environment.yaml
-conda activate paprika
-```
+1. The latest release on `conda-forge`:
+    1. `conda install -c conda-forge paprika`
+    2. To use all features of pAPRika, you must either have [AmberTools](http://ambermd.org/AmberTools.php) in your `$PATH` or separately install AmberTools with `conda install -c http://ambermd.org/downloads/ambertools/conda/ ambertools=18`.
+    3. To use OpenMM features: `conda install -c omnia openmm`.
+
+2. The master branch on GitHub:
+    1. Clone this `git` repository, then inside the `paprika` directory:
+    2. Change the `name` field in `devtools/conda-envs/test_env.yaml` to be `paprika`.
+    3. Create the environment: `conda env create -f devtools/conda-envs/test_env.yaml`.
+    4. Activate the environment: `conda activate paprika`
+    5. Install `paprika` in the environment: `pip install .`
+    
+3. The latest release on GitHub:
+    1. Download [the latest release](https://github.com/slochower/pAPRika/releases), extract it, and change to the `paprika` directory:
+    2. Change the `name` field in `devtools/conda-envs/test_env.yaml` to be `paprika`.
+    3. Create the environment: `conda env create -f devtools/conda-envs/test_env.yaml`.
+    4. Activate the environment: `conda activate paprika`
+    5. Install `paprika` in the environment: `pip install .`
 
 # Example
 
