@@ -1,4 +1,4 @@
-import logging as log
+import logging
 import numpy as np
 import os as os
 import parmed as pmd
@@ -11,6 +11,7 @@ try:
 except ImportError:
     pass
 
+logger = logging.getLogger(__name__)
 
 class DAT_restraint(object):
     """

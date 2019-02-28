@@ -1,4 +1,4 @@
-import logging as log
+import logging
 import os as os
 from itertools import compress
 import numpy as np
@@ -6,6 +6,7 @@ import pytraj as pt
 import pymbar
 from scipy.interpolate import Akima1DInterpolator
 
+logger = logging.getLogger(__name__)
 
 class fe_calc(object):
     """
@@ -250,7 +251,7 @@ class fe_calc(object):
                 and self.orders["attach"].any
                 and self.orders["pull"].any
             ):
-                log.debug(
+                logger.debug(
                     "Replacing {} with {} in {} for `continuous_apr`...".format(
                         ordered_attach_windows[-1],
                         ordered_pull_windows[0],
@@ -265,7 +266,7 @@ class fe_calc(object):
                 and self.orders["release"].any
                 and self.orders["pull"].any
             ):
-                log.debug(
+                logger.debug(
                     "Replacing {} with {} in {} for `continuous_apr`...".format(
                         ordered_release_windows[-1],
                         ordered_pull_windows[-1],
@@ -587,7 +588,7 @@ class fe_calc(object):
         # Tack on the final value to the dl interpolation
         dl_intp = np.append(dl_intp, dl_vals[-1])
 
-        log.debug("Running bootstrap calculations")
+        logger.debug("Running bootstrap calculations")
 
         # Setup fractions. For simplicity, we'll always do this, even
         # if we're doing the total data, ie self.fractions=[1.0].
@@ -595,7 +596,7 @@ class fe_calc(object):
         self.results[phase][method]["fraction_sem_matrix"] = {}
         for fraction in self.fractions:
 
-            log.debug("Working on fraction ... {}".format(fraction))
+            logger.debug("Working on fraction ... {}".format(fraction))
 
             # Compute means for this fraction.
             frac_dU_avgs = np.array(
@@ -637,7 +638,7 @@ class fe_calc(object):
                 self.results[phase][method]["fraction_fe_matrix"][fraction] *= -1.0
 
         if self.compute_roi:
-            log.info(phase + ": computing ROI for " + method)
+            logger.info(phase + ": computing ROI for " + method)
             # Do ROI calc
             max_fraction = np.max(self.fractions)
             # If we didn't compute fe/sem for fraction 1.0 already, do it now
@@ -711,12 +712,12 @@ class fe_calc(object):
 
                 # Prepare data
                 if sum(self.changing_restraints[phase]) == 0:
-                    log.debug("Skipping free energy calculation for %s" % phase)
+                    logger.debug("Skipping free energy calculation for %s" % phase)
                     continue
                 prepared_data = self.prepare_data(phase)
                 self.results[phase][method]["n_frames"] = np.sum(prepared_data[1])
 
-                log.debug("Running {} analysis on {} phase ...".format(method, phase))
+                logger.debug("Running {} analysis on {} phase ...".format(method, phase))
 
                 # Run the method
                 if method == "mbar-block":
@@ -774,7 +775,7 @@ class fe_calc(object):
                     self.results[phase][method]["largest_neighbor"] = (
                         np.ones([windows], np.float64) * -1.0
                     )
-                    log.info(phase + ": computing largest_neighbor for " + method)
+                    logger.info(phase + ": computing largest_neighbor for " + method)
                     for i in range(windows):
                         if i == 0:
                             self.results[phase][method]["largest_neighbor"][
@@ -975,12 +976,12 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
         The values for this restraint in this window
     """
 
-    log.debug("Load trajectories from {}...".format(window, trajectory))
+    logger.debug("Load trajectories from {}...".format(window, trajectory))
     if isinstance(trajectory, str):
         trajectory_path = os.path.join(window, trajectory)
     elif isinstance(trajectory, list):
         trajectory_path = [os.path.join(window, i) for i in trajectory]
-        log.debug("Received list of trajectories: {}".format(trajectory_path))
+        logger.debug("Received list of trajectories: {}".format(trajectory_path))
 
     if isinstance(prmtop, str) and not single_prmtop:
         traj = pt.iterload(trajectory_path, os.path.join(window, prmtop))
@@ -992,7 +993,7 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
         except BaseException:
             raise Exception("Tried to load `prmtop` object directly and failed.")
 
-    log.debug("Loaded {} frames...".format(traj.n_frames))
+    logger.debug("Loaded {} frames...".format(traj.n_frames))
 
     return traj
 

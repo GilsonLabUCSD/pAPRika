@@ -1,9 +1,10 @@
 import os as os
 import re as re
 import subprocess as sp
-import logging as log
+import logging
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 N_A = 6.0221409 * 10 ** 23
 ANGSTROM_CUBED_TO_LITERS = 1 * 10 ** -27
@@ -131,7 +132,7 @@ class System(object):
 
         """
 
-        log.debug("Running tleap.build() in {}".format(self.output_path))
+        logger.debug("Running tleap.build() in {}".format(self.output_path))
 
         # Check input
         if self.template_file and self.template_lines:
@@ -294,12 +295,12 @@ class System(object):
 
         """
         try:
-            with open(self.output_path + "leap.log", "r") as file:
+            with open(self.output_path + "leap.logger", "r") as file:
                 for line in file.readlines():
                     if re.search(
                         "ERROR|WARNING|Warning|duplicate|FATAL|Could|Fatal|Error", line
                     ):
-                        log.warning(
+                        logger.warning(
                             "It appears there was a problem with solvation: check `leap.log`..."
                         )
         except BaseException:
@@ -318,7 +319,7 @@ class System(object):
         log_file_path = os.path.join(self.output_path, log_file)
         try:
             os.remove(log_file_path)
-            log.debug("Deleted existing leap logfile: " + log_file_path)
+            logger.debug("Deleted existing leap logfile: " + log_file_path)
         except OSError:
             pass
 
@@ -346,7 +347,7 @@ class System(object):
             self.manual_switch_thresh = int(np.ceil(self.target_waters ** (1. / 3.)))
             if self.manual_switch_thresh < 12:
                 self.manual_switch_thresh = 12
-            log.debug(
+            logger.debug(
                 "manual_switch_thresh is set to: {:.0f}".format(
                     self.manual_switch_thresh
                 )
@@ -371,7 +372,7 @@ class System(object):
             waters = self.count_waters()
             self.wat_added_history.append(waters)
             self.buffer_val_history.append(self.buffer_value)
-            log.debug(
+            logger.debug(
                 "Cycle {:02.0f} {:.0f} {:10.7f} {:6.0f} ({:6.0f})".format(
                     cycle, self.exponent, self.buffer_value, waters, self.target_waters
                 )
@@ -404,7 +405,7 @@ class System(object):
                 cycle += 1
 
         if cycle >= self.max_cycles and waters > self.target_waters:
-            log.debug(
+            logger.debug(
                 "The added waters ({}) didn't reach the manual_switch_thresh ({}) with max_cycles ({}), but we'll try manual removal anyway.".format(
                     waters, self.target_waters, self.max_cycles
                 )
@@ -444,7 +445,7 @@ class System(object):
                 raise Exception(
                     "Unable to add the correct waters at 50 cycles during final_solvation_run()"
                 )
-            log.info(
+            logger.info(
                 "The final solvation step added the wrong number of waters. Repeating ..."
             )
 
@@ -499,7 +500,7 @@ class System(object):
         # log.debug(residues)
         if print_results:
             for key, value in sorted(residues.items()):
-                log.info("{:10s} {:10.0f}".format(key, value))
+                logger.info("{:10s} {:10.0f}".format(key, value))
 
         return residues
 
@@ -573,7 +574,7 @@ class System(object):
                 match = re.search("Volume(.*)", line)
                 volume = float(match.group(1)[1:-4])
                 return volume
-        log.warning("Could not determine total simulation volume.")
+        logger.warning("Could not determine total simulation volume.")
         return None
 
     def remove_waters_manually(self):
@@ -597,14 +598,14 @@ class System(object):
             if cycle > 5:
                 additional_water = int(float(cycle) / 5.0)
                 water_surplus += additional_water
-                log.debug(
+                logger.debug(
                     "Detected trouble with manually removing water. Increasing the number of surplus waters by {}".format(
                         additional_water
                     )
                 )
 
             self.waters_to_remove = water_residues[-1 * water_surplus :]
-            log.debug("Manually removing waters... {}".format(self.waters_to_remove))
+            logger.debug("Manually removing waters... {}".format(self.waters_to_remove))
 
             # Get counts for all residues
             residues = self.count_residues()
@@ -664,14 +665,14 @@ class System(object):
             # If its been more than one round since last exponent change,
             # change exponent
             if self.cyc_since_last_exp_change > 1:
-                log.debug("Adjustment loop 1a")
+                logger.debug("Adjustment loop 1a")
                 self.exponent -= 1
                 self.buffer_value = self.buffer_val_history[-1] + -5 * (
                     10 ** self.exponent
                 )
                 self.cyc_since_last_exp_change = 0
             else:
-                log.debug("Adjustment loop 1b")
+                logger.debug("Adjustment loop 1b")
                 self.buffer_value = self.buffer_val_history[-1] + -1 * (
                     10 ** self.exponent
                 )
@@ -685,14 +686,14 @@ class System(object):
             # If its been more than one round since last exponent change,
             # change exponent
             if self.cyc_since_last_exp_change > 1:
-                log.debug("Adjustment loop 2a")
+                logger.debug("Adjustment loop 2a")
                 self.exponent -= 1
                 self.buffer_value = self.buffer_val_history[-1] + 5 * (
                     10 ** self.exponent
                 )
                 self.cyc_since_last_exp_change = 0
             else:
-                log.debug("Adjustment loop 2b")
+                logger.debug("Adjustment loop 2b")
                 self.buffer_value = self.buffer_val_history[-1] + 1 * (
                     10 ** self.exponent
                 )
@@ -703,7 +704,7 @@ class System(object):
             self.wat_added_history[-2] > self.target_waters
             and self.wat_added_history[-1] > self.target_waters
         ):
-            log.debug("Adjustment loop 3")
+            logger.debug("Adjustment loop 3")
             self.buffer_value = self.buffer_val_history[-1] + -1 * (10 ** self.exponent)
             self.cyc_since_last_exp_change += 1
         # If the last two rounds of solvation had too few waters, make the
@@ -712,7 +713,7 @@ class System(object):
             self.wat_added_history[-2] < self.target_waters
             and self.wat_added_history[-1] < self.target_waters
         ):
-            log.debug("Adjustment loop 4")
+            logger.debug("Adjustment loop 4")
             self.buffer_value = self.buffer_val_history[-1] + 1 * (10 ** self.exponent)
             self.cyc_since_last_exp_change += 1
         else:

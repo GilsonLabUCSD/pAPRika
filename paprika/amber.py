@@ -1,7 +1,9 @@
-import logging as log
+import logging
 import subprocess as sp
 from collections import OrderedDict
 import os
+
+logger = logging.getLogger(__name__)
 
 
 class Simulation(object):
@@ -192,7 +194,7 @@ class Simulation(object):
         f.write(" /\n")
 
     def _amber_write_input_file(self):
-        log.debug("Writing {}".format(self.input))
+        logger.debug("Writing {}".format(self.input))
         with open(self.path + "/" + self.input, "w") as f:
             f.write("{}\n".format(self.title))
 
@@ -252,9 +254,9 @@ class Simulation(object):
             self._amber_write_input_file()
 
             if self.cntrl["imin"] == 1:
-                log.info("Running Minimization at {}".format(self.path))
+                logger.info("Running Minimization at {}".format(self.path))
             else:
-                log.info("Running MD at {}".format(self.path))
+                logger.info("Running MD at {}".format(self.path))
 
             # Create executable list for subprocess
             exec_list = self.executable.split() + ["-O", "-p", self.topology]
@@ -277,7 +279,7 @@ class Simulation(object):
             if self.mden is not None:
                 exec_list += ["-e", self.mden]
 
-            log.debug("Exec line: " + " ".join(exec_list))
+            logger.debug("Exec line: " + " ".join(exec_list))
 
             # Execute
             if self.CUDA_VISIBLE_DEVICES:
@@ -299,27 +301,27 @@ class Simulation(object):
 
             # Report any stdout/stderr which are output from execution
             if amber_output:
-                log.info("STDOUT/STDERR received from AMBER execution")
+                logger.info("STDOUT/STDERR received from AMBER execution")
                 for line in amber_output:
-                    log.info(line)
+                    logger.info(line)
 
             # Check completion status
             if self.cntrl["imin"] == 1 and self.has_timings():
-                log.info("Minimization completed...")
+                logger.info("Minimization completed...")
             elif self.has_timings():
-                log.info("MD completed ...")
+                logger.info("MD completed ...")
             else:
-                log.info(
+                logger.info(
                     "Simulation did not complete when executing the following ...."
                 )
-                log.info(" ".join(exec_list))
+                logger.info(" ".join(exec_list))
                 if not fail_ok:
                     raise Exception(
                         "Exiting due to failed simulation! Check logging info."
                     )
 
         else:
-            log.info(
+            logger.info(
                 "Completed output detected ... Skipping. Use: run(overwrite=True) to overwrite"
             )
 
@@ -353,8 +355,8 @@ class Simulation(object):
                 if " TIMINGS" in strings:
                     timings = True
         if timings:
-            log.debug("{} has TIMINGS".format(output_file))
+            logger.debug("{} has TIMINGS".format(output_file))
         else:
-            log.debug("{} does not have TIMINGS".format(output_file))
+            logger.debug("{} does not have TIMINGS".format(output_file))
 
         return timings

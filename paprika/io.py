@@ -1,4 +1,4 @@
-import logging as log
+import logging
 import os
 import base64
 import json
@@ -7,6 +7,7 @@ import parmed as pmd
 from paprika.restraints import DAT_restraint
 from parmed.amber import AmberParm
 
+logger = logging.getLogger(__name__)
 
 # https://stackoverflow.com/questions/27909658/json-encoder-and-decoder-for-complex-numpy-arrays
 # https://stackoverflow.com/a/24375113/901925
@@ -79,7 +80,7 @@ def json_numpy_obj_hook(dct):
 
 
 def save_restraints(restraint_list, filepath="restraints.json"):
-    log.debug("Saving restraint information as JSON.")
+    logger.debug("Saving restraint information as JSON.")
     with open(os.path.join(filepath), "w") as f:
         for restraint in restraint_list:
             dumped = json.dumps(restraint.__dict__, cls=NumpyEncoder)
@@ -88,7 +89,7 @@ def save_restraints(restraint_list, filepath="restraints.json"):
 
 
 def load_restraints(filepath="restraints.json"):
-    log.debug("Loading restraint information from JSON.")
+    logger.debug("Loading restraint information from JSON.")
     with open(os.path.join(filepath), "r") as f:
         json_data = f.read()
     restraint_json = json_data.split("\n")
@@ -100,12 +101,12 @@ def load_restraints(filepath="restraints.json"):
         tmp = DAT_restraint()
         tmp.__dict__ = loaded
         try:
-            log.debug("Setting topology from file name.")
+            logger.debug("Setting topology from file name.")
             tmp.topology = pmd.load_file(loaded["topology"], structure=True)
         except IOError:
-            log.debug(
+            logger.debug(
                 "Unable to set topology information after loading from JSON.")
-            log.debug("Topology is set to the file name of the topology file.")
+            logger.debug("Topology is set to the file name of the topology file.")
             tmp.topology = loaded["topology"]
         restraints.append(tmp)
     return restraints
