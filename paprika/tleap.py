@@ -295,7 +295,7 @@ class System(object):
 
         """
         try:
-            with open(self.output_path + "leap.logger", "r") as file:
+            with open(self.output_path + "leap.log", "r") as file:
                 for line in file.readlines():
                     if re.search(
                         "ERROR|WARNING|Warning|duplicate|FATAL|Could|Fatal|Error", line
