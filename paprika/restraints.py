@@ -1,4 +1,4 @@
-import logging as log
+import logging
 import numpy as np
 import os as os
 import parmed as pmd
@@ -11,6 +11,7 @@ try:
 except ImportError:
     pass
 
+logger = logging.getLogger(__name__)
 
 class DAT_restraint(object):
     """
@@ -105,8 +106,8 @@ class DAT_restraint(object):
             # but for some reason, that attribute was not always available.
             # Thus, I simply do not compare the `topology` attribute.
             dct["topology"] = None
-        log.debug(self_dictionary)
-        log.debug(other_dictionary)
+        logger.debug(self_dictionary)
+        logger.debug(other_dictionary)
         keys = set(self_dictionary.keys()) & set(other_dictionary.keys())
         for key in keys:
             if key != "phase":
@@ -232,7 +233,7 @@ class DAT_restraint(object):
             force_constants = np.asarray([rdict["fc"]] * len(targets))
 
         if force_constants is None and targets is None:
-            log.error("Unsupported Phase/Method: {} / {}".format(phase, meth))
+            logger.error("Unsupported Phase/Method: {} / {}".format(phase, meth))
             raise Exception("Unexpected phase/method combination passed to _calc_meth")
 
         return force_constants, targets
@@ -270,7 +271,7 @@ class DAT_restraint(object):
             "release": {"force_constants": None, "targets": None},
         }
         # ------------------------------------ ATTACH ------------------------------------ #
-        log.debug("Calculating attach targets and force constants...")
+        logger.debug("Calculating attach targets and force constants...")
 
         # Temporary variables to improve readability
         force_constants = None
@@ -282,11 +283,11 @@ class DAT_restraint(object):
         ):
             if self.attach["fc_initial"] is not None:
                 ### METHOD 1 ###
-                log.debug("Attach, Method #1")
+                logger.debug("Attach, Method #1")
                 force_constants, targets = self._calc_meth("a", self.attach, "1")
             else:
                 ### METHOD 1a ###
-                log.debug("Attach, Method #1a")
+                logger.debug("Attach, Method #1a")
                 force_constants, targets = self._calc_meth("a", self.attach, "1a")
 
         elif (
@@ -295,11 +296,11 @@ class DAT_restraint(object):
         ):
             if self.attach["fc_initial"] is not None:
                 ### METHOD 2 ###
-                log.debug("Attach, Method #2")
+                logger.debug("Attach, Method #2")
                 force_constants, targets = self._calc_meth("a", self.attach, "2")
             else:
                 ### METHOD 2a ###
-                log.debug("Attach, Method #2a")
+                logger.debug("Attach, Method #2a")
                 force_constants, targets = self._calc_meth("a", self.attach, "2a")
 
         elif (
@@ -307,7 +308,7 @@ class DAT_restraint(object):
             and self.attach["fc_final"] is not None
         ):
             ### METHOD 3 ###
-            log.debug("Attach, Method #3")
+            logger.debug("Attach, Method #3")
             force_constants, targets = self._calc_meth("a", self.attach, "3")
 
         elif (
@@ -315,23 +316,23 @@ class DAT_restraint(object):
             and self.attach["fc_final"] is not None
         ):
             ### METHOD 4 ###
-            log.debug("Attach, Method #4")
+            logger.debug("Attach, Method #4")
             force_constants, targets = self._calc_meth("a", self.attach, "4")
 
         elif self.attach["fc_list"] is not None:
             ### METHOD 5 ###
-            log.debug("Attach, Method #5")
+            logger.debug("Attach, Method #5")
             force_constants, targets = self._calc_meth("a", self.attach, "5")
 
         elif all(v is None for k, v in self.attach.items()):
-            log.debug("No restraint info set for the attach phase! Skipping...")
+            logger.debug("No restraint info set for the attach phase! Skipping...")
 
         else:
-            log.error(
+            logger.error(
                 "Attach restraint input did not match one of the supported methods..."
             )
             for k, v in self.attach.items():
-                log.debug("{} = {}".format(k, v))
+                logger.debug("{} = {}".format(k, v))
             raise Exception(
                 "Attach restraint input did not match one of the supported methods..."
             )
@@ -341,7 +342,7 @@ class DAT_restraint(object):
             self.phase["attach"]["targets"] = targets
 
         # ------------------------------------ PULL ------------------------------------ #
-        log.debug("Calculating pull targets and force constants...")
+        logger.debug("Calculating pull targets and force constants...")
 
         force_constants = None
         targets = None
@@ -356,11 +357,11 @@ class DAT_restraint(object):
         ):
             if self.pull["target_initial"] is not None:
                 ### METHOD 1 ###
-                log.debug("Pull, Method #1")
+                logger.debug("Pull, Method #1")
                 force_constants, targets = self._calc_meth("p", self.pull, "1")
             else:
                 ### METHOD 1a ###
-                log.debug("Pull, Method #1a")
+                logger.debug("Pull, Method #1a")
                 force_constants, targets = self._calc_meth("p", self.pull, "1a")
 
         elif (
@@ -369,11 +370,11 @@ class DAT_restraint(object):
         ):
             if self.pull["target_initial"] is not None:
                 ### METHOD 2 ###
-                log.debug("Pull, Method #2")
+                logger.debug("Pull, Method #2")
                 force_constants, targets = self._calc_meth("p", self.pull, "2")
             else:
                 ### METHOD 2a ###
-                log.debug("Pull, Method #2a")
+                logger.debug("Pull, Method #2a")
                 force_constants, targets = self._calc_meth("p", self.pull, "2a")
 
         elif (
@@ -381,7 +382,7 @@ class DAT_restraint(object):
             and self.pull["target_final"] is not None
         ):
             ### METHOD 3 ###
-            log.debug("Pull, Method #3")
+            logger.debug("Pull, Method #3")
             force_constants, targets = self._calc_meth("p", self.pull, "3")
 
         elif (
@@ -389,23 +390,23 @@ class DAT_restraint(object):
             and self.pull["target_final"] is not None
         ):
             ### METHOD 4 ###
-            log.debug("Pull, Method #4")
+            logger.debug("Pull, Method #4")
             force_constants, targets = self._calc_meth("p", self.pull, "4")
 
         elif self.pull["target_list"] is not None:
             ### METHOD 5 ###
-            log.debug("Pull, Method #5")
+            logger.debug("Pull, Method #5")
             force_constants, targets = self._calc_meth("p", self.pull, "5")
 
         elif all(v is None for k, v in self.pull.items()):
-            log.debug("No restraint info set for the pull phase! Skipping...")
+            logger.debug("No restraint info set for the pull phase! Skipping...")
 
         else:
-            log.error(
+            logger.error(
                 "Pull restraint input did not match one of the supported methods..."
             )
             for k, v in self.pull.items():
-                log.debug("{} = {}".format(k, v))
+                logger.debug("{} = {}".format(k, v))
             raise Exception(
                 "Pull restraint input did not match one of the supported methods..."
             )
@@ -415,7 +416,7 @@ class DAT_restraint(object):
             self.phase["pull"]["targets"] = targets
 
         # ------------------------------------ RELEASE ------------------------------------ #
-        log.debug("Calculating release targets and force constants...")
+        logger.debug("Calculating release targets and force constants...")
 
         force_constants = None
         targets = None
@@ -443,11 +444,11 @@ class DAT_restraint(object):
         ):
             if self.release["fc_initial"] is not None:
                 ### METHOD 1 ###
-                log.debug("Release, Method #1")
+                logger.debug("Release, Method #1")
                 force_constants, targets = self._calc_meth("r", self.release, "1")
             else:
                 ### METHOD 1a ###
-                log.debug("Release, Method #1a")
+                logger.debug("Release, Method #1a")
                 force_constants, targets = self._calc_meth("r", self.release, "1a")
 
         elif (
@@ -456,11 +457,11 @@ class DAT_restraint(object):
         ):
             if self.release["fc_initial"] is not None:
                 ### METHOD 2 ###
-                log.debug("Release, Method #2")
+                logger.debug("Release, Method #2")
                 force_constants, targets = self._calc_meth("r", self.release, "2")
             else:
                 ### METHOD 2a ###
-                log.debug("Release, Method #2a")
+                logger.debug("Release, Method #2a")
                 force_constants, targets = self._calc_meth("r", self.release, "2a")
 
         elif (
@@ -468,7 +469,7 @@ class DAT_restraint(object):
             and self.release["fc_final"] is not None
         ):
             ### METHOD 3 ###
-            log.debug("Release, Method #3")
+            logger.debug("Release, Method #3")
             force_constants, targets = self._calc_meth("r", self.release, "3")
 
         elif (
@@ -476,23 +477,23 @@ class DAT_restraint(object):
             and self.release["fc_final"] is not None
         ):
             ### METHOD 4 ###
-            log.debug("Release, Method #4")
+            logger.debug("Release, Method #4")
             force_constants, targets = self._calc_meth("r", self.release, "4")
 
         elif self.release["fc_list"] is not None:
             ### METHOD 5 ###
-            log.debug("Release, Method #5")
+            logger.debug("Release, Method #5")
             force_constants, targets = self._calc_meth("r", self.release, "5")
 
         elif all(v is None for k, v in self.release.items()):
-            log.debug("No restraint info set for the release phase! Skipping...")
+            logger.debug("No restraint info set for the release phase! Skipping...")
 
         else:
-            log.error(
+            logger.error(
                 "Release restraint input did not match one of the supported methods..."
             )
             for k, v in self.release.items():
-                log.debug("{} = {}".format(k, v))
+                logger.debug("{} = {}".format(k, v))
             raise Exception(
                 "Release restraint input did not match one of the supported methods..."
             )
@@ -507,15 +508,15 @@ class DAT_restraint(object):
             if self.phase[phase]["targets"] is not None:
                 window_count = len(self.phase[phase]["targets"])
                 # DAT_restraint.window_counts[phase].append(window_count)
-                log.debug("Number of {} windows = {}".format(phase, window_count))
+                logger.debug("Number of {} windows = {}".format(phase, window_count))
             else:
                 # DAT_restraint.window_counts[phase].append(None)
-                log.debug(
+                logger.debug(
                     "This restraint will be skipped in the {} phase".format(phase)
                 )
 
         # ---------------------------------- ATOM MASKS ---------------------------------- #
-        log.debug("Assigning atom indices...")
+        logger.debug("Assigning atom indices...")
         self.index1 = utils.index_from_mask(self.topology, self.mask1, self.amber_index)
         self.index2 = utils.index_from_mask(self.topology, self.mask2, self.amber_index)
         if self.mask3:
@@ -643,13 +644,13 @@ def check_restraints(restraint_list, create_window_list=False):
     """
 
     if all(restraint.continuous_apr is True for restraint in restraint_list):
-        log.debug('All restraints are "continuous_apr" style.')
+        logger.debug('All restraints are "continuous_apr" style.')
         all_continuous_apr = True
     elif all(restraint.continuous_apr is False for restraint in restraint_list):
-        log.debug('All restraints are not "continuous_apr" style.')
+        logger.debug('All restraints are not "continuous_apr" style.')
         all_continuous_apr = False
     else:
-        log.error("All restraints must have the same setting for .continuous_apr")
+        logger.error("All restraints must have the same setting for .continuous_apr")
         # Should we do the following?
         raise Exception("All restraints must have the same setting for .continuous_apr")
 
@@ -665,7 +666,7 @@ def check_restraints(restraint_list, create_window_list=False):
         max_count = np.max(win_counts)
 
         if max_count > 999:
-            log.info("Window name zero padding only applied up to 999.")
+            logger.info("Window name zero padding only applied up to 999.")
 
         # For each restraint, make sure the number of windows is either 0 (the restraint
         # is not active) or equal to the maximum number of windows for any
@@ -703,19 +704,19 @@ def check_restraints(restraint_list, create_window_list=False):
                         for val in np.arange(0, max_count, 1)
                     ]
         else:
-            log.error(
+            logger.error(
                 "Restraints have unequal number of windows during the {} phase.".format(
                     phase
                 )
             )
-            log.debug("Window counts for each restraint are as follows:")
-            log.debug(win_counts)
+            logger.debug("Window counts for each restraint are as follows:")
+            logger.debug(win_counts)
             raise Exception(
                 "Restraints have unequal number of windows during the {} "
                 "phase.".format(phase)
             )
 
-    log.info("Restraints appear to be consistent")
+    logger.info("Restraints appear to be consistent")
 
     if create_window_list:
         return window_list
@@ -817,7 +818,7 @@ def amber_restraint_line(restraint, window):
 
     for key, value in restraint.custom_restraint_values.items():
         if value is not None:
-            log.debug("Overriding {} = {}".format(key, value))
+            logger.debug("Overriding {} = {}".format(key, value))
             amber_restraint_values[key] = value
 
     # Prepare AMBER NMR-style restraint
@@ -876,7 +877,7 @@ def setup_openmm_restraints(system, restraint, phase, window):
             bond_restraint.addBond(restraint.index1[0], restraint.index2[0], [k, r_0])
             bond_restraint.setForceGroup(1)
             system.addForce(bond_restraint)
-            log.debug(
+            logger.debug(
                 "Added bond restraint between {} and {} with target value = "
                 "{} and force constant = {}".format(
                     restraint.mask1, restraint.mask2, r_0, k
@@ -902,16 +903,16 @@ def setup_openmm_restraints(system, restraint, phase, window):
             bond_restraint.addBond([g1, g2], [k, r_0])
             bond_restraint.setForceGroup(1)
             system.addForce(bond_restraint)
-            log.debug(
+            logger.debug(
                 "Added bond restraint between {} and {} with target value = "
                 "{} and force constant = {}".format(
                     restraint.mask1, restraint.mask2, r_0, k
                 )
             )
     else:
-        log.error("Unable to add bond restraint...")
-        log.debug("restraint.index1 = {}".format(restraint.index1))
-        log.debug("restraint.index2 = {}".format(restraint.index2))
+        logger.error("Unable to add bond restraint...")
+        logger.debug("restraint.index1 = {}".format(restraint.index1))
+        logger.debug("restraint.index2 = {}".format(restraint.index2))
         raise Exception("Unable to add bond restraint...")
 
     if (
@@ -925,17 +926,17 @@ def setup_openmm_restraints(system, restraint, phase, window):
             and restraint.group2 is not False
             and restraint.group3 is not False
         ):
-            log.error("Unable to add a group angle restraint...")
-            log.debug("restraint.index1 = {}".format(restraint.index1))
-            log.debug("restraint.index2 = {}".format(restraint.index2))
-            log.debug("restraint.index3 = {}".format(restraint.index3))
+            logger.error("Unable to add a group angle restraint...")
+            logger.debug("restraint.index1 = {}".format(restraint.index1))
+            logger.debug("restraint.index2 = {}".format(restraint.index2))
+            logger.debug("restraint.index3 = {}".format(restraint.index3))
             raise Exception("Unable to add a group angle restraint...")
 
         angle_restraint = mm.CustomAngleForce("k * (theta - theta_0)^2")
         angle_restraint.addPerAngleParameter("k")
         angle_restraint.addPerAngleParameter("theta_0")
 
-        log.debug(
+        logger.debug(
             "Setting an angle restraint in degrees using a "
             "force constant in kcal per mol rad**2..."
         )
@@ -962,18 +963,18 @@ def setup_openmm_restraints(system, restraint, phase, window):
             and restraint.group3 is not False
             and restraint.group4 is not False
         ):
-            log.error("Unable to add a group dihedral restraint...")
-            log.debug("restraint.index1 = {}".format(restraint.index1))
-            log.debug("restraint.index2 = {}".format(restraint.index2))
-            log.debug("restraint.index3 = {}".format(restraint.index3))
-            log.debug("restraint.index4 = {}".format(restraint.index4))
+            logger.error("Unable to add a group dihedral restraint...")
+            logger.debug("restraint.index1 = {}".format(restraint.index1))
+            logger.debug("restraint.index2 = {}".format(restraint.index2))
+            logger.debug("restraint.index3 = {}".format(restraint.index3))
+            logger.debug("restraint.index4 = {}".format(restraint.index4))
             raise Exception("Unable to add a group dihedral restraint...")
 
         dihedral_restraint = mm.CustomTorsionForce("k * (theta - theta_0)^2")
         dihedral_restraint.addPerTorsionParameter("k")
         dihedral_restraint.addPerTorsionParameter("theta_0")
 
-        log.debug(
+        logger.debug(
             "Setting a torsion restraint in degrees using a "
             "force constant in kcal per mol rad**2..."
         )
@@ -1004,7 +1005,7 @@ def clean_restraints_file(restraints, filename="restraints.in"):
     restraints : object
     """
 
-    log.warning("`clean_restraints_file()` needs to be tested.")
+    logger.warning("`clean_restraints_file()` needs to be tested.")
     for restraint in restraints:
         for window, _ in enumerate(restraint.phase["attach"]["force_constants"]):
             directory = "./windows/a{0:03d}".format(window)

@@ -1,13 +1,13 @@
-import logging as log
-
+import logging
 import numpy as np
-from paprika.restraints import *
+from paprika.restraints import DAT_restraint
 
 import simtk.openmm as mm
 import simtk.openmm.app as app
 import simtk.unit as unit
 from mdtraj.reporters import NetCDFReporter
 
+logger = logging.getLogger(__name__)
 
 class OpenMM_GB_simulation:
     """Setup and run a GB simulation in OpenMM."""
@@ -91,7 +91,7 @@ class OpenMM_GB_simulation:
         if seed is not None:
             self.integrator.setRandomNumberSeed(seed)
         try:
-            log.debug(
+            logger.debug(
                 "Integrator random number seed: {}".format(
                     self.integrator.getRandomNumberSeed()
                 )
@@ -138,12 +138,12 @@ class OpenMM_GB_simulation:
 
         """
         platform = mm.Platform.getPlatformByName(settings["platform"])
-        log.debug("Platform: {}".format(settings["platform"]))
+        logger.debug("Platform: {}".format(settings["platform"]))
         if settings["platform"] == "CUDA":
             properties = dict(
                 CudaPrecision=settings["precision"], CudaDeviceIndex=settings["devices"]
             )
-            log.debug(properties)
+            logger.debug(properties)
         else:
             properties = None
 
@@ -167,7 +167,7 @@ class OpenMM_GB_simulation:
         """
         # Phase 1: minimize with nonbonded interactions disabled.
         # This is the first 40% of the maximum iterations.
-        log.debug(
+        logger.debug(
             "Minimization phase 1 for {} steps.".format(
                 int(0.4 * self.min["max_iterations"])
             )
@@ -180,7 +180,7 @@ class OpenMM_GB_simulation:
         # This is the next 40% of the maximum iterations.
         # This increases the nonbonded interactions linearly, which is not
         # the same as using `IINC` in AMBER.
-        log.debug(
+        logger.debug(
             "Minimization phase 2 for {} steps.".format(
                 int(0.4 * self.min["max_iterations"])
             )
@@ -199,7 +199,7 @@ class OpenMM_GB_simulation:
             )
         # Phase 3: minimize with nonbonded interactions at full strength.
         # This is the last 20% of the maximum iterations.
-        log.debug(
+        logger.debug(
             "Minimization phase 3 for {} steps.".format(
                 int(0.2 * self.min["max_iterations"])
             )
@@ -235,9 +235,9 @@ class OpenMM_GB_simulation:
 
         """
         for i, restraint in enumerate(restraints):
-            # log.debug(system.getForces())
+            # logger.debug(system.getForces())
             system = setup_openmm_restraints(system, restraint, phase, window)
-            # log.debug(system.getForces())
+            # logger.debug(system.getForces())
 
         return system
 
@@ -246,7 +246,7 @@ class OpenMM_GB_simulation:
         Minimize with OpenMM.
         """
 
-        log.info("Running OpenMM minimization...")
+        logger.info("Running OpenMM minimization...")
 
         if self.min["soft"]:
             simulation = self.turn_on_interactions_slowly(system, simulation)
@@ -275,7 +275,7 @@ class OpenMM_GB_simulation:
         if self.md["minimized_coordinates"]:
             simulation.context.setPositions(self.md["minimized_coordinates"])
         if seed is not None:
-            log.debug("Velocity random number seed: {}".format(seed))
+            logger.debug("Velocity random number seed: {}".format(seed))
             simulation.context.setVelocitiesToTemperature(
                 self.md["temperature"] * unit.kelvin, seed
             )
@@ -301,9 +301,9 @@ class OpenMM_GB_simulation:
                 )
             )
 
-        log.info("Running OpenMM MD...")
+        logger.info("Running OpenMM MD...")
         simulation.step(self.md["steps"])
-        log.info("MD completed.")
+        logger.info("MD completed.")
 
         if save:
             reporter.close()

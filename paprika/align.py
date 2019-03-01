@@ -1,7 +1,8 @@
+import logging
 import parmed as pmd
-import logging as log
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 def zalign(structure, mask1, mask2, save=False, filename=None):
     """Align the mask1 -- mask2 vector to the z axis.
@@ -37,10 +38,10 @@ def zalign(structure, mask1, mask2, save=False, filename=None):
         np.asarray(mask2_coordinates), np.asarray(mask2_masses)
     )
 
-    log.info(
+    logger.info(
         "Moving {} ({} atoms) to the origin...".format(mask1, len(mask1_coordinates))
     )
-    log.info(
+    logger.info(
         "Aligning {} ({} atoms) with the z axis...".format(
             mask2, len(mask2_coordinates)
         )
@@ -79,9 +80,9 @@ def zalign(structure, mask1, mask2, save=False, filename=None):
 
     if save:
         if not filename:
-            log.warning("Unable to save aligned coordinates (no filename provided)...")
+            logger.warning("Unable to save aligned coordinates (no filename provided)...")
         else:
-            log.info("Saved aligned coordinates to {}".format(filename))
+            logger.info("Saved aligned coordinates to {}".format(filename))
             # This seems to write out HETATM in place of ATOM
             # We should offer the option of writing a mol2 file, directly.
             structure.write_pdb(filename)
@@ -217,7 +218,7 @@ def offset_structure(structure, offset):
     
     Returns
     -------
-    parmed.Structure
+    :py:class:`parmed.Structure`
         Coordinates of the structure offset by the given amount.
     """
 
@@ -225,5 +226,5 @@ def offset_structure(structure, offset):
     for atom in range(len(structure.atoms)):
         offset_coords[atom] = structure.coordinates[atom] + offset
     structure.coordinates = offset_coords
-    log.info("Added offset of {} to atomic coordinates...".format(offset))
+    logger.info("Added offset of {} to atomic coordinates...".format(offset))
     return structure

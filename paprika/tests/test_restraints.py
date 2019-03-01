@@ -3,13 +3,15 @@ Tests the restraints utilities.
 """
 
 import pytest
+import logging
 
+logger = logging.getLogger(__name__)
 from paprika.restraints import *
 
 
 def test_DAT_restraint():
     # Method 1
-    log.info("### Testing restraint 1, Method 1")
+    logger.info("### Testing restraint 1, Method 1")
     rest1 = DAT_restraint()
     rest1.amber_index = True
     rest1.continuous_apr = False
@@ -65,7 +67,7 @@ def test_DAT_restraint():
     ]
 
     # Method 1a
-    log.info("### Testing restraint 2, Method 1a")
+    logger.info("### Testing restraint 2, Method 1a")
     rest2 = DAT_restraint()
     rest2.amber_index = True
     rest2.continuous_apr = False
@@ -123,7 +125,7 @@ def test_DAT_restraint():
     ]
 
     # Method 2 (Note auto_apr = True)
-    log.info("### Testing restraint 3, Method 2")
+    logger.info("### Testing restraint 3, Method 2")
     rest3 = DAT_restraint()
     rest3.amber_index = True
     rest3.continuous_apr = False
@@ -180,7 +182,7 @@ def test_DAT_restraint():
     ]
 
     # Method 2a
-    log.info("### Testing restraint 4, Method 2a")
+    logger.info("### Testing restraint 4, Method 2a")
     rest4 = DAT_restraint()
     rest4.amber_index = True
     rest4.continuous_apr = False
@@ -235,7 +237,7 @@ def test_DAT_restraint():
     ]
 
     # Method 3
-    log.info("### Testing restraint 5, Method 3")
+    logger.info("### Testing restraint 5, Method 3")
     rest5 = DAT_restraint()
     rest5.amber_index = True
     rest5.continuous_apr = False
@@ -287,7 +289,7 @@ def test_DAT_restraint():
     ]
 
     # Method 4
-    log.info("### Testing restraint 6, Method 4")
+    logger.info("### Testing restraint 6, Method 4")
     rest6 = DAT_restraint()
     rest6.amber_index = True
     rest6.continuous_apr = False
@@ -344,7 +346,7 @@ def test_DAT_restraint():
     ]
 
     # Method 5 (Note continuous_apr = True)
-    log.info("### Testing restraint 7, Method 5")
+    logger.info("### Testing restraint 7, Method 5")
     rest7 = DAT_restraint()
     rest7.amber_index = True
     rest7.continuous_apr = True
@@ -392,7 +394,7 @@ def test_DAT_restraint():
     ]
 
     # Just Attach
-    log.info("### Testing restraint 8, just attach")
+    logger.info("### Testing restraint 8, just attach")
     rest8 = DAT_restraint()
     rest8.amber_index = True
     rest8.continuous_apr = False
@@ -421,7 +423,7 @@ def test_DAT_restraint():
     assert window_list == ["a000", "a001", "a002", "a003"]
 
     # Just Pull
-    log.info("### Testing restraint 9, just pull")
+    logger.info("### Testing restraint 9, just pull")
     rest9 = DAT_restraint()
     rest9.amber_index = True
     rest9.continuous_apr = False
@@ -450,7 +452,7 @@ def test_DAT_restraint():
     assert window_list == ["p000", "p001", "p002", "p003"]
 
     # Just Release
-    log.info("### Testing restraint 10, just release")
+    logger.info("### Testing restraint 10, just release")
     rest10 = DAT_restraint()
     rest10.amber_index = True
     rest10.continuous_apr = False
