@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from paprika.restraints import *
+from paprika.restraints import DAT_restraint
 
 import simtk.openmm as mm
 import simtk.openmm.app as app

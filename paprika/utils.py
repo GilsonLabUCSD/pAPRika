@@ -6,17 +6,6 @@ from parmed.structure import Structure as ParmedStructureClass
 import pytraj as pt
 from datetime import datetime
 
-global HAS_OPENMM
-try:
-    import simtk.unit as unit
-
-    logger.debug("OpenMM support: Yes")
-    HAS_OPENMM = True
-except ImportError:
-    logger.debug("OpenMM support: No")
-    HAS_OPENMM = False
-
-
 logger = logging.getLogger(__name__)
 
 def return_parmed_structure(filename):
