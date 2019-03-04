@@ -2,12 +2,12 @@
 Tests basic OpenMM simulations.
 """
 
-from paprika.restraints import *
-from paprika.tests import addons
-from paprika.openmm import *
+import os
 
 import pytest
-import os
+from paprika.openmm import *
+from paprika.restraints import *
+from paprika.tests import addons
 
 
 @addons.using_openmm
@@ -16,9 +16,13 @@ def test_minimization_finishes():
     """ Test that we can minimize CB6-BUT with OpenMM. """
 
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.topo")
+    my_simulation.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/vac.topo"
+    )
     my_simulation.min["platform"] = "Reference"
-    my_simulation.min["coordinates"] = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.crds")
+    my_simulation.min["coordinates"] = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/vac.crds"
+    )
 
     system = my_simulation.setup_system(my_simulation.min)
     simulation = my_simulation.setup_simulation(system, my_simulation.min)
@@ -35,9 +39,13 @@ def test_soft_minimization():
     """ Test that we can minimize CB6-BUT with OpenMM, turning on interactions slowly. """
 
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.topo")
+    my_simulation.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/vac.topo"
+    )
     my_simulation.min["platform"] = "Reference"
-    my_simulation.min["coordinates"] = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.crds")
+    my_simulation.min["coordinates"] = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/vac.crds"
+    )
     my_simulation.min["max_iterations"] = 100
 
     system = my_simulation.setup_system(my_simulation.min)
@@ -54,9 +62,13 @@ def test_soft_minimization():
 def test_openmm_single_restraint():
     """ Test that we can impose restraints with OpenMM. """
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.topo")
+    my_simulation.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/vac.topo"
+    )
     my_simulation.md["platform"] = "Reference"
-    my_simulation.md["coordinates"] = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.crds")
+    my_simulation.md["coordinates"] = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/vac.crds"
+    )
     my_simulation.md["steps"] = 1000
 
     system = my_simulation.setup_system(my_simulation.md)
@@ -78,7 +90,7 @@ def test_openmm_single_restraint():
 
     result = my_simulation.run_md(simulation, save=False)
     state = result.context.getState(getEnergy=True)
-    energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
+    state.getPotentialEnergy() / unit.kilocalories_per_mole
     # np.testing.assert_almost_equal(energy, -709.6, decimal=1)
 
 
@@ -87,9 +99,13 @@ def test_openmm_single_restraint():
 def test_openmm_two_restraints():
     """ Test that we can impose restraints with OpenMM. """
     my_simulation = OpenMM_GB_simulation()
-    my_simulation.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.topo")
+    my_simulation.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/vac.topo"
+    )
     my_simulation.md["platform"] = "Reference"
-    my_simulation.md["coordinates"] = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.crds")
+    my_simulation.md["coordinates"] = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/vac.crds"
+    )
     my_simulation.md["steps"] = 1000
 
     system = my_simulation.setup_system(my_simulation.md)
@@ -124,9 +140,9 @@ def test_openmm_two_restraints():
 
     result = my_simulation.run_md(simulation, save=True)
     state = result.context.getState(getEnergy=True)
-    energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
+    state.getPotentialEnergy() / unit.kilocalories_per_mole
 
-    energies = utils.decompose_openmm_energy(result)
+    utils.decompose_openmm_energy(result)
 
     # np.testing.assert_almost_equal(energy, -709.6, decimal=1)
     # np.testing.assert_almost_equal(energies['total'], -709.6, decimal=1)

@@ -1,7 +1,8 @@
-import logging
-import os
 import base64
 import json
+import logging
+import os
+
 import numpy as np
 import parmed as pmd
 from paprika.restraints import DAT_restraint
@@ -60,7 +61,6 @@ class NumpyEncoder(json.JSONEncoder):
         elif isinstance(obj, (np.ndarray,)):
             return obj.tolist()
 
-
         # Let the base class default method raise the TypeError
         # return json.JSONEncoder(self, obj)
         return super(NumpyEncoder, self).default(obj)
@@ -104,8 +104,7 @@ def load_restraints(filepath="restraints.json"):
             logger.debug("Setting topology from file name.")
             tmp.topology = pmd.load_file(loaded["topology"], structure=True)
         except IOError:
-            logger.debug(
-                "Unable to set topology information after loading from JSON.")
+            logger.debug("Unable to set topology information after loading from JSON.")
             logger.debug("Topology is set to the file name of the topology file.")
             tmp.topology = loaded["topology"]
         restraints.append(tmp)

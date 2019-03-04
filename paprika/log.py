@@ -1,7 +1,9 @@
 import logging
 import os
+
 # This is modeled after YANK's nice logging facility.
 # https://github.com/choderalab/yank/blob/4dfcc8e127c51c20180fe6caeb49fcb1f21730c6/Yank/utils.py#L78
+
 
 def config_root_logger(verbose, log_file_path=None):
     """
@@ -37,15 +39,16 @@ def config_root_logger(verbose, log_file_path=None):
 
         # This is the cleanest way I found to make the code compatible with both
         # Python 2 and Python 3
-        simple_fmt = logging.Formatter('%(asctime)-15s: %(message)s')
-        default_fmt = logging.Formatter('%(asctime)-15s: %(levelname)s - %(name)s - %(message)s')
+        simple_fmt = logging.Formatter("%(asctime)-15s: %(message)s")
+        default_fmt = logging.Formatter(
+            "%(asctime)-15s: %(levelname)s - %(name)s - %(message)s"
+        )
 
         def format(self, record):
             if record.levelno <= logging.INFO:
                 return self.simple_fmt.format(record)
             else:
                 return self.default_fmt.format(record)
-
 
     # Add handler for stdout and stderr messages
     terminal_handler = logging.StreamHandler()
@@ -57,7 +60,7 @@ def config_root_logger(verbose, log_file_path=None):
     logging.root.addHandler(terminal_handler)
 
     # Add file handler to root logger
-    file_format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+    file_format = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
     if log_file_path is not None:
         file_handler = logging.FileHandler(log_file_path)
         file_handler.setLevel(logging.DEBUG)

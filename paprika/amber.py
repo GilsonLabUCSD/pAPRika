@@ -1,7 +1,7 @@
 import logging
+import os
 import subprocess as sp
 from collections import OrderedDict
-import os
 
 logger = logging.getLogger(__name__)
 

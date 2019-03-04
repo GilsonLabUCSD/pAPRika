@@ -1,6 +1,7 @@
 import logging
-import numpy as np
 import os as os
+
+import numpy as np
 import parmed as pmd
 import pytraj as pt
 from paprika import utils
@@ -12,6 +13,7 @@ except ImportError:
     pass
 
 logger = logging.getLogger(__name__)
+
 
 class DAT_restraint(object):
     """

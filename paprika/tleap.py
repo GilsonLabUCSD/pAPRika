@@ -1,7 +1,8 @@
+import logging
 import os as os
 import re as re
 import subprocess as sp
-import logging
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -199,7 +200,7 @@ class System(object):
         if not os.path.exists(os.path.dirname(file_path)):
             try:
                 os.makedirs(os.path.dirname(file_path))
-            except OSError as e:
+            except OSError:
                 raise
 
         with open(file_path, "w") as f:
@@ -344,7 +345,7 @@ class System(object):
         # to the target_waters. This will control when we can start manually deleting
         # waters rather than adjusting the buffer_value.
         if self.manual_switch_thresh is None:
-            self.manual_switch_thresh = int(np.ceil(self.target_waters ** (1. / 3.)))
+            self.manual_switch_thresh = int(np.ceil(self.target_waters ** (1.0 / 3.0)))
             if self.manual_switch_thresh < 12:
                 self.manual_switch_thresh = 12
             logger.debug(

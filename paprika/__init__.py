@@ -8,13 +8,16 @@ from __future__ import absolute_import
 
 # Add imports here
 import logging
-logger = logging.getLogger(__name__)
+
 from paprika import log
-log.config_root_logger(verbose=False)
 
 # Handle versioneer
 from ._version import get_versions
+
+logger = logging.getLogger(__name__)
+log.config_root_logger(verbose=False)
+
 versions = get_versions()
-__version__ = versions['version']
-__git_revision__ = versions['full-revisionid']
+__version__ = versions["version"]
+__git_revision__ = versions["full-revisionid"]
 del get_versions, versions

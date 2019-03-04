@@ -1,13 +1,14 @@
 import logging
-import numpy as np
-from paprika.restraints import DAT_restraint
 
+import numpy as np
 import simtk.openmm as mm
 import simtk.openmm.app as app
 import simtk.unit as unit
 from mdtraj.reporters import NetCDFReporter
+from paprika.restraints import DAT_restraint
 
 logger = logging.getLogger(__name__)
+
 
 class OpenMM_GB_simulation:
     """Setup and run a GB simulation in OpenMM."""
