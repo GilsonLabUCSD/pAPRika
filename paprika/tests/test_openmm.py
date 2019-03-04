@@ -78,7 +78,7 @@ def test_openmm_single_restraint():
 
     result = my_simulation.run_md(simulation, save=False)
     state = result.context.getState(getEnergy=True)
-    energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
+    state.getPotentialEnergy() / unit.kilocalories_per_mole
     # np.testing.assert_almost_equal(energy, -709.6, decimal=1)
 
 
@@ -124,9 +124,9 @@ def test_openmm_two_restraints():
 
     result = my_simulation.run_md(simulation, save=True)
     state = result.context.getState(getEnergy=True)
-    energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
+    state.getPotentialEnergy() / unit.kilocalories_per_mole
 
-    energies = utils.decompose_openmm_energy(result)
+    utils.decompose_openmm_energy(result)
 
     # np.testing.assert_almost_equal(energy, -709.6, decimal=1)
     # np.testing.assert_almost_equal(energies['total'], -709.6, decimal=1)

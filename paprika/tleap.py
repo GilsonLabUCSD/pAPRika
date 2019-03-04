@@ -200,7 +200,7 @@ class System(object):
         if not os.path.exists(os.path.dirname(file_path)):
             try:
                 os.makedirs(os.path.dirname(file_path))
-            except OSError as e:
+            except OSError:
                 raise
 
         with open(file_path, "w") as f:
