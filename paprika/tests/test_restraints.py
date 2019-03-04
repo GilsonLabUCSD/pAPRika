@@ -2,11 +2,12 @@
 Tests the restraints utilities.
 """
 
-import pytest
 import logging
 
-logger = logging.getLogger(__name__)
+import pytest
 from paprika.restraints import *
+
+logger = logging.getLogger(__name__)
 
 
 def test_DAT_restraint():

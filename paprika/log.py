@@ -1,5 +1,6 @@
 import logging
 import os
+
 # This is modeled after YANK's nice logging facility.
 # https://github.com/choderalab/yank/blob/4dfcc8e127c51c20180fe6caeb49fcb1f21730c6/Yank/utils.py#L78
 

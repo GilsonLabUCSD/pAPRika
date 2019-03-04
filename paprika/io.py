@@ -1,7 +1,8 @@
-import logging
-import os
 import base64
 import json
+import logging
+import os
+
 import numpy as np
 import parmed as pmd
 from paprika.restraints import DAT_restraint

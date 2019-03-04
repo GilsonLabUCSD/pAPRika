@@ -2,19 +2,19 @@
 Tests tleap tools.
 """
 
-import numpy as np
+import filecmp
 import logging
-import subprocess as sp
+import os
 import random as random
-import parmed as pmd
 import shutil
+import subprocess as sp
 
+import numpy as np
+import parmed as pmd
+import pytest
 from paprika.align import *
 from paprika.dummy import *
 from paprika.tleap import *
-import os
-import filecmp
-import pytest
 
 logger = logging.getLogger(__name__)
 

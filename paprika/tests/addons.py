@@ -3,8 +3,9 @@ Decorators and wrappers for testing.
 """
 
 import pkgutil
-import pytest
 import shutil
+
+import pytest
 
 
 def _plugin_import(plug):

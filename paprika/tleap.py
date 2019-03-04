@@ -1,7 +1,8 @@
+import logging
 import os as os
 import re as re
 import subprocess as sp
-import logging
+
 import numpy as np
 
 logger = logging.getLogger(__name__)

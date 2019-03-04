@@ -4,14 +4,9 @@ import shutil
 
 import numpy as np
 import parmed as pmd
-
-from paprika import amber
-from paprika import restraints
-from paprika import tleap
-from paprika import align
-from paprika.tests import addons
-
 import pytest
+from paprika import align, amber, restraints, tleap
+from paprika.tests import addons
 
 
 @pytest.fixture(scope="function", autouse=True)

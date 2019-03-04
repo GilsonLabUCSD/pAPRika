@@ -1,6 +1,7 @@
 import logging
-import parmed as pmd
+
 import numpy as np
+import parmed as pmd
 
 logger = logging.getLogger(__name__)
 

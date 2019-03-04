@@ -1,10 +1,11 @@
 import logging
 import os as os
 import shutil
-import parmed as pmd
-from parmed.structure import Structure as ParmedStructureClass
-import pytraj as pt
 from datetime import datetime
+
+import parmed as pmd
+import pytraj as pt
+from parmed.structure import Structure as ParmedStructureClass
 
 logger = logging.getLogger(__name__)
 

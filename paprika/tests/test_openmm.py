@@ -2,12 +2,12 @@
 Tests basic OpenMM simulations.
 """
 
-from paprika.restraints import *
-from paprika.tests import addons
-from paprika.openmm import *
+import os
 
 import pytest
-import os
+from paprika.openmm import *
+from paprika.restraints import *
+from paprika.tests import addons
 
 
 @addons.using_openmm

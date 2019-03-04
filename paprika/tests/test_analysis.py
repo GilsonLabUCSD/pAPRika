@@ -1,14 +1,11 @@
-import parmed as pmd
-import numpy as np
 import os
 import shutil
 
-from paprika import restraints
-from paprika import analysis
-
-from paprika.tests import addons
-
+import numpy as np
+import parmed as pmd
 import pytest
+from paprika import analysis, restraints
+from paprika.tests import addons
 
 
 @pytest.fixture(scope="function", autouse=True)

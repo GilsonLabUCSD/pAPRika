@@ -1,9 +1,10 @@
 import logging
 import os as os
 from itertools import compress
+
 import numpy as np
-import pytraj as pt
 import pymbar
+import pytraj as pt
 from scipy.interpolate import Akima1DInterpolator
 
 logger = logging.getLogger(__name__)

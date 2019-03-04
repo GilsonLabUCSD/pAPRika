@@ -1,8 +1,8 @@
 import os as os
 
 import parmed as pmd
-from parmed.structure import Structure as ParmedStructureClass
 from paprika import utils
+from parmed.structure import Structure as ParmedStructureClass
 
 
 def add_dummy(
