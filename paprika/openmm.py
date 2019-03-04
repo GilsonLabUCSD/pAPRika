@@ -9,6 +9,7 @@ from paprika.restraints import DAT_restraint
 
 logger = logging.getLogger(__name__)
 
+
 class OpenMM_GB_simulation:
     """Setup and run a GB simulation in OpenMM."""
 

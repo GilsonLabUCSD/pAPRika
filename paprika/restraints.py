@@ -14,6 +14,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+
 class DAT_restraint(object):
     """
     Distance or angle or torsion restraints on atoms in the simulation.

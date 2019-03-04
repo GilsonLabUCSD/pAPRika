@@ -5,6 +5,7 @@ import parmed as pmd
 
 logger = logging.getLogger(__name__)
 
+
 def zalign(structure, mask1, mask2, save=False, filename=None):
     """Align the mask1 -- mask2 vector to the z axis.
 
@@ -81,7 +82,9 @@ def zalign(structure, mask1, mask2, save=False, filename=None):
 
     if save:
         if not filename:
-            logger.warning("Unable to save aligned coordinates (no filename provided)...")
+            logger.warning(
+                "Unable to save aligned coordinates (no filename provided)..."
+            )
         else:
             logger.info("Saved aligned coordinates to {}".format(filename))
             # This seems to write out HETATM in place of ATOM

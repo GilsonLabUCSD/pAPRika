@@ -9,6 +9,7 @@ from scipy.interpolate import Akima1DInterpolator
 
 logger = logging.getLogger(__name__)
 
+
 class fe_calc(object):
     """
     Computes the free energy for an APR transformation. After calling `compute_free_energy()`, the
@@ -718,7 +719,9 @@ class fe_calc(object):
                 prepared_data = self.prepare_data(phase)
                 self.results[phase][method]["n_frames"] = np.sum(prepared_data[1])
 
-                logger.debug("Running {} analysis on {} phase ...".format(method, phase))
+                logger.debug(
+                    "Running {} analysis on {} phase ...".format(method, phase)
+                )
 
                 # Run the method
                 if method == "mbar-block":
@@ -1021,7 +1024,9 @@ def read_restraint_data(traj, restraint):
         and not restraint.mask3
         and not restraint.mask4
     ):
-        data = pt.distance(traj, " ".join([restraint.mask1, restraint.mask2]), image=True)
+        data = pt.distance(
+            traj, " ".join([restraint.mask1, restraint.mask2]), image=True
+        )
     elif (
         restraint.mask1 and restraint.mask2 and restraint.mask3 and not restraint.mask4
     ):

@@ -345,7 +345,7 @@ class System(object):
         # to the target_waters. This will control when we can start manually deleting
         # waters rather than adjusting the buffer_value.
         if self.manual_switch_thresh is None:
-            self.manual_switch_thresh = int(np.ceil(self.target_waters ** (1. / 3.)))
+            self.manual_switch_thresh = int(np.ceil(self.target_waters ** (1.0 / 3.0)))
             if self.manual_switch_thresh < 12:
                 self.manual_switch_thresh = 12
             logger.debug(

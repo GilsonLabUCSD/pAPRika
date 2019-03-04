@@ -9,6 +9,7 @@ from parmed.structure import Structure as ParmedStructureClass
 
 logger = logging.getLogger(__name__)
 
+
 def return_parmed_structure(filename):
     """
     Return structure object from file name.
