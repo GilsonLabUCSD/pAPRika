@@ -8,7 +8,7 @@ from paprika.align import *
 
 def test_center_mask():
     """ Test that the first mask is centered """
-    cb6 = pmd.load_file(os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb"))
+    cb6 = pmd.load_file(os.path.join(os.path.dirname(__file__), "../data/zz/vac.pdb"))
     aligned_cb6 = zalign(cb6, ":CB6", ":BUT")
     test_coordinates = check_coordinates(aligned_cb6, ":CB6")
     assert np.allclose(test_coordinates, np.zeros(3))

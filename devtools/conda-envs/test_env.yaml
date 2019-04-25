@@ -1,4 +1,4 @@
-name: test
+name: paprika-dev
 channels:
   - conda-forge
   - omnia
