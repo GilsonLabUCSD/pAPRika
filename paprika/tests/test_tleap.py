@@ -2,19 +2,19 @@
 Tests tleap tools.
 """
 
-import numpy as np
 import logging as log
-import subprocess as sp
+import os
 import random as random
-import parmed as pmd
 import shutil
+import subprocess as sp
+
+import numpy as np
+import parmed as pmd
+import pytest
 
 from paprika.align import *
 from paprika.dummy import *
 from paprika.tleap import *
-import os
-import filecmp
-import pytest
 
 
 @pytest.fixture
@@ -34,7 +34,9 @@ def test_solvation_simple(clean_files):
     waters = np.random.randint(100, 10000)
     log.debug("Trying {} waters with default settings...".format(waters))
     sys = System()
-    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
+    sys.template_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
+    )
     sys.output_path = "tmp"
     sys.target_waters = waters
     sys.output_prefix = "solvate"
@@ -51,9 +53,13 @@ def test_solvation_shapes(shape, clean_files):
     waters = np.random.randint(1000, 10000)
     log.debug("Trying {} waters in a truncated octahedron...".format(waters))
     sys = System()
-    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
+    sys.template_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
+    )
     sys.output_path = "tmp"
-    sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb")
+    sys.loadpdb_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb"
+    )
     sys.target_waters = waters
     sys.output_prefix = "solvate"
     sys.pbc_type = shape
@@ -71,9 +77,13 @@ def test_solvation_spatial_size(clean_files):
     random_size = random_int * np.random.random_sample(1) + random_int
     log.debug("Trying buffer size of {} A...".format(random_size[0]))
     sys = System()
-    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
+    sys.template_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
+    )
     sys.output_path = "tmp"
-    sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb")
+    sys.loadpdb_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb"
+    )
     sys.buffer_value = float(random_size[0])
     sys.output_prefix = "solvate"
     sys.pbc_type = "cubic"
@@ -90,9 +100,13 @@ def test_solvation_potassium_control(clean_files):
     waters = np.random.randint(1000, 10000)
     log.debug("Trying {} waters with potassium...".format(waters))
     sys = System()
-    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
+    sys.template_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
+    )
     sys.output_path = "tmp"
-    sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb")
+    sys.loadpdb_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb"
+    )
     sys.target_waters = waters
     sys.output_prefix = "solvate"
     sys.counter_cation = "K+"
@@ -115,9 +129,13 @@ def test_solvation_with_additional_ions(clean_files):
     random_anion = random.choice(anions)
     log.debug("Trying {} waters with additional ions...".format(waters))
     sys = System()
-    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
+    sys.template_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
+    )
     sys.output_path = "tmp"
-    sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb")
+    sys.loadpdb_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb"
+    )
     sys.target_waters = waters
     sys.output_prefix = "solvate"
     sys.neutralize = False
@@ -152,9 +170,13 @@ def test_solvation_by_M_and_m(clean_files):
     """ Test that we can solvate CB6-BUT through molarity and molality. """
     log.debug("Trying 10 A buffer with 150 mM NaCl...")
     sys = System()
-    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
+    sys.template_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
+    )
     sys.output_path = "tmp"
-    sys.loadpdb_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb")
+    sys.loadpdb_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb"
+    )
     sys.buffer_value = 10.0
     sys.output_prefix = "solvate"
     sys.neutralize = False
@@ -198,11 +220,17 @@ def test_solvation_by_M_and_m(clean_files):
 @pytest.mark.slow
 def test_alignment_workflow(clean_files):
     """ Test that we can solvate CB6-BUT after alignment. """
-    cb6 = pmd.load_file(os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"))
+    cb6 = pmd.load_file(
+        os.path.join(
+            os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+        )
+    )
     zalign(cb6, ":CB6", ":BUT", save=True, filename="./tmp/tmp.pdb")
     waters = np.random.randint(1000, 10000)
     sys = System()
-    sys.template_file = os.path.join(os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in")
+    sys.template_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
+    )
     sys.output_path = "tmp"
     sys.loadpdb_file = "tmp.pdb"
     sys.target_waters = waters
@@ -219,12 +247,17 @@ def test_add_dummy(clean_files):
     """ Test that dummy atoms get added correctly """
     temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
     host_guest = pmd.load_file(
-        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"), structure=True
+        os.path.join(
+            os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+        ),
+        structure=True,
     )
     host_guest = zalign(host_guest, ":BUT@C", ":BUT@C3", save=False)
     host_guest = add_dummy(host_guest, residue_name="DM1", z=-11.000, y=2.000, x=-1.500)
 
-    host_guest.write_pdb(os.path.join(temporary_directory, "cb6-but-dum.pdb"), renumber=False)
+    host_guest.write_pdb(
+        os.path.join(temporary_directory, "cb6-but-dum.pdb"), renumber=False
+    )
     with open(os.path.join(temporary_directory, "cb6-but-dum.pdb"), "r") as f:
         lines = f.readlines()
         test_line1 = lines[123].rstrip()
@@ -239,11 +272,18 @@ def test_add_dummy(clean_files):
     write_dummy_frcmod(path=temporary_directory)
     write_dummy_mol2(path=temporary_directory, filename="dm1.mol2", residue_name="DM1")
     sys = System()
-    cb6_frcmod = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.frcmod"))
-    cb6_mol2 = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.mol2"))
-    but_frcmod = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.frcmod"))
-    but_mol2 = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.mol2"))
-
+    cb6_frcmod = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.frcmod")
+    )
+    cb6_mol2 = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.mol2")
+    )
+    but_frcmod = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.frcmod")
+    )
+    but_mol2 = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.mol2")
+    )
 
     sys.template_lines = [
         "source leaprc.gaff",
@@ -260,7 +300,10 @@ def test_add_dummy(clean_files):
     sys.pbc_type = None
     sys.neutralize = False
     sys.build()
-    with open(os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"), "r") as f:
+    with open(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"),
+        "r",
+    ) as f:
         contents = f.read()
         reference = [float(i) for i in contents.split()[2:]]
 

@@ -3,7 +3,9 @@ Tests the alignment of residues to the z axis.
 """
 
 import os
+
 import pytest
+
 from paprika.align import *
 
 

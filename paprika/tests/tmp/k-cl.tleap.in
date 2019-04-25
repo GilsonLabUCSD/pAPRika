@@ -1,8 +1,0 @@
-source leaprc.water.tip3p
-loadamberparams frcmod.ionsjc_tip3p
-model = loadpdb /home/dslochower/hgst-3tb-data/projects/pAPRika/paprika/data/k-cl/k-cl.pdb
-# Skipping solvation ...
-savepdb model k-cl.pdb
-saveamberparm model k-cl.prmtop k-cl.rst7
-desc model
-quit
