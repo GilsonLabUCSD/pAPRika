@@ -2,11 +2,10 @@
 Unit and regression test for the paprika package.
 """
 
-import sys
-
 # Import package, test suite, and other packages as needed
 import paprika
 import pytest
+import sys
 
 
 def test_paprika_imported():

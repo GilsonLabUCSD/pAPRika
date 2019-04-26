@@ -115,3 +115,49 @@ def strip_prmtop(prmtop, mask=":WAT,:Na+,:Cl-"):
     # stripped.save(filename=stripped_name)
     # logger.debug('Stripping {} from parameter file and writing {}...'.format(mask, stripped_name))
     return stripped
+
+
+def parse_mden(file):
+    """
+    Return energies from an AMBER `mden` file.
+
+    Parameters
+    ----------
+    file : {str} or file path
+        `mden` file
+
+    Returns
+    -------
+    energies : {dict}
+        A dictionary containing VDW, electrostatic, bond, angle, dihedral, V14, E14, and total energy.
+
+    """
+
+    vdw, ele, bnd, ang, dih, v14, e14 = [], [], [], [], [], [], []
+
+    with open(file, "r") as f:
+        for line in f.readlines()[10:]:
+            words = line.rstrip().split()
+            if words[0] == "L6":
+                vdw.append(float(words[3]))
+                ele.append(float(words[4]))
+            elif words[0] == "L7":
+                bnd.append(float(words[2]))
+                ang.append(float(words[3]))
+                dih.append(float(words[4]))
+            elif words[0] == "L8":
+                v14.append(float(words[1]))
+                e14.append(float(words[2]))
+
+    energies = {
+        "Bond": bnd,
+        "Angle": ang,
+        "Dihedral": dih,
+        "V14": v14,
+        "E14": e14,
+        "VDW": vdw,
+        "Ele": ele,
+        "Total": [sum(x) for x in zip(bnd, ang, dih, v14, e14, vdw, ele)],
+    }
+
+    return energies

@@ -4,11 +4,10 @@ Test that we can save and load restraints as JSON.
 
 import os
 import shutil
-
 import paprika
-import pytest
-from paprika.io import *
 from paprika.restraints import *
+from paprika.io import *
+import pytest
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -28,9 +27,7 @@ def test_save_and_load_single_restraint(clean_files):
     rest.amber_index = True
     rest.continuous_apr = False
     rest.auto_apr = False
-    rest.topology = os.path.join(
-        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
-    )
+    rest.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
     rest.mask2 = ":BUT@C3"
     rest.attach["target"] = 3.0
@@ -57,9 +54,7 @@ def test_save_and_load_list_restraint(clean_files):
     rest1.amber_index = True
     rest1.continuous_apr = False
     rest1.auto_apr = False
-    rest1.topology = os.path.join(
-        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
-    )
+    rest1.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest1.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
     rest1.mask2 = ":BUT@C3"
     rest1.attach["target"] = 3.0
@@ -80,9 +75,7 @@ def test_save_and_load_list_restraint(clean_files):
     rest2.amber_index = True
     rest2.continuous_apr = False
     rest2.auto_apr = False
-    rest2.topology = os.path.join(
-        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
-    )
+    rest2.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
     rest2.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
     rest2.mask2 = ":BUT@C3"
     rest2.mask3 = ":BUT@C"

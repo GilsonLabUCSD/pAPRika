@@ -1,14 +1,12 @@
+import logging as log
+import os
 import base64
 import json
-import logging
-import os
-
 import numpy as np
 import parmed as pmd
 from paprika.restraints import DAT_restraint
 from parmed.amber import AmberParm
 
-logger = logging.getLogger(__name__)
 
 # https://stackoverflow.com/questions/27909658/json-encoder-and-decoder-for-complex-numpy-arrays
 # https://stackoverflow.com/a/24375113/901925
@@ -61,6 +59,7 @@ class NumpyEncoder(json.JSONEncoder):
         elif isinstance(obj, (np.ndarray,)):
             return obj.tolist()
 
+
         # Let the base class default method raise the TypeError
         # return json.JSONEncoder(self, obj)
         return super(NumpyEncoder, self).default(obj)
@@ -80,7 +79,7 @@ def json_numpy_obj_hook(dct):
 
 
 def save_restraints(restraint_list, filepath="restraints.json"):
-    logger.debug("Saving restraint information as JSON.")
+    log.debug("Saving restraint information as JSON.")
     with open(os.path.join(filepath), "w") as f:
         for restraint in restraint_list:
             dumped = json.dumps(restraint.__dict__, cls=NumpyEncoder)
@@ -89,7 +88,7 @@ def save_restraints(restraint_list, filepath="restraints.json"):
 
 
 def load_restraints(filepath="restraints.json"):
-    logger.debug("Loading restraint information from JSON.")
+    log.debug("Loading restraint information from JSON.")
     with open(os.path.join(filepath), "r") as f:
         json_data = f.read()
     restraint_json = json_data.split("\n")
@@ -101,11 +100,12 @@ def load_restraints(filepath="restraints.json"):
         tmp = DAT_restraint()
         tmp.__dict__ = loaded
         try:
-            logger.debug("Setting topology from file name.")
+            log.debug("Setting topology from file name.")
             tmp.topology = pmd.load_file(loaded["topology"], structure=True)
         except IOError:
-            logger.debug("Unable to set topology information after loading from JSON.")
-            logger.debug("Topology is set to the file name of the topology file.")
+            log.debug(
+                "Unable to set topology information after loading from JSON.")
+            log.debug("Topology is set to the file name of the topology file.")
             tmp.topology = loaded["topology"]
         restraints.append(tmp)
     return restraints

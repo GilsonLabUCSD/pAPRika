@@ -141,51 +141,6 @@ def get_theta(structure, mask1, mask2, axis):
     return theta
 
 
-def rotate_about_z(structure, theta, save=False, filename=None):
-    """Rotate an entire coordinate system theta radians around the z axis.
-    
-    Parameters
-    ----------
-    structure : parmed.Structure
-        Molecular structure containing coordinates
-    theta : float
-        Rotation angle
-    save : bool, optional
-        Whether to save the coordinates (the default is False, which does nothing)
-    filename : str, optional
-        Filename for coordinates (the default is None, which does nothing)
-    
-    Returns
-    -------
-    parmed.Structure
-        Molecular structure with rotated coordinates.
-    """
-
-    R = np.array(
-        [
-            [np.cos(theta), -1 * np.sin(theta), 0],
-            [np.sin(theta), np.cos(theta), 0],
-            [0, 0, 1],
-        ]
-    )
-
-    rotated_coords = np.empty_like(structure.coordinates)
-    for atom in range(len(structure.atoms)):
-        rotated_coords[atom] = np.dot(R, structure.coordinates[atom])
-    structure.coordinates = rotated_coords
-
-    if save:
-        if not filename:
-            log.warning("Unable to save aligned coordinates (no filename provided)...")
-        else:
-            log.info("Saved aligned coordinates to {}".format(filename))
-            # This seems to write out HETATM in place of ATOM
-            # We should offer the option of writing a mol2 file, directly.
-            structure.write_pdb(filename)
-
-    return structure
-
-
 def check_coordinates(structure, mask):
     """Return the coordinates of an atom selection.
     
