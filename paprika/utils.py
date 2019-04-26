@@ -1,20 +1,13 @@
-import logging as log
+import logging
 import os as os
 import shutil
-import parmed as pmd
-from parmed.structure import Structure as ParmedStructureClass
-import pytraj as pt
 from datetime import datetime
 
-global HAS_OPENMM
-try:
-    import simtk.unit as unit
+import parmed as pmd
+import pytraj as pt
+from parmed.structure import Structure as ParmedStructureClass
 
-    log.debug("OpenMM support: Yes")
-    HAS_OPENMM = True
-except ImportError:
-    log.debug("OpenMM support: No")
-    HAS_OPENMM = False
+logger = logging.getLogger(__name__)
 
 
 def return_parmed_structure(filename):
@@ -25,9 +18,9 @@ def return_parmed_structure(filename):
     # .inpcrd/.prmtop files with the same function call.
     try:
         structure = pmd.load_file(filename)
-        log.info("Loaded {}...".format(filename))
+        logger.info("Loaded {}...".format(filename))
     except BaseException:
-        log.error("Unable to load file: {}".format(filename))
+        logger.error("Unable to load file: {}".format(filename))
     return structure
 
 
@@ -52,7 +45,7 @@ def index_from_mask(structure, mask, amber_index=False):
     indices = [
         i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()
     ]
-    log.debug("There are {} atoms in the mask {}  ...".format(len(indices), mask))
+    logger.debug("There are {} atoms in the mask {}  ...".format(len(indices), mask))
     return indices
 
 
@@ -120,7 +113,7 @@ def strip_prmtop(prmtop, mask=":WAT,:Na+,:Cl-"):
     stripped = pt.strip(mask, structure)
     # stripped_name = os.path.join(os.path.splitext(prmtop)[0], '-stripped', os.path.splitext(prmtop)[1])
     # stripped.save(filename=stripped_name)
-    # log.debug('Stripping {} from parameter file and writing {}...'.format(mask, stripped_name))
+    # logger.debug('Stripping {} from parameter file and writing {}...'.format(mask, stripped_name))
     return stripped
 
 
