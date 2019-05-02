@@ -5,7 +5,7 @@ Tests basic OpenMM simulations.
 import os
 
 import pytest
-from paprika.openmm import *
+# from paprika.openmm import *
 from paprika.restraints import *
 from paprika.tests import addons
 
