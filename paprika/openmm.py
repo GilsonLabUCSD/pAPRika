@@ -1,70 +1,106 @@
+import logging
+
 import simtk.openmm as mm
 import simtk.openmm.app as app
-import simtk.unit as unit
+from simtk import unit
 
-def parse_window(window):
-    """
-    Utility function to use a path to index a :class:`paprika.restraints.DAT_restraint` instance.
+from parmed.openmm.reporters import NetCDFReporter
 
-    Parameters
-    ----------
-    window : str
-        A string representation of a particular simulation window
+logger = logging.getLogger(__name__)
 
-    Returns
-    -------
-    window : int
-        The window number
-    phase : str
-        The calculation phase
 
-    """
-    if window[0] == "a":
-        phase = "attach"
-    elif window[0] == "p":
-        phase = "pull"
-    elif window[0] == "r":
-        phase = "release"
-    else:
-        raise Exception("Cannot determine the phase for this restraint.")
-    window = int(window[1:])
+class OpenMM_GB_simulation:
+    """Setup and run a GB simulation in OpenMM."""
 
-    return window, phase
+    def __init__(self):
 
-def add_restraint(restraint, window, system):
-    """
-    Apply a :class:`paprika.restraints.DAT_restraint` to an OpenMM System.
+        self.path = "./"
+        self.coordinates = None
+        self.topology = None
+        self.phase = None
+        self.window = None
 
-    Parameters
-    ----------
-    restraint : :class:`paprika.restraints.DAT_restraint`
-        Restraint to add to the System
-    window : str
-        Simulation window, which indexes the restraint
-    system : :class:`simtk.openmm.System`
-        OpenMM System object to be modified
+        self.min = dict(
+            coordinates=self.coordinates,
+            prefix="minimize",
+            forcefield=None,
+            platform="CUDA",
+            devices="1",
+            precision="mixed",
+            max_iterations=5000,
+            reporter_frequency=1000,
+            tolerance=1,
+            solvent=app.HCT,
+            salt=0.1 * unit.mole / unit.liter,
+            nonbonded_method=app.NoCutoff,
+            nonbonded_cutoff=None,
+            constraints=app.HBonds,
+            temperature=300 * unit.kelvin,
+            friction=1.0 / unit.picoseconds,
+            timestep=2.0 * unit.femtoseconds,
+            soft=False,
+        )
+        self.min["output"] = self.path + self.min["prefix"] + ".pdb"
 
-    Returns
-    -------
-    system  : :class:`simtk.openmm.System`
-        OpenMM System object with restraint added
+        self.md = dict(
+            coordinates=self.coordinates,
+            minimized_coordinates=None,
+            integrator=None,
+            prefix="md",
+            forcefield=None,
+            platform="CUDA",
+            devices="1",
+            precision="mixed",
+            reporter_frequency=1000,
+            solvent=app.HCT,
+            salt=0.1 * unit.mole / unit.liter,
+            nonbonded_method=app.NoCutoff,
+            nonbonded_cutoff=None,
+            constraints=app.HBonds,
+            temperature=300 * unit.kelvin,
+            friction=1.0 / unit.picoseconds,
+            timestep=2.0 * unit.femtoseconds,
+            steps=10000,
+        )
+        self.md["output"] = self.path + self.md["prefix"] + ".nc"
+        self.md["data"] = self.path + self.md["prefix"] + ".csv"
 
-    """
+        def setup_system(self, settings, seed=None):
+            """
+            Provide a way to create an OpenMM system object with minimization or MD settings.
+            Parameters
+            ----------
+            settings : dict
+                A dictionary containing simulation settings.
+            Returns
+            -------
+            simulation : simtk.openmm.app.Simulation
+                The simulation object.
+            system : simtk.openmm.System
+                The system object.
+            """
 
-    window, phase = parse_window(window)
+            prmtop = app.AmberPrmtopFile(self.topology)
+            app.AmberInpcrdFile(settings["coordinates"])
+            self.integrator = mm.LangevinIntegrator(
+                settings["temperature"], settings["friction"], settings["timestep"]
+            )
 
-    if restraint.index1 an
-
-    # Do we need special group handling code here?
-
-    bond_restraint = mm.CustomBondForce('k * (r - r_0)^2')
-    bond_restraint.addPerBondParameter('k')
-    bond_restraint.addPerBondParameter('r_0')
-
-    r_0 = restraint.phase[phase]["targets"][window] * unit.angstroms
-    k = restraint.phase[phase]["force_constants"][window] * unit.kilocalories_per_mole / unit.angstroms ** 2
-    # Make sure these are not called with `amber_index=True`.
-    bond_restraint.addBond(restraint.index1, restraint.index2, [k, r_0])
-    system.addForce(bond_restraint)
+            if seed is not None:
+                self.integrator.setRandomNumberSeed(seed)
+            try:
+                logger.debug(
+                    "Integrator random number seed: {}".format(
+                        self.integrator.getRandomNumberSeed()
+                    )
+                )
+            except AttributeError:
+                pass
+            system = prmtop.createSystem(
+                nonbondedMethod=settings["nonbonded_method"],
+                implicitSolvent=settings["solvent"],
+                implicitSolventSaltConc=settings["salt"],
+                constraints=settings["constraints"],
+            )
 
     return system
