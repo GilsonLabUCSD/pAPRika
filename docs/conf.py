@@ -173,4 +173,5 @@ intersphinx_mapping = {
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
     'mdtraj': ('http://mdtraj.org/latest/', None),
     'openforcefield': ('https://open-forcefield-toolkit.readthedocs.io/en/latest/', None),
+    'parmed': ('http://parmed.github.io/ParmEd/html/', None),
 }
