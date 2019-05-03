@@ -42,12 +42,15 @@ release = ''
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'sphinx.ext.napoleon',
 
 ]
+
+# Autodoc settings
+autosummary_generate = True
+autodoc_default_flags = ['members', 'inherited-members']
+autodoc_member_order = 'bysource' # preserve ordering in source
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -168,5 +171,6 @@ texinfo_documents = [
 intersphinx_mapping = {
     'python': ('https://docs.python.org/', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-    'parmed': ('https://parmed.github.io/ParmEd/', None)
+    'mdtraj': ('http://mdtraj.org/latest/', None),
+    'openforcefield': ('https://open-forcefield-toolkit.readthedocs.io/en/latest/', None),
 }
