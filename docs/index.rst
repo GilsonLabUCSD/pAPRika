@@ -3,18 +3,36 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to pAPRika's documentation!
-=========================================================
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-
-
-Indices and tables
+==================
+pAPRika
 ==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+pAPRika is a toolkit for setting up, running, and analyzing free energy molecular dynamics simulations.
+
+========
+
+Index
+-----
+
+
+**User Guide**
+
+* :doc:`install`
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: User Guide
+
+   install
+
+**Developer Documentation**
+
+* :doc:`api`
+
+.. toctree::
+  :maxdepth: 2
+  :hidden:
+  :caption: Developer Documentation
+
+  api

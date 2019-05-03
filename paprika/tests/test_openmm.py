@@ -5,6 +5,11 @@ Tests basic OpenMM simulations.
 import os
 
 import pytest
+import paprika
+
+# Skip these tests if you cannot import paprika.openmm.
+pytest.importorskip("paprika.openmm")
+
 from paprika.openmm import *
 from paprika.restraints import *
 from paprika.tests import addons
