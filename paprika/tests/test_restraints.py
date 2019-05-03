@@ -3,7 +3,6 @@ Tests the restraints utilities.
 """
 
 import pytest
-import logging
 
 from paprika.restraints import *
 

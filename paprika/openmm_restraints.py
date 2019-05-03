@@ -4,7 +4,10 @@ import simtk.openmm as mm
 import simtk.openmm.app as app
 import simtk.unit as unit
 
+from paprika.restraints_utilities import parse_window
+
 logger = logging.getLogger(__name__)
+
 
 def add_restraint(restraint, window, system):
     """
@@ -28,32 +31,34 @@ def add_restraint(restraint, window, system):
 
     window, phase = parse_window(window)
 
-    if 0 in {restraint.index3, restraint.index4}:
+    if None in {restraint.index3, restraint.index4}:
         logger.debug("Parsing bond restraint.")
+        r_0 = restraint.phase[phase]["targets"][window] * unit.angstroms
+        k = (
+                restraint.phase[phase]["force_constants"][window]
+                * unit.kilocalories_per_mole
+                / unit.angstroms ** 2
+        )
+
         if (
-            1 in {restraint.index1, restraint.index2}
+            restraint.index1 is not None
+            and restraint.index2 is not None
             and 0 in {restraint.group1, restraint.group2}
         ):
-            logger.info("Add CustomBondForce")
+            logger.info("Adding CustomBondForce")
             bond_restraint = mm.CustomBondForce("k * (r - r_0)^2")
             bond_restraint.addPerBondParameter("k")
             bond_restraint.addPerBondParameter("r_0")
+            bond_restraint.addBond(restraint.index1[0], restraint.index2[0], [k, r_0])
 
         else:
             logger.debug("Adding CustomCentroidBondForce")
             bond_restraint = mm.CustomCentroidBondForce("k * (r - r_0)^2")
             bond_restraint.addPerBondParameter("k")
             bond_restraint.addPerBondParameter("r_0")
+            bond_restraint.addBond(restraint.index1, restraint.index2, [k, r_0])
 
-
-    r_0 = restraint.phase[phase]["targets"][window] * unit.angstroms
-    k = (
-        restraint.phase[phase]["force_constants"][window]
-        * unit.kilocalories_per_mole
-        / unit.angstroms ** 2
-    )
     # Make sure these are not called with `amber_index=True`.
-    bond_restraint.addBond(restraint.index1, restraint.index2, [k, r_0])
     system.addForce(bond_restraint)
 
     return system

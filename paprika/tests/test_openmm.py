@@ -2,16 +2,26 @@
 Tests basic OpenMM simulations.
 """
 
+import logging
 import os
+import shutil
 
 import pytest
-import paprika
-from paprika.openmm_restraints import add_restraint
+
+from paprika import log
+from paprika import restraints
 from paprika.openmm import OpenMM_GB_simulation
+from paprika.openmm_restraints import add_restraint
 
 # Skip these tests if you cannot import paprika.openmm.
 pytest.importorskip("paprika.openmm")
 from paprika.tests import addons
+
+log.config_root_logger(verbose=True)
+logger = logging.getLogger(__name__)
+
+pytestmark = pytest.mark.skip("All tests still WIP")
+
 
 @pytest.fixture(scope="function", autouse=True)
 def clean_files(directory="tmp"):
@@ -25,7 +35,6 @@ def clean_files(directory="tmp"):
 
 
 @addons.using_openmm
-@pytest.mark.xfail
 def test_openmm_single_window():
     """ Test that we can minimize CB6-BUT with OpenMM. """
 
@@ -46,78 +55,23 @@ def test_openmm_single_window():
     restraint.pull["num_windows"] = 5
     restraint.initialize()
 
+    my_simulation = OpenMM_GB_simulation()
+
+    my_simulation.topology = os.path.join(
+        os.path.dirname(__file__), "../data/k-cl/k-cl.prmtop"
+    )
+    my_simulation.min["coordinates"] = os.path.join(
+        os.path.dirname(__file__), "../data/k-cl/k-cl.rst7"
+    )
 
     system = my_simulation.setup_system(my_simulation.min)
-    simulation = my_simulation.setup_simulation(system, my_simulation.min)
+    system = add_restraint(restraint, "a003", system)
 
+    simulation = my_simulation.setup_simulation(system, my_simulation.min)
     result = my_simulation.minimize(simulation, save=False)
     state = result.context.getState(getEnergy=True)
     energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
-    np.testing.assert_almost_equal(energy, -821.306, decimal=2)
-
-
-
-
-
-
-    windows_directory = os.path.join("tmp", "k-cl", "windows")
-    window_list = restraints.create_window_list([restraint])
-
-
-    # gbsim = amber.Simulation()
-    # gbsim.path = os.path.join("tmp", "k-cl", "windows", "a003")
-    # gbsim.executable = "sander"
-    # gbsim.topology = "k-cl.prmtop"
-    # gbsim.prefix = "minimize"
-    # gbsim.inpcrd = "k-cl.rst7"
-    # gbsim.config_gb_min()
-    # gbsim.cntrl["maxcyc"] = 1
-    # gbsim.cntrl["ncyc"] = 1
-    # gbsim.run()
-    #
-    # gbsim.config_gb_md()
-    # gbsim.prefix = "md"
-    # gbsim.inpcrd = "minimize.rst7"
-    # gbsim.cntrl["nstlim"] = 1
-    # gbsim.cntrl["ntwe"] = 1
-    # gbsim.cntrl["ntpr"] = 1
-    # gbsim.cntrl["ig"] = 777
-    # gbsim.run()
-    #
-    # mden = parse_mden(os.path.join("tmp", "k-cl", "windows", "a003", "md.mden"))
-    #
-    # assert pytest.approx(mden["Bond"][0]) == 0
-    # assert pytest.approx(mden["Angle"][0]) == 0
-    # assert pytest.approx(mden["Dihedral"][0]) == 0
-    # assert pytest.approx(mden["V14"][0]) == 0
-    # assert pytest.approx(mden["E14"][0]) == 0
-    #
-    # assert pytest.approx(mden["VDW"][0], 0.1) == 25956.13225
-    # assert pytest.approx(mden["Ele"][0], 0.1) == -18828.99631
-    # assert pytest.approx(mden["Total"][0], 0.1) == 7127.13594
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # pytest.approx(-821.306, decimal=2)
 
 #
 # @addons.using_openmm

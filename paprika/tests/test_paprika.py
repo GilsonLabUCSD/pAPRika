@@ -3,8 +3,6 @@ Unit and regression test for the paprika package.
 """
 
 # Import package, test suite, and other packages as needed
-import paprika
-import pytest
 import sys
 
 

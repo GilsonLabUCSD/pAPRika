@@ -1,14 +1,17 @@
-import parmed as pmd
-import numpy as np
+import logging
 import os
 import shutil
 
-from paprika import restraints
-from paprika import analysis
-
-from paprika.tests import addons
-
+import numpy as np
+import parmed as pmd
 import pytest
+
+from paprika import analysis
+from paprika import log
+from paprika import restraints
+
+log.config_root_logger(verbose=True)
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -23,7 +26,6 @@ def clean_files(directory="tmp"):
 
 
 def test_fe_calc(clean_files):
-
     inputpdb = pmd.load_file(os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb"))
 
     # Distance restraint

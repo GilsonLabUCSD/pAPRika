@@ -12,7 +12,17 @@ logger = logging.getLogger(__name__)
 
 def return_parmed_structure(filename):
     """
-    Return structure object from file name.
+    Return a structure object from a filename.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file to load
+
+    Returns
+    -------
+    structure : :class:`parmed.structure.Structure`
+
     """
     # `parmed` can read both PDBs and
     # .inpcrd/.prmtop files with the same function call.
@@ -26,7 +36,22 @@ def return_parmed_structure(filename):
 
 def index_from_mask(structure, mask, amber_index=False):
     """
-    Return the atom indicies for a given mask.
+    Return the atom indicies for a given selection mask.
+
+    Parameters
+    ----------
+    structure : `class`:`parmed.structure.Structure`
+        The structure that contains the atoms
+    mask : str
+        The atom mask
+    amber_index : bool
+        If true, 1 will be added to the returned indices
+
+    Returns
+    -------
+    indices : int
+        Atom index or indices corresponding to the mask
+
     """
     if amber_index:
         index_offset = 1
@@ -53,9 +78,22 @@ def make_window_dirs(
     window_list, stash_existing=False, path="./", window_dir_name="windows"
 ):
     """
-    Make a series of directories to hold the simulation setup files
-    and the data. Here we could check if the directories already exist and prompt
-    the user or quit or do something else.
+    Make a series of windows to hold simulation data.
+
+    Parameters
+    ----------
+    window_list : list
+        List of simulation windows. The names in this list will be used for the folders.
+    stash_existing : bool
+        Whether to move an existing windows directory to a backup with the current time
+    path :
+        Root path for the directories
+    window_dir_name :
+        Name for the top level directory
+
+    Returns
+    -------
+
     """
 
     win_dir = os.path.join(path, window_dir_name)
@@ -123,12 +161,12 @@ def parse_mden(file):
 
     Parameters
     ----------
-    file : {str} or file path
-        `mden` file
+    file : str
+        Name of output file
 
     Returns
     -------
-    energies : {dict}
+    energies : dict
         A dictionary containing VDW, electrostatic, bond, angle, dihedral, V14, E14, and total energy.
 
     """
@@ -157,6 +195,55 @@ def parse_mden(file):
         "E14": e14,
         "VDW": vdw,
         "Ele": ele,
+        "Total": [sum(x) for x in zip(bnd, ang, dih, v14, e14, vdw, ele)],
+    }
+
+    return energies
+
+def parse_mdout(file):
+    """
+    Return energies from an AMBER `mdout` file.
+
+    Parameters
+    ----------
+    file : str
+        Name of output file
+
+    Returns
+    -------
+    energies : dict
+        A dictionary containing VDW, electrostatic, bond, angle, dihedral, V14, E14, and total energy.
+
+    """
+
+    vdw, ele, bnd, ang, dih, v14, e14 = [], [], [], [], [], [], []
+    restraint = []
+
+    with open(file, "r") as f:
+        for line in f.readlines():
+            words = line.rstrip().split()
+            if len(words) > 1:
+                if "BOND" in words[0]:
+                    bnd.append(float(words[2]))
+                    ang.append(float(words[5]))
+                    dih.append(float(words[8]))
+                if "VDWAALS" in words[0]:
+                    vdw.append(float(words[2]))
+                    ele.append(float(words[5]))
+                if "1-4" in words[0]:
+                    v14.append(float(words[3]))
+                    e14.append(float(words[7]))
+                    restraint.append(float(words[10]))
+
+    energies = {
+        "Bond": bnd,
+        "Angle": ang,
+        "Dihedral": dih,
+        "V14": v14,
+        "E14": e14,
+        "VDW": vdw,
+        "Ele": ele,
+        "Restraint": restraint,
         "Total": [sum(x) for x in zip(bnd, ang, dih, v14, e14, vdw, ele)],
     }
 
