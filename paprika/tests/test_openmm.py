@@ -17,10 +17,12 @@ from paprika.openmm_restraints import add_restraint
 pytest.importorskip("paprika.openmm")
 from paprika.tests import addons
 
+import simtk.unit as unit
+
 log.config_root_logger(verbose=True)
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.skip("All tests still WIP")
+# pytestmark = pytest.mark.skip("All tests still WIP")
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -36,11 +38,11 @@ def clean_files(directory="tmp"):
 
 @addons.using_openmm
 def test_openmm_single_window():
-    """ Test that we can minimize CB6-BUT with OpenMM. """
+    """ Test that we can minimize K-Cl with OpenMM. """
 
     restraint = restraints.DAT_restraint()
     restraint.continuous_apr = True
-    restraint.amber_index = True
+    restraint.amber_index = False
     restraint.topology = os.path.join(
         os.path.dirname(__file__), "../data/k-cl/k-cl.pdb"
     )
@@ -71,7 +73,7 @@ def test_openmm_single_window():
     result = my_simulation.minimize(simulation, save=False)
     state = result.context.getState(getEnergy=True)
     energy = state.getPotentialEnergy() / unit.kilocalories_per_mole
-    # pytest.approx(-821.306, decimal=2)
+    pytest.approx(energy, -821.306)
 
 #
 # @addons.using_openmm
