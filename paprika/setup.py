@@ -29,6 +29,9 @@ class Setup(object):
             # read_restraints()
             # setup_restraints()
             # save_restraints()
+            # create_windows_directory()
+            # solvate and/or prepare each window()
+
             pass
 
         if self.backend == "openmm":
