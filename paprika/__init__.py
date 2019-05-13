@@ -15,3 +15,10 @@ versions = get_versions()
 __version__ = versions['version']
 __git_revision__ = versions['full-revisionid']
 del get_versions, versions
+
+__all__ = ["setup", "simulate"]
+
+from paprika.setup import Setup
+from paprika.simulate import Simulate
+setup = Setup
+simulate = Simulate
