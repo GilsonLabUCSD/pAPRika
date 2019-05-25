@@ -1,4 +1,4 @@
-from paprika.restraints_utilities import *
+from paprika.restraints.restraints_utilities import *
 
 def amber_restraint_line(restraint, window):
     """

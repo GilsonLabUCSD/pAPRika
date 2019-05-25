@@ -11,7 +11,7 @@ import pytest
 from paprika import log
 from paprika import restraints
 from paprika.openmm import OpenMM_GB_simulation
-from paprika.openmm_restraints import add_restraint
+from paprika.restraints.openmm_restraints import add_restraint
 
 # Skip these tests if you cannot import paprika.openmm.
 pytest.importorskip("paprika.openmm")

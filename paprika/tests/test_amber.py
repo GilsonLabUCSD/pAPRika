@@ -4,7 +4,8 @@ import shutil
 import parmed as pmd
 import pytest
 
-from paprika import amber, restraints, amber_restraints
+from paprika import amber, restraints
+from paprika.restraints import amber_restraints
 from paprika.tests import addons
 from paprika.utils import parse_mden
 from paprika.utils import parse_mdout

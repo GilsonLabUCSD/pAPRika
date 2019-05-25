@@ -15,6 +15,7 @@ dependencies:
   - pymbar
   - openmm
   - ambertools=18
+  - pyyaml
   
   # Documentation
   - sphinx

@@ -1,10 +1,9 @@
 import logging
 
 import simtk.openmm as mm
-import simtk.openmm.app as app
 import simtk.unit as unit
 
-from paprika.restraints_utilities import parse_window
+from paprika.restraints.restraints_utilities import parse_window
 
 logger = logging.getLogger(__name__)
 
