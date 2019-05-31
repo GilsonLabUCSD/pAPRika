@@ -7,7 +7,6 @@ import pkg_resources
 from pathlib import Path
 from paprika.restraints import static_DAT_restraint, DAT_restraint
 from paprika.restraints.read_yaml import read_yaml
-from paprika.restraints import DAT_restraint,static_DAT_restraint
 
 import logging
 
@@ -31,7 +30,6 @@ class Setup(object):
         self.guest = guest
         self.backend = backend
         self.conformational_restraints = False
-
 
         self.directory = "benchmarks"
 
@@ -83,7 +81,7 @@ class Setup(object):
         self.guest_yaml = read_yaml(guest_yaml)
         windows = [self.host_yaml["calculation"]["windows"]["attach"],
                    self.host_yaml["calculation"]["windows"]["pull"],
-                   self.host_yaml["calculation"]["windows"]["release"]
+                   None
         ]
         structure = self.guest_yaml["complex"]
 
@@ -92,36 +90,45 @@ class Setup(object):
 
         static_restraints = []
         for restraint in self.host_yaml["calculation"]["restraints"]["static"]:
-            r = static_DAT_restraint(restraint_mask_list=restraint["restraint"]["atoms"].split(),
+            static = static_DAT_restraint(restraint_mask_list=restraint["restraint"]["atoms"].split(),
                                                 num_window_list=windows,
                                                 ref_structure=str(guest_yaml.parent.joinpath(structure)),
                                                 force_constant=restraint["restraint"]["force_constant"],
                                                 amber_index=False if self.backend == "openmm" else True
                                      )
-            static_restraints.append(r)
+            static_restraints.append(static)
 
+        # conformational_restraints = []
         # for conformational in self.restraints_dictionary["calculation"]["restraints"]["conformational"]:
         #     raise NotImplementedError
         #
         # for wall in self.restraints_dictionary["calculation"]["restraints"]["wall"]:
         #     raise NotImplementedError
 
-        # for static in self.restraints_dictionary["calculation"]["restraints"]["static"]:
-        #     print(dir(static))
-        #
-        #     # For the static restraints, I think we should only set force constants, not targets!
-        #
-        # for static in self.restraints_dictionary["calculation"]["restraints"]["static"]:
-        #     windows = [self.restraints_dictionary["calculation"]["windows"]["attach"],
-        #                self.restraints_dictionary["calculation"]["windows"]["pull"],
-        #                self.restraints_dictionary["calculation"]["windows"]["release"]]
-        #
-        #     print(static)
-        #     restraint = static_DAT_restraint(restraint_mask_list=self.restraints_dictionary["calculation"]["restraints"]["static"]["atoms"],
-        #                                      num_window_list=windows,
-        #                                      ref_structure="data/cb6-but-apr/vac.pdb",
-        #                                      force_constant=self.restraints_dictionary["calculation"]["restraints"]["static"]["force_constant"],
-        #                                      amber_index=True)
+        guest_restraints = []
+        for restraint in self.guest_yaml["restraints"]:
+            mask = restraint["restraint"]["atoms"].split()
+
+            guest_restraint = DAT_restraint()
+            guest_restraint.auto_apr = True
+            guest_restraint.continuous_apr = True
+            guest_restraint.amber_index = False if self.backend == "openmm" else True
+            guest_restraint.topology = str(guest_yaml.parent.joinpath(structure))
+            guest_restraint.mask1 = mask[0]
+            guest_restraint.mask2 = mask[1]
+            guest_restraint.mask3 = mask[2] if len(mask) > 2 else None
+            guest_restraint.mask4 = mask[3] if len(mask) > 3 else None
+
+            guest_restraint.attach["target"] = restraint["restraint"]["attach"]["target"]
+            guest_restraint.attach["fc_final"] = restraint["restraint"]["attach"]["force_constant"]
+            guest_restraint.attach["fraction_list"] = self.host_yaml["calculation"]["lambda"]["attach"]
+
+            guest_restraint.pull["target_final"] = self.host_yaml["calculation"]["target"]["pull"]
+            guest_restraint.pull["num_windows"] = windows[1]
+            
+            guest_restraint.initialize()
+
+            guest_restraints.append(guest_restraint)
 
 
         if self.backend == "amber":
