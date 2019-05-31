@@ -98,13 +98,6 @@ class Setup(object):
                                      )
             static_restraints.append(static)
 
-        # conformational_restraints = []
-        # for conformational in self.restraints_dictionary["calculation"]["restraints"]["conformational"]:
-        #     raise NotImplementedError
-        #
-        # for wall in self.restraints_dictionary["calculation"]["restraints"]["wall"]:
-        #     raise NotImplementedError
-
         guest_restraints = []
         for restraint in self.guest_yaml["restraints"]:
             mask = restraint["restraint"]["atoms"].split()
@@ -130,18 +123,14 @@ class Setup(object):
 
             guest_restraints.append(guest_restraint)
 
+        conformational_restraints = []
+        for conformational in self.restraints_dictionary["calculation"]["restraints"]["conformational"]:
+            raise NotImplementedError
 
-        if self.backend == "amber":
+        wall_restraints = []        
+        for wall in self.restraints_dictionary["calculation"]["restraints"]["wall"]:
+            raise NotImplementedError
 
-            # save_restraints()
-            # create_windows_directory()
-            # solvate and/or prepare each window()
-            print("AMBER backend")
-            print(f"Initialize restraints with host = {self.host}, guest = {self.guest}")
-            pass
-
-        if self.backend == "openmm":
-            pass
 
     def initialize_calculation(self):
         print(f"Initialize calculation with host = {self.host}, guest = {self.guest}")
