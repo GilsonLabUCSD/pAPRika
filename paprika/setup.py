@@ -7,7 +7,9 @@ import pkg_resources
 from pathlib import Path
 from paprika.tleap import System
 from paprika.restraints import static_DAT_restraint, DAT_restraint
+from paprika.restraints.restraints import create_window_list
 from paprika.restraints.read_yaml import read_yaml
+from paprika.io import save_restraints
 
 import logging
 
@@ -80,6 +82,7 @@ class Setup(object):
         """
         system = System()
         system.output_path = self.directory
+        system.output_prefix = f"{self.host}-{self.guest}"
         system.pbc_type = None
         system.neutralize = True
         system.template_lines = [
@@ -87,17 +90,13 @@ class Setup(object):
             "source leaprc.water.tip3p",
             f"loadamberparams {self.benchmark_path.joinpath(self.host_yaml['frcmod'])}",
             f"loadamberparams {self.benchmark_path.joinpath('dummy.frcmod')}",
-            f"HST = loadmol2 {self.benchmark_path.joinpath(self.host_yaml['structure'])}",
-            f"GST = loadmol2 {self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['structure'])}",
+            f"{self.host.upper()} = loadmol2 {self.benchmark_path.joinpath(self.host_yaml['structure'])}",
+            f"{self.guest.upper()} = loadmol2 {self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['structure'])}",
             f"DM1 = loadmol2 {self.benchmark_path.joinpath('dm1.mol2')}",
             f"DM2 = loadmol2 {self.benchmark_path.joinpath('dm2.mol2')}",
             f"DM3 = loadmol2 {self.benchmark_path.joinpath('dm3.mol2')}",
             f"model = loadpdb {self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['complex'])}",
-            "check model",
-            f"savepdb model {self.host}-{self.guest}.pdb",
-            f"saveamberparm model {self.host}-{self.guest}.prmtop {self.host}-{self.guest}.rst7",
         ]
-
         system.build()
 
     def initialize_restraints(self):
@@ -107,17 +106,14 @@ class Setup(object):
             self.host_yaml["calculation"]["windows"]["pull"],
             None,
         ]
-        structure = self.guest_yaml["complex"]
-
-        # It appears that ParmEd cannot currently read a PosixPath object, so I am going to
-        # convert these into strings.
+        structure = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
 
         static_restraints = []
         for restraint in self.host_yaml["calculation"]["restraints"]["static"]:
             static = static_DAT_restraint(
                 restraint_mask_list=restraint["restraint"]["atoms"].split(),
                 num_window_list=windows,
-                ref_structure=str(guest_yaml.parent.joinpath(structure)),
+                ref_structure=str(structure),
                 force_constant=restraint["restraint"]["force_constant"],
                 amber_index=False if self.backend == "openmm" else True,
             )
@@ -147,7 +143,7 @@ class Setup(object):
             guest_restraint.auto_apr = True
             guest_restraint.continuous_apr = True
             guest_restraint.amber_index = False if self.backend == "openmm" else True
-            guest_restraint.topology = str(guest_yaml.parent.joinpath(structure))
+            guest_restraint.topology = str(structure)
             guest_restraint.mask1 = mask[0]
             guest_restraint.mask2 = mask[1]
             guest_restraint.mask3 = mask[2] if len(mask) > 2 else None
@@ -169,18 +165,19 @@ class Setup(object):
             guest_restraint.pull["num_windows"] = windows[1]
 
             guest_restraint.initialize()
-
             guest_restraints.append(guest_restraint)
 
-        return (
-            static_restraints,
-            conformational_restraints,
-            wall_restraints,
-            guest_restraints,
-        )
+        return static_restraints + conformational_restraints + wall_restraints + guest_restraints
 
     def build_windows(self):
-        pass
+        window_list = create_window_list(self.restraints)
+        for window in window_list:
+            self.directory.joinpath("windows").joinpath(window).mkdir(parents=True, exist_ok=True)
+        save_restraints(self.directory.joinpath(self.restraints))
+
+        if self.backend == "amber":
+            # Write the restraint file in each window.
+            raise NotImplementedError
 
     def initialize_calculation(self):
         print(f"Initialize calculation with host = {self.host}, guest = {self.guest}")
