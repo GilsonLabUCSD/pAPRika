@@ -5,12 +5,14 @@ This class is going to contain the simulation setup...
 import pkg_resources
 
 from pathlib import Path
+from paprika.tleap import System
 from paprika.restraints import static_DAT_restraint, DAT_restraint
 from paprika.restraints.read_yaml import read_yaml
 
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 def _get_installed_benchmarks():
     _installed_benchmarks = {}
@@ -29,19 +31,23 @@ class Setup(object):
         self.host = host
         self.guest = guest
         self.backend = backend
-        self.conformational_restraints = False
 
-        self.directory = "benchmarks"
+        self.directory = Path("benchmarks").joinpath(self.host).joinpath(self.guest)
+        self.directory.mkdir(parents=True, exist_ok=True)
 
         if self.backend == "amber":
             raise NotImplementedError
 
         installed_benchmarks = get_benchmarks()
         host_yaml, guest_yaml = self.parse_yaml(installed_benchmarks)
-        self.build()
-        self.initialize_restraints(host_yaml, guest_yaml)
-        self.initialize_calculation()
+        self.benchmark_path = host_yaml.parent
+        self.host_yaml = read_yaml(host_yaml)
+        self.guest_yaml = read_yaml(guest_yaml)
 
+        self.build_bound()
+        self.restraints = self.initialize_restraints()
+        self.initialize_calculation()
+        self.build_windows()
 
     def parse_yaml(self, installed_benchmarks):
         """
@@ -65,23 +71,41 @@ class Setup(object):
             raise FileNotFoundError
         return host_yaml, guest_yaml
 
-    def build(self):
+    def build_bound(self):
         """
-        This is going to change to accomodate SMIRNOFF99Frosst.
+        This is going to change to accommodate SMIRNOFF99Frosst.
 
         Returns
         -------
         """
-        pass
+        system = System()
+        system.output_path = self.directory
+        system.pbc_type = None
+        system.neutralize = True
+        system.template_lines = [
+            "source leaprc.gaff",
+            "source leaprc.water.tip3p",
+            f"loadamberparams {self.benchmark_path.joinpath(self.host_yaml['frcmod'])}",
+            f"loadamberparams {self.benchmark_path.joinpath('dummy.frcmod')}",
+            f"HST = loadmol2 {self.benchmark_path.joinpath(self.host_yaml['structure'])}",
+            f"GST = loadmol2 {self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['structure'])}",
+            f"DM1 = loadmol2 {self.benchmark_path.joinpath('dm1.mol2')}",
+            f"DM2 = loadmol2 {self.benchmark_path.joinpath('dm2.mol2')}",
+            f"DM3 = loadmol2 {self.benchmark_path.joinpath('dm3.mol2')}",
+            f"model = loadpdb {self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['complex'])}",
+            "check model",
+            f"savepdb model {self.host}-{self.guest}.pdb",
+            f"saveamberparm model {self.host}-{self.guest}.prmtop {self.host}-{self.guest}.rst7",
+        ]
 
-    def initialize_restraints(self, host_yaml, guest_yaml):
+        system.build()
 
+    def initialize_restraints(self):
 
-        self.host_yaml = read_yaml(host_yaml)
-        self.guest_yaml = read_yaml(guest_yaml)
-        windows = [self.host_yaml["calculation"]["windows"]["attach"],
-                   self.host_yaml["calculation"]["windows"]["pull"],
-                   None
+        windows = [
+            self.host_yaml["calculation"]["windows"]["attach"],
+            self.host_yaml["calculation"]["windows"]["pull"],
+            None,
         ]
         structure = self.guest_yaml["complex"]
 
@@ -90,13 +114,30 @@ class Setup(object):
 
         static_restraints = []
         for restraint in self.host_yaml["calculation"]["restraints"]["static"]:
-            static = static_DAT_restraint(restraint_mask_list=restraint["restraint"]["atoms"].split(),
-                                                num_window_list=windows,
-                                                ref_structure=str(guest_yaml.parent.joinpath(structure)),
-                                                force_constant=restraint["restraint"]["force_constant"],
-                                                amber_index=False if self.backend == "openmm" else True
-                                     )
+            static = static_DAT_restraint(
+                restraint_mask_list=restraint["restraint"]["atoms"].split(),
+                num_window_list=windows,
+                ref_structure=str(guest_yaml.parent.joinpath(structure)),
+                force_constant=restraint["restraint"]["force_constant"],
+                amber_index=False if self.backend == "openmm" else True,
+            )
             static_restraints.append(static)
+
+        conformational_restraints = []
+        if self.host_yaml["calculation"]["restraints"]["conformational"]:
+            for conformational in self.host_yaml["calculation"]["restraints"][
+                "conformational"
+            ]:
+                raise NotImplementedError
+        else:
+            logger.debug("Skipping conformational restraints...")
+
+        wall_restraints = []
+        if self.host_yaml["calculation"]["restraints"]["wall"]:
+            for wall in self.host_yaml["calculation"]["restraints"]["wall"]:
+                raise NotImplementedError
+        else:
+            logger.debug("Skipping wall restraints...")
 
         guest_restraints = []
         for restraint in self.guest_yaml["restraints"]:
@@ -112,35 +153,39 @@ class Setup(object):
             guest_restraint.mask3 = mask[2] if len(mask) > 2 else None
             guest_restraint.mask4 = mask[3] if len(mask) > 3 else None
 
-            guest_restraint.attach["target"] = restraint["restraint"]["attach"]["target"]
-            guest_restraint.attach["fc_final"] = restraint["restraint"]["attach"]["force_constant"]
-            guest_restraint.attach["fraction_list"] = self.host_yaml["calculation"]["lambda"]["attach"]
+            guest_restraint.attach["target"] = restraint["restraint"]["attach"][
+                "target"
+            ]
+            guest_restraint.attach["fc_final"] = restraint["restraint"]["attach"][
+                "force_constant"
+            ]
+            guest_restraint.attach["fraction_list"] = self.host_yaml["calculation"][
+                "lambda"
+            ]["attach"]
 
-            guest_restraint.pull["target_final"] = self.host_yaml["calculation"]["target"]["pull"]
+            guest_restraint.pull["target_final"] = self.host_yaml["calculation"][
+                "target"
+            ]["pull"]
             guest_restraint.pull["num_windows"] = windows[1]
-            
+
             guest_restraint.initialize()
 
             guest_restraints.append(guest_restraint)
 
-        conformational_restraints = []
-        for conformational in self.restraints_dictionary["calculation"]["restraints"]["conformational"]:
-            raise NotImplementedError
+        return (
+            static_restraints,
+            conformational_restraints,
+            wall_restraints,
+            guest_restraints,
+        )
 
-        wall_restraints = []        
-        for wall in self.restraints_dictionary["calculation"]["restraints"]["wall"]:
-            raise NotImplementedError
-
+    def build_windows(self):
+        pass
 
     def initialize_calculation(self):
         print(f"Initialize calculation with host = {self.host}, guest = {self.guest}")
-        if self.backend == "amber":
-            pass
-        if self.backend == "openmm":
-            pass
-
         # Should the end point of this class be a file that contains restraints as JSON and either an AMBER input or serialized OpenMM system?
-
+        pass
 
 
 def get_benchmarks():
