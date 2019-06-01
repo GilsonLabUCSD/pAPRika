@@ -3,6 +3,8 @@ This class is going to contain the simulation setup...
 """
 
 import pkg_resources
+import shutil
+import parmed as pmd
 
 from pathlib import Path
 from paprika.tleap import System
@@ -47,7 +49,7 @@ class Setup(object):
         self.guest_yaml = read_yaml(guest_yaml)
 
         self.build_bound()
-        self.restraints = self.initialize_restraints()
+        self.static_restraints,  self.conformational_restraints, self.wall_restraints,  self.guest_restraints = self.initialize_restraints()
         self.initialize_calculation()
         self.build_windows()
 
@@ -84,7 +86,7 @@ class Setup(object):
         system.output_path = self.directory
         system.output_prefix = f"{self.host}-{self.guest}"
         system.pbc_type = None
-        system.neutralize = True
+        system.neutralize = False
         system.template_lines = [
             "source leaprc.gaff",
             "source leaprc.water.tip3p",
@@ -167,17 +169,80 @@ class Setup(object):
             guest_restraint.initialize()
             guest_restraints.append(guest_restraint)
 
-        return static_restraints + conformational_restraints + wall_restraints + guest_restraints
+        return static_restraints,        conformational_restraints,        wall_restraints,         guest_restraints
 
     def build_windows(self):
-        window_list = create_window_list(self.restraints)
+        save_restraints(self.static_restraints + self.conformational_restraints + self.wall_restraints + self.guest_restraints, self.directory.joinpath("restraints.json"))
+        window_list = create_window_list(self.guest_restraints)
+        
         for window in window_list:
             self.directory.joinpath("windows").joinpath(window).mkdir(parents=True, exist_ok=True)
-        save_restraints(self.directory.joinpath(self.restraints))
+            self.translate(window)
+            self.solvate(window)
+
 
         if self.backend == "amber":
             # Write the restraint file in each window.
             raise NotImplementedError
+    
+    def translate(self, window):
+        window_path = self.directory.joinpath("windows").joinpath(window)
+        if window[0] == "a":
+            # Copy the initial structure.
+            source_prmtop = self.directory.joinpath(f"{self.host}-{self.guest}.prmtop")
+            source_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}.rst7")
+            shutil.copy(source_prmtop, window_path)
+            shutil.copy(source_inpcrd, window_path)
+        elif window[0] == "p":
+            # Translate the guest.
+            source_prmtop = self.directory.joinpath(f"{self.host}-{self.guest}.prmtop")
+            source_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}.rst7")
+
+            structure = pmd.load_file(str(source_prmtop), str(source_inpcrd), structure = True)
+            target_difference = self.guest_restraints[0].phase['pull']['targets'][int(window[1:])] - self.guest_restraints[0].pull['target_initial']
+            for atom in structure.atoms:
+                if atom.residue.name == self.guest.upper():
+                    atom.xz += target_difference
+            structure.save(str(window_path.joinpath(f"{self.host}-{self.guest}.prmtop")), overwrite=True)
+            structure.save(str(window_path.joinpath(f"{self.host}-{self.guest}.rst7")))
+
+        elif window[0] == "r":
+            # Copy the final pull window.
+            source_prmtop = self.directory.joinpath("windows").joinpath(f"p{self.host_yaml['calculation']['windows']['pull']:03d}").joinpath(f"{self.host}-{self.guest}.prmtop")
+            source_inpcrd = self.directory.joinpath("windows").joinpath(f"p{self.host_yaml['calculation']['windows']['pull']:03d}").joinpath(f"{self.host}-{self.guest}.rst7")
+            shutil.copy(source_prmtop, window_path)
+            shutil.copy(source_inpcrd, window_path)
+
+    def solvate(self, window):
+        window_path = self.directory.joinpath("windows").joinpath(window)
+        source_prmtop = window_path.joinpath(f"{self.host}-{self.guest}.prmtop")
+        source_inpcrd = window_path.joinpath(f"{self.host}-{self.guest}.rst7")
+        pdb = window_path.joinpath(f"{self.host}-{self.guest}.pdb")
+        
+        if not Path.exists(pdb):
+            structure = pmd.load_file(str(source_prmtop), str(source_inpcrd), structure = True)
+            structure.save(str(pdb), overwrite=True)
+    
+        system = System()
+        system.output_path = window_path
+        system.output_prefix = f"{self.host}-{self.guest}-sol"
+        
+        system.target_waters = self.host_yaml["calculation"]["waters"]
+        system.neutralize = True
+        # system.add_ions = ["Na+", 6, "Cl-", 6]
+        system.template_lines = [
+        "source leaprc.gaff",
+        "source leaprc.water.tip3p",
+        f"loadamberparams {self.benchmark_path.joinpath(self.host_yaml['frcmod'])}",
+        f"loadamberparams {self.benchmark_path.joinpath('dummy.frcmod')}",
+        f"{self.host.upper()} = loadmol2 {self.benchmark_path.joinpath(self.host_yaml['structure'])}",
+        f"{self.guest.upper()} = loadmol2 {self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['structure'])}",
+        f"DM1 = loadmol2 {self.benchmark_path.joinpath('dm1.mol2')}",
+        f"DM2 = loadmol2 {self.benchmark_path.joinpath('dm2.mol2')}",
+        f"DM3 = loadmol2 {self.benchmark_path.joinpath('dm3.mol2')}",
+        f"model = loadpdb {self.host}-{self.guest}.pdb",
+        ]
+        system.build()
 
     def initialize_calculation(self):
         print(f"Initialize calculation with host = {self.host}, guest = {self.guest}")
@@ -192,3 +257,4 @@ def get_benchmarks():
     """
     installed_benchmarks = _get_installed_benchmarks()
     return installed_benchmarks
+
