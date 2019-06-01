@@ -4,6 +4,7 @@ This class is going to contain the simulation setup...
 
 import pkg_resources
 import shutil
+import textwrap
 import parmed as pmd
 
 from pathlib import Path
@@ -50,7 +51,6 @@ class Setup(object):
 
         self.build_bound()
         self.static_restraints,  self.conformational_restraints, self.wall_restraints,  self.guest_restraints = self.initialize_restraints()
-        self.initialize_calculation()
         self.build_windows()
 
     def parse_yaml(self, installed_benchmarks):
@@ -180,10 +180,11 @@ class Setup(object):
             self.translate(window)
             self.solvate(window)
 
-
-        if self.backend == "amber":
-            # Write the restraint file in each window.
-            raise NotImplementedError
+            if self.backend == "amber":
+                # Write the restraint file in each window.
+                raise NotImplementedError
+            else:
+                self.initialize_calculation(window)
     
     def translate(self, window):
         window_path = self.directory.joinpath("windows").joinpath(window)
@@ -244,11 +245,78 @@ class Setup(object):
         ]
         system.build()
 
-    def initialize_calculation(self):
-        print(f"Initialize calculation with host = {self.host}, guest = {self.guest}")
-        # Should the end point of this class be a file that contains restraints as JSON and either an AMBER input or serialized OpenMM system?
-        pass
+    def initialize_calculation(self, window):
+        if self.backend == "amber":
+            # Write simulation input files in each directory
+            raise NotImplementedError
 
+        window_path = self.directory.joinpath("windows").joinpath(window)
+        source_prmtop = window_path.joinpath(f"{self.host}-{self.guest}.prmtop")
+        source_inpcrd = window_path.joinpath(f"{self.host}-{self.guest}.rst7")
+
+        
+        openmm_string = f"""
+        import os
+        import re
+        import shutil
+        import json
+
+        import numpy as np
+        import parmed as pmd
+
+        import simtk.openmm as mm
+        import simtk.openmm.app as app
+        import simtk.unit as unit
+        from parmed.openmm.reporters import NetCDFReporter
+
+        settings = {{
+        'nonbonded_method': app.PME,
+        'nonbonded_cutoff': 8.0 * unit.angstrom,
+        'temperature': 300 * unit.kelvin,
+        'timestep': 0.002 * unit.picosecond,
+        'constraints': app.HBonds,
+        'friction': 1.0 / unit.picoseconds,
+        }}
+
+        prmtop_file = "{self.host}-{self.guest}-sol.prmtop"
+        prmtop = app.AmberPrmtopFile(prmtop_file)
+
+        system = prmtop.createSystem(
+                nonbondedMethod=settings["nonbonded_method"],
+                nonbondedCutoff=settings["nonbonded_cutoff"],
+                constraints=settings["constraints"],
+        )
+
+        integrator = mm.LangevinIntegrator(
+                    settings["temperature"],
+                    settings["friction"],
+                    settings["timestep"]
+        )
+        """
+        for restraint in self.static_restraints + self.conformational_restraints + self.guest_restraints:
+            openmm_string += openmm_string_from_restraint(restraint, window)
+        for restraint in self.wall_restraints:
+            # Custom force here...
+            raise NotImplementedError
+
+        openmm_string += f"""
+        system.addForce(mm.MonteCarloBarostat(1 * unit.bar, 300 * unit.kelvin, 100))
+
+        inpcrd = app.AmberInpcrdFile("{self.host}-{self.guest}-sol.rst7")
+        simulation = app.Simulation(prmtop.topology, system, integrator,
+                                mm.Platform.getPlatformByName('CUDA'))
+
+        simulation.context.setPositions(inpcrd.positions)
+        simulation.minimizeEnergy()
+        simulation.context.setVelocitiesToTemperature(settings["temperature"] * unit.kelvin)
+
+        simulation.reporters.append(NetCDFReporter(f"openmm.nc", 500))
+        simulation.reporters.append(app.StateDataReporter("openmm.log", 5000, step=True,
+            potentialEnergy=True, temperature=True, speed=True))
+        simulation.step(5000000)
+        """
+        with open(window_path.joinpath("openmm.py"), "w") as f:
+            f.write(textwrap.dedent(openmm_string))
 
 def get_benchmarks():
     """
@@ -258,3 +326,63 @@ def get_benchmarks():
     installed_benchmarks = _get_installed_benchmarks()
     return installed_benchmarks
 
+def openmm_string_from_restraint(restraint, window):
+    if window[0] == "a":
+        phase = "attach"
+    elif window[0] == "p":
+        phase = "pull"
+    elif window[0] == "r":
+        phase = "release"
+    window_number = int(window[1:])
+
+    if restraint.mask2 and not restraint.mask3:
+        if not restraint.group1 and not restraint.group2:
+            string = f"""
+        bond_restraint = mm.CustomBondForce('k * (r - r_0)^2')
+        bond_restraint.addPerBondParameter('k')
+        bond_restraint.addPerBondParameter('r_0')
+
+        r_0 = {restraint.phase[phase]["targets"][window_number]} * unit.angstroms
+        k = {restraint.phase[phase]["force_constants"][window_number]} * unit.kilocalories_per_mole / unit.angstroms**2 
+        bond_restraint.addBond({restraint.index1[0]}, {restraint.index2[0]}, 
+        [k, r_0])
+        system.addForce(bond_restraint)
+            """
+        else:
+            # Probably needs mm.CustomCentroidBondForce (?)
+            raise NotImplementedError
+    elif restraint.mask3 and not restraint.mask4:
+        if not restraint.group1 and not restraint.group2 and not restraint.group3:
+            string = f"""
+        angle_restraint = mm.CustomAngleForce('k * (theta - theta_0)^2')
+        angle_restraint.addPerAngleParameter('k')
+        angle_restraint.addPerAngleParameter('theta_0')
+
+        theta_0 = {restraint.phase[phase]["targets"][window_number]} * unit.degrees
+        k = {restraint.phase[phase]["force_constants"][window_number]} * unit.kilocalories_per_mole / unit.degrees**2 
+        angle_restraint.addAngle({restraint.index1[0]}, {restraint.index2[0]}, {restraint.index3[0]}, 
+        [k, theta_0])
+        system.addForce(angle_restraint)
+            """
+        else:
+            # Probably needs mm.CustomCentroidAngleForce (?)
+            raise NotImplementedError
+
+    elif restraint.mask4:
+        if not restraint.group1 and not restraint.group2 and not restraint.group3 and not restraint.group4:
+            string = f"""
+        dihedral_restraint = mm.CustomTorsionForce('k * (theta - theta_0)^2')
+        dihedral_restraint.addPerTorsionParameter('k')
+        dihedral_restraint.addPerTorsionParameter('theta_0')
+
+        theta_0 = {restraint.phase[phase]["targets"][window_number]} * unit.degrees
+        k = {restraint.phase[phase]["force_constants"][window_number]} * unit.kilocalories_per_mole / unit.degrees**2 
+        dihedral_restraint.addTorsion({restraint.index1[0]}, {restraint.index2[0]}, {restraint.index3[0]}, {restraint.index4[0]},
+        [k, theta_0])
+        system.addForce(dihedral_restraint)
+            """
+        else:
+            # Probably needs mm.CustomCentroidTorsionForce (?)
+            raise NotImplementedError
+
+    return string
