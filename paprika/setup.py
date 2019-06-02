@@ -8,6 +8,7 @@ import textwrap
 import parmed as pmd
 
 from pathlib import Path
+from paprika import align
 from paprika.tleap import System
 from paprika.restraints import static_DAT_restraint, DAT_restraint
 from paprika.restraints.restraints import create_window_list
@@ -52,6 +53,7 @@ class Setup(object):
         self.build_bound()
         self.static_restraints,  self.conformational_restraints, self.wall_restraints,  self.guest_restraints = self.initialize_restraints()
         self.build_windows()
+        self.openmm_wrapper()
 
     def parse_yaml(self, installed_benchmarks):
         """
@@ -84,7 +86,7 @@ class Setup(object):
         """
         system = System()
         system.output_path = self.directory
-        system.output_prefix = f"{self.host}-{self.guest}"
+        system.output_prefix = f"{self.host}-{self.guest}-unaligned"
         system.pbc_type = None
         system.neutralize = False
         system.template_lines = [
@@ -100,6 +102,19 @@ class Setup(object):
             f"model = loadpdb {self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['complex'])}",
         ]
         system.build()
+
+        source_prmtop = self.directory.joinpath(f"{self.host}-{self.guest}-unaligned.prmtop")
+        source_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}-unaligned.rst7")
+        structure = pmd.load_file(str(source_prmtop), str(source_inpcrd),
+                                  structure=True)
+        guest_angle_restraint = self.guest_yaml["restraints"][-1]["restraint"]["atoms"].split()                          
+        aligned_structure = align.zalign(structure, guest_angle_restraint[1], guest_angle_restraint[2])
+        destination_prmtop = self.directory.joinpath(f"{self.host}-{self.guest}.prmtop")
+        destination_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}.rst7")
+        destination_pdb = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
+        aligned_structure.save(str(destination_prmtop), overwrite=True)
+        aligned_structure.save(str(destination_inpcrd), overwrite=True)
+        aligned_structure.save(str(destination_pdb), overwrite=True)
 
     def initialize_restraints(self):
 
@@ -183,6 +198,14 @@ class Setup(object):
             if self.backend == "amber":
                 # Write the restraint file in each window.
                 raise NotImplementedError
+            # from paprika.restraints.amber_restraints import amber_restraint_line
+            # for window in window_list:
+            #     with open(self.directory.joinpath("windows").joinpath(window).joinpath("disang.rest"), "a") as file:
+            #         for restraint in self.static_restraints + self.conformational_restraints + self.wall_restraints + self.guest_restraints:
+            #             string = amber_restraint_line(restraint, window)
+            #             if string is not None:
+            #                 file.write(string)
+
             else:
                 self.initialize_calculation(window)
     
@@ -205,7 +228,7 @@ class Setup(object):
                 if atom.residue.name == self.guest.upper():
                     atom.xz += target_difference
             structure.save(str(window_path.joinpath(f"{self.host}-{self.guest}.prmtop")), overwrite=True)
-            structure.save(str(window_path.joinpath(f"{self.host}-{self.guest}.rst7")))
+            structure.save(str(window_path.joinpath(f"{self.host}-{self.guest}.rst7")), overwrite=True)
 
         elif window[0] == "r":
             # Copy the final pull window.
@@ -223,6 +246,9 @@ class Setup(object):
         if not Path.exists(pdb):
             structure = pmd.load_file(str(source_prmtop), str(source_inpcrd), structure = True)
             structure.save(str(pdb), overwrite=True)
+        if Path.exists(window_path.joinpath(f"{self.host}-{self.guest}-sol.prmtop")):
+            logger.debug("Found solvated structure. Skipping.")
+            return
     
         system = System()
         system.output_path = window_path
@@ -231,6 +257,7 @@ class Setup(object):
         system.target_waters = self.host_yaml["calculation"]["waters"]
         system.neutralize = True
         # system.add_ions = ["Na+", 6, "Cl-", 6]
+        # This should be read from the YAML file.
         system.template_lines = [
         "source leaprc.gaff",
         "source leaprc.water.tip3p",
@@ -245,7 +272,7 @@ class Setup(object):
         ]
         system.build()
 
-    def initialize_calculation(self, window):
+    def initialize_calculation(self, window): 
         if self.backend == "amber":
             # Write simulation input files in each directory
             raise NotImplementedError
@@ -292,9 +319,32 @@ class Setup(object):
                     settings["friction"],
                     settings["timestep"]
         )
+
+        for force in system.getForces():
+            force.setForceGroup(1)
         """
-        for restraint in self.static_restraints + self.conformational_restraints + self.guest_restraints:
-            openmm_string += openmm_string_from_restraint(restraint, window)
+        # Add positional restraints on dummy atoms.
+        openmm_string += """
+        # Positional restraints
+        """
+        openmm_string += openmm_positional_restraints(prmtop=window_path.joinpath(f"{self.host}-{self.guest}-sol.prmtop"),
+        rst7=window_path.joinpath(f"{self.host}-{self.guest}-sol.rst7"))
+
+        for restraint in self.static_restraints:
+            openmm_string += """
+        # Static restraints
+        """
+            openmm_string += openmm_string_from_restraint(restraint, window, ForceGroup=10)
+        for restraint in self.conformational_restraints:
+            openmm_string += """
+        # Conformational restraints
+        """
+            openmm_string += openmm_string_from_restraint(restraint, window, ForceGroup=11)
+        for restraint in self.guest_restraints:
+            openmm_string += """
+        # Guest restraints
+        """
+            openmm_string += openmm_string_from_restraint(restraint, window, ForceGroup=12)
         for restraint in self.wall_restraints:
             # Custom force here...
             raise NotImplementedError
@@ -310,13 +360,52 @@ class Setup(object):
         simulation.minimizeEnergy()
         simulation.context.setVelocitiesToTemperature(settings["temperature"] * unit.kelvin)
 
-        simulation.reporters.append(NetCDFReporter(f"openmm.nc", 500))
-        simulation.reporters.append(app.StateDataReporter("openmm.log", 5000, step=True,
+        # 1000 × 2 fs = 2 ps per frame
+        simulation.reporters.append(NetCDFReporter(f"openmm.nc", 1000))
+        simulation.reporters.append(app.StateDataReporter("openmm.log", 10000, step=True,
             potentialEnergy=True, temperature=True, speed=True))
-        simulation.step(5000000)
+        # 500000 × 2 fs = 1 ns 
+        simulation.step(500000)
+
+        # total_energy = simulation.context.getState(getEnergy=True)
+        # total_energy = total_energy.getPotentialEnergy() / unit.kilocalories_per_mole
+        
+        # non_restraint_energy = simulation.context.getState(getEnergy=True, groups={{1}})
+        # non_restraint_energy = non_restraint_energy.getPotentialEnergy() / unit.kilocalorie_per_mole
+        
+        # static_restraint_energy = simulation.context.getState(getEnergy=True, groups={{10}})
+        # static_restraint_energy = static_restraint_energy.getPotentialEnergy() / unit.kilocalorie_per_mole
+        
+        # conformational_restraint_energy = simulation.context.getState(getEnergy=True, groups={{11}})
+        # conformational_restraint_energy = conformational_restraint_energy.getPotentialEnergy() / unit.kilocalorie_per_mole
+
+        # guest_restraint_energy = simulation.context.getState(getEnergy=True, groups={{12}})
+        # guest_restraint_energy = guest_restraint_energy.getPotentialEnergy() / unit.kilocalorie_per_mole
+
+        # print('Total energy = {{0:4.4f}}'.format(total_energy))
+        # print('Non-restraint energy = {{0:4.4f}}'.format(non_restraint_energy))
+        # print('Static restraint energy = {{0:4.4f}}'.format(static_restraint_energy))
+        # print('Conformational restraint energy = {{0:4.4f}}'.format(conformational_restraint_energy))
+        # print('Guest restraint energy = {{0:4.4f}}'.format(guest_restraint_energy))
+
         """
         with open(window_path.joinpath("openmm.py"), "w") as f:
             f.write(textwrap.dedent(openmm_string))
+
+    def openmm_wrapper(self):
+        string = f"""
+        import glob as glob
+        import os as os
+        import subprocess as sp
+
+        directories = glob.glob("windows/*")
+        directories = [i for i in directories if os.path.isdir(i)]
+        for directory in sorted(directories):
+            print(f"Running in {{directory}}")
+            sp.call("python openmm.py", cwd=directory, shell=True)
+        """
+        with open(self.directory.joinpath("openmm_wrapper.py"), "w") as f:
+            f.write(textwrap.dedent(string))
 
 def get_benchmarks():
     """
@@ -326,7 +415,7 @@ def get_benchmarks():
     installed_benchmarks = _get_installed_benchmarks()
     return installed_benchmarks
 
-def openmm_string_from_restraint(restraint, window):
+def openmm_string_from_restraint(restraint, window, ForceGroup=None):
     if window[0] == "a":
         phase = "attach"
     elif window[0] == "p":
@@ -351,6 +440,10 @@ def openmm_string_from_restraint(restraint, window):
         else:
             # Probably needs mm.CustomCentroidBondForce (?)
             raise NotImplementedError
+        if ForceGroup:
+            string += f"""
+        bond_restraint.setForceGroup({ForceGroup})
+        """
     elif restraint.mask3 and not restraint.mask4:
         if not restraint.group1 and not restraint.group2 and not restraint.group3:
             string = f"""
@@ -359,7 +452,7 @@ def openmm_string_from_restraint(restraint, window):
         angle_restraint.addPerAngleParameter('theta_0')
 
         theta_0 = {restraint.phase[phase]["targets"][window_number]} * unit.degrees
-        k = {restraint.phase[phase]["force_constants"][window_number]} * unit.kilocalories_per_mole / unit.degrees**2 
+        k = {restraint.phase[phase]["force_constants"][window_number]} * unit.kilocalories_per_mole / unit.radian**2 
         angle_restraint.addAngle({restraint.index1[0]}, {restraint.index2[0]}, {restraint.index3[0]}, 
         [k, theta_0])
         system.addForce(angle_restraint)
@@ -367,6 +460,10 @@ def openmm_string_from_restraint(restraint, window):
         else:
             # Probably needs mm.CustomCentroidAngleForce (?)
             raise NotImplementedError
+        if ForceGroup:
+            string += f"""
+        angle_restraint.setForceGroup({ForceGroup})
+        """
 
     elif restraint.mask4:
         if not restraint.group1 and not restraint.group2 and not restraint.group3 and not restraint.group4:
@@ -376,7 +473,7 @@ def openmm_string_from_restraint(restraint, window):
         dihedral_restraint.addPerTorsionParameter('theta_0')
 
         theta_0 = {restraint.phase[phase]["targets"][window_number]} * unit.degrees
-        k = {restraint.phase[phase]["force_constants"][window_number]} * unit.kilocalories_per_mole / unit.degrees**2 
+        k = {restraint.phase[phase]["force_constants"][window_number]} * unit.kilocalories_per_mole / unit.radian**2 
         dihedral_restraint.addTorsion({restraint.index1[0]}, {restraint.index2[0]}, {restraint.index3[0]}, {restraint.index4[0]},
         [k, theta_0])
         system.addForce(dihedral_restraint)
@@ -384,5 +481,45 @@ def openmm_string_from_restraint(restraint, window):
         else:
             # Probably needs mm.CustomCentroidTorsionForce (?)
             raise NotImplementedError
+        if ForceGroup:
+            string += f"""
+        dihedral_restraint.setForceGroup({ForceGroup})
+        """
 
+    return string
+
+def openmm_positional_restraints(prmtop, rst7, dummy_atom_name="DUM", force_constant=50.0):
+    from parmed import unit
+    # This is slow and can easily be fixed.
+    coordinates = pmd.load_file(str(prmtop), str(rst7), structure=True)
+    string = ""
+    # Do not slice. Slicing does NOT preserve atom indices.
+    # for atom in coordinates[f"@{dummy_atom_name}"].atoms:
+    for atom in coordinates.atoms:
+        if atom.name == dummy_atom_name:
+            string += f"""
+        positional_restraint = mm.CustomExternalForce('k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)')
+        positional_restraint.addPerParticleParameter('k')
+        positional_restraint.addPerParticleParameter('x0')
+        positional_restraint.addPerParticleParameter('y0')
+        positional_restraint.addPerParticleParameter('z0')
+        """
+            # I haven't found a way to get this to use ParmEd's unit library here.
+            # ParmEd correctly reports `atom.positions` as units of Ångstroms.
+            # But then we can't access atom indices.
+            # Using `atom.xx` works for coordinates, but is unitless.
+            x = 0.1 * atom.xx
+            y = 0.1 * atom.xy
+            z = 0.1 * atom.xz
+            string += f"""
+        k = {force_constant} * unit.kilocalories_per_mole / unit.angstroms**2
+        x0 = {x} * unit.nanometers
+        y0 = {y} * unit.nanometers
+        z0 = {z} * unit.nanometers
+        positional_restraint.addParticle({atom.idx}, [k, x0, y0, z0])
+        system.addForce(positional_restraint)
+            """
+            # string += f"""
+            # system.setParticleMass({atom.idx}, 0 * unit.dalton)
+            # """
     return string
