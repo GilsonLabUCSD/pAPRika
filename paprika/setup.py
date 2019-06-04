@@ -33,12 +33,14 @@ class Setup(object):
     The Setup class provides a wrapper function around the preparation of the host-guest system and the application of restraints.
     """
 
-    def __init__(self, host, guest, backend="openmm"):
+    def __init__(self, host, guest, backend="openmm", directory_path="benchmarks"):
         self.host = host
         self.guest = guest
         self.backend = backend
 
-        self.directory = Path("benchmarks").joinpath(self.host).joinpath(self.guest)
+        self.desolvated_window_paths = []
+
+        self.directory = Path(directory_path).joinpath(self.host).joinpath(self.guest)
         self.directory.mkdir(parents=True, exist_ok=True)
 
         if self.backend == "amber":
@@ -181,6 +183,11 @@ class Setup(object):
             for window in window_list:
                 self.directory.joinpath("windows").joinpath(window).mkdir(parents=True, exist_ok=True)
                 self.translate(window, restraint = _dummy_restraint)
+
+                window_pdb_file_name = f"{self.host}-{self.guest}.pdb"
+
+                self.desolvated_window_paths.append(str(
+                    self.directory.joinpath("windows").joinpath(window).joinpath(window_pdb_file_name)))
 
     def initialize_restraints(self):
 
