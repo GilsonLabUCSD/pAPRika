@@ -15,3 +15,6 @@ logger = logging.getLogger(__name__)
 def test_setup():
     """ Test that we can load setup YAML files. """
     paprika.setup(host="cb6", guest="but")
+
+if __name__ == "__main__":
+    test_setup()
