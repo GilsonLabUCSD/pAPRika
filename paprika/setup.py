@@ -50,9 +50,7 @@ class Setup(object):
         self.host_yaml = read_yaml(host_yaml)
         self.guest_yaml = read_yaml(guest_yaml)
 
-        print("Building")
         self.build_desolvated_windows()
-
 
         # self.build_bound()
         # self.static_restraints, \
@@ -135,15 +133,54 @@ class Setup(object):
         destination_prmtop = self.directory.joinpath(f"{self.host}-{self.guest}.prmtop")
         destination_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}.rst7")
         destination_pdb = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
-        aligned_structure.save(str(destination_prmtop), overwrite=True)
-        aligned_structure.save(str(destination_inpcrd), overwrite=True)
         aligned_structure.save(str(destination_pdb), overwrite=True)
 
+    def _create_dummy_restraint(self, initial_structure):
+
+        windows = [
+            self.host_yaml["calculation"]["windows"]["attach"],
+            self.host_yaml["calculation"]["windows"]["pull"],
+            None,
+        ]
+        restraint = self.guest_yaml["restraints"][0]
+
+        guest_restraint = DAT_restraint()
+        guest_restraint.auto_apr = True
+        guest_restraint.continuous_apr = True
+        guest_restraint.amber_index = False if self.backend == "openmm" else True
+        guest_restraint.topology = str(initial_structure)
+        guest_restraint.mask1 = "@1"
+        guest_restraint.mask2 = "@2"
+
+        guest_restraint.attach["target"] = restraint["restraint"]["attach"][
+            "target"
+        ]
+        guest_restraint.attach["fc_final"] = restraint["restraint"]["attach"][
+            "force_constant"
+        ]
+        guest_restraint.attach["fraction_list"] = self.host_yaml["calculation"][
+            "lambda"
+        ]["attach"]
+
+        guest_restraint.pull["target_final"] = self.host_yaml["calculation"][
+            "target"
+        ]["pull"]
+        guest_restraint.pull["num_windows"] = windows[1]
+
+        guest_restraint.initialize()
+
+        return guest_restraint
+
     def build_desolvated_windows(self):
-        self.align(source_file=self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['complex']))
+        initial_structure = self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['complex'])
+        self.align(source_file=str(initial_structure))
+        _dummy_restraint = self._create_dummy_restraint(initial_structure = str(initial_structure))
+        window_list = create_window_list([_dummy_restraint])
+
         for window in window_list:
-            if attach:
-                # self.translate()
+            for window in window_list:
+                self.directory.joinpath("windows").joinpath(window).mkdir(parents=True, exist_ok=True)
+                self.translate(window, restraint = _dummy_restraint)
 
     def initialize_restraints(self):
 
@@ -238,35 +275,28 @@ class Setup(object):
             else:
                 self.initialize_calculation(window)
     
-    def translate(self, window, target_difference=None):
+    def translate(self, window, restraint):
         window_path = self.directory.joinpath("windows").joinpath(window)
         if window[0] == "a":
             # Copy the initial structure.
-            source_prmtop = self.directory.joinpath(f"{self.host}-{self.guest}.prmtop")
-            source_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}.rst7")
-            shutil.copy(source_prmtop, window_path)
-            shutil.copy(source_inpcrd, window_path)
+            source_pdb = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
+            shutil.copy(source_pdb, window_path)
         elif window[0] == "p":
             # Translate the guest.
-            source_prmtop = self.directory.joinpath(f"{self.host}-{self.guest}.prmtop")
-            source_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}.rst7")
+            source_pdb = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
 
-            structure = pmd.load_file(str(source_prmtop), str(source_inpcrd), structure = True)
-            if not target_difference:
-                target_difference = self.guest_restraints[0].phase['pull']['targets'][int(window[\
-                    1:])] - self.guest_restraints[0].pull['target_initial']
+            structure = pmd.load_file(str(source_pdb), structure = True)
+            target_difference = restraint.phase['pull']['targets'][int(window[\
+                1:])] - restraint.pull['target_initial']
             for atom in structure.atoms:
                 if atom.residue.name == self.guest.upper():
                     atom.xz += target_difference
-            structure.save(str(window_path.joinpath(f"{self.host}-{self.guest}.prmtop")), overwrite=True)
-            structure.save(str(window_path.joinpath(f"{self.host}-{self.guest}.rst7")), overwrite=True)
+            structure.save(str(window_path.joinpath(f"{self.host}-{self.guest}.pdb")), overwrite=True)
 
         elif window[0] == "r":
             # Copy the final pull window.
-            source_prmtop = self.directory.joinpath("windows").joinpath(f"p{self.host_yaml['calculation']['windows']['pull']:03d}").joinpath(f"{self.host}-{self.guest}.prmtop")
-            source_inpcrd = self.directory.joinpath("windows").joinpath(f"p{self.host_yaml['calculation']['windows']['pull']:03d}").joinpath(f"{self.host}-{self.guest}.rst7")
-            shutil.copy(source_prmtop, window_path)
-            shutil.copy(source_inpcrd, window_path)
+            source_pdb = self.directory.joinpath("windows").joinpath(f"p{self.host_yaml['calculation']['windows']['pull']:03d}").joinpath(f"{self.host}-{self.guest}.pdb")
+            shutil.copy(source_pdb, window_path)
 
     def solvate(self, window):
         window_path = self.directory.joinpath("windows").joinpath(window)
