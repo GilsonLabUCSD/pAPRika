@@ -50,10 +50,17 @@ class Setup(object):
         self.host_yaml = read_yaml(host_yaml)
         self.guest_yaml = read_yaml(guest_yaml)
 
-        self.build_bound()
-        self.static_restraints,  self.conformational_restraints, self.wall_restraints,  self.guest_restraints = self.initialize_restraints()
-        self.build_windows()
-        self.openmm_wrapper()
+        print("Building")
+        self.build_desolvated_windows()
+
+
+        # self.build_bound()
+        # self.static_restraints, \
+        # self.conformational_restraints, \
+        # self.wall_restraints, \
+        # self.guest_restraints = self.initialize_restraints()
+        # self.build_windows()
+        # self.openmm_wrapper()
 
     def parse_yaml(self, installed_benchmarks):
         """
@@ -115,6 +122,28 @@ class Setup(object):
         aligned_structure.save(str(destination_prmtop), overwrite=True)
         aligned_structure.save(str(destination_inpcrd), overwrite=True)
         aligned_structure.save(str(destination_pdb), overwrite=True)
+
+    def align(self, source_file=None):
+        # source_prmtop = self.directory.joinpath(f"{self.host}-{self.guest}-unaligned.prmtop")
+        # source_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}-unaligned.rst7")
+        # structure = pmd.load_file(str(source_prmtop), str(source_inpcrd),
+        #                           structure=True)
+        structure = pmd.load_file(str(source_file), structure=True)
+
+        guest_angle_restraint = self.guest_yaml["restraints"][-1]["restraint"]["atoms"].split()
+        aligned_structure = align.zalign(structure, guest_angle_restraint[1], guest_angle_restraint[2])
+        destination_prmtop = self.directory.joinpath(f"{self.host}-{self.guest}.prmtop")
+        destination_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}.rst7")
+        destination_pdb = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
+        aligned_structure.save(str(destination_prmtop), overwrite=True)
+        aligned_structure.save(str(destination_inpcrd), overwrite=True)
+        aligned_structure.save(str(destination_pdb), overwrite=True)
+
+    def build_desolvated_windows(self):
+        self.align(source_file=self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['complex']))
+        for window in window_list:
+            if attach:
+                # self.translate()
 
     def initialize_restraints(self):
 
@@ -209,7 +238,7 @@ class Setup(object):
             else:
                 self.initialize_calculation(window)
     
-    def translate(self, window):
+    def translate(self, window, target_difference=None):
         window_path = self.directory.joinpath("windows").joinpath(window)
         if window[0] == "a":
             # Copy the initial structure.
@@ -223,7 +252,9 @@ class Setup(object):
             source_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}.rst7")
 
             structure = pmd.load_file(str(source_prmtop), str(source_inpcrd), structure = True)
-            target_difference = self.guest_restraints[0].phase['pull']['targets'][int(window[1:])] - self.guest_restraints[0].pull['target_initial']
+            if not target_difference:
+                target_difference = self.guest_restraints[0].phase['pull']['targets'][int(window[\
+                    1:])] - self.guest_restraints[0].pull['target_initial']
             for atom in structure.atoms:
                 if atom.residue.name == self.guest.upper():
                     atom.xz += target_difference
