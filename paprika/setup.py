@@ -6,6 +6,7 @@ import pkg_resources
 import shutil
 import textwrap
 import parmed as pmd
+import subprocess as sp
 
 from pathlib import Path
 from paprika import align
@@ -123,19 +124,19 @@ class Setup(object):
         aligned_structure.save(str(destination_inpcrd), overwrite=True)
         aligned_structure.save(str(destination_pdb), overwrite=True)
 
-    def align(self, source_file=None):
-        # source_prmtop = self.directory.joinpath(f"{self.host}-{self.guest}-unaligned.prmtop")
-        # source_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}-unaligned.rst7")
-        # structure = pmd.load_file(str(source_prmtop), str(source_inpcrd),
-        #                           structure=True)
-        structure = pmd.load_file(str(source_file), structure=True)
-
-        guest_angle_restraint = self.guest_yaml["restraints"][-1]["restraint"]["atoms"].split()
-        aligned_structure = align.zalign(structure, guest_angle_restraint[1], guest_angle_restraint[2])
-        destination_prmtop = self.directory.joinpath(f"{self.host}-{self.guest}.prmtop")
-        destination_inpcrd = self.directory.joinpath(f"{self.host}-{self.guest}.rst7")
+    def align(self, coordinates, topology):
+        structure = pmd.load_file(str(coordinates), structure=True)
+        intermediate_pdb = self.directory.joinpath(f"tmp.pdb")
         destination_pdb = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
-        aligned_structure.save(str(destination_pdb), overwrite=True)
+
+        guest_angle_restraint_mask = self.guest_yaml["restraints"][-1]["restraint"]["atoms"].split()
+        aligned_structure = align.zalign(structure, guest_angle_restraint_mask[1], guest_angle_restraint_mask[2])
+        aligned_structure.save(str(intermediate_pdb), overwrite=True)
+        p = create_pdb_with_conect(intermediate_pdb, amber_prmtop=topology,
+                               output_pdb=destination_pdb)
+        if p:
+            shutil.rmtree(intermediate_pdb)
+
 
     def _create_dummy_restraint(self, initial_structure):
 
@@ -175,19 +176,22 @@ class Setup(object):
 
     def build_desolvated_windows(self):
         initial_structure = self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['complex'])
-        self.align(source_file=str(initial_structure))
+        initial_topology = self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['prmtop'])
+        self.align(coordinates=str(initial_structure),
+                   topology=str(initial_topology))
+        logger.debug("Setting up dummy restraint to build window list.")
         _dummy_restraint = self._create_dummy_restraint(initial_structure = str(initial_structure))
         window_list = create_window_list([_dummy_restraint])
 
         for window in window_list:
-            for window in window_list:
-                self.directory.joinpath("windows").joinpath(window).mkdir(parents=True, exist_ok=True)
-                self.translate(window, restraint = _dummy_restraint)
+            logger.debug(f"Translating guest in window {window}...")
+            self.directory.joinpath("windows").joinpath(window).mkdir(parents=True, exist_ok=True)
+            self.translate(window, restraint = _dummy_restraint)
 
-                window_pdb_file_name = f"{self.host}-{self.guest}.pdb"
+            window_pdb_file_name = f"{self.host}-{self.guest}.pdb"
 
-                self.desolvated_window_paths.append(str(
-                    self.directory.joinpath("windows").joinpath(window).joinpath(window_pdb_file_name)))
+            self.desolvated_window_paths.append(str(
+                self.directory.joinpath("windows").joinpath(window).joinpath(window_pdb_file_name)))
 
     def initialize_restraints(self):
 
@@ -591,3 +595,54 @@ def openmm_positional_restraints(prmtop, rst7, dummy_atom_name="DUM", force_cons
             # system.setParticleMass({atom.idx}, 0 * unit.dalton)
             # """
     return string
+
+
+def create_pdb_with_conect(input_pdb, amber_prmtop, output_pdb):
+    """
+    Create a PDB file containing CONECT records.
+    `cpptraj` must be in your PATH.
+    Parameters
+    ----------
+    input_pdb : str
+        Existing structure from e.g., Mobley's Benchmark Sets repository
+    amber_prmtop : str
+        AMBER (or other) parameters for the residues in the solvated PDB file
+    output_pdb : str
+        Output PDB file name
+    path : str
+        Directory for input and output files
+    """
+    logging.info(f'Creating {output_pdb} with CONECT records...')
+    cpptraj = \
+        f'''
+    parm {amber_prmtop}
+    trajin {input_pdb}
+    trajout {output_pdb} conect
+    '''
+    path = output_pdb.parent
+
+    cpptraj_input = output_pdb.with_suffix(".in")
+    cpptraj_output = output_pdb.with_suffix(".out")
+
+    with open(cpptraj_input, 'w') as file:
+        file.write(cpptraj)
+    with open(cpptraj_output, 'w') as file:
+        p = sp.Popen(
+            ['cpptraj', '-i', cpptraj_input],
+            cwd=path,
+            stdout=file,
+            stderr=file)
+        output, error = p.communicate()
+    if p.returncode == 0:
+        logger.debug('PDB file written by cpptraj.')
+        return True
+    elif p.returncode == 1:
+        logger.error('Error returned by cpptraj.')
+        logger.error(f'Output: {output}')
+        logger.error(f'Error: {error}')
+        p = sp.Popen(['cat', cpptraj_output], cwd=path, stdout=sp.PIPE)
+        for line in p.stdout:
+            logger.error(line.decode("utf-8").strip(), )
+    else:
+        logger.error(f'Output: {output}')
+        logger.error(f'Error: {error}')
