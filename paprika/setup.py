@@ -6,6 +6,7 @@ import pkg_resources
 import shutil
 import textwrap
 import parmed as pmd
+import os as os
 import subprocess as sp
 
 from pathlib import Path
@@ -130,10 +131,11 @@ class Setup(object):
         guest_angle_restraint_mask = self.guest_yaml["restraints"][-1]["restraint"]["atoms"].split()
         aligned_structure = align.zalign(structure, guest_angle_restraint_mask[1], guest_angle_restraint_mask[2])
         aligned_structure.save(str(intermediate_pdb), overwrite=True)
-        p = create_pdb_with_conect(intermediate_pdb, amber_prmtop=topology,
+        p = create_pdb_with_conect(intermediate_pdb,
+                               amber_prmtop=topology,
                                output_pdb=destination_pdb)
         if p:
-            shutil.rmtree(intermediate_pdb)
+            os.remove(intermediate_pdb)
 
 
     def _create_dummy_restraint(self, initial_structure):
@@ -175,8 +177,8 @@ class Setup(object):
     def build_desolvated_windows(self):
         initial_structure = self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['complex'])
         initial_topology = self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['prmtop'])
-        self.align(coordinates=str(initial_structure),
-                   topology=str(initial_topology))
+        self.align(coordinates=initial_structure,
+                   topology=initial_topology)
         logger.debug("Setting up dummy restraint to build window list.")
         _dummy_restraint = self._create_dummy_restraint(initial_structure = str(initial_structure))
         window_list = create_window_list([_dummy_restraint])
@@ -296,7 +298,18 @@ class Setup(object):
             for atom in structure.atoms:
                 if atom.residue.name == self.guest.upper():
                     atom.xz += target_difference
-            structure.save(str(window_path.joinpath(f"{self.host}-{self.guest}.pdb")), overwrite=True)
+
+            intermediate_pdb = window_path.joinpath(f"tmp.pdb")
+            destination_pdb = window_path.joinpath(f"{self.host}-{self.guest}.pdb")
+            structure.save(str(intermediate_pdb), overwrite=True)
+
+            p = create_pdb_with_conect(intermediate_pdb,
+                                   amber_prmtop=self.benchmark_path.joinpath(self.guest).joinpath(self.guest_yaml['prmtop']),
+                                   output_pdb=destination_pdb)
+            if p:
+                os.remove(intermediate_pdb)
+
+
 
         elif window[0] == "r":
             # Copy the final pull window.
@@ -606,17 +619,18 @@ def create_pdb_with_conect(input_pdb, amber_prmtop, output_pdb):
     path : str
         Directory for input and output files
     """
-    logging.info(f'Creating {output_pdb} with CONECT records...')
+    logger.info(f'Creating {output_pdb} with CONECT records...')
     cpptraj = \
         f'''
-    parm {amber_prmtop}
-    trajin {input_pdb}
-    trajout {output_pdb} conect
+    parm {amber_prmtop.resolve()}
+    trajin {input_pdb.resolve()}
+    trajout {output_pdb.resolve()} conect
     '''
-    path = output_pdb.parent
+    path = output_pdb.resolve().parent
 
-    cpptraj_input = output_pdb.with_suffix(".in")
-    cpptraj_output = output_pdb.with_suffix(".out")
+    cpptraj_input = output_pdb.resolve().with_suffix(".in")
+    cpptraj_output = output_pdb.resolve().with_suffix(".out")
+    logger.debug(f"Writing {cpptraj_input}")
 
     with open(cpptraj_input, 'w') as file:
         file.write(cpptraj)
