@@ -314,16 +314,13 @@ class Setup(object):
         except:
             logger.warning(f"Missing {input_xml}")
 
-    def initialize_restraints(self, PDB_filename="output.pdb"):
+    def initialize_restraints(self, structure="output.pdb"):
 
         windows = [
             self.host_yaml["calculation"]["windows"]["attach"],
             self.host_yaml["calculation"]["windows"]["pull"],
             None,
         ]
-        structure = (
-            self.directory.joinpath("windows").joinpath("a000").joinpath(PDB_filename)
-        )
 
         static_restraints = []
         for restraint in self.host_yaml["calculation"]["restraints"]["static"]:
