@@ -62,7 +62,7 @@ class Setup(object):
         # These files are stored in `self.desolvated_window_paths`.
         self.build_desolvated_windows()
         # Now, we read in the solvated windows from the Property Estimator
-        self.dummy_atom_indices = self.add_dummy_atoms()
+        self.add_dummy_atoms()
         self.static_restraints, self.conformational_restraints, self.wall_restraints, self.guest_restraints = (
             self.initialize_restraints()
         )
@@ -78,21 +78,22 @@ class Setup(object):
 
         """
         try:
-            host_yaml = installed_benchmarks["host_guest_pairs"][self.host]["yaml"]
+            host_yaml = installed_benchmarks["host_guest_systems"][self.host]["yaml"]
         except KeyError:
             logger.error(f"Cannot find YAML recipe for host: {self.host}")
             logger.debug(installed_benchmarks)
             raise FileNotFoundError
         try:
-            guest_yaml = installed_benchmarks["host_guest_pairs"][self.host][self.guest]
+            guest_yaml = installed_benchmarks["host_guest_systems"][self.host][self.guest]
         except KeyError:
             logger.error(f"Cannot find YAML recipe for guest: {self.guest}")
             logger.debug(installed_benchmarks)
             raise FileNotFoundError
+
         return host_yaml, guest_yaml
 
-    def align(self, coordinates, topology):
-        structure = pmd.load_file(str(coordinates), structure=True)
+    def align(self, input_pdb, topology):
+        structure = pmd.load_file(str(input_pdb), structure=True)
         intermediate_pdb = self.directory.joinpath(f"tmp.pdb")
         destination_pdb = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
 
@@ -105,9 +106,11 @@ class Setup(object):
         aligned_structure.save(str(intermediate_pdb), overwrite=True)
 
         # Save aligned PDB file with CONECT records.
-        input_pdb_file = openmm.app.PDBFile(str(intermediate_pdb))
-        positions = input_pdb_file.positions
-        topology = input_pdb_file.topology
+        positions_pdb = openmm.app.PDBFile(str(intermediate_pdb))
+        topology_pdb = openmm.app.PDBFile(str(input_pdb))
+
+        positions = positions_pdb.positions
+        topology = topology_pdb.topology
         with open(destination_pdb, "w") as file:
             openmm.app.PDBFile.writeFile(topology, positions, file)
         os.remove(intermediate_pdb)
@@ -119,7 +122,7 @@ class Setup(object):
         initial_topology = self.benchmark_path.joinpath(self.guest).joinpath(
             self.guest_yaml["prmtop"]
         )
-        self.align(coordinates=initial_structure, topology=initial_topology)
+        self.align(input_pdb=initial_structure, topology=initial_topology)
         logger.debug("Setting up dummy restraint to build window list.")
         _dummy_restraint = self._create_dummy_restraint(
             initial_structure=str(initial_structure)
@@ -274,8 +277,7 @@ class Setup(object):
         # Add dummy atoms to System
         try:
             system = read_openmm_system_from_xml(input_xml)
-            dummy_atom_indices = []
-            dummy_atom_indices.append([system.addParticle(mass=207) for _ in range(3)])
+            [system.addParticle(mass=207) for _ in range(3)]
 
             for force_index in range(system.getNumForces()):
                 force = system.getForce(force_index)
@@ -312,8 +314,6 @@ class Setup(object):
                 file.write(system_xml)
         except:
             logger.warning(f"Missing {input_xml}")
-
-        return dummy_atom_indices
 
     def initialize_restraints(self, PDB_filename="output.pdb"):
 
