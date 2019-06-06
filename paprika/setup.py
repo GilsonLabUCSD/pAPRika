@@ -423,13 +423,14 @@ class Setup(object):
             else:
                 self.initialize_calculation(window)
 
-    def initialize_calculation(self, window, XML_filename="system.xml"):
+    def initialize_calculation(self, window, input_xml="system.xml", output_xml="system.xml"):
         if self.backend == "amber":
             # Write simulation input files in each directory
             raise NotImplementedError
-
-        window_path = self.directory.joinpath("windows").joinpath(window)
-        system = read_openmm_system_from_xml(window_path.joinpath(XML_filename))
+        try:
+            system = read_openmm_system_from_xml(input_xml)
+        except:
+            logger.warning(f"Cannot read XML from {input_xml}")
 
         for restraint in self.static_restraints:
             system = apply_openmm_restraints(system, restraint, window, ForceGroup=10)
@@ -443,7 +444,7 @@ class Setup(object):
 
         system_xml = openmm.XmlSerializer.serialize(system)
 
-        with open(window_path.joinpath(XML_filename), "w") as file:
+        with open(output_xml, "w") as file:
             file.write(system_xml)
 
 
