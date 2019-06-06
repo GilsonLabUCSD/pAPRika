@@ -92,7 +92,7 @@ class Setup(object):
 
         return host_yaml, guest_yaml
 
-    def align(self, input_pdb, topology):
+    def align(self, input_pdb):
         structure = pmd.load_file(str(input_pdb), structure=True)
         intermediate_pdb = self.directory.joinpath(f"tmp.pdb")
         destination_pdb = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
@@ -119,10 +119,7 @@ class Setup(object):
         initial_structure = self.benchmark_path.joinpath(self.guest).joinpath(
             self.guest_yaml["complex"]
         )
-        initial_topology = self.benchmark_path.joinpath(self.guest).joinpath(
-            self.guest_yaml["prmtop"]
-        )
-        self.align(input_pdb=initial_structure, topology=initial_topology)
+        self.align(input_pdb=initial_structure)
         logger.debug("Setting up dummy restraint to build window list.")
         _dummy_restraint = self._create_dummy_restraint(
             initial_structure=str(initial_structure)
@@ -134,7 +131,7 @@ class Setup(object):
             self.directory.joinpath("windows").joinpath(window).mkdir(
                 parents=True, exist_ok=True
             )
-            self.translate(window, restraint=_dummy_restraint)
+            self.translate(window, topology_pdb=initial_structure, restraint=_dummy_restraint)
 
             window_pdb_file_name = f"{self.host}-{self.guest}.pdb"
 
@@ -180,7 +177,7 @@ class Setup(object):
 
         return guest_restraint
 
-    def translate(self, window, restraint):
+    def translate(self, window, topology_pdb, restraint):
         window_path = self.directory.joinpath("windows").joinpath(window)
         if window[0] == "a":
             # Copy the initial structure.
@@ -203,9 +200,11 @@ class Setup(object):
             destination_pdb = window_path.joinpath(f"{self.host}-{self.guest}.pdb")
             structure.save(str(intermediate_pdb), overwrite=True)
 
-            input_pdb_file = openmm.app.PDBFile(str(intermediate_pdb))
-            positions = input_pdb_file.positions
-            topology = input_pdb_file.topology
+
+            input_pdb = openmm.app.PDBFile(str(intermediate_pdb))
+            topology_pdb = openmm.app.PDBFile(str(topology_pdb))
+            positions = input_pdb.positions
+            topology = topology_pdb.topology
             with open(destination_pdb, "w") as file:
                 openmm.app.PDBFile.writeFile(topology, positions, file)
             os.remove(intermediate_pdb)
@@ -391,37 +390,6 @@ class Setup(object):
             wall_restraints,
             guest_restraints,
         )
-
-    def build_windows(self):
-        save_restraints(
-            self.static_restraints
-            + self.conformational_restraints
-            + self.wall_restraints
-            + self.guest_restraints,
-            self.directory.joinpath("restraints.json"),
-        )
-        window_list = create_window_list(self.guest_restraints)
-
-        for window in window_list:
-            self.directory.joinpath("windows").joinpath(window).mkdir(
-                parents=True, exist_ok=True
-            )
-            self.translate(window)
-            self.solvate(window)
-
-            if self.backend == "amber":
-                # Write the restraint file in each window.
-                raise NotImplementedError
-            # from paprika.restraints.amber_restraints import amber_restraint_line
-            # for window in window_list:
-            #     with open(self.directory.joinpath("windows").joinpath(window).joinpath("disang.rest"), "a") as file:
-            #         for restraint in self.static_restraints + self.conformational_restraints + self.wall_restraints + self.guest_restraints:
-            #             string = amber_restraint_line(restraint, window)
-            #             if string is not None:
-            #                 file.write(string)
-
-            else:
-                self.initialize_calculation(window)
 
     def initialize_calculation(self, window, input_xml="system.xml", output_xml="system.xml"):
         if self.backend == "amber":
