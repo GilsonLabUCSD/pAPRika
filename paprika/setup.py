@@ -8,9 +8,12 @@ import textwrap
 import parmed as pmd
 import os as os
 import subprocess as sp
+import simtk.openmm as openmm
+import simtk.unit as unit
 
 from pathlib import Path
 from paprika import align
+from paprika.dummy import add_dummy
 from paprika.tleap import System
 from paprika.restraints import static_DAT_restraint, DAT_restraint
 from paprika.restraints.restraints import create_window_list
@@ -29,6 +32,9 @@ def _get_installed_benchmarks():
         _installed_benchmarks[entry_point.name] = entry_point.load()
     return _installed_benchmarks
 
+def read_openmm_system_from_xml(filename):
+    with open(filename, "rb") as file:
+        return openmm.XmlSerializer.deserialize(file.read().decode())
 
 class Setup(object):
     """
@@ -42,6 +48,7 @@ class Setup(object):
 
         self.directory = Path("benchmarks").joinpath(self.host).joinpath(self.guest)
         self.directory.mkdir(parents=True, exist_ok=True)
+        self.window_list = []
 
         if self.backend == "amber":
             raise NotImplementedError
@@ -53,7 +60,16 @@ class Setup(object):
         self.guest_yaml = read_yaml(guest_yaml)
 
         self.build_desolvated_windows()
-
+        # Read in XML from Simon
+        self.read_solvated_windows()
+        self.dummy_atom_indices = self.add_dummy_atoms()
+        # Initialize the restraints
+        self.static_restraints, \
+        self.conformational_restraints, \
+        self.wall_restraints, \
+        self.guest_restraints = self.initialize_restraints()
+        for window in self.window_list:
+            self.initialize_calculation(window)
         # self.build_bound()
         # self.static_restraints, \
         # self.conformational_restraints, \
@@ -181,13 +197,94 @@ class Setup(object):
                    topology=initial_topology)
         logger.debug("Setting up dummy restraint to build window list.")
         _dummy_restraint = self._create_dummy_restraint(initial_structure = str(initial_structure))
-        window_list = create_window_list([_dummy_restraint])
+        self.window_list = create_window_list([_dummy_restraint])
 
-        for window in window_list:
+        for window in self.window_list:
             logger.debug(f"Translating guest in window {window}...")
             self.directory.joinpath("windows").joinpath(window).mkdir(parents=True, exist_ok=True)
             self.translate(window, restraint = _dummy_restraint)
 
+
+    def read_solvated_windows(self):
+        for window in self.window_list:
+            logger.debug(f"Reading solvated OpenMM System...")
+            try:
+                system = read_openmm_system_from_xml(self.directory.joinpath("windows").joinpath(window).joinpath(
+                "system.xml"))
+
+            except:
+                logger.warning(f"Missing system.xml in {window}")
+
+
+    def add_dummy_atoms(self):
+        # First add dummy atoms to structure
+        guest_angle_restraint_mask = self.guest_yaml["restraints"][-1]["restraint"]["atoms"].split()
+        for window in self.window_list:
+            logger.debug(f"Adding dummy atoms to structures...")
+            try:
+                structure = pmd.load_file(str(self.directory.joinpath("windows").joinpath(window).joinpath(
+                    "output.pdb")))
+                offset_coordinates = structure[guest_angle_restraint_mask[1]].coordinates
+
+                structure = add_dummy(structure, x = offset_coordinates[0][0],
+                          y = offset_coordinates[0][1],
+                          z = offset_coordinates[0][2] - 6.0,
+                                      residue_name="DM1")
+                structure = add_dummy(structure, x = offset_coordinates[0][0],
+                          y = offset_coordinates[0][1],
+                          z = offset_coordinates[0][2] - 9.0,
+                                      residue_name="DM2")
+                structure = add_dummy(structure, x = offset_coordinates[0][0],
+                        y = offset_coordinates[0][1] + 2.2,
+                        z = offset_coordinates[0][2] - 11.2,
+                                      residue_name="DM3")
+                structure.save(str(self.directory.joinpath("windows").joinpath(window).joinpath(
+                    "dummy.pdb")), overwrite=True)
+            except:
+                logger.warning(f"Missing output.pdb in {window}")
+
+            # Add dummy atoms to System
+            try:
+                system = read_openmm_system_from_xml(self.directory.joinpath("windows").joinpath(window).joinpath(
+                    "system.xml"))
+                dummy_atom_indices = []
+                dummy_atom_indices.append([system.addParticle(mass = 207) for _ in range(3)])
+
+                for force_index in range(system.getNumForces()):
+                    force = system.getForce(force_index)
+                    if not isinstance(force, openmm.NonbondedForce):
+                        continue
+                    force.addParticle(0.0, 1.0, 0.0)
+                    force.addParticle(0.0, 1.0, 0.0)
+                    force.addParticle(0.0, 1.0, 0.0)
+
+                for atom in structure.atoms:
+                    if atom.name == "DUM":
+
+                        positional_restraint = openmm.CustomExternalForce('k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)')
+                        positional_restraint.addPerParticleParameter('k')
+                        positional_restraint.addPerParticleParameter('x0')
+                        positional_restraint.addPerParticleParameter('y0')
+                        positional_restraint.addPerParticleParameter('z0')
+                        # I haven't found a way to get this to use ParmEd's unit library here.
+                        # ParmEd correctly reports `atom.positions` as units of Ångstroms.
+                        # But then we can't access atom indices.
+                        # Using `atom.xx` works for coordinates, but is unitless.
+
+                        k = 50.0 * unit.kilocalories_per_mole / unit.angstroms**2
+                        x0 = 0.1 * atom.xx * unit.nanometers
+                        y0 = 0.1 * atom.xy * unit.nanometers
+                        z0 = 0.1 * atom.xz * unit.nanometers
+                        positional_restraint.addParticle(atom.idx, [k, x0, y0, z0])
+                        system.addForce(positional_restraint)
+
+                system_xml = openmm.XmlSerializer.serialize(system)
+                with open(self.directory.joinpath("windows").joinpath(window).joinpath("dummy.xml"), "w") as file:
+                    file.write(system_xml)
+            except:
+                logger.warning(f"Missing system.xml")
+
+        return dummy_atom_indices
 
     def initialize_restraints(self):
 
@@ -196,7 +293,8 @@ class Setup(object):
             self.host_yaml["calculation"]["windows"]["pull"],
             None,
         ]
-        structure = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
+        # structure = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
+        structure = self.directory.joinpath("windows").joinpath("a000").joinpath("dummy.pdb")
 
         static_restraints = []
         for restraint in self.host_yaml["calculation"]["restraints"]["static"]:
@@ -357,134 +455,22 @@ class Setup(object):
             raise NotImplementedError
 
         window_path = self.directory.joinpath("windows").joinpath(window)
-        source_prmtop = window_path.joinpath(f"{self.host}-{self.guest}.prmtop")
-        source_inpcrd = window_path.joinpath(f"{self.host}-{self.guest}.rst7")
-
-        
-        openmm_string = f"""
-        import os
-        import re
-        import shutil
-        import json
-
-        import numpy as np
-        import parmed as pmd
-
-        import simtk.openmm as mm
-        import simtk.openmm.app as app
-        import simtk.unit as unit
-        from parmed.openmm.reporters import NetCDFReporter
-
-        settings = {{
-        'nonbonded_method': app.PME,
-        'nonbonded_cutoff': 8.0 * unit.angstrom,
-        'temperature': 300 * unit.kelvin,
-        'timestep': 0.002 * unit.picosecond,
-        'constraints': app.HBonds,
-        'friction': 1.0 / unit.picoseconds,
-        }}
-
-        prmtop_file = "{self.host}-{self.guest}-sol.prmtop"
-        prmtop = app.AmberPrmtopFile(prmtop_file)
-
-        system = prmtop.createSystem(
-                nonbondedMethod=settings["nonbonded_method"],
-                nonbondedCutoff=settings["nonbonded_cutoff"],
-                constraints=settings["constraints"],
-        )
-
-        integrator = mm.LangevinIntegrator(
-                    settings["temperature"],
-                    settings["friction"],
-                    settings["timestep"]
-        )
-
-        for force in system.getForces():
-            force.setForceGroup(1)
-        """
-        # Add positional restraints on dummy atoms.
-        openmm_string += """
-        # Positional restraints
-        """
-        openmm_string += openmm_positional_restraints(prmtop=window_path.joinpath(f"{self.host}-{self.guest}-sol.prmtop"),
-        rst7=window_path.joinpath(f"{self.host}-{self.guest}-sol.rst7"))
+        system = read_openmm_system_from_xml(window_path.joinpath("dummy.xml"))
 
         for restraint in self.static_restraints:
-            openmm_string += """
-        # Static restraints
-        """
-            openmm_string += openmm_string_from_restraint(restraint, window, ForceGroup=10)
+            system = apply_openmm_restraints(system, restraint, window, ForceGroup=10)
         for restraint in self.conformational_restraints:
-            openmm_string += """
-        # Conformational restraints
-        """
-            openmm_string += openmm_string_from_restraint(restraint, window, ForceGroup=11)
+            system = apply_openmm_restraints(system, restraint, window, ForceGroup=11)
         for restraint in self.guest_restraints:
-            openmm_string += """
-        # Guest restraints
-        """
-            openmm_string += openmm_string_from_restraint(restraint, window, ForceGroup=12)
+            system = apply_openmm_restraints(system, restraint, window, ForceGroup=12)
         for restraint in self.wall_restraints:
             # Custom force here...
             raise NotImplementedError
 
-        openmm_string += f"""
-        system.addForce(mm.MonteCarloBarostat(1 * unit.bar, 300 * unit.kelvin, 100))
+        system_xml=openmm.XmlSerializer.serialize(system)
 
-        inpcrd = app.AmberInpcrdFile("{self.host}-{self.guest}-sol.rst7")
-        simulation = app.Simulation(prmtop.topology, system, integrator,
-                                mm.Platform.getPlatformByName('CUDA'))
-
-        simulation.context.setPositions(inpcrd.positions)
-        simulation.minimizeEnergy()
-        simulation.context.setVelocitiesToTemperature(settings["temperature"] * unit.kelvin)
-
-        # 1000 × 2 fs = 2 ps per frame
-        simulation.reporters.append(NetCDFReporter(f"openmm.nc", 1000))
-        simulation.reporters.append(app.StateDataReporter("openmm.log", 10000, step=True,
-            potentialEnergy=True, temperature=True, speed=True))
-        # 500000 × 2 fs = 1 ns 
-        simulation.step(500000)
-
-        # total_energy = simulation.context.getState(getEnergy=True)
-        # total_energy = total_energy.getPotentialEnergy() / unit.kilocalories_per_mole
-        
-        # non_restraint_energy = simulation.context.getState(getEnergy=True, groups={{1}})
-        # non_restraint_energy = non_restraint_energy.getPotentialEnergy() / unit.kilocalorie_per_mole
-        
-        # static_restraint_energy = simulation.context.getState(getEnergy=True, groups={{10}})
-        # static_restraint_energy = static_restraint_energy.getPotentialEnergy() / unit.kilocalorie_per_mole
-        
-        # conformational_restraint_energy = simulation.context.getState(getEnergy=True, groups={{11}})
-        # conformational_restraint_energy = conformational_restraint_energy.getPotentialEnergy() / unit.kilocalorie_per_mole
-
-        # guest_restraint_energy = simulation.context.getState(getEnergy=True, groups={{12}})
-        # guest_restraint_energy = guest_restraint_energy.getPotentialEnergy() / unit.kilocalorie_per_mole
-
-        # print('Total energy = {{0:4.4f}}'.format(total_energy))
-        # print('Non-restraint energy = {{0:4.4f}}'.format(non_restraint_energy))
-        # print('Static restraint energy = {{0:4.4f}}'.format(static_restraint_energy))
-        # print('Conformational restraint energy = {{0:4.4f}}'.format(conformational_restraint_energy))
-        # print('Guest restraint energy = {{0:4.4f}}'.format(guest_restraint_energy))
-
-        """
-        with open(window_path.joinpath("openmm.py"), "w") as f:
-            f.write(textwrap.dedent(openmm_string))
-
-    def openmm_wrapper(self):
-        string = f"""
-        import glob as glob
-        import os as os
-        import subprocess as sp
-
-        directories = glob.glob("windows/*")
-        directories = [i for i in directories if os.path.isdir(i)]
-        for directory in sorted(directories):
-            print(f"Running in {{directory}}")
-            sp.call("python openmm.py", cwd=directory, shell=True)
-        """
-        with open(self.directory.joinpath("openmm_wrapper.py"), "w") as f:
-            f.write(textwrap.dedent(string))
+        with open(window_path.joinpath("restraints.xml"), "w") as file:
+            file.write(system_xml)
 
 def get_benchmarks():
     """
@@ -494,7 +480,7 @@ def get_benchmarks():
     installed_benchmarks = _get_installed_benchmarks()
     return installed_benchmarks
 
-def openmm_string_from_restraint(restraint, window, ForceGroup=None):
+def apply_openmm_restraints(system, restraint, window, ForceGroup=None):
     if window[0] == "a":
         phase = "attach"
     elif window[0] == "p":
@@ -505,103 +491,57 @@ def openmm_string_from_restraint(restraint, window, ForceGroup=None):
 
     if restraint.mask2 and not restraint.mask3:
         if not restraint.group1 and not restraint.group2:
-            string = f"""
-        bond_restraint = mm.CustomBondForce('k * (r - r_0)^2')
-        bond_restraint.addPerBondParameter('k')
-        bond_restraint.addPerBondParameter('r_0')
+            bond_restraint = openmm.CustomBondForce('k * (r - r_0)^2')
+            bond_restraint.addPerBondParameter('k')
+            bond_restraint.addPerBondParameter('r_0')
 
-        r_0 = {restraint.phase[phase]["targets"][window_number]} * unit.angstroms
-        k = {restraint.phase[phase]["force_constants"][window_number]} * unit.kilocalories_per_mole / unit.angstroms**2 
-        bond_restraint.addBond({restraint.index1[0]}, {restraint.index2[0]}, 
-        [k, r_0])
-        system.addForce(bond_restraint)
-            """
+            r_0 = restraint.phase[phase]["targets"][window_number] * unit.angstroms
+            k = restraint.phase[phase]["force_constants"][window_number] * unit.kilocalories_per_mole / \
+                 unit.angstrom**2
+            bond_restraint.addBond(restraint.index1[0], restraint.index2[0], [k, r_0])
+            system.addForce(bond_restraint)
         else:
-            # Probably needs mm.CustomCentroidBondForce (?)
+            # Probably needs openmm.CustomCentroidBondForce (?)
             raise NotImplementedError
         if ForceGroup:
-            string += f"""
-        bond_restraint.setForceGroup({ForceGroup})
-        """
+            bond_restraint.setForceGroup(ForceGroup)
+
     elif restraint.mask3 and not restraint.mask4:
         if not restraint.group1 and not restraint.group2 and not restraint.group3:
-            string = f"""
-        angle_restraint = mm.CustomAngleForce('k * (theta - theta_0)^2')
-        angle_restraint.addPerAngleParameter('k')
-        angle_restraint.addPerAngleParameter('theta_0')
+            angle_restraint = openmm.CustomAngleForce('k * (theta - theta_0)^2')
+            angle_restraint.addPerAngleParameter('k')
+            angle_restraint.addPerAngleParameter('theta_0')
 
-        theta_0 = {restraint.phase[phase]["targets"][window_number]} * unit.degrees
-        k = {restraint.phase[phase]["force_constants"][window_number]} * unit.kilocalories_per_mole / unit.radian**2 
-        angle_restraint.addAngle({restraint.index1[0]}, {restraint.index2[0]}, {restraint.index3[0]}, 
-        [k, theta_0])
-        system.addForce(angle_restraint)
-            """
+            theta_0 = restraint.phase[phase]["targets"][window_number] * unit.degrees
+            k = restraint.phase[phase]["force_constants"][window_number] * unit.kilocalories_per_mole / unit.radian**2
+            angle_restraint.addAngle(restraint.index1[0], restraint.index2[0], restraint.index3[0],
+            [k, theta_0])
+            system.addForce(angle_restraint)
         else:
-            # Probably needs mm.CustomCentroidAngleForce (?)
+            # Probably needs openmm.CustomCentroidAngleForce (?)
             raise NotImplementedError
         if ForceGroup:
-            string += f"""
-        angle_restraint.setForceGroup({ForceGroup})
-        """
+            angle_restraint.setForceGroup(ForceGroup)
 
     elif restraint.mask4:
         if not restraint.group1 and not restraint.group2 and not restraint.group3 and not restraint.group4:
-            string = f"""
-        dihedral_restraint = mm.CustomTorsionForce('k * (theta - theta_0)^2')
-        dihedral_restraint.addPerTorsionParameter('k')
-        dihedral_restraint.addPerTorsionParameter('theta_0')
+            dihedral_restraint = openmm.CustomTorsionForce('k * (theta - theta_0)^2')
+            dihedral_restraint.addPerTorsionParameter('k')
+            dihedral_restraint.addPerTorsionParameter('theta_0')
 
-        theta_0 = {restraint.phase[phase]["targets"][window_number]} * unit.degrees
-        k = {restraint.phase[phase]["force_constants"][window_number]} * unit.kilocalories_per_mole / unit.radian**2 
-        dihedral_restraint.addTorsion({restraint.index1[0]}, {restraint.index2[0]}, {restraint.index3[0]}, {restraint.index4[0]},
-        [k, theta_0])
-        system.addForce(dihedral_restraint)
-            """
+            theta_0 = restraint.phase[phase]["targets"][window_number] * unit.degrees
+            k = restraint.phase[phase]["force_constants"][window_number] * unit.kilocalories_per_mole / unit.radian**2
+            dihedral_restraint.addTorsion(restraint.index1[0], restraint.index2[0], restraint.index3[0],
+                                          restraint.index4[0],
+            [k, theta_0])
+            system.addForce(dihedral_restraint)
         else:
-            # Probably needs mm.CustomCentroidTorsionForce (?)
+            # Probably needs openmm.CustomCentroidTorsionForce (?)
             raise NotImplementedError
         if ForceGroup:
-            string += f"""
-        dihedral_restraint.setForceGroup({ForceGroup})
-        """
+            dihedral_restraint.setForceGroup(ForceGroup)
+    return system
 
-    return string
-
-def openmm_positional_restraints(prmtop, rst7, dummy_atom_name="DUM", force_constant=50.0):
-    from parmed import unit
-    # This is slow and can easily be fixed.
-    coordinates = pmd.load_file(str(prmtop), str(rst7), structure=True)
-    string = ""
-    # Do not slice. Slicing does NOT preserve atom indices.
-    # for atom in coordinates[f"@{dummy_atom_name}"].atoms:
-    for atom in coordinates.atoms:
-        if atom.name == dummy_atom_name:
-            string += f"""
-        positional_restraint = mm.CustomExternalForce('k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)')
-        positional_restraint.addPerParticleParameter('k')
-        positional_restraint.addPerParticleParameter('x0')
-        positional_restraint.addPerParticleParameter('y0')
-        positional_restraint.addPerParticleParameter('z0')
-        """
-            # I haven't found a way to get this to use ParmEd's unit library here.
-            # ParmEd correctly reports `atom.positions` as units of Ångstroms.
-            # But then we can't access atom indices.
-            # Using `atom.xx` works for coordinates, but is unitless.
-            x = 0.1 * atom.xx
-            y = 0.1 * atom.xy
-            z = 0.1 * atom.xz
-            string += f"""
-        k = {force_constant} * unit.kilocalories_per_mole / unit.angstroms**2
-        x0 = {x} * unit.nanometers
-        y0 = {y} * unit.nanometers
-        z0 = {z} * unit.nanometers
-        positional_restraint.addParticle({atom.idx}, [k, x0, y0, z0])
-        system.addForce(positional_restraint)
-            """
-            # string += f"""
-            # system.setParticleMass({atom.idx}, 0 * unit.dalton)
-            # """
-    return string
 
 
 def create_pdb_with_conect(input_pdb, amber_prmtop, output_pdb):
