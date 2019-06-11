@@ -5,10 +5,10 @@ This class contains a simulation setup wrapper for use with the Property Estimat
 import pkg_resources
 import shutil
 import parmed as pmd
+import numpy as np
 import os as os
 import simtk.openmm as openmm
 import simtk.unit as unit
-
 
 from pathlib import Path
 from paprika import align
@@ -40,9 +40,9 @@ class Setup(object):
     The Setup class provides a wrapper function around the preparation of the host-guest system and the application of restraints.
     """
 
-    def __init__(self, host, guest, backend="openmm", directory_path="benchmarks"):
+    def __init__(self, host, guest=None, backend="openmm", directory_path="benchmarks",):
         self.host = host
-        self.guest = guest
+        self.guest = guest if guest is not None else "release"
         self.backend = backend
         self.directory = Path(directory_path).joinpath(self.host).joinpath(self.guest)
         self.desolvated_window_paths = []
@@ -51,27 +51,29 @@ class Setup(object):
         if self.backend == "amber":
             raise NotImplementedError
 
+
         self.directory.mkdir(parents=True, exist_ok=True)
         installed_benchmarks = get_benchmarks()
         host_yaml, guest_yaml = self.parse_yaml(installed_benchmarks)
         self.benchmark_path = host_yaml.parent
         self.host_yaml = read_yaml(host_yaml)
-        self.guest_yaml = read_yaml(guest_yaml)
+        if not guest:
+            self.guest_yaml = read_yaml(guest_yaml)
 
         # Here, we build desolvated windows and pass the files to the Property Estimator.
         # These files are stored in `self.desolvated_window_paths`.
-        # self.build_desolvated_windows()
+        self.build_desolvated_windows()
         # Now, we read in the solvated windows from the Property Estimator
         # self.add_dummy_atoms()
-        self.static_restraints, self.conformational_restraints, self.wall_restraints, self.guest_restraints = (
-            self.initialize_restraints(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"))
-        )
-        for window in self.window_list:
-            self.initialize_calculation(window)
-
-        save_restraints(restraint_list=[self.static_restraints, self.conformational_restraints, self.wall_restraints,
-                                        self.guest_restraints],
-                        filepath=self.directory.joinpath("restraints.json"))
+        # self.static_restraints, self.conformational_restraints, self.wall_restraints, self.guest_restraints = (
+        #     self.initialize_restraints(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"))
+        # )
+        # for window in self.window_list:
+        #     self.initialize_calculation(window)
+        #
+        # save_restraints(restraint_list=[self.static_restraints, self.conformational_restraints, self.wall_restraints,
+        #                                 self.guest_restraints],
+        #                 filepath=self.directory.joinpath("restraints.json"))
 
     def parse_yaml(self, installed_benchmarks):
         """
@@ -90,9 +92,12 @@ class Setup(object):
         try:
             guest_yaml = installed_benchmarks["host_guest_systems"][self.host][self.guest]
         except KeyError:
-            logger.error(f"Cannot find YAML recipe for guest: {self.guest}")
-            logger.debug(installed_benchmarks)
-            raise FileNotFoundError
+            if self.guest == "release":
+                guest_yaml = None
+            else:
+                logger.error(f"Cannot find YAML recipe for guest: {self.guest}")
+                logger.debug(installed_benchmarks)
+                raise FileNotFoundError
 
         return host_yaml, guest_yaml
 
@@ -101,13 +106,42 @@ class Setup(object):
         intermediate_pdb = self.directory.joinpath(f"tmp.pdb")
         destination_pdb = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
 
-        guest_angle_restraint_mask = self.guest_yaml["restraints"][-1]["restraint"][
-            "atoms"
-        ].split()
-        aligned_structure = align.zalign(
-            structure, guest_angle_restraint_mask[1], guest_angle_restraint_mask[2]
-        )
-        aligned_structure.save(str(intermediate_pdb), overwrite=True)
+        if not self.guest == "release":
+            # Align the host-guest complex so the first guest atom is at (0, 0, 0) and the second guest atom lies
+            # along the positive z-axis.
+            guest_angle_restraint_mask = self.guest_yaml["restraints"][-1]["restraint"][
+                "atoms"
+            ].split()
+            aligned_structure = align.zalign(
+                structure, guest_angle_restraint_mask[1], guest_angle_restraint_mask[2]
+            )
+            aligned_structure.save(str(intermediate_pdb), overwrite=True)
+
+        else:
+            # Create a PDB file just for the host.
+
+            host = pmd.load_file(str(input_pdb), structure=True)
+            host_coordinates = host[f":{self.host.upper()}"].coordinates
+            # Cheap way to get the center of geometry
+            offset_coordinates = pmd.geometry.center_of_mass(host_coordinates,
+                                                             masses=np.ones(len(host_coordinates)))
+
+            self._add_dummy_to_PDB(input_pdb=input_pdb,
+                                   output_pdb=intermediate_pdb,
+                                   offset_coordinates=offset_coordinates,
+                                   dummy_atom_tuples=[(0, 0, 0),
+                                                      (0, 0, 5)])
+            structure = pmd.load_file(str(intermediate_pdb), structure=True)
+
+            for atom in structure.atoms:
+                atom.mass = 1.0
+
+            aligned_structure = align.zalign(
+                structure, ":DM0", ":DM1"
+            )
+            aligned_structure["!:DM0&!:DM1"].save(str(intermediate_pdb),
+                                                  overwrite=True)
+
 
         # Save aligned PDB file with CONECT records.
         positions_pdb = openmm.app.PDBFile(str(intermediate_pdb))
@@ -120,15 +154,25 @@ class Setup(object):
         os.remove(intermediate_pdb)
 
     def build_desolvated_windows(self):
-        initial_structure = self.benchmark_path.joinpath(self.guest).joinpath(
-            self.guest_yaml["complex"]
-        )
+        if self.guest != "release":
+            initial_structure = self.benchmark_path.joinpath(self.guest).joinpath(
+                self.guest_yaml["complex"]
+            )
+
+        else:
+
+            initial_structure = self.directory.joinpath(self.benchmark_path.joinpath(self.host_yaml["structure"]))
+            host = pmd.load_file(str(initial_structure))
+            host.save(str(self.directory.joinpath(f"{self.host}.pdb")), overwrite=True)
+            initial_structure = str(self.directory.joinpath(f"{self.host}.pdb"))
+
         self.align(input_pdb=initial_structure)
         logger.debug("Setting up dummy restraint to build window list.")
         _dummy_restraint = self._create_dummy_restraint(
-            initial_structure=str(initial_structure)
+            initial_structure=str(initial_structure),
         )
         self.window_list = create_window_list([_dummy_restraint])
+
 
         for window in self.window_list:
             logger.debug(f"Translating guest in window {window}...")
@@ -149,12 +193,19 @@ class Setup(object):
 
     def _create_dummy_restraint(self, initial_structure):
 
-        windows = [
-            self.host_yaml["calculation"]["windows"]["attach"],
-            self.host_yaml["calculation"]["windows"]["pull"],
-            None,
-        ]
-        restraint = self.guest_yaml["restraints"][0]
+        if self.guest != "release":
+            windows = [
+                self.host_yaml["calculation"]["windows"]["attach"],
+                self.host_yaml["calculation"]["windows"]["pull"],
+                None,
+            ]
+        else:
+            windows = [
+                None,
+                None,
+                self.host_yaml["calculation"]["windows"]["release"]
+            ]
+
 
         guest_restraint = DAT_restraint()
         guest_restraint.auto_apr = True
@@ -164,18 +215,34 @@ class Setup(object):
         guest_restraint.mask1 = "@1"
         guest_restraint.mask2 = "@2"
 
-        guest_restraint.attach["target"] = restraint["restraint"]["attach"]["target"]
-        guest_restraint.attach["fc_final"] = restraint["restraint"]["attach"][
-            "force_constant"
-        ]
-        guest_restraint.attach["fraction_list"] = self.host_yaml["calculation"][
-            "lambda"
-        ]["attach"]
+        if self.guest != "release":
+            restraint = self.guest_yaml["restraints"][0]
+            guest_restraint.attach["target"] = restraint["restraint"]["attach"][
+                "target"
+            ]
+            guest_restraint.attach["fc_final"] = restraint["restraint"]["attach"][
+                "force_constant"
+            ]
+            guest_restraint.attach["fraction_list"] = self.host_yaml["calculation"][
+                "lambda"
+            ]["attach"]
 
-        guest_restraint.pull["target_final"] = self.host_yaml["calculation"]["target"][
-            "pull"
-        ]
-        guest_restraint.pull["num_windows"] = windows[1]
+            guest_restraint.pull["target_final"] = self.host_yaml["calculation"]["target"][
+                "pull"
+            ]
+            guest_restraint.pull["num_windows"] = windows[1]
+        else:
+            # Remember, the purpose of this *fake* restraint is *only* to figure out how many windows to make,
+            # so we can use the Property Estimator to solvate the structures for us. To figure out how many winodws
+            # we need, just setting the lambda values should be sufficient.
+            guest_restraint.auto_apr = False
+            guest_restraint.continuous_apr = False
+
+            guest_restraint.release["target"] = 1.0
+            guest_restraint.release["fc_final"] = 1.0
+            guest_restraint.release["fraction_list"] = self.host_yaml["calculation"][
+                "lambda"
+            ]["release"]
 
         guest_restraint.initialize()
 
@@ -214,13 +281,83 @@ class Setup(object):
             os.remove(intermediate_pdb)
 
         elif window[0] == "r":
-            # Copy the final pull window.
-            source_pdb = (
-                self.directory.joinpath("windows")
-                .joinpath(f"p{self.host_yaml['calculation']['windows']['pull']:03d}")
-                .joinpath(f"{self.host}-{self.guest}.pdb")
+            try:
+                # Copy the final pull window, if it exists
+                source_pdb = (
+                    self.directory.joinpath("windows")
+                    .joinpath(f"p{self.host_yaml['calculation']['windows']['pull']:03d}")
+                    .joinpath(f"{self.host}-{self.guest}.pdb")
+                )
+                shutil.copy(source_pdb, window_path)
+            except FileNotFoundError:
+                # Copy the initial structure, assuming we are doing a standalone release calculation.
+                shutil.copy(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"),
+                window_path)
+    def _add_dummy_to_PDB(self, input_pdb, output_pdb, offset_coordinates,
+                          dummy_atom_tuples):
+        input_pdb_file = openmm.app.PDBFile(input_pdb)
+
+        positions = input_pdb_file.positions
+
+        # When we pass in a guest, we have multiple coordinates and the function expects to address the first guest
+        # atom coordinates.
+        # When we pass in the center of mass of the host, we'll only have one set of coordinates.
+        if len(np.shape(offset_coordinates)) < 2:
+            offset_coordinates = [offset_coordinates, ]
+
+        for index, dummy_atom_tuple in enumerate(dummy_atom_tuples):
+
+            positions.append(
+                openmm.Vec3(
+                    offset_coordinates[0][0] + dummy_atom_tuple[0],
+                    offset_coordinates[0][1] + dummy_atom_tuple[1],
+                    offset_coordinates[0][2] + dummy_atom_tuple[2],
+                )
+                * unit.angstrom
             )
-            shutil.copy(source_pdb, window_path)
+
+        topology = input_pdb_file.topology
+        for dummy_index in range(len(dummy_atom_tuples)):
+            dummy_chain = topology.addChain(None)
+            dummy_residue = topology.addResidue(f"DM{dummy_index}", dummy_chain)
+            topology.addAtom(f"DUM", None, dummy_residue)
+
+        with open(output_pdb, "w") as file:
+            openmm.app.PDBFile.writeFile(topology, positions, file)
+
+    def _add_dummy_to_System(self, system, structure, dummy_atom_tuples):
+        [system.addParticle(mass=207) for _ in range(len(dummy_atom_tuples))]
+
+        for force_index in range(system.getNumForces()):
+            force = system.getForce(force_index)
+            if not isinstance(force, openmm.NonbondedForce):
+                continue
+            force.addParticle(0.0, 1.0, 0.0)
+            force.addParticle(0.0, 1.0, 0.0)
+            force.addParticle(0.0, 1.0, 0.0)
+
+        for atom in structure.atoms:
+            if atom.name == "DUM":
+                positional_restraint = openmm.CustomExternalForce(
+                    "k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)"
+                )
+                positional_restraint.addPerParticleParameter("k")
+                positional_restraint.addPerParticleParameter("x0")
+                positional_restraint.addPerParticleParameter("y0")
+                positional_restraint.addPerParticleParameter("z0")
+                # I haven't found a way to get this to use ParmEd's unit library here.
+                # ParmEd correctly reports `atom.positions` as units of Ångstroms.
+                # But then we can't access atom indices.
+                # Using `atom.xx` works for coordinates, but is unitless.
+
+                k = 50.0 * unit.kilocalories_per_mole / unit.angstroms ** 2
+                x0 = 0.1 * atom.xx * unit.nanometers
+                y0 = 0.1 * atom.xy * unit.nanometers
+                z0 = 0.1 * atom.xz * unit.nanometers
+                positional_restraint.addParticle(atom.idx, [k, x0, y0, z0])
+                system.addForce(positional_restraint)
+
+        return system
 
     def add_dummy_atoms(
         self,
@@ -229,6 +366,8 @@ class Setup(object):
         output_pdb="output.pdb",
         output_xml="output.xml",
     ):
+
+
         # First add dummy atoms to structure
         guest_angle_restraint_mask = self.guest_yaml["restraints"][-1]["restraint"][
             "atoms"
@@ -237,84 +376,24 @@ class Setup(object):
         try:
             structure = pmd.load_file(input_pdb)
             offset_coordinates = structure[guest_angle_restraint_mask[1]].coordinates
-            input_pdb_file = openmm.app.PDBFile(input_pdb)
-
-            positions = input_pdb_file.positions
-            positions.append(
-                openmm.Vec3(
-                    offset_coordinates[0][0],
-                    offset_coordinates[0][1],
-                    offset_coordinates[0][2] - 6.0,
-                )
-                * unit.angstrom
-            )
-            positions.append(
-                openmm.Vec3(
-                    offset_coordinates[0][0],
-                    offset_coordinates[0][1],
-                    offset_coordinates[0][2] - 9.0,
-                )
-                * unit.angstrom
-            )
-            positions.append(
-                openmm.Vec3(
-                    offset_coordinates[0][0],
-                    offset_coordinates[0][1] + 2.2,
-                    offset_coordinates[0][2] - 11.2,
-                )
-                * unit.angstrom
-            )
-
-            topology = input_pdb_file.topology
-            for dummy_index in range(1, 4):
-                dummy_chain = topology.addChain(None)
-                dummy_residue = topology.addResidue(f"DM{dummy_index}", dummy_chain)
-                topology.addAtom(f"DUM", None, dummy_residue)
-
-            with open(output_pdb, "w") as file:
-                openmm.app.PDBFile.writeFile(topology, positions, file)
-
+            self._add_dummy_to_PDB(input_pdb, output_pdb, offset_coordinates,
+                                   dummy_atom_tuples=[(0, 0, -6.0),
+                                                      (0, 0, -9.0),
+                                                      (0, 2.2, -11.2)])
         except:
             logger.warning(f"Missing {input_pdb}")
 
         # Add dummy atoms to System
         try:
             system = read_openmm_system_from_xml(input_xml)
-            [system.addParticle(mass=207) for _ in range(3)]
-
-            for force_index in range(system.getNumForces()):
-                force = system.getForce(force_index)
-                if not isinstance(force, openmm.NonbondedForce):
-                    continue
-                force.addParticle(0.0, 1.0, 0.0)
-                force.addParticle(0.0, 1.0, 0.0)
-                force.addParticle(0.0, 1.0, 0.0)
-
-            for atom in structure.atoms:
-                if atom.name == "DUM":
-
-                    positional_restraint = openmm.CustomExternalForce(
-                        "k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)"
-                    )
-                    positional_restraint.addPerParticleParameter("k")
-                    positional_restraint.addPerParticleParameter("x0")
-                    positional_restraint.addPerParticleParameter("y0")
-                    positional_restraint.addPerParticleParameter("z0")
-                    # I haven't found a way to get this to use ParmEd's unit library here.
-                    # ParmEd correctly reports `atom.positions` as units of Ångstroms.
-                    # But then we can't access atom indices.
-                    # Using `atom.xx` works for coordinates, but is unitless.
-
-                    k = 50.0 * unit.kilocalories_per_mole / unit.angstroms ** 2
-                    x0 = 0.1 * atom.xx * unit.nanometers
-                    y0 = 0.1 * atom.xy * unit.nanometers
-                    z0 = 0.1 * atom.xz * unit.nanometers
-                    positional_restraint.addParticle(atom.idx, [k, x0, y0, z0])
-                    system.addForce(positional_restraint)
-
+            system = self._add_dummy_to_System(system, structure,
+                                      dummy_atom_tuples=[(0, 0, -6.0),
+                                                      (0, 0, -9.0),
+                                                      (0, 2.2, -11.2)])
             system_xml = openmm.XmlSerializer.serialize(system)
             with open(output_xml, "w") as file:
                 file.write(system_xml)
+
         except:
             logger.warning(f"Missing {input_xml}")
 
