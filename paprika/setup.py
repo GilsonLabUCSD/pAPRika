@@ -1,5 +1,5 @@
 """
-This class is going to contain the simulation setup...
+This class contains a simulation setup wrapper for use with the Property Estimator.
 """
 
 import pkg_resources
@@ -60,14 +60,18 @@ class Setup(object):
 
         # Here, we build desolvated windows and pass the files to the Property Estimator.
         # These files are stored in `self.desolvated_window_paths`.
-        self.build_desolvated_windows()
+        # self.build_desolvated_windows()
         # Now, we read in the solvated windows from the Property Estimator
-        self.add_dummy_atoms()
+        # self.add_dummy_atoms()
         self.static_restraints, self.conformational_restraints, self.wall_restraints, self.guest_restraints = (
-            self.initialize_restraints()
+            self.initialize_restraints(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"))
         )
         for window in self.window_list:
             self.initialize_calculation(window)
+
+        save_restraints(restraint_list=[self.static_restraints, self.conformational_restraints, self.wall_restraints,
+                                        self.guest_restraints],
+                        filepath=self.directory.joinpath("restraints.json"))
 
     def parse_yaml(self, installed_benchmarks):
         """
