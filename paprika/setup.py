@@ -57,7 +57,7 @@ class Setup(object):
         host_yaml, guest_yaml = self.parse_yaml(installed_benchmarks)
         self.benchmark_path = host_yaml.parent
         self.host_yaml = read_yaml(host_yaml)
-        if not guest:
+        if guest:
             self.guest_yaml = read_yaml(guest_yaml)
 
         # Here, we build desolvated windows and pass the files to the Property Estimator.
@@ -456,9 +456,9 @@ class Setup(object):
                 "lambda"
             ]["attach"]
 
-            guest_restraint.pull["target_final"] = self.host_yaml["calculation"][
+            guest_restraint.pull["target_final"] = restraint["restraint"]["pull"][
                 "target"
-            ]["pull"]
+            ]
             guest_restraint.pull["num_windows"] = windows[1]
 
             guest_restraint.initialize()
