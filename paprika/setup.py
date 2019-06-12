@@ -370,6 +370,12 @@ class Setup(object):
         output_xml="output.xml",
     ):
 
+        if self.guest == "release":
+            # When doing a release calculation we add the dummy atoms
+            # when loading the host mol2 file, so we don't need to call
+            # this method.
+            return
+
 
         # First add dummy atoms to structure
         guest_angle_restraint_mask = self.guest_yaml["restraints"][-1]["restraint"][
