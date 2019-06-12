@@ -137,9 +137,9 @@ class Setup(object):
                 atom.mass = 1.0
 
             aligned_structure = align.zalign(
-                structure, ":DM0", ":DM1"
+                structure, ":DM1", ":DM2"
             )
-            aligned_structure["!:DM0&!:DM1"].save(str(intermediate_pdb),
+            aligned_structure["!:DM1&!:DM2"].save(str(intermediate_pdb),
                                                   overwrite=True)
 
 
@@ -293,6 +293,7 @@ class Setup(object):
                 # Copy the initial structure, assuming we are doing a standalone release calculation.
                 shutil.copy(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"),
                 window_path)
+
     def _add_dummy_to_PDB(self, input_pdb, output_pdb, offset_coordinates,
                           dummy_atom_tuples):
         input_pdb_file = openmm.app.PDBFile(input_pdb)
@@ -319,7 +320,7 @@ class Setup(object):
         topology = input_pdb_file.topology
         for dummy_index in range(len(dummy_atom_tuples)):
             dummy_chain = topology.addChain(None)
-            dummy_residue = topology.addResidue(f"DM{dummy_index}", dummy_chain)
+            dummy_residue = topology.addResidue(f"DM{dummy_index + 1}", dummy_chain)
             topology.addAtom(f"DUM", None, dummy_residue)
 
         with open(output_pdb, "w") as file:
