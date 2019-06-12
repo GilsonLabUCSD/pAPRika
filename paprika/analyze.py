@@ -20,10 +20,9 @@ class Analyze(object):
     """
     The Analyze class provides a wrapper function around the analysis of simulations.
     """
-    def __init__(self, host, guest, restraint_file="restraints.json", directory_path="benchmarks",
-                 phases=["attach", "pull"]):
+    def __init__(self, host, guest=None, restraint_file="restraints.json", directory_path="benchmarks"):
         self.host = host
-        self.guest = guest
+        self.guest = guest if guest is not None else "release"
         self.directory = Path(directory_path).joinpath(self.host).joinpath(self.guest)
 
         restraints = load_restraints(self.directory.joinpath(restraint_file))
@@ -36,4 +35,7 @@ class Analyze(object):
         analysis.methods = ["ti-block"]
         analysis.bootcycles = 1
         analysis.collect_data(single_prmtop=True)
-        analysis.compute_free_energy(phases=phases)
+        if self.guest != "release":
+            analysis.compute_free_energy(phases=["attach", "pull"])
+        else:
+            analysis.compute_free_energy(phases=["release"])
