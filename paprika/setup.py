@@ -370,21 +370,27 @@ class Setup(object):
         output_xml="output.xml",
     ):
 
-        if self.guest == "release":
-            # When doing a release calculation we add the dummy atoms
-            # when loading the host mol2 file, so we don't need to call
-            # this method.
-            return
+        structure = pmd.load_file(input_pdb, structure=True)
 
+        # Determine the offset coordinates for the new dummy atoms.
+        if self.guest == "release":
+
+            host_coordinates = structure[f":{self.host.upper()}"].coordinates
+            # Cheap way to get the center of geometry
+            offset_coordinates = pmd.geometry.center_of_mass(host_coordinates,
+                                                             masses=np.ones(len(host_coordinates)))
+
+        else:
+            guest_angle_restraint_mask = self.guest_yaml["restraints"][-1]["restraint"][
+                "atoms"
+            ].split()
+
+            offset_coordinates = structure[guest_angle_restraint_mask[1]].coordinates
 
         # First add dummy atoms to structure
-        guest_angle_restraint_mask = self.guest_yaml["restraints"][-1]["restraint"][
-            "atoms"
-        ].split()
         logger.debug(f"Adding dummy atoms to {input_pdb}")
         try:
-            structure = pmd.load_file(input_pdb)
-            offset_coordinates = structure[guest_angle_restraint_mask[1]].coordinates
+
             self._add_dummy_to_PDB(input_pdb, output_pdb, offset_coordinates,
                                    dummy_atom_tuples=[(0, 0, -6.0),
                                                       (0, 0, -9.0),
@@ -396,9 +402,9 @@ class Setup(object):
         try:
             system = read_openmm_system_from_xml(input_xml)
             system = self._add_dummy_to_System(system, structure,
-                                      dummy_atom_tuples=[(0, 0, -6.0),
-                                                      (0, 0, -9.0),
-                                                      (0, 2.2, -11.2)])
+                                               dummy_atom_tuples=[(0, 0, -6.0),
+                                                                  (0, 0, -9.0),
+                                                                  (0, 2.2, -11.2)])
             system_xml = openmm.XmlSerializer.serialize(system)
             with open(output_xml, "w") as file:
                 file.write(system_xml)
@@ -451,20 +457,37 @@ class Setup(object):
                 conformational_restraint.mask3 = mask[2] if len(mask) > 2 else None
                 conformational_restraint.mask4 = mask[3] if len(mask) > 3 else None
 
-                conformational_restraint.attach["target"] = conformational["restraint"][
-                    "target"
-                ]
-                conformational_restraint.attach["fc_final"] = conformational["restraint"][
-                    "force_constant"
-                ]
-                conformational_restraint.attach["fraction_list"] = self.host_yaml["calculation"][
-                    "lambda"
-                ]["attach"]
+                if self.guest != "release":
 
-                conformational_restraint.pull["target_final"] = conformational["restraint"][
-                    "target"
-                ]
-                conformational_restraint.pull["num_windows"] = windows[1]
+                    conformational_restraint.attach["target"] = conformational["restraint"][
+                        "target"
+                    ]
+                    conformational_restraint.attach["fc_final"] = conformational["restraint"][
+                        "force_constant"
+                    ]
+                    conformational_restraint.attach["fraction_list"] = self.host_yaml["calculation"][
+                        "lambda"
+                    ]["attach"]
+
+                    conformational_restraint.pull["target_final"] = conformational["restraint"][
+                        "target"
+                    ]
+                    conformational_restraint.pull["num_windows"] = windows[1]
+
+                else:
+
+                    conformational_restraint.auto_apr = False
+
+                    conformational_restraint.release["target"] = conformational["restraint"][
+                        "target"
+                    ]
+                    conformational_restraint.release["fc_final"] = conformational["restraint"][
+                        "force_constant"
+                    ]
+                    conformational_restraint.release["fraction_list"] = self.host_yaml["calculation"][
+                        "lambda"
+                    ]["release"]
+
 
                 conformational_restraint.initialize()
                 conformational_restraints.append(conformational_restraint)
@@ -479,7 +502,8 @@ class Setup(object):
             logger.debug("Skipping wall restraints...")
 
         guest_restraints = []
-        for restraint in self.guest_yaml["restraints"]:
+
+        for restraint in [] if not hasattr(self, 'guest_yaml') else self.guest_yaml["restraints"]:
             mask = restraint["restraint"]["atoms"].split()
 
             guest_restraint = DAT_restraint()
