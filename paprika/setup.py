@@ -418,10 +418,40 @@ class Setup(object):
 
         conformational_restraints = []
         if self.host_yaml["calculation"]["restraints"]["conformational"]:
+
             for conformational in self.host_yaml["calculation"]["restraints"][
                 "conformational"
             ]:
-                raise NotImplementedError
+
+                mask = conformational["restraint"]["atoms"].split()
+
+                conformational_restraint = DAT_restraint()
+                conformational_restraint.auto_apr = True
+                conformational_restraint.continuous_apr = True
+                conformational_restraint.amber_index = False if self.backend == "openmm" else True
+                conformational_restraint.topology = str(structure)
+                conformational_restraint.mask1 = mask[0]
+                conformational_restraint.mask2 = mask[1]
+                conformational_restraint.mask3 = mask[2] if len(mask) > 2 else None
+                conformational_restraint.mask4 = mask[3] if len(mask) > 3 else None
+
+                conformational_restraint.attach["target"] = conformational["restraint"][
+                    "target"
+                ]
+                conformational_restraint.attach["fc_final"] = conformational["restraint"][
+                    "force_constant"
+                ]
+                conformational_restraint.attach["fraction_list"] = self.host_yaml["calculation"][
+                    "lambda"
+                ]["attach"]
+
+                conformational_restraint.pull["target_final"] = conformational["restraint"][
+                    "target"
+                ]
+                conformational_restraint.pull["num_windows"] = windows[1]
+
+                conformational_restraint.initialize()
+                conformational_restraints.append(conformational_restraint)
         else:
             logger.debug("Skipping conformational restraints...")
 
