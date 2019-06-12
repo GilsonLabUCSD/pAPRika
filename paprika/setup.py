@@ -10,6 +10,8 @@ import os as os
 import simtk.openmm as openmm
 import simtk.unit as unit
 
+import pytraj as pt
+
 from pathlib import Path
 from paprika import align
 from paprika.restraints import static_DAT_restraint, DAT_restraint
@@ -162,8 +164,8 @@ class Setup(object):
         else:
 
             initial_structure = self.directory.joinpath(self.benchmark_path.joinpath(self.host_yaml["structure"]))
-            host = pmd.load_file(str(initial_structure))
-            host.save(str(self.directory.joinpath(f"{self.host}.pdb")), overwrite=True)
+            host = pt.iterload(str(initial_structure), str(initial_structure))
+            host.save(str(self.directory.joinpath(f"{self.host}.pdb")), overwrite=True, options='conect')
             initial_structure = str(self.directory.joinpath(f"{self.host}.pdb"))
 
         self.align(input_pdb=initial_structure)
