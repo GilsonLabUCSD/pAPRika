@@ -28,9 +28,9 @@ class Analyze(object):
         restraints = load_restraints(self.directory.joinpath(restraint_file))
 
         analysis = fe_calc()
-        analysis.prmtop = self.directory.joinpath(f"{self.host}-{self.guest}.pdb")
+        analysis.prmtop = str(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"))
         analysis.trajectory = "*.dcd"
-        analysis.path = self.directory
+        analysis.path = self.directory.joinpath('windows')
         analysis.restraint_list = restraints
         analysis.methods = ["ti-block"]
         analysis.bootcycles = 1

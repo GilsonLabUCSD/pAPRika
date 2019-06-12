@@ -364,13 +364,13 @@ class Setup(object):
 
     def add_dummy_atoms(
         self,
-        input_pdb="output.pdb",
-        input_xml="system.xml",
-        output_pdb="output.pdb",
-        output_xml="output.xml",
+        solvated_pdb="output.pdb",
+        solvated_xml="system.xml",
+        dummy_pdb="output.pdb",
+        dummy_xml="output.xml",
     ):
 
-        structure = pmd.load_file(input_pdb, structure=True)
+        structure = pmd.load_file(solvated_pdb, structure=True)
 
         # Determine the offset coordinates for the new dummy atoms.
         if self.guest == "release":
@@ -388,29 +388,32 @@ class Setup(object):
             offset_coordinates = structure[guest_angle_restraint_mask[1]].coordinates
 
         # First add dummy atoms to structure
-        logger.debug(f"Adding dummy atoms to {input_pdb}")
+        logger.debug(f"Adding dummy atoms to {solvated_pdb}")
         try:
 
-            self._add_dummy_to_PDB(input_pdb, output_pdb, offset_coordinates,
+            self._add_dummy_to_PDB(solvated_pdb, dummy_pdb, offset_coordinates,
                                    dummy_atom_tuples=[(0, 0, -6.0),
                                                       (0, 0, -9.0),
                                                       (0, 2.2, -11.2)])
         except:
-            logger.warning(f"Missing {input_pdb}")
+            logger.warning(f"Missing {solvated_pdb}")
 
         # Add dummy atoms to System
         try:
-            system = read_openmm_system_from_xml(input_xml)
+
+            structure = pmd.load_file(dummy_pdb, structure=True)
+
+            system = read_openmm_system_from_xml(solvated_xml)
             system = self._add_dummy_to_System(system, structure,
                                                dummy_atom_tuples=[(0, 0, -6.0),
                                                                   (0, 0, -9.0),
                                                                   (0, 2.2, -11.2)])
             system_xml = openmm.XmlSerializer.serialize(system)
-            with open(output_xml, "w") as file:
+            with open(dummy_xml, "w") as file:
                 file.write(system_xml)
 
         except:
-            logger.warning(f"Missing {input_xml}")
+            logger.warning(f"Missing {solvated_xml}")
 
     def initialize_restraints(self, structure="output.pdb"):
 
