@@ -39,3 +39,5 @@ class Analyze(object):
             analysis.compute_free_energy(phases=["attach", "pull"])
         else:
             analysis.compute_free_energy(phases=["release"])
+
+        return analysis
