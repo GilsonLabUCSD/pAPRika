@@ -16,9 +16,9 @@ __version__ = versions['version']
 __git_revision__ = versions['full-revisionid']
 del get_versions, versions
 
-__all__ = ["setup", "simulate"]
+__all__ = ["setup", "analyze"]
 
 from paprika.setup import Setup
-from paprika.simulate import Simulate
+from paprika.analyze import Analyze
 setup = Setup
-simulate = Simulate
+analyze = Analyze
