@@ -399,11 +399,18 @@ class Setup(object):
 
     def initialize_restraints(self, structure="output.pdb"):
 
-        windows = [
-            self.host_yaml["calculation"]["windows"]["attach"],
-            self.host_yaml["calculation"]["windows"]["pull"],
-            None,
-        ]
+        if self.guest != "release":
+
+            windows = [
+                self.host_yaml["calculation"]["windows"]["attach"],
+                self.host_yaml["calculation"]["windows"]["pull"],
+                None,
+            ]
+        else:
+            windows = [None,
+                       None,
+                       self.host_yaml["calculation"]["windows"]["release"]
+            ]
 
         static_restraints = []
         for restraint in self.host_yaml["calculation"]["restraints"]["static"]:
