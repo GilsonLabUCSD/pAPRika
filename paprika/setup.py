@@ -364,18 +364,20 @@ class Setup(object):
 
     def add_dummy_atoms(
         self,
+        reference_pdb="reference.pdb",
         solvated_pdb="output.pdb",
         solvated_xml="system.xml",
         dummy_pdb="output.pdb",
         dummy_xml="output.xml",
     ):
 
+        reference_structure = pmd.load_file(reference_pdb, structure=True)
         structure = pmd.load_file(solvated_pdb, structure=True)
 
         # Determine the offset coordinates for the new dummy atoms.
         if self.guest == "release":
 
-            host_coordinates = structure[f":{self.host.upper()}"].coordinates
+            host_coordinates = reference_structure[f":{self.host.upper()}"].coordinates
             # Cheap way to get the center of geometry
             offset_coordinates = pmd.geometry.center_of_mass(host_coordinates,
                                                              masses=np.ones(len(host_coordinates)))
@@ -385,7 +387,7 @@ class Setup(object):
                 "atoms"
             ].split()
 
-            offset_coordinates = structure[guest_angle_restraint_mask[1]].coordinates
+            offset_coordinates = reference_structure[guest_angle_restraint_mask[1]].coordinates
 
         # First add dummy atoms to structure
         logger.debug(f"Adding dummy atoms to {solvated_pdb}")

@@ -20,21 +20,28 @@ class Analyze(object):
     """
     The Analyze class provides a wrapper function around the analysis of simulations.
     """
-    def __init__(self, host, guest=None, restraint_file="restraints.json", directory_path="benchmarks"):
+
+    def __init__(self, host, guest=None, restraint_file="restraints.json",
+                 topology_file='coordinates.pdb', trajectory_mask='*.dcd', directory_path="benchmarks"):
+
         self.host = host
         self.guest = guest if guest is not None else "release"
         self.directory = Path(directory_path).joinpath(self.host).joinpath(self.guest)
 
-        restraints = load_restraints(self.directory.joinpath(restraint_file))
+        self.restraints = load_restraints(self.directory.joinpath(restraint_file))
+
+        self.results = self.analyze(topology_file, trajectory_mask).results
+
+    def analyze(self, topology_file, trajectory_mask):
 
         analysis = fe_calc()
-        analysis.prmtop = str(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"))
-        analysis.trajectory = "*.dcd"
+        analysis.prmtop = trajectory_mask   # str(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"))
+        analysis.trajectory = trajectory_mask
         analysis.path = self.directory.joinpath('windows')
-        analysis.restraint_list = restraints
+        analysis.restraint_list = self.restraints
         analysis.methods = ["ti-block"]
-        analysis.bootcycles = 1
-        analysis.collect_data(single_prmtop=True)
+        analysis.bootcycles = 100
+        analysis.collect_data(single_prmtop=False)
         if self.guest != "release":
             analysis.compute_free_energy(phases=["attach", "pull"])
         else:
