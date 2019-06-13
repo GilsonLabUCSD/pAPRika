@@ -564,30 +564,20 @@ def static_DAT_restraint(
     amber_index=False,
 ):
     """ Create a static restraint """
-
-    # Setup reference structure
-    if isinstance(ref_structure, str):
-        ref_structure = utils.return_parmed_structure(ref_structure)
-    elif isinstance(ref_structure, pmd.structure.Structure):
-        pass
-    else:
-        raise Exception(
-            "static_DAT_restraint does not support the type associated with ref_structure:"
-            + type(ref_structure)
-        )
-    ref_traj = pt.load_parmed(ref_structure, traj=True)
+    ref_traj = pt.iterload(ref_structure, traj=True)
 
     # Check num_window_list
     if len(num_window_list) != 3:
         raise Exception(
-            "The num_window_list needs to contain three integers corresponding to the number of windows in the attach, pull, and release phase, respectively"
+            "The num_window_list needs to contain three integers corresponding to the number of windows in the "
+            "attach, pull, and release phase, respectively "
         )
 
     # Setup restraint
     rest = DAT_restraint()
     rest.continuous_apr = continuous_apr
     rest.amber_index = amber_index
-    rest.topology = ref_structure
+    rest.topology = pmd.load_file(ref_structure, structure=True)
     rest.mask1 = restraint_mask_list[0]
     rest.mask2 = restraint_mask_list[1]
     if len(restraint_mask_list) >= 3:
