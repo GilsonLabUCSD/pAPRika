@@ -507,9 +507,28 @@ class Setup(object):
             logger.debug("Skipping conformational restraints...")
 
         wall_restraints = []
-        if self.host_yaml["calculation"]["restraints"]["wall"]:
-            for wall in self.host_yaml["calculation"]["restraints"]["wall"]:
-                raise NotImplementedError
+        if self.guest != "release" and self.guest_yaml["symmetry_correction"]:
+            for wall in self.guest_yaml["symmetry_correction"]["restraint"]:
+                wall_restraint = DAT_restraint()
+                wall_restraint.auto_apr = True
+                wall_restraint.continuous_apr = True
+                wall_restraint.amber_index = False if self.backend == "openmm" else True
+                wall_restraint.topology = str(structure)
+                wall_restraint.mask1 = wall["atoms"].split()[0]
+                wall_restraint.mask2 = wall["atoms"].split()[1]
+                wall_restraint.mask3 = wall["atoms"].split()[2]
+
+                wall_restraint.attach["fc_final"] = wall["force_constant"]
+                wall_restraint.attach["fraction_list"] = [1.0] * len(self.host_yaml["calculation"][
+                        "lambda"
+                    ]["attach"])
+                # This target should be overridden by the custom values.
+                wall_restraint.attach["target"] = 999.99
+                wall_restraint.custom_restraint_values["r2"] = 10.0
+                wall_restraint.custom_restraint_values["r3"] = 170.0
+
+                wall_restraints.append(wall_restraint)
+
         else:
             logger.debug("Skipping wall restraints...")
 
@@ -569,8 +588,7 @@ class Setup(object):
         for restraint in self.guest_restraints:
             system = apply_openmm_restraints(system, restraint, window, ForceGroup=12)
         for restraint in self.wall_restraints:
-            # Custom force here...
-            raise NotImplementedError
+            system = apply_openmm_restraints(system, restraint, window, flat_bottom=True, ForceGroup=13)
 
         system_xml = openmm.XmlSerializer.serialize(system)
 
@@ -620,7 +638,8 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
                 [k, theta_0],
             )
             system.addForce(flat_bottom_force)
-
+            if ForceGroup:
+                flat_bottom_force.setForceGroup(ForceGroup)
 
     if restraint.mask2 and not restraint.mask3:
         if not restraint.group1 and not restraint.group2:
