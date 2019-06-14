@@ -615,8 +615,10 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
     window_number = int(window[1:])
 
     if flat_bottom:
-        for low_boundary, high_boundary in [1.0, 179.0]:
-            if high_boundary:
+        low_boundary = 1.0
+        high_boundary = 179.0
+        for boundary in [low_boundary, high_boundary]:
+            if boundary == high_boundary:
                 flat_bottom_force = openmm.CustomAngleForce('step(theta - theta_0) * k * (theta - theta_0)^2')
                 # This force is on if theta >= theta_0
             else:
@@ -625,7 +627,7 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
             flat_bottom_force.addPerAngleParameter("k")
             flat_bottom_force.addPerAngleParameter("theta_0")
 
-            theta_0 = high_boundary * unit.degrees
+            theta_0 = boundary * unit.degrees
             k = (
                     restraint.phase[phase]["force_constants"][window_number]
                     * unit.kilocalories_per_mole
