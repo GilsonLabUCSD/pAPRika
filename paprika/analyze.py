@@ -2,19 +2,15 @@
 This class contains a simulation analysis wrapper for use with the Property Estimator.
 """
 
-import pkg_resources
-import shutil
-import parmed as pmd
-import os as os
-import simtk.openmm as openmm
-import simtk.unit as unit
-
-from pathlib import Path
-from paprika.io import load_restraints
-from paprika.analysis import fe_calc
-
 import logging
+from pathlib import Path
+
+import numpy as np
+from paprika.analysis import fe_calc
+from paprika.io import load_restraints
+
 logger = logging.getLogger(__name__)
+
 
 class Analyze(object):
     """
@@ -22,7 +18,8 @@ class Analyze(object):
     """
 
     def __init__(self, host, guest=None, restraint_file="restraints.json",
-                 topology_file='coordinates.pdb', trajectory_mask='*.dcd', directory_path="benchmarks"):
+                 topology_file='coordinates.pdb', trajectory_mask='*.dcd', directory_path="benchmarks",
+                 symmetry_correction=None):
 
         self.host = host
         self.guest = guest if guest is not None else "release"
@@ -31,10 +28,15 @@ class Analyze(object):
         self.restraints = load_restraints(self.directory.joinpath(restraint_file))
         self.results = self.analyze(topology_file, trajectory_mask).results
 
+        if symmetry_correction:
+            if not symmetry_correction["microstates"]:
+                logger.warning("No microstates specified for the symmetry correction.")
+            self.results["symmetry_correction"] = -0.593 * np.log(symmetry_correction["microstates"])
+
     def analyze(self, topology_file, trajectory_mask):
 
         analysis = fe_calc()
-        analysis.prmtop = topology_file   # str(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"))
+        analysis.prmtop = topology_file
         analysis.trajectory = trajectory_mask
         analysis.path = self.directory.joinpath('windows')
         analysis.restraint_list = self.restraints
