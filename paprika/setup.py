@@ -405,21 +405,23 @@ class Setup(object):
             logger.warning(f"Missing {solvated_pdb}")
 
         # Add dummy atoms to System
-        try:
+        if solvated_xml is not None:
 
-            structure = pmd.load_file(dummy_pdb, structure=True)
+            try:
 
-            system = read_openmm_system_from_xml(solvated_xml)
-            system = self._add_dummy_to_System(system, structure,
-                                               dummy_atom_tuples=[(0, 0, -6.0),
-                                                                  (0, 0, -9.0),
-                                                                  (0, 2.2, -11.2)])
-            system_xml = openmm.XmlSerializer.serialize(system)
-            with open(dummy_xml, "w") as file:
-                file.write(system_xml)
+                structure = pmd.load_file(dummy_pdb, structure=True)
 
-        except:
-            logger.warning(f"Missing {solvated_xml}")
+                system = read_openmm_system_from_xml(solvated_xml)
+                system = self._add_dummy_to_System(system, structure,
+                                                   dummy_atom_tuples=[(0, 0, -6.0),
+                                                                      (0, 0, -9.0),
+                                                                      (0, 2.2, -11.2)])
+                system_xml = openmm.XmlSerializer.serialize(system)
+                with open(dummy_xml, "w") as file:
+                    file.write(system_xml)
+
+            except:
+                logger.warning(f"Missing {solvated_xml}")
 
     def initialize_restraints(self, structure="output.pdb"):
 
