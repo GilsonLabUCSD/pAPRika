@@ -6,6 +6,7 @@ import numpy as np
 import pymbar
 import pytraj as pt
 from scipy.interpolate import Akima1DInterpolator
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -992,7 +993,12 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
         if not os.path.isfile(os.path.join(window, prmtop)):
             raise FileNotFoundError(f"Cannot find `prmtop` file: {os.path.join(window, prmtop)}")
         logger.debug(f"Loading {os.path.join(window, prmtop)} and {trajectory_path}")
-        traj = pt.iterload(trajectory_path, os.path.join(window, prmtop))
+        try:
+            traj = pt.iterload(trajectory_path, os.path.join(window, prmtop))
+        except ValueError as e:
+            formatted_exception = traceback.format_exception(None, e, e.__traceback__)
+            logger.info(f"Failed trying to load {os.path.join(window, prmtop)} and {trajectory_path}: "
+                        f"{formatted_exception}")
     elif isinstance(prmtop, str) and single_prmtop:
         traj = pt.iterload(trajectory_path, os.path.join(prmtop))
     else:
