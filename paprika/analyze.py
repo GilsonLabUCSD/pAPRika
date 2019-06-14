@@ -48,12 +48,12 @@ class Analyze(object):
                 if "DM" in restraint.mask1 and self.guest.upper() in restraint.mask2 and not restraint.mask3 and \
                         not restraint.mask4:
                     r_restraint = restraint
-                if "DM" in restraint.mask1 and "DM" in restraint.mask2 and self.guest.upper() in restraint.mask3 \
-                        and not restraint.mask4:
-                    theta_restraint = restraint
-                if "DM" in restraint.mask1 and self.guest.upper() in restraint.mask2 and self.guest.upper() in \
-                        restraint.mask3 and not restraint.mask4:
-                    beta_restraint = restraint
+                if restraint.mask3 and not restraint.mask4:
+                    if "DM" in restraint.mask1 and "DM" in restraint.mask2 and self.guest.upper() in restraint.mask3:
+                        theta_restraint = restraint
+                    if "DM" in restraint.mask1 and self.guest.upper() in restraint.mask2 and self.guest.upper() in \
+                            restraint.mask3:
+                        beta_restraint = restraint
 
             analysis.compute_ref_state_work(
                 [r_restraint, theta_restraint, None, None, beta_restraint, None]
