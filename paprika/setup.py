@@ -587,7 +587,7 @@ def get_benchmarks():
     return installed_benchmarks
 
 
-def apply_openmm_restraints(system, restraint, window, ForceGroup=None):
+def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceGroup=None):
     if window[0] == "a":
         phase = "attach"
     elif window[0] == "p":
@@ -595,6 +595,32 @@ def apply_openmm_restraints(system, restraint, window, ForceGroup=None):
     elif window[0] == "r":
         phase = "release"
     window_number = int(window[1:])
+
+    if flat_bottom:
+        for low_boundary, high_boundary in [10, 170]:
+            if high_boundary:
+                flat_bottom_force = openmm.CustomAngleForce('step(theta - theta_0) * k * (theta - theta_0)^2')
+                # This force is on if theta >= theta_0
+            else:
+                flat_bottom_force = openmm.CustomAngleForce('step(-(theta - theta_0)) * k * (theta - theta_0)^2')
+                # This force is on if theta <= theta_0
+            flat_bottom_force.addPerAngleParameter("k")
+            flat_bottom_force.addPerAngleParameter("theta_0")
+
+            theta_0 = high_boundary * unit.degrees
+            k = (
+                    restraint.phase[phase]["force_constants"][window_number]
+                    * unit.kilocalories_per_mole
+                    / unit.radian ** 2
+            )
+            flat_bottom_force.addAngle(
+                restraint.index1[0],
+                restraint.index2[0],
+                restraint.index3[0],
+                [k, theta_0],
+            )
+            system.addForce(flat_bottom_force)
+
 
     if restraint.mask2 and not restraint.mask3:
         if not restraint.group1 and not restraint.group2:
