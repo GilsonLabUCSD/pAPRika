@@ -524,8 +524,8 @@ class Setup(object):
                     ]["attach"])
                 # This target should be overridden by the custom values.
                 wall_restraint.attach["target"] = 999.99
-                wall_restraint.custom_restraint_values["r2"] = 1.0
-                wall_restraint.custom_restraint_values["r3"] = 179.0
+                wall_restraint.custom_restraint_values["r2"] = -89.0
+                wall_restraint.custom_restraint_values["r3"] = +89.0
 
                 wall_restraints.append(wall_restraint)
 
@@ -615,8 +615,8 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
     window_number = int(window[1:])
 
     if flat_bottom:
-        low_boundary = 1.0
-        high_boundary = 179.0
+        low_boundary = -89.0
+        high_boundary = +89.0
         for boundary in [low_boundary, high_boundary]:
             if boundary == high_boundary:
                 flat_bottom_force = openmm.CustomAngleForce('step(theta - theta_0) * k * (theta - theta_0)^2')
