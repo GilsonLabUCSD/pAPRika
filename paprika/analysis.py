@@ -989,7 +989,7 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
     else:
         raise RuntimeError("Trajectory path should be a `str` or `list`.")
     if isinstance(prmtop, str) and not single_prmtop:
-        if not os.path.isfile(os.path.join(window, prmtop):
+        if not os.path.isfile(os.path.join(window, prmtop)):
             raise FileNotFoundError(f"Cannot find `prmtop` file: {os.path.join(window, prmtop)}")
         logger.debug(f"Loading {os.path.join(window, prmtop)} and {trajectory_path}")
         traj = pt.iterload(trajectory_path, os.path.join(window, prmtop))
