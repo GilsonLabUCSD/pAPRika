@@ -35,7 +35,7 @@ class Analyze(object):
     def analyze(self, topology_file, trajectory_mask):
 
         analysis = fe_calc()
-        analysis.prmtop = trajectory_mask   # str(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"))
+        analysis.prmtop = topology_file   # str(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"))
         analysis.trajectory = trajectory_mask
         analysis.path = self.directory.joinpath('windows')
         analysis.restraint_list = self.restraints
