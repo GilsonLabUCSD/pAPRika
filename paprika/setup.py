@@ -508,7 +508,7 @@ class Setup(object):
 
         wall_restraints = []
         if self.guest != "release" and self.guest_yaml["symmetry_correction"]:
-            for wall in self.guest_yaml["symmetry_correction"]["restraint"]:
+            for wall in self.guest_yaml["symmetry_correction"]["restraints"]:
                 wall_restraint = DAT_restraint()
                 wall_restraint.auto_apr = True
                 wall_restraint.continuous_apr = True
