@@ -1,4 +1,8 @@
+import logging
 from paprika.restraints.restraints_utilities import *
+
+logger = logging.getLogger(__name__)
+
 
 def amber_restraint_line(restraint, window):
     """
