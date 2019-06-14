@@ -526,6 +526,7 @@ class Setup(object):
                 wall_restraint.attach["target"] = 999.99
                 wall_restraint.custom_restraint_values["r2"] = 91
                 wall_restraint.custom_restraint_values["r3"] = 91
+                wall_restraint.initialize()
 
                 wall_restraints.append(wall_restraint)
 
