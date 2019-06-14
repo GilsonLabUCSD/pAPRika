@@ -524,8 +524,8 @@ class Setup(object):
                     ]["attach"])
                 # This target should be overridden by the custom values.
                 wall_restraint.attach["target"] = 999.99
-                wall_restraint.custom_restraint_values["r2"] = -89.0
-                wall_restraint.custom_restraint_values["r3"] = +89.0
+                wall_restraint.custom_restraint_values["r2"] = 91
+                wall_restraint.custom_restraint_values["r3"] = 91
 
                 wall_restraints.append(wall_restraint)
 
@@ -615,33 +615,26 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
     window_number = int(window[1:])
 
     if flat_bottom:
-        low_boundary = -89.0
-        high_boundary = +89.0
-        for boundary in [low_boundary, high_boundary]:
-            if boundary == high_boundary:
-                flat_bottom_force = openmm.CustomAngleForce('step(theta - theta_0) * k * (theta - theta_0)^2')
-                # This force is on if theta >= theta_0
-            else:
-                flat_bottom_force = openmm.CustomAngleForce('step(-(theta - theta_0)) * k * (theta - theta_0)^2')
-                # This force is on if theta <= theta_0
-            flat_bottom_force.addPerAngleParameter("k")
-            flat_bottom_force.addPerAngleParameter("theta_0")
+        flat_bottom_force = openmm.CustomAngleForce('step(-(theta - theta_0)) * k * (theta - theta_0)^2')
+        # This force is on if theta <= theta_0
+        flat_bottom_force.addPerAngleParameter("k")
+        flat_bottom_force.addPerAngleParameter("theta_0")
 
-            theta_0 = boundary * unit.degrees
-            k = (
-                    restraint.phase[phase]["force_constants"][window_number]
-                    * unit.kilocalories_per_mole
-                    / unit.radian ** 2
-            )
-            flat_bottom_force.addAngle(
-                restraint.index1[0],
-                restraint.index2[0],
-                restraint.index3[0],
-                [k, theta_0],
-            )
-            system.addForce(flat_bottom_force)
-            if ForceGroup:
-                flat_bottom_force.setForceGroup(ForceGroup)
+        theta_0 = 91.0 * unit.degrees
+        k = (
+                restraint.phase[phase]["force_constants"][window_number]
+                * unit.kilocalories_per_mole
+                / unit.radian ** 2
+        )
+        flat_bottom_force.addAngle(
+            restraint.index1[0],
+            restraint.index2[0],
+            restraint.index3[0],
+            [k, theta_0],
+        )
+        system.addForce(flat_bottom_force)
+        if ForceGroup:
+            flat_bottom_force.setForceGroup(ForceGroup)
 
     if restraint.mask2 and not restraint.mask3:
         if not restraint.group1 and not restraint.group2:
