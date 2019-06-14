@@ -29,7 +29,6 @@ class Analyze(object):
         self.directory = Path(directory_path).joinpath(self.host).joinpath(self.guest)
 
         self.restraints = load_restraints(self.directory.joinpath(restraint_file))
-
         self.results = self.analyze(topology_file, trajectory_mask).results
 
     def analyze(self, topology_file, trajectory_mask):
@@ -44,6 +43,22 @@ class Analyze(object):
         analysis.collect_data(single_prmtop=False)
         if self.guest != "release":
             analysis.compute_free_energy(phases=["attach", "pull"])
+
+            for restraint in self.restraints:
+                if "DM" in restraint.mask1 and self.guest.upper() in restraint.mask2 and not restraint.mask3 and \
+                        not restraint.mask4:
+                    r_restraint = restraint
+                if "DM" in restraint.mask1 and "DM" in restraint.mask2 and self.guest.upper() in restraint.mask3 \
+                        and not restraint.mask4:
+                    theta_restraint = restraint
+                if "DM" in restraint.mask1 and self.guest.upper() in restraint.mask2 and self.guest.upper() in \
+                        restraint.mask3 and not restraint.mask4:
+                    beta_restraint = restraint
+
+            analysis.compute_ref_state_work(
+                [r_restraint, theta_restraint, None, None, beta_restraint, None]
+            )
+
         else:
             analysis.compute_free_energy(phases=["release"])
 

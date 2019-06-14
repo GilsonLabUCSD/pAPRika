@@ -986,7 +986,8 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
     elif isinstance(trajectory, list):
         trajectory_path = [os.path.join(window, i) for i in trajectory]
         logger.debug("Received list of trajectories: {}".format(trajectory_path))
-
+    else:
+        raise RuntimeError("Trajectory path should be a `str` or `list`.")
     if isinstance(prmtop, str) and not single_prmtop:
         if not os.path.isfile(prmtop):
             raise FileNotFoundError(f"Cannot find `prmtop` file: {prmtop}")
