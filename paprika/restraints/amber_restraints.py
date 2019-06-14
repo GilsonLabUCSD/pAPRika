@@ -19,7 +19,7 @@ def amber_restraint_line(restraint, window):
     """
     window, phase = parse_window(window)
     if restraint.phase[phase]["force_constants"] is None and restraint.phase[phase]["targets"] is None:
-        return
+        return ""
 
     if not restraint.index1:
         iat1 = " "
