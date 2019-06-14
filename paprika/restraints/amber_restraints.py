@@ -17,6 +17,10 @@ def amber_restraint_line(restraint, window):
     rk2=   5.0000000, rk3=   5.0000000, &end
 
     """
+    window, phase = parse_window(window)
+    if restraint.phase[phase]["force_constants"] is None and restraint.phase[phase]["targets"] is None:
+        return
+
     if not restraint.index1:
         iat1 = " "
         raise Exception("There must be at least two atoms in a restraint.")
@@ -59,7 +63,6 @@ def amber_restraint_line(restraint, window):
         for index in restraint.index4:
             igr4 += "{},".format(index)
 
-    window, phase = parse_window(window)
 
     # Set upper/lower bounds depending on whether distance, angle, or torsion
     lower_bound = 0.0
