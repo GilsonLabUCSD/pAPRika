@@ -17,7 +17,6 @@ from paprika import align
 from paprika.restraints import static_DAT_restraint, DAT_restraint
 from paprika.restraints.restraints import create_window_list
 from paprika.restraints.read_yaml import read_yaml
-from paprika.io import save_restraints
 
 import logging
 
@@ -42,7 +41,8 @@ class Setup(object):
     The Setup class provides a wrapper function around the preparation of the host-guest system and the application of restraints.
     """
 
-    def __init__(self, host, guest=None, backend="openmm", directory_path="benchmarks",):
+    def __init__(self, host, guest=None, backend="openmm", directory_path="benchmarks",
+                 additional_benchmarks=None):
         self.host = host
         self.guest = guest if guest is not None else "release"
         self.backend = backend
@@ -53,9 +53,13 @@ class Setup(object):
         if self.backend == "amber":
             raise NotImplementedError
 
+        # Have "additional bnechmarks" that update installed_benchmarks
+        # And have it not quit if `taproom` is not installed.
 
         self.directory.mkdir(parents=True, exist_ok=True)
         installed_benchmarks = get_benchmarks()
+        if additional_benchmarks is not None:
+            installed_benchmarks.update(additional_benchmarks)
         host_yaml, guest_yaml = self.parse_yaml(installed_benchmarks)
         self.benchmark_path = host_yaml.parent
         self.host_yaml = read_yaml(host_yaml)
@@ -482,6 +486,7 @@ class Setup(object):
                 else:
 
                     conformational_restraint.auto_apr = False
+                    conformational_restraint.continuous_apr = False
 
                     conformational_restraint.release["target"] = conformational["restraint"][
                         "target"
