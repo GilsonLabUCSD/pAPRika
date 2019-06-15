@@ -600,7 +600,7 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
         phase = "release"
     window_number = int(window[1:])
 
-    if flat_bottom:
+    if flat_bottom and phase == "attach":
         flat_bottom_force = openmm.CustomAngleForce('step(-(theta - theta_0)) * k * (theta - theta_0)^2')
         # This force is on if theta <= theta_0
         flat_bottom_force.addPerAngleParameter("k")
