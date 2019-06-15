@@ -622,6 +622,12 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
         if ForceGroup:
             flat_bottom_force.setForceGroup(ForceGroup)
 
+        return system
+    elif flat_bottom and phase == "pull":
+        return system
+    elif flat_bottom and phase == "release":
+        return system
+
     if restraint.mask2 and not restraint.mask3:
         if not restraint.group1 and not restraint.group2:
             bond_restraint = openmm.CustomBondForce("k * (r - r_0)^2")
