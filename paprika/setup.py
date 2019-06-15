@@ -513,6 +513,8 @@ class Setup(object):
                 wall_restraint.attach["target"] = 999.99
                 wall_restraint.custom_restraint_values["r2"] = 91
                 wall_restraint.custom_restraint_values["r3"] = 91
+                # 0 force constant between 91 degrees and 180 degrees.
+                wall_restraint.custom_restraint_values["rk3"] = 0.0
                 wall_restraint.initialize()
 
                 wall_restraints.append(wall_restraint)
