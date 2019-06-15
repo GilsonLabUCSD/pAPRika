@@ -51,10 +51,8 @@ class Setup(object):
         self.window_list = []
 
         if self.backend == "amber":
+            # Generate `frcmod` and dummy atom files.
             raise NotImplementedError
-
-        # Have "additional bnechmarks" that update installed_benchmarks
-        # And have it not quit if `taproom` is not installed.
 
         self.directory.mkdir(parents=True, exist_ok=True)
         installed_benchmarks = get_benchmarks()
@@ -69,17 +67,6 @@ class Setup(object):
         # Here, we build desolvated windows and pass the files to the Property Estimator.
         # These files are stored in `self.desolvated_window_paths`.
         self.build_desolvated_windows()
-        # Now, we read in the solvated windows from the Property Estimator
-        # self.add_dummy_atoms()
-        # self.static_restraints, self.conformational_restraints, self.wall_restraints, self.guest_restraints = (
-        #     self.initialize_restraints(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"))
-        # )
-        # for window in self.window_list:
-        #     self.initialize_calculation(window)
-        #
-        # save_restraints(restraint_list=[self.static_restraints, self.conformational_restraints, self.wall_restraints,
-        #                                 self.guest_restraints],
-        #                 filepath=self.directory.joinpath("restraints.json"))
 
     def parse_yaml(self, installed_benchmarks):
         """
@@ -507,7 +494,7 @@ class Setup(object):
             logger.debug("Skipping conformational restraints...")
 
         wall_restraints = []
-        if self.guest != "release" and self.guest_yaml["symmetry_correction"]:
+        if self.guest != "release" and "symmetry_correction" in self.guest_yaml:
             for wall in self.guest_yaml["symmetry_correction"]["restraints"]:
                 wall_restraint = DAT_restraint()
                 wall_restraint.auto_apr = True
@@ -596,7 +583,6 @@ class Setup(object):
         with open(output_xml, "w") as file:
             file.write(system_xml)
 
-
 def get_benchmarks():
     """
     Determine the installed benchmarks.
@@ -604,7 +590,6 @@ def get_benchmarks():
     """
     installed_benchmarks = _get_installed_benchmarks()
     return installed_benchmarks
-
 
 def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceGroup=None):
     if window[0] == "a":
