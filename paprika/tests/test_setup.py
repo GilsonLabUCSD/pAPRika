@@ -16,6 +16,11 @@ def test_setup():
     setup_object = paprika.setup(host="cb6", guest="but")
     print(setup_object.desolvated_window_paths)
 
+def test_generate_gaff():
+    """ Test that we can load setup YAML files. """
+    setup_object = paprika.setup(host="cb6", guest="but", generate_gaff_files=True)
+    print(setup_object.desolvated_window_paths)
+
 
 if __name__ == "__main__":
-    test_setup()
+    test_generate_gaff()

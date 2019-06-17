@@ -2,23 +2,23 @@
 This class contains a simulation setup wrapper for use with the Property Estimator.
 """
 
-import pkg_resources
-import shutil
-import parmed as pmd
-import numpy as np
+import logging
 import os as os
+import shutil
+import subprocess as sp
+from pathlib import Path
+
+import numpy as np
+import parmed as pmd
+import pkg_resources
+import pytraj as pt
 import simtk.openmm as openmm
 import simtk.unit as unit
 
-import pytraj as pt
-
-from pathlib import Path
 from paprika import align
 from paprika.restraints import static_DAT_restraint, DAT_restraint
-from paprika.restraints.restraints import create_window_list
 from paprika.restraints.read_yaml import read_yaml
-
-import logging
+from paprika.restraints.restraints import create_window_list
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,9 @@ class Setup(object):
     The Setup class provides a wrapper function around the preparation of the host-guest system and the application of restraints.
     """
 
-    def __init__(self, host, guest=None, backend="openmm", directory_path="benchmarks",
-                 additional_benchmarks=None):
+    def __init__(self, host, guest=None,
+                 backend="openmm", directory_path="benchmarks",
+                 additional_benchmarks=None, generate_gaff_files=False):
         self.host = host
         self.guest = guest if guest is not None else "release"
         self.backend = backend
@@ -67,6 +68,15 @@ class Setup(object):
         # Here, we build desolvated windows and pass the files to the Property Estimator.
         # These files are stored in `self.desolvated_window_paths`.
         self.build_desolvated_windows()
+        if generate_gaff_files:
+            generate_gaff(mol2_file=self.benchmark_path.joinpath(self.host_yaml["structure"]),
+                          residue_name=self.host_yaml["name"],
+                          directory_path=self.directory)
+            if guest:
+                generate_gaff(mol2_file=self.benchmark_path.joinpath(
+                    self.guest).joinpath(self.guest_yaml["structure"]),
+                              residue_name=self.guest_yaml["name"],
+                              directory_path=self.directory)
 
     def parse_yaml(self, installed_benchmarks):
         """
@@ -720,3 +730,39 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
         if ForceGroup:
             dihedral_restraint.setForceGroup(ForceGroup)
     return system
+
+def generate_gaff(mol2_file, residue_name, need_gaff_atom_types=True, generate_frcmod=True,
+                  directory_path="benchmarks"):
+
+    if need_gaff_atom_types:
+        _generate_gaff_atom_types(mol2_file=mol2_file, residue_name=residue_name, gaff="gaff2", directory_path=directory_path)
+
+    if generate_frcmod:
+        _generate_frcmod(mol2_file=mol2_file, gaff="gaff2", directory_path=directory_path)
+
+def _generate_gaff_atom_types(mol2_file, residue_name, gaff="gaff2", directory_path="benchmarks"):
+    p = sp.Popen(["antechamber", "-i", str(mol2_file), "-fi", "mol2",
+              "-o", f"{mol2_file.name}.{gaff}.mol2", "-fo", "mol2",
+              "-rn", f"{residue_name}",
+              "-at", f"{gaff}",
+              "-an", "no",
+              "-dr", "no",
+              "-pf", "yes"], cwd=directory_path)
+    stdout_data, stderr_data = p.communicate()
+    logger.debug(stdout_data, stderr_data)
+
+    files = ["ANTECHAMBER_AC.AC", "ANTECHAMBER_AC.AC0",
+             "ANTECHAMBER_BOND_TYPE.AC", "ANTECHAMBER_BOND_TYPE.AC0",
+             "ATOMTYPE.INF"]
+    files = [directory_path.joinpath(i) for i in files]
+    for file in files:
+        if file.exists():
+            logger.debug(f"Removing temporary file: {file}")
+            file.unlink()
+
+
+def _generate_frcmod(mol2_file, gaff, directory_path="benchmarks"):
+    sp.Popen(["parmchk2", "-i", str(mol2_file), "-f", "mol2",
+              "-o", f"{mol2_file.name}.{gaff}.frcmod",
+              "-s", f"{gaff}"
+              ], cwd=directory_path)
