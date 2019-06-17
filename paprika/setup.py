@@ -742,14 +742,13 @@ def generate_gaff(mol2_file, residue_name, need_gaff_atom_types=True, generate_f
 
 def _generate_gaff_atom_types(mol2_file, residue_name, gaff="gaff2", directory_path="benchmarks"):
     p = sp.Popen(["antechamber", "-i", str(mol2_file), "-fi", "mol2",
-              "-o", f"{mol2_file.name}.{gaff}.mol2", "-fo", "mol2",
-              "-rn", f"{residue_name}",
+              "-o", f"{mol2_file.stem}.{gaff}.mol2", "-fo", "mol2",
+              "-rn", f"{residue_name.upper()}",
               "-at", f"{gaff}",
               "-an", "no",
               "-dr", "no",
               "-pf", "yes"], cwd=directory_path)
-    stdout_data, stderr_data = p.communicate()
-    logger.debug(stdout_data, stderr_data)
+    p.communicate()
 
     files = ["ANTECHAMBER_AC.AC", "ANTECHAMBER_AC.AC0",
              "ANTECHAMBER_BOND_TYPE.AC", "ANTECHAMBER_BOND_TYPE.AC0",
@@ -763,6 +762,6 @@ def _generate_gaff_atom_types(mol2_file, residue_name, gaff="gaff2", directory_p
 
 def _generate_frcmod(mol2_file, gaff, directory_path="benchmarks"):
     sp.Popen(["parmchk2", "-i", str(mol2_file), "-f", "mol2",
-              "-o", f"{mol2_file.name}.{gaff}.frcmod",
+              "-o", f"{mol2_file.stem}.{gaff}.frcmod",
               "-s", f"{gaff}"
               ], cwd=directory_path)
