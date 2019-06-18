@@ -424,6 +424,9 @@ class fe_calc(object):
 
         self.results[phase][method]["fraction_fe_matrix"] = {}
         self.results[phase][method]["fraction_sem_matrix"] = {}
+        self.results[phase][method]["fraction_fe_Neffective"] = {}
+        self.results[phase][method]["fraction_sem_Neffective"] = {}
+
         for fraction in self.fractions:
             # Setup mbar calc, and get matrix of free energies, uncertainties
             # To estimate the free energy, we won't do subsampling.  We'll do
