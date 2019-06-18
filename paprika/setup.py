@@ -71,10 +71,12 @@ class Setup(object):
         if generate_gaff_files:
             generate_gaff(mol2_file=self.benchmark_path.joinpath(self.host_yaml["structure"]),
                           residue_name=self.host_yaml["name"],
+                          output_name=self.host,
                           directory_path=self.directory)
             if guest:
                 generate_gaff(mol2_file=self.benchmark_path.joinpath(
                     self.guest).joinpath(self.guest_yaml["structure"]),
+                              output_name=self.guest,
                               residue_name=self.guest_yaml["name"],
                               directory_path=self.directory)
 
@@ -731,18 +733,28 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
             dihedral_restraint.setForceGroup(ForceGroup)
     return system
 
-def generate_gaff(mol2_file, residue_name, need_gaff_atom_types=True, generate_frcmod=True,
+def generate_gaff(mol2_file, residue_name, output_name=None, need_gaff_atom_types=True, generate_frcmod=True,
                   directory_path="benchmarks"):
 
+    if output_name is None:
+        output_name = mol2_file.stem
+
     if need_gaff_atom_types:
-        _generate_gaff_atom_types(mol2_file=mol2_file, residue_name=residue_name, gaff="gaff2", directory_path=directory_path)
+        _generate_gaff_atom_types(mol2_file=mol2_file,
+                                  residue_name=residue_name,
+                                  output_name=output_name,
+                                  gaff="gaff2",
+                                  directory_path=directory_path)
 
     if generate_frcmod:
-        _generate_frcmod(mol2_file=mol2_file, gaff="gaff2", directory_path=directory_path)
+        _generate_frcmod(mol2_file=mol2_file,
+                         gaff="gaff2",
+                         output_name=output_name,
+                         directory_path=directory_path)
 
-def _generate_gaff_atom_types(mol2_file, residue_name, gaff="gaff2", directory_path="benchmarks"):
+def _generate_gaff_atom_types(mol2_file, residue_name, output_name, gaff="gaff2", directory_path="benchmarks"):
     p = sp.Popen(["antechamber", "-i", str(mol2_file), "-fi", "mol2",
-              "-o", f"{mol2_file.stem}.{gaff}.mol2", "-fo", "mol2",
+              "-o", f"{output_name}.{gaff}.mol2", "-fo", "mol2",
               "-rn", f"{residue_name.upper()}",
               "-at", f"{gaff}",
               "-an", "no",
@@ -760,8 +772,8 @@ def _generate_gaff_atom_types(mol2_file, residue_name, gaff="gaff2", directory_p
             file.unlink()
 
 
-def _generate_frcmod(mol2_file, gaff, directory_path="benchmarks"):
+def _generate_frcmod(mol2_file, gaff, output_name, directory_path="benchmarks"):
     sp.Popen(["parmchk2", "-i", str(mol2_file), "-f", "mol2",
-              "-o", f"{mol2_file.stem}.{gaff}.frcmod",
+              "-o", f"{output_name}.{gaff}.frcmod",
               "-s", f"{gaff}"
               ], cwd=directory_path)
