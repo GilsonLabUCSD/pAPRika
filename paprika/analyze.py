@@ -40,7 +40,7 @@ class Analyze(object):
         analysis.trajectory = trajectory_mask
         analysis.path = self.directory.joinpath('windows')
         analysis.restraint_list = self.restraints
-        analysis.methods = ["ti-block"]
+        analysis.methods = ["ti-block", "mbar-block"]
         analysis.bootcycles = 100
         analysis.collect_data(single_prmtop=False)
         if self.guest != "release":

@@ -435,6 +435,7 @@ class fe_calc(object):
             Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(
                 compute_uncertainty=True
             )
+            Deltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             if method == "mbar-block":
                 # Create subsampled indices and count their lengths
@@ -459,13 +460,16 @@ class fe_calc(object):
                 junk_Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(
                     compute_uncertainty=True
                 )
+                dDeltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             # Put back into kcal/mol
             Deltaf_ij /= self.beta
             dDeltaf_ij /= self.beta
 
             self.results[phase][method]["fraction_fe_matrix"][fraction] = Deltaf_ij
+            self.results[phase][method]["fraction_fe_Neffective"][fraction] = Deltaf_ij_N_eff
             self.results[phase][method]["fraction_sem_matrix"][fraction] = dDeltaf_ij
+            self.results[phase][method]["fraction_sem_Neffective"][fraction] = dDeltaf_ij_N_eff
 
     def run_ti(self, phase, prepared_data, method):
         """
