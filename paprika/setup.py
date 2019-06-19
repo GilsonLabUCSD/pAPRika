@@ -43,7 +43,7 @@ class Setup(object):
 
     def __init__(self, host, guest=None,
                  backend="openmm", directory_path="benchmarks",
-                 additional_benchmarks=None, generate_gaff_files=False):
+                 additional_benchmarks=None, generate_gaff_files=False, gaff_version="gaff2"):
         self.host = host
         self.guest = guest if guest is not None else "release"
         self.backend = backend
@@ -72,13 +72,15 @@ class Setup(object):
             generate_gaff(mol2_file=self.benchmark_path.joinpath(self.host_yaml["structure"]),
                           residue_name=self.host_yaml["name"],
                           output_name=self.host,
-                          directory_path=self.directory)
+                          directory_path=self.directory,
+                          gaff=gaff_version)
             if guest:
                 generate_gaff(mol2_file=self.benchmark_path.joinpath(
                     self.guest).joinpath(self.guest_yaml["structure"]),
                               output_name=self.guest,
                               residue_name=self.guest_yaml["name"],
-                              directory_path=self.directory)
+                              directory_path=self.directory,
+                              gaff=gaff_version)
 
     def parse_yaml(self, installed_benchmarks):
         """
@@ -734,7 +736,7 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
     return system
 
 def generate_gaff(mol2_file, residue_name, output_name=None, need_gaff_atom_types=True, generate_frcmod=True,
-                  directory_path="benchmarks"):
+                  directory_path="benchmarks", gaff="gaff2"):
 
     if output_name is None:
         output_name = mol2_file.stem
@@ -743,12 +745,12 @@ def generate_gaff(mol2_file, residue_name, output_name=None, need_gaff_atom_type
         _generate_gaff_atom_types(mol2_file=mol2_file,
                                   residue_name=residue_name,
                                   output_name=output_name,
-                                  gaff="gaff2",
+                                  gaff=gaff,
                                   directory_path=directory_path)
 
     if generate_frcmod:
         _generate_frcmod(mol2_file=mol2_file,
-                         gaff="gaff2",
+                         gaff=gaff,
                          output_name=output_name,
                          directory_path=directory_path)
 
