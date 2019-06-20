@@ -7,6 +7,7 @@ import pymbar
 import pytraj as pt
 from scipy.interpolate import Akima1DInterpolator
 import traceback
+from pymbar import timeseries
 
 logger = logging.getLogger(__name__)
 
@@ -409,6 +410,11 @@ class fe_calc(object):
                 variance = np.var(u_kln[k, l, 0 : N_k[k]])
                 g_k[k] = N_k[k] * (sem ** 2) / variance
 
+        if method == "mbar-autoc":
+            for k in range(num_win):
+                [t0, g_k[k], Neff_max] = timeseries.detectEquilibration(N_k[k]) # compute indices of uncorrelated
+                # timeseries
+
         # Create subsampled indices and count their lengths. If g=1, ie no correlation,
         # then subsampling will return identical indices to original
         # (hopefully)
@@ -440,7 +446,7 @@ class fe_calc(object):
             )
             Deltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
-            if method == "mbar-block":
+            if method == "mbar-block" or "mbar-autoc":
                 # Create subsampled indices and count their lengths
                 frac_N_ss = np.array([int(fraction * n) for n in N_ss], dtype=np.int32)
 
@@ -732,7 +738,7 @@ class fe_calc(object):
                 )
 
                 # Run the method
-                if method == "mbar-block":
+                if method == "mbar-block" or "mbar-autoc":
                     self.run_mbar(phase, prepared_data, method)
                 elif method == "ti-block":
                     self.run_ti(phase, prepared_data, method)
