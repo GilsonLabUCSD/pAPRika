@@ -333,7 +333,7 @@ class Setup(object):
         with open(output_pdb, "w") as file:
             openmm.app.PDBFile.writeFile(topology, positions, file)
 
-    def _add_dummy_to_System(self, system, structure, dummy_atom_tuples):
+    def _add_dummy_to_System(self, system, dummy_atom_tuples):
         [system.addParticle(mass=207) for _ in range(len(dummy_atom_tuples))]
 
         for force_index in range(system.getNumForces()):
@@ -343,27 +343,6 @@ class Setup(object):
             force.addParticle(0.0, 1.0, 0.0)
             force.addParticle(0.0, 1.0, 0.0)
             force.addParticle(0.0, 1.0, 0.0)
-
-        for atom in structure.atoms:
-            if atom.name == "DUM":
-                positional_restraint = openmm.CustomExternalForce(
-                    "k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)"
-                )
-                positional_restraint.addPerParticleParameter("k")
-                positional_restraint.addPerParticleParameter("x0")
-                positional_restraint.addPerParticleParameter("y0")
-                positional_restraint.addPerParticleParameter("z0")
-                # I haven't found a way to get this to use ParmEd's unit library here.
-                # ParmEd correctly reports `atom.positions` as units of Ångstroms.
-                # But then we can't access atom indices.
-                # Using `atom.xx` works for coordinates, but is unitless.
-
-                k = 50.0 * unit.kilocalories_per_mole / unit.angstroms ** 2
-                x0 = 0.1 * atom.xx * unit.nanometers
-                y0 = 0.1 * atom.xy * unit.nanometers
-                z0 = 0.1 * atom.xz * unit.nanometers
-                positional_restraint.addParticle(atom.idx, [k, x0, y0, z0])
-                system.addForce(positional_restraint)
 
         return system
 
@@ -377,7 +356,6 @@ class Setup(object):
     ):
 
         reference_structure = pmd.load_file(reference_pdb, structure=True)
-        structure = pmd.load_file(solvated_pdb, structure=True)
 
         # Determine the offset coordinates for the new dummy atoms.
         if self.guest == "release":
@@ -410,13 +388,10 @@ class Setup(object):
 
             try:
 
-                structure = pmd.load_file(dummy_pdb, structure=True)
-
                 system = read_openmm_system_from_xml(solvated_xml)
-                system = self._add_dummy_to_System(system, structure,
-                                                   dummy_atom_tuples=[(0, 0, -6.0),
-                                                                      (0, 0, -9.0),
-                                                                      (0, 2.2, -11.2)])
+                system = self._add_dummy_to_System(system, dummy_atom_tuples=[(0, 0, -6.0),
+                                                                              (0, 0, -9.0),
+                                                                              (0, 2.2, -11.2)])
                 system_xml = openmm.XmlSerializer.serialize(system)
                 with open(dummy_xml, "w") as file:
                     file.write(system_xml)
@@ -576,7 +551,8 @@ class Setup(object):
             guest_restraints,
         )
 
-    def initialize_calculation(self, window, input_xml="system.xml", output_xml="system.xml"):
+    def initialize_calculation(self, window, structure_path="output.pdb",
+                               input_xml="system.xml", output_xml="system.xml"):
         if self.backend == "amber":
             # Write simulation input files in each directory
             raise NotImplementedError
@@ -584,6 +560,30 @@ class Setup(object):
             system = read_openmm_system_from_xml(input_xml)
         except:
             logger.warning(f"Cannot read XML from {input_xml}")
+
+        # Apply the positional restraints.
+        structure = pmd.load_file(structure_path, structure=True)
+
+        for atom in structure.atoms:
+            if atom.name == "DUM":
+                positional_restraint = openmm.CustomExternalForce(
+                    "k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)"
+                )
+                positional_restraint.addPerParticleParameter("k")
+                positional_restraint.addPerParticleParameter("x0")
+                positional_restraint.addPerParticleParameter("y0")
+                positional_restraint.addPerParticleParameter("z0")
+                # I haven't found a way to get this to use ParmEd's unit library here.
+                # ParmEd correctly reports `atom.positions` as units of Ångstroms.
+                # But then we can't access atom indices.
+                # Using `atom.xx` works for coordinates, but is unitless.
+
+                k = 50.0 * unit.kilocalories_per_mole / unit.angstroms ** 2
+                x0 = 0.1 * atom.xx * unit.nanometers
+                y0 = 0.1 * atom.xy * unit.nanometers
+                z0 = 0.1 * atom.xz * unit.nanometers
+                positional_restraint.addParticle(atom.idx, [k, x0, y0, z0])
+                system.addForce(positional_restraint)
 
         for restraint in self.static_restraints:
             system = apply_openmm_restraints(system, restraint, window, ForceGroup=10)
