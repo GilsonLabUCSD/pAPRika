@@ -507,9 +507,38 @@ class Setup(object):
         else:
             logger.debug("Skipping conformational restraints...")
 
-        wall_restraints = []
+        symmetry_restraints = []
         if self.guest != "release" and "symmetry_correction" in self.guest_yaml:
-            for wall in self.guest_yaml["symmetry_correction"]["restraints"]:
+            for symmetry in self.guest_yaml["symmetry_correction"]["restraints"]:
+                symmetry_restraint = DAT_restraint()
+                symmetry_restraint.auto_apr = True
+                symmetry_restraint.continuous_apr = True
+                symmetry_restraint.amber_index = False if self.backend == "openmm" else True
+                symmetry_restraint.topology = str(structure)
+                symmetry_restraint.mask1 = symmetry["atoms"].split()[0]
+                symmetry_restraint.mask2 = symmetry["atoms"].split()[1]
+                symmetry_restraint.mask3 = symmetry["atoms"].split()[2]
+
+                symmetry_restraint.attach["fc_final"] = symmetry["force_constant"]
+                symmetry_restraint.attach["fraction_list"] = [1.0] * len(self.host_yaml["calculation"][
+                        "lambda"
+                    ]["attach"])
+                # This target should be overridden by the custom values.
+                symmetry_restraint.attach["target"] = 999.99
+                symmetry_restraint.custom_restraint_values["r2"] = 91
+                symmetry_restraint.custom_restraint_values["r3"] = 91
+                # 0 force constant between 91 degrees and 180 degrees.
+                symmetry_restraint.custom_restraint_values["rk3"] = 0.0
+                symmetry_restraint.initialize()
+
+                symmetry_restraints.append(symmetry_restraint)
+
+        else:
+            logger.debug("Skipping symmetry restraints...")
+
+        wall_restraints = []
+        if self.guest != "release" and "wall_restraints" in self.guest_yaml:
+            for wall in self.guest_yaml["wall_restraints"]["restraints"]:
                 wall_restraint = DAT_restraint()
                 wall_restraint.auto_apr = True
                 wall_restraint.continuous_apr = True
@@ -517,18 +546,18 @@ class Setup(object):
                 wall_restraint.topology = str(structure)
                 wall_restraint.mask1 = wall["atoms"].split()[0]
                 wall_restraint.mask2 = wall["atoms"].split()[1]
-                wall_restraint.mask3 = wall["atoms"].split()[2]
 
                 wall_restraint.attach["fc_final"] = wall["force_constant"]
                 wall_restraint.attach["fraction_list"] = [1.0] * len(self.host_yaml["calculation"][
-                        "lambda"
-                    ]["attach"])
-                # This target should be overridden by the custom values.
-                wall_restraint.attach["target"] = 999.99
-                wall_restraint.custom_restraint_values["r2"] = 91
-                wall_restraint.custom_restraint_values["r3"] = 91
-                # 0 force constant between 91 degrees and 180 degrees.
-                wall_restraint.custom_restraint_values["rk3"] = 0.0
+                                                                             "lambda"
+                                                                         ]["attach"])
+                wall_restraint.attach["target"] = wall["target"]
+                # Minimum distance is 0 Angstrom
+                wall_restraint.custom_restraint_values["r1"] = 0
+                wall_restraint.custom_restraint_values["r2"] = 0
+                # Harmonic force constant beyond target distance.
+                wall_restraint.custom_restraint_values["rk2"] = wall["force_constant"]
+                wall_restraint.custom_restraint_values["rk3"] = wall["force_constant"]
                 wall_restraint.initialize()
 
                 wall_restraints.append(wall_restraint)
@@ -537,7 +566,6 @@ class Setup(object):
             logger.debug("Skipping wall restraints...")
 
         guest_restraints = []
-
         for restraint in [] if not hasattr(self, 'guest_yaml') else self.guest_yaml["restraints"]:
             mask = restraint["restraint"]["atoms"].split()
 
@@ -572,6 +600,7 @@ class Setup(object):
         return (
             static_restraints,
             conformational_restraints,
+            symmetry_restraints,
             wall_restraints,
             guest_restraints,
         )
@@ -591,8 +620,10 @@ class Setup(object):
             system = apply_openmm_restraints(system, restraint, window, ForceGroup=11)
         for restraint in self.guest_restraints:
             system = apply_openmm_restraints(system, restraint, window, ForceGroup=12)
-        for restraint in self.wall_restraints:
+        for restraint in self.symmetry_restraints:
             system = apply_openmm_restraints(system, restraint, window, flat_bottom=True, ForceGroup=13)
+        for restraint in self.wall_restraints:
+            system = apply_openmm_restraints(system, restraint, window, flat_bottom=True, ForceGroup=14)
 
         system_xml = openmm.XmlSerializer.serialize(system)
 
@@ -616,9 +647,9 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
         phase = "release"
     window_number = int(window[1:])
 
-    if flat_bottom and phase == "attach":
+    if flat_bottom and phase == "attach" and not restraint.mask3:
         flat_bottom_force = openmm.CustomAngleForce('step(-(theta - theta_0)) * k * (theta - theta_0)^2')
-        # This force is on if theta <= theta_0
+        # If theta is greater than theta_0, then the argument to step is negative, which means the force is off.
         flat_bottom_force.addPerAngleParameter("k")
         flat_bottom_force.addPerAngleParameter("theta_0")
 
@@ -639,6 +670,29 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
             flat_bottom_force.setForceGroup(ForceGroup)
 
         return system
+    elif flat_bottom and phase == "attach" and restraint.mask3:
+        flat_bottom_force = openmm.CustomBondForce('step((x - x_0)) * k * (x - x_0)^2')
+        # If x is greater than x_0, then the argument to step is positive, which means the force is on.
+        flat_bottom_force.addPerAngleParameter("k")
+        flat_bottom_force.addPerAngleParameter("x_0")
+
+        x_0 = restraint.phase[phase]["target"][window_number] * unit.angstrom
+        k = (
+                restraint.phase[phase]["force_constants"][window_number]
+                * unit.kilocalories_per_mole
+                / unit.radian ** 2
+        )
+        flat_bottom_force.addBond(
+            restraint.index1[0],
+            restraint.index2[0],
+            [k, x_0],
+        )
+        system.addForce(flat_bottom_force)
+        if ForceGroup:
+            flat_bottom_force.setForceGroup(ForceGroup)
+
+        return system
+
     elif flat_bottom and phase == "pull":
         return system
     elif flat_bottom and phase == "release":
