@@ -29,9 +29,12 @@ class Analyze(object):
         self.results = self.analyze(topology_file, trajectory_mask).results
 
         if symmetry_correction:
-            if not symmetry_correction["microstates"]:
-                logger.warning("No microstates specified for the symmetry correction.")
-            self.results["symmetry_correction"] = -0.593 * np.log(symmetry_correction["microstates"])
+            if symmetry_correction["microstates"] == 1:
+                logger.info("No microstates specified for the symmetry correction. Assuming separate calculations.")
+            elif symmetry_correction["microstates"] > 1:
+                self.results["symmetry_correction"] = -0.593 * np.log(symmetry_correction["microstates"])
+            else:
+                logger.warning("Symmetry correction defined in YAML but unable to determine microstates.")
 
     def analyze(self, topology_file, trajectory_mask):
 
