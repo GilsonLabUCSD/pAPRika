@@ -43,7 +43,8 @@ class Setup(object):
 
     def __init__(self, host, guest=None,
                  backend="openmm", directory_path="benchmarks",
-                 additional_benchmarks=None, generate_gaff_files=False, gaff_version="gaff2"):
+                 additional_benchmarks=None, generate_gaff_files=False, gaff_version="gaff2",
+                 guest_orientation=None):
         self.host = host
         self.guest = guest if guest is not None else "release"
         self.backend = backend
@@ -59,11 +60,13 @@ class Setup(object):
         installed_benchmarks = get_benchmarks()
         if additional_benchmarks is not None:
             installed_benchmarks.update(additional_benchmarks)
-        host_yaml, guest_yaml = self.parse_yaml(installed_benchmarks)
+
+        host_yaml, guest_yaml = self.parse_yaml(installed_benchmarks, guest_orientation)
+
         self.benchmark_path = host_yaml.parent
         self.host_yaml = read_yaml(host_yaml)
         if guest:
-            self.guest_yaml = read_yaml(guest_yaml)
+            self.guest_yaml = read_yaml(guest_yaml["yaml"])
 
         # Here, we build desolvated windows and pass the files to the Property Estimator.
         # These files are stored in `self.desolvated_window_paths`.
@@ -82,7 +85,7 @@ class Setup(object):
                               directory_path=self.directory,
                               gaff=gaff_version)
 
-    def parse_yaml(self, installed_benchmarks):
+    def parse_yaml(self, installed_benchmarks, guest_orientation):
         """
         Read the YAML recipe for the host and guest.
 
@@ -91,7 +94,16 @@ class Setup(object):
 
         """
         try:
-            host_yaml = installed_benchmarks["host_guest_systems"][self.host]["yaml"]
+            if guest_orientation:
+
+                for orientation in installed_benchmarks["host_guest_systems"][self.host]["yaml"]:
+                    logger.debug(f"Looking for host-{guest_orientation} in {orientation}")
+                    if f"host-{guest_orientation}" in orientation.name:
+                        host_yaml = orientation
+                        logger.debug("Match")
+            else:
+                host_yaml = installed_benchmarks["host_guest_systems"][self.host]["yaml"][0]
+
         except KeyError:
             logger.error(f"Cannot find YAML recipe for host: {self.host}")
             logger.debug(installed_benchmarks)
@@ -116,7 +128,7 @@ class Setup(object):
         if not self.guest == "release":
             # Align the host-guest complex so the first guest atom is at (0, 0, 0) and the second guest atom lies
             # along the positive z-axis.
-            guest_angle_restraint_mask = self.guest_yaml["restraints"][-1]["restraint"][
+            guest_angle_restraint_mask = self.guest_yaml["restraints"]["guest"][-1]["restraint"][
                 "atoms"
             ].split()
             aligned_structure = align.zalign(
@@ -223,7 +235,7 @@ class Setup(object):
         guest_restraint.mask2 = "@2"
 
         if self.guest != "release":
-            restraint = self.guest_yaml["restraints"][0]
+            restraint = self.guest_yaml["restraints"]["guest"][0]
             guest_restraint.attach["target"] = restraint["restraint"]["attach"][
                 "target"
             ]

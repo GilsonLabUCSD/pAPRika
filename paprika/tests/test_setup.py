@@ -11,9 +11,15 @@ log.config_root_logger(verbose=True)
 logger = logging.getLogger(__name__)
 
 
-def test_setup():
+def test_single_orientation():
     """ Test that we can load setup YAML files. """
     setup_object = paprika.setup(host="cb6", guest="but")
+    print(setup_object.desolvated_window_paths)
+
+
+def test_double_orientation():
+    """ Test that we can load setup YAML files. """
+    setup_object = paprika.setup(host="bcd", guest="hex", guest_orientation="p")
     print(setup_object.desolvated_window_paths)
 
 def test_generate_gaff():
@@ -23,4 +29,4 @@ def test_generate_gaff():
 
 
 if __name__ == "__main__":
-    test_generate_gaff()
+    test_double_orientation()
