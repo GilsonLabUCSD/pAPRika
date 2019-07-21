@@ -252,8 +252,8 @@ class fe_calc(object):
         if len(active_attach_restraints) > 0:
             if (
                 active_attach_restraints[0].continuous_apr
-                and self.orders["attach"].any
-                and self.orders["pull"].any
+                and self.orders["attach"].size > 0
+                and self.orders["pull"].size > 0
             ):
                 logger.debug(
                     "Replacing {} with {} in {} for `continuous_apr`...".format(
@@ -267,8 +267,8 @@ class fe_calc(object):
         if len(active_release_restraints) > 0:
             if (
                 active_release_restraints[0].continuous_apr
-                and self.orders["release"].any
-                and self.orders["pull"].any
+                and self.orders["release"].size > 0
+                and self.orders["pull"].size > 0
             ):
                 logger.debug(
                     "Replacing {} with {} in {} for `continuous_apr`...".format(
