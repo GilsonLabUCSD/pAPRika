@@ -2,14 +2,9 @@
 Tests tleap tools.
 """
 
-import logging as log
-import os
 import random as random
 import shutil
-import subprocess as sp
 
-import numpy as np
-import parmed as pmd
 import pytest
 
 from paprika.align import *
@@ -301,8 +296,8 @@ def test_add_dummy(clean_files):
     sys.neutralize = False
     sys.build()
     with open(
-        os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"),
-        "r",
+            os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"),
+            "r",
     ) as f:
         contents = f.read()
         reference = [float(i) for i in contents.split()[2:]]

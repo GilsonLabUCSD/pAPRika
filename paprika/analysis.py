@@ -6,6 +6,8 @@ import numpy as np
 import pymbar
 import pytraj as pt
 from scipy.interpolate import Akima1DInterpolator
+import traceback
+from pymbar import timeseries
 
 logger = logging.getLogger(__name__)
 
@@ -250,8 +252,8 @@ class fe_calc(object):
         if len(active_attach_restraints) > 0:
             if (
                 active_attach_restraints[0].continuous_apr
-                and self.orders["attach"].any
-                and self.orders["pull"].any
+                and self.orders["attach"].size > 0
+                and self.orders["pull"].size > 0
             ):
                 logger.debug(
                     "Replacing {} with {} in {} for `continuous_apr`...".format(
@@ -265,8 +267,8 @@ class fe_calc(object):
         if len(active_release_restraints) > 0:
             if (
                 active_release_restraints[0].continuous_apr
-                and self.orders["release"].any
-                and self.orders["pull"].any
+                and self.orders["release"].size > 0
+                and self.orders["pull"].size > 0
             ):
                 logger.debug(
                     "Replacing {} with {} in {} for `continuous_apr`...".format(
@@ -408,6 +410,11 @@ class fe_calc(object):
                 variance = np.var(u_kln[k, l, 0 : N_k[k]])
                 g_k[k] = N_k[k] * (sem ** 2) / variance
 
+        if method == "mbar-autoc":
+            for k in range(num_win):
+                [t0, g_k[k], Neff_max] = timeseries.detectEquilibration(N_k[k]) # compute indices of uncorrelated
+                # timeseries
+
         # Create subsampled indices and count their lengths. If g=1, ie no correlation,
         # then subsampling will return identical indices to original
         # (hopefully)
@@ -423,6 +430,9 @@ class fe_calc(object):
 
         self.results[phase][method]["fraction_fe_matrix"] = {}
         self.results[phase][method]["fraction_sem_matrix"] = {}
+        self.results[phase][method]["fraction_fe_Neffective"] = {}
+        self.results[phase][method]["fraction_sem_Neffective"] = {}
+
         for fraction in self.fractions:
             # Setup mbar calc, and get matrix of free energies, uncertainties
             # To estimate the free energy, we won't do subsampling.  We'll do
@@ -434,8 +444,9 @@ class fe_calc(object):
             Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(
                 compute_uncertainty=True
             )
+            Deltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
-            if method == "mbar-block":
+            if method == "mbar-block" or "mbar-autoc":
                 # Create subsampled indices and count their lengths
                 frac_N_ss = np.array([int(fraction * n) for n in N_ss], dtype=np.int32)
 
@@ -458,13 +469,16 @@ class fe_calc(object):
                 junk_Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(
                     compute_uncertainty=True
                 )
+                dDeltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             # Put back into kcal/mol
             Deltaf_ij /= self.beta
             dDeltaf_ij /= self.beta
 
             self.results[phase][method]["fraction_fe_matrix"][fraction] = Deltaf_ij
+            self.results[phase][method]["fraction_fe_Neffective"][fraction] = Deltaf_ij_N_eff
             self.results[phase][method]["fraction_sem_matrix"][fraction] = dDeltaf_ij
+            self.results[phase][method]["fraction_sem_Neffective"][fraction] = dDeltaf_ij_N_eff
 
     def run_ti(self, phase, prepared_data, method):
         """
@@ -724,7 +738,7 @@ class fe_calc(object):
                 )
 
                 # Run the method
-                if method == "mbar-block":
+                if method == "mbar-block" or "mbar-autoc":
                     self.run_mbar(phase, prepared_data, method)
                 elif method == "ti-block":
                     self.run_ti(phase, prepared_data, method)
@@ -986,9 +1000,18 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
     elif isinstance(trajectory, list):
         trajectory_path = [os.path.join(window, i) for i in trajectory]
         logger.debug("Received list of trajectories: {}".format(trajectory_path))
-
+    else:
+        raise RuntimeError("Trajectory path should be a `str` or `list`.")
     if isinstance(prmtop, str) and not single_prmtop:
-        traj = pt.iterload(trajectory_path, os.path.join(window, prmtop))
+        if not os.path.isfile(os.path.join(window, prmtop)):
+            raise FileNotFoundError(f"Cannot find `prmtop` file: {os.path.join(window, prmtop)}")
+        logger.debug(f"Loading {os.path.join(window, prmtop)} and {trajectory_path}")
+        try:
+            traj = pt.iterload(trajectory_path, os.path.join(window, prmtop))
+        except ValueError as e:
+            formatted_exception = traceback.format_exception(None, e, e.__traceback__)
+            logger.info(f"Failed trying to load {os.path.join(window, prmtop)} and {trajectory_path}: "
+                        f"{formatted_exception}")
     elif isinstance(prmtop, str) and single_prmtop:
         traj = pt.iterload(trajectory_path, os.path.join(prmtop))
     else:

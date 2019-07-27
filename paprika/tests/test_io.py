@@ -2,12 +2,11 @@
 Test that we can save and load restraints as JSON.
 """
 
-import os
 import shutil
-import paprika
-from paprika.restraints import *
-from paprika.io import *
+
 import pytest
+
+from paprika.io import *
 
 
 @pytest.fixture(scope="function", autouse=True)

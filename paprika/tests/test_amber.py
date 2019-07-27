@@ -1,13 +1,15 @@
 import os
 import shutil
 
-import numpy as np
 import parmed as pmd
 import pytest
 
-from paprika import align, amber, restraints, tleap
+from paprika import amber, restraints
+from paprika.restraints import amber_restraints
+from paprika.restraints.restraints import create_window_list
 from paprika.tests import addons
 from paprika.utils import parse_mden
+from paprika.utils import parse_mdout
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -24,7 +26,6 @@ def clean_files(directory="tmp"):
 @addons.using_sander
 # @addons.using_pmemd_cuda
 def test_amber_single_window_gbmin(clean_files):
-
     # Distance restraint
     restraint = restraints.DAT_restraint()
     restraint.continuous_apr = True
@@ -44,14 +45,14 @@ def test_amber_single_window_gbmin(clean_files):
     restraint.initialize()
 
     windows_directory = os.path.join("tmp", "k-cl", "windows")
-    window_list = restraints.create_window_list([restraint])
+    window_list = create_window_list([restraint])
 
     for window in window_list:
         os.makedirs(os.path.join(windows_directory, window))
         with open(
-            os.path.join(windows_directory, window, "restraints.in"), "a"
+                os.path.join(windows_directory, window, "restraints.in"), "a"
         ) as file:
-            string = restraints.amber_restraint_line(restraint, window)
+            string = amber_restraints.amber_restraint_line(restraint, window)
             file.write(string)
 
     for window in window_list:
@@ -81,8 +82,8 @@ def test_amber_single_window_gbmin(clean_files):
                 structure=True,
             )
             target_difference = (
-                restraint.phase["pull"]["targets"][int(window[1:])]
-                - restraint.phase["pull"]["targets"][0]
+                    restraint.phase["pull"]["targets"][int(window[1:])]
+                    - restraint.phase["pull"]["targets"][0]
             )
 
             for atom in structure.atoms:
@@ -129,3 +130,36 @@ def test_amber_single_window_gbmin(clean_files):
     assert pytest.approx(mden["VDW"][0], 0.1) == 25956.13225
     assert pytest.approx(mden["Ele"][0], 0.1) == -18828.99631
     assert pytest.approx(mden["Total"][0], 0.1) == 7127.13594
+
+
+def test_amber_minimization(clean_files):
+    simulation = amber.Simulation()
+    simulation.path = os.path.join("tmp")
+
+    shutil.copy(os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.prmtop"), "tmp")
+    shutil.copy(os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.rst7"), "tmp")
+
+    simulation.executable = "sander"
+    simulation.restraint_file = None
+
+    simulation.prefix = "minimize"
+    simulation.topology = "k-cl.prmtop"
+    simulation.inpcrd = "k-cl.rst7"
+
+    simulation.config_gb_min()
+    # Turn off GB for now.
+    simulation.cntrl["igb"] = 0
+    simulation.cntrl["ntb"] = 0
+
+    simulation.run()
+
+    mdout = parse_mdout(os.path.join("tmp", "minimize.out"))
+
+    assert pytest.approx(mdout["Bond"][-1]) == 0
+    assert pytest.approx(mdout["Angle"][-1]) == 0
+    assert pytest.approx(mdout["Dihedral"][-1]) == 0
+    assert pytest.approx(mdout["V14"][-1]) == 0
+    assert pytest.approx(mdout["E14"][-1]) == 0
+
+    assert pytest.approx(mdout["VDW"][0], 0.1) == 6.5734
+    assert pytest.approx(mdout["Ele"][0], 0.1) == -211.7616

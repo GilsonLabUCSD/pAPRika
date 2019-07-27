@@ -1,17 +1,21 @@
-import parmed as pmd
-import numpy as np
+import logging
 import os
 import shutil
 
-from paprika import restraints
-from paprika import analysis
-
-from paprika.tests import addons
-
+import numpy as np
+import parmed as pmd
 import pytest
+from pytest import approx
+
+from paprika import analysis
+from paprika import log
+from paprika import restraints
+
+log.config_root_logger(verbose=True)
+logger = logging.getLogger(__name__)
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def clean_files(directory="tmp"):
     # This happens before the test function call
     if os.path.isdir(directory):
@@ -21,16 +25,16 @@ def clean_files(directory="tmp"):
     # This happens after the test function call
     shutil.rmtree(directory)
 
-
-def test_fe_calc(clean_files):
-
-    inputpdb = pmd.load_file(os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb"))
+@pytest.fixture(scope="module", autouse=True)
+def setup_free_energy_calculation():
+    input_pdb = pmd.load_file(os.path.join(os.path.dirname(__file__),
+                                           "../data/cb6-but/vac.pdb"))
 
     # Distance restraint
     rest1 = restraints.DAT_restraint()
     rest1.continuous_apr = True
     rest1.amber_index = True
-    rest1.topology = inputpdb
+    rest1.topology = input_pdb
     rest1.mask1 = ":CB6@O"
     rest1.mask2 = ":BUT@C1"
     rest1.attach["target"] = 4.5
@@ -46,7 +50,7 @@ def test_fe_calc(clean_files):
     rest2 = restraints.DAT_restraint()
     rest2.continuous_apr = True
     rest2.amber_index = True
-    rest2.topology = inputpdb
+    rest2.topology = input_pdb
     rest2.mask1 = ":CB6@O1"
     rest2.mask2 = ":CB6@O"
     rest2.mask3 = ":BUT@C1"
@@ -63,7 +67,7 @@ def test_fe_calc(clean_files):
     rest3 = restraints.DAT_restraint()
     rest3.continuous_apr = True
     rest3.amber_index = True
-    rest3.topology = inputpdb
+    rest3.topology = input_pdb
     rest3.mask1 = ":CB6@O11"
     rest3.mask2 = ":CB6@O1"
     rest3.mask3 = ":CB6@O"
@@ -78,7 +82,7 @@ def test_fe_calc(clean_files):
     rest3.initialize()
 
     # Create window directories
-    restraints.create_window_list([rest1, rest2, rest3])
+    restraints.restraints.create_window_list([rest1, rest2, rest3])
 
     # Phase abbreviations
     phase_dict = {"a": "attach", "p": "pull", "r": "release"}
@@ -90,39 +94,43 @@ def test_fe_calc(clean_files):
     fecalc.trajectory = "*.nc"
     fecalc.path = os.path.join(os.path.dirname(__file__), "../data/cb6-but-apr/")
     fecalc.restraint_list = [rest1, rest2, rest3]
-    fecalc.methods = ["mbar-block", "ti-block"]
+    fecalc.methods = ["mbar-block", "ti-block", "mbar-autoc"]
     fecalc.bootcycles = 100
     fecalc.ti_matrix = "diagonal"
     fecalc.compute_largest_neighbor = True
     fecalc.compute_roi = True
     fecalc.collect_data(single_prmtop=True)
     fecalc.compute_free_energy()
+    fecalc.compute_ref_state_work([rest1, rest2, rest3, None, None, None])
 
-    ##################
-    # Test mbar-block
-    ##################
+    return fecalc
 
+
+def test_setup(clean_files, setup_free_energy_calculation):
+    pass
+
+def test_mbar_block(clean_files, setup_free_energy_calculation):
+
+    results = setup_free_energy_calculation.results
     method = "mbar-block"
     # Test mbar-block free energies and uncertainties
     test_vals = [
-        fecalc.results["attach"][method]["fe"],
-        fecalc.results["attach"][method]["sem"],
-        fecalc.results["pull"][method]["fe"],
-        fecalc.results["pull"][method]["sem"],
+        results["attach"][method]["fe"],
+        results["attach"][method]["sem"],
+        results["pull"][method]["fe"],
+        results["pull"][method]["sem"],
     ]
-    ref_vals = [13.267731176, 0.16892084090, -2.1791430735, 0.93638948302]
-    for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
+    reference_values = [13.267731176, 0.16892084090, -2.1791430735, 0.93638948302]
+    assert reference_values == approx(test_vals, abs=0.01)
 
     # Test attach mbar-block largest_neighbor values
-    test_vals = fecalc.results["attach"][method]["largest_neighbor"]
-    ref_vals = np.array([0.0198918, 0.0451676, 0.0564517, 0.1079282, 0.1079282])
-    for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
+    test_vals = results["attach"][method]["largest_neighbor"]
+    reference_values = np.array([0.0198918, 0.0451676, 0.0564517, 0.1079282, 0.1079282])
+    assert reference_values == approx(test_vals, abs=0.01)
 
     # Test pull mbar-block largest_neighbor values
-    test_vals = fecalc.results["pull"][method]["largest_neighbor"]
-    ref_vals = np.array(
+    test_vals = results["pull"][method]["largest_neighbor"]
+    reference_values = np.array(
         [
             0.2053769,
             0.2053769,
@@ -145,8 +153,12 @@ def test_fe_calc(clean_files):
             0.1434395,
         ]
     )
-    for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i], rtol=0.0, atol=0.00001)
+    assert reference_values == approx(test_vals, abs=0.01)
+
+
+def test_ti_block(clean_files, setup_free_energy_calculation):
+
+    results = setup_free_energy_calculation.results
 
     ##################
     # Test ti-block
@@ -156,125 +168,41 @@ def test_fe_calc(clean_files):
 
     # Test ti-block free energies and uncertainties
     test_vals = [
-        fecalc.results["attach"][method]["fe"],
-        fecalc.results["attach"][method]["sem"],
-        fecalc.results["pull"][method]["fe"],
-        fecalc.results["pull"][method]["sem"],
+        results["attach"][method]["fe"],
+        results["attach"][method]["sem"],
+        results["pull"][method]["fe"],
+        results["pull"][method]["sem"],
     ]
-    ref_vals = np.array([13.35823327, 0.25563407, -1.77873259, 0.95162741])
-    for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i])
+    reference_values = np.array([13.27, 0.08, -2.18, 0.70])
+    assert reference_values == approx(test_vals, abs=0.01)
 
-    # Test attach roi values
-    test_vals = fecalc.results["attach"][method]["roi"]
-    ref_vals = np.array(
-        [-0.00027503, -0.00020536, 0.00000691, -0.00062548, -0.00029785]
-    )
-    for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i])
-
-    # Test pull roi values
-    test_vals = fecalc.results["pull"][method]["roi"]
-    ref_vals = np.array(
-        [
-            -0.00191275,
-            -0.00047460,
-            -0.00284036,
-            -0.00144093,
-            -0.00199245,
-            -0.00160141,
-            -0.00071836,
-            -0.00188979,
-            -0.00162371,
-            -0.00108091,
-            -0.00197727,
-            -0.00223339,
-            -0.00144556,
-            -0.00272537,
-            -0.00098154,
-            -0.00071218,
-            -0.00073691,
-            -0.00195884,
-            -0.00155617,
-        ]
-    )
-    for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i])
+    # ROI only runs during TI.
 
     # Test attach ti-block largest_neighbor values
-    test_vals = fecalc.results["attach"][method]["largest_neighbor"]
-    ref_vals = np.array([0.02809982, 0.07439878, 0.09719278, 0.16782417, 0.16782417])
-    for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i])
+    test_vals = results["attach"][method]["largest_neighbor"]
+    reference_values = np.array([0.01, 0.03, 0.03, 0.04, 0.04])
+    assert reference_values == approx(test_vals, abs=0.01)
 
     # Test pull ti-block largest_neighbor values
-    test_vals = fecalc.results["pull"][method]["largest_neighbor"]
-    ref_vals = np.array(
-        [
-            0.31296449,
-            0.31296449,
-            0.23297017,
-            0.24211187,
-            0.24211187,
-            0.13217678,
-            0.11879266,
-            0.15423428,
-            0.15423428,
-            0.12861334,
-            0.11276903,
-            0.11276903,
-            0.11150722,
-            0.13483801,
-            0.17510575,
-            0.17510575,
-            0.14725404,
-            0.12972769,
-            0.11803089,
-        ]
+    test_vals = results["pull"][method]["largest_neighbor"]
+
+    reference_values = np.array(
+        [0.10273918, 0.11361076, 0.13073941, 0.14135545, 0.38928134, 0.38928134,
+         0.11214623, 0.12950768, 0.13145163, 0.13145163, 0.13112592, 0.13112592,
+         0.13751175, 0.14186328, 0.14186328, 0.12846939, 0.13549818, 0.13549818,
+         0.13403929]
+
     )
-    for i in range(len(test_vals)):
-        assert np.isclose(ref_vals[i], test_vals[i])
+    assert reference_values == approx(test_vals, abs=0.01)
+
+
+def test_reference_state_work(clean_files, setup_free_energy_calculation):
+
+    results = setup_free_energy_calculation.results
 
     #######################
     # Test ref_state_work
     #######################
 
     # Test reference state calculation
-    fecalc.compute_ref_state_work([rest1, rest2, rest3, None, None, None])
-    assert np.isclose(-4.34372240, fecalc.results["ref_state_work"])
-
-
-def reprint_values(results, method):
-    """
-    Hack method to reprint values when I rearrange things and mess up the order of random
-    number generation.
-    """
-    reprint = np.concatenate(
-        (
-            np.array(
-                [
-                    results["attach"][method]["fe"],
-                    results["attach"][method]["sem"],
-                    results["pull"][method]["fe"],
-                    results["pull"][method]["sem"],
-                ]
-            ),
-            np.array([9999]),
-            results["attach"][method]["roi"],
-            np.array([9999]),
-            results["pull"][method]["roi"],
-            np.array([9999]),
-            results["attach"][method]["largest_neighbor"],
-            np.array([9999]),
-            results["pull"][method]["largest_neighbor"],
-            np.array([9999]),
-        )
-    )
-    for val in reprint:
-        if val == 9999:
-            print("")
-        else:
-            # Comment this to make python 2.7 pass.  This is just for redoing the
-            # the ref_vals anyway
-            #            print("{:.8f}, ".format(val), end='')
-            pass
+    assert np.isclose(-4.34372240, results["ref_state_work"])

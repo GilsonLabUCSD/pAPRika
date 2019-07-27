@@ -2,10 +2,6 @@
 Test utility functions
 """
 
-import os
-
-import parmed as pmd
-
 from paprika.utils import *
 
 

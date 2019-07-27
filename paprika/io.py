@@ -6,6 +6,7 @@ import numpy as np
 import parmed as pmd
 from paprika.restraints import DAT_restraint
 from parmed.amber import AmberParm
+from parmed import Structure
 
 
 # https://stackoverflow.com/questions/27909658/json-encoder-and-decoder-for-complex-numpy-arrays
@@ -21,8 +22,12 @@ class NumpyEncoder(json.JSONEncoder):
         holding dtype, shape and the data, base64 encoded.
         """
         if isinstance(obj, AmberParm):
-            print("Encountered AmberParm, returning prmtop name.")
+            log.info("Encountered AmberParm, returning name.")
             return obj.name
+        if isinstance(obj, Structure):
+            log.warning("Encountered Structure, which does not store filename.")
+            return ""
+
         if isinstance(obj, np.ndarray):
             if obj.flags["C_CONTIGUOUS"]:
                 obj_data = obj.data

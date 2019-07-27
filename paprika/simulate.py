@@ -1,0 +1,2 @@
+class Simulate(object):
+    pass
