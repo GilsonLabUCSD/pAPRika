@@ -6,6 +6,7 @@ import pytest
 
 from paprika import amber, restraints
 from paprika.restraints import amber_restraints
+from paprika.restraints.restraints import create_window_list
 from paprika.tests import addons
 from paprika.utils import parse_mden
 from paprika.utils import parse_mdout
@@ -44,7 +45,7 @@ def test_amber_single_window_gbmin(clean_files):
     restraint.initialize()
 
     windows_directory = os.path.join("tmp", "k-cl", "windows")
-    window_list = restraints.create_window_list([restraint])
+    window_list = create_window_list([restraint])
 
     for window in window_list:
         os.makedirs(os.path.join(windows_directory, window))

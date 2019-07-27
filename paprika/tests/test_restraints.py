@@ -4,7 +4,7 @@ Tests the restraints utilities.
 
 import pytest
 
-from paprika.restraints import *
+from paprika.restraints.restraints import *
 
 logger = logging.getLogger(__name__)
 
@@ -487,15 +487,3 @@ def test_DAT_restraint():
     # Test inconsistent windows:
     with pytest.raises(Exception) as e_info:
         window_list = create_window_list([rest1, rest10])
-
-
-def test_static_DAT_restraint():
-    structure = pmd.load_file(os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.prmtop"),
-                              os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.rst7"))
-    r = static_DAT_restraint(
-        restraint_mask_list=[":BUT@C3", ":CB6@O"],
-        num_window_list=[10, 10, 10],
-        ref_structure=structure,
-        force_constant=5.0,
-        amber_index=True,
-    )

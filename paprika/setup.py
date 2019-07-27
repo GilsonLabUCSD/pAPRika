@@ -48,7 +48,9 @@ class Setup(object):
         self.host = host
         self.guest = guest if guest is not None else "release"
         self.backend = backend
-        self.directory = Path(directory_path).joinpath(self.host).joinpath(self.guest)
+        self.directory = Path(directory_path).joinpath(self.host).joinpath(f"{self.guest}-{guest_orientation}" if
+                                                                           guest_orientation is not None else
+                                                                           f"{self.guest}")
         self.desolvated_window_paths = []
         self.window_list = []
 
@@ -70,7 +72,7 @@ class Setup(object):
 
         # Here, we build desolvated windows and pass the files to the Property Estimator.
         # These files are stored in `self.desolvated_window_paths`.
-        self.build_desolvated_windows()
+        self.build_desolvated_windows(guest_orientation)
         if generate_gaff_files:
             generate_gaff(mol2_file=self.benchmark_path.joinpath(self.host_yaml["structure"]),
                           residue_name=self.host_yaml["name"],
@@ -140,7 +142,7 @@ class Setup(object):
             # Create a PDB file just for the host.
 
             host = pmd.load_file(str(input_pdb), structure=True)
-            host_coordinates = host[f":{self.host.upper()}"].coordinates
+            host_coordinates = host[f":{self.host_yaml['resname'].upper()}"].coordinates
             # Cheap way to get the center of geometry
             offset_coordinates = pmd.geometry.center_of_mass(host_coordinates,
                                                              masses=np.ones(len(host_coordinates)))
@@ -172,11 +174,18 @@ class Setup(object):
             openmm.app.PDBFile.writeFile(topology, positions, file)
         os.remove(intermediate_pdb)
 
-    def build_desolvated_windows(self):
+    def build_desolvated_windows(self, guest_orientation):
         if self.guest != "release":
-            initial_structure = self.benchmark_path.joinpath(self.guest).joinpath(
-                self.guest_yaml["complex"]
-            )
+            if not guest_orientation:
+                initial_structure = self.benchmark_path.joinpath(self.guest).joinpath(
+                    self.guest_yaml["complex"]
+                )
+            else:
+                base_name = Path(self.guest_yaml["complex"]).stem
+                orientation_structure = base_name + f"-{guest_orientation}.pdb"
+                initial_structure = self.benchmark_path.joinpath(self.guest).joinpath(
+                    orientation_structure
+                )
 
         else:
 
