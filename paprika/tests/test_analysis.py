@@ -173,7 +173,7 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
         results["pull"][method]["fe"],
         results["pull"][method]["sem"],
     ]
-    reference_values = np.array([13.27, 0.08, -2.18, 0.70])
+    reference_values = np.array([13.36, 0.26, -1.76, 0.99])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # ROI only runs during TI.

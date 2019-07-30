@@ -436,7 +436,7 @@ class Setup(object):
             ]
 
         static_restraints = []
-        for restraint in self.host_yaml["calculation"]["restraints"]["static"]:
+        for restraint in self.host_yaml["restraints"]["static"]:
             static = static_DAT_restraint(
                 restraint_mask_list=restraint["restraint"]["atoms"].split(),
                 num_window_list=windows,
@@ -447,9 +447,9 @@ class Setup(object):
             static_restraints.append(static)
 
         conformational_restraints = []
-        if self.host_yaml["calculation"]["restraints"]["conformational"]:
+        if self.host_yaml["restraints"]["conformational"]:
 
-            for conformational in self.host_yaml["calculation"]["restraints"][
+            for conformational in self.host_yaml["restraints"][
                 "conformational"
             ]:
 
