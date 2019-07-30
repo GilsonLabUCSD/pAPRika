@@ -387,7 +387,7 @@ class Setup(object):
                                                              masses=np.ones(len(host_coordinates)))
 
         else:
-            guest_angle_restraint_mask = self.guest_yaml["restraints"][-1]["restraint"][
+            guest_angle_restraint_mask = self.guest_yaml["restraints"]["guest"][-1]["restraint"][
                 "atoms"
             ].split()
 

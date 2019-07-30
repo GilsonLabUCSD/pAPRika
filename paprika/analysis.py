@@ -1,13 +1,13 @@
 import logging
 import os as os
+import traceback
 from itertools import compress
 
 import numpy as np
 import pymbar
 import pytraj as pt
-from scipy.interpolate import Akima1DInterpolator
-import traceback
 from pymbar import timeseries
+from scipy.interpolate import Akima1DInterpolator
 
 logger = logging.getLogger(__name__)
 
@@ -738,7 +738,7 @@ class fe_calc(object):
                 )
 
                 # Run the method
-                if method == "mbar-block" or "mbar-autoc":
+                if method == "mbar-block" or method == "mbar-autoc":
                     self.run_mbar(phase, prepared_data, method)
                 elif method == "ti-block":
                     self.run_ti(phase, prepared_data, method)
@@ -994,7 +994,7 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
         The values for this restraint in this window
     """
 
-    logger.debug("Load trajectories from {}...".format(window, trajectory))
+    logger.debug("Load trajectories from {}/{}...".format(window, trajectory))
     if isinstance(trajectory, str):
         trajectory_path = os.path.join(window, trajectory)
     elif isinstance(trajectory, list):

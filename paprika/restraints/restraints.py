@@ -1,9 +1,9 @@
 import logging
-import os as os
 
 import numpy as np
 import parmed as pmd
 import pytraj as pt
+
 from paprika import utils
 
 try:
