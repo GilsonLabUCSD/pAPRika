@@ -180,7 +180,7 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
 
     # Test attach ti-block largest_neighbor values
     test_vals = results["attach"][method]["largest_neighbor"]
-    reference_values = np.array([0.01, 0.03, 0.03, 0.04, 0.04])
+    reference_values = np.array([0.03, 0.07, 0.10, 0.17, 0.17])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # Test pull ti-block largest_neighbor values
