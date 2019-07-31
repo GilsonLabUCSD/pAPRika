@@ -401,7 +401,7 @@ class Setup(object):
                                    dummy_atom_tuples=[(0, 0, -6.0),
                                                       (0, 0, -9.0),
                                                       (0, 2.2, -11.2)])
-        except:
+        except FileNotFoundError:
             logger.warning(f"Missing {solvated_pdb}")
 
         # Add dummy atoms to System
