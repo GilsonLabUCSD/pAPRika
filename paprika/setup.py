@@ -391,7 +391,8 @@ class Setup(object):
                 "atoms"
             ].split()
 
-            offset_coordinates = reference_structure[guest_angle_restraint_mask[1]].coordinates
+            offset_coordinates = reference_structure[f':{self.guest_yaml["name"].upper()} | :{self.host_yaml["resname"].upper()}']\
+                [guest_angle_restraint_mask[1]].coordinates
 
         # First add dummy atoms to structure
         logger.debug(f"Adding dummy atoms to {solvated_pdb}")
@@ -401,7 +402,7 @@ class Setup(object):
                                    dummy_atom_tuples=[(0, 0, -6.0),
                                                       (0, 0, -9.0),
                                                       (0, 2.2, -11.2)])
-        except:
+        except FileNotFoundError:
             logger.warning(f"Missing {solvated_pdb}")
 
         # Add dummy atoms to System
