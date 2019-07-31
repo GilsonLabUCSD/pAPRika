@@ -2,8 +2,6 @@
 pAPRika
 Advanced toolkit for binding free energy calculations
 """
-import logging
-
 # Make Python 2 and 3 imports work the same
 # Safe to remove with Python 3-only code
 from __future__ import absolute_import
@@ -17,7 +15,7 @@ __version__ = versions['version']
 __git_revision__ = versions['full-revisionid']
 del get_versions, versions
 
-
+import logging
 logger = logging.getLogger(__name__)
 
 try:
