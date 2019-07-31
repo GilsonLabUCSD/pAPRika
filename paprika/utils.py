@@ -29,7 +29,7 @@ def return_parmed_structure(filename):
     try:
         structure = pmd.load_file(filename)
         logger.info("Loaded {}...".format(filename))
-    except BaseException:
+    except IOError:
         logger.error("Unable to load file: {}".format(filename))
     return structure
 

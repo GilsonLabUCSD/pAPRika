@@ -173,24 +173,24 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
         results["pull"][method]["fe"],
         results["pull"][method]["sem"],
     ]
-    reference_values = np.array([13.27, 0.08, -2.18, 0.70])
+    reference_values = np.array([13.36, 0.26, -1.76, 0.99])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # ROI only runs during TI.
 
     # Test attach ti-block largest_neighbor values
     test_vals = results["attach"][method]["largest_neighbor"]
-    reference_values = np.array([0.01, 0.03, 0.03, 0.04, 0.04])
+    reference_values = np.array([0.03, 0.07, 0.10, 0.17, 0.17])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # Test pull ti-block largest_neighbor values
     test_vals = results["pull"][method]["largest_neighbor"]
 
     reference_values = np.array(
-        [0.10273918, 0.11361076, 0.13073941, 0.14135545, 0.38928134, 0.38928134,
-         0.11214623, 0.12950768, 0.13145163, 0.13145163, 0.13112592, 0.13112592,
-         0.13751175, 0.14186328, 0.14186328, 0.12846939, 0.13549818, 0.13549818,
-         0.13403929]
+        [0.33661434, 0.33661434, 0.26449941, 0.24163207, 0.24163207,
+         0.13113109, 0.11156622, 0.13638522, 0.14764856, 0.14764856,
+         0.11973532, 0.13198464, 0.13198464, 0.14426896, 0.14426896,
+         0.15240513, 0.15240513, 0.13536142, 0.11481813]
 
     )
     assert reference_values == approx(test_vals, abs=0.01)
