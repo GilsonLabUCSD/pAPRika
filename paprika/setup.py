@@ -3,7 +3,8 @@ This class contains a simulation setup wrapper for use with the Property Estimat
 """
 
 import logging
-import os as os
+import os
+import re
 import shutil
 import subprocess as sp
 from pathlib import Path
@@ -391,7 +392,8 @@ class Setup(object):
                 "atoms"
             ].split()
 
-            offset_coordinates = reference_structure[guest_angle_restraint_mask[1]].coordinates
+            offset_coordinates = reference_structure[f':{self.guest_yaml["name"].upper()} | :{self.host_yaml["resname"].upper()}']\
+                [guest_angle_restraint_mask[1]].coordinates
 
         # First add dummy atoms to structure
         logger.debug(f"Adding dummy atoms to {solvated_pdb}")
@@ -401,7 +403,7 @@ class Setup(object):
                                    dummy_atom_tuples=[(0, 0, -6.0),
                                                       (0, 0, -9.0),
                                                       (0, 2.2, -11.2)])
-        except:
+        except FileNotFoundError:
             logger.warning(f"Missing {solvated_pdb}")
 
         # Add dummy atoms to System
@@ -437,8 +439,11 @@ class Setup(object):
 
         static_restraints = []
         for restraint in self.host_yaml["restraints"]["static"]:
+
+            new_mask = _original_mask_to_solvated_mask(mask=restraint["restraint"]["atoms"],
+                                                       substance="host")
             static = static_DAT_restraint(
-                restraint_mask_list=restraint["restraint"]["atoms"].split(),
+                restraint_mask_list=new_mask.split(),
                 num_window_list=windows,
                 ref_structure=str(structure),
                 force_constant=restraint["restraint"]["force_constant"],
@@ -854,3 +859,25 @@ def _generate_frcmod(mol2_file, gaff, output_name, directory_path="benchmarks"):
               "-o", f"{output_name}.{gaff}.frcmod",
               "-s", f"{gaff}"
               ], cwd=directory_path)
+
+def _original_mask_to_solvated_mask(mask, substance):
+    new_mask = []
+    for component in mask.split():
+        new_component = ""
+
+        if not re.search("\:\d+.*", component):
+            logger.debug("Number not found.")
+            logger.debug(component)
+            new_component = component
+            continue
+
+        if substance == "host":
+            new_component = f".A{component}"
+        elif substance == "guest":
+            new_component = f".B{component}"
+        else:
+            logger.debug("Can't map existing mask to solvated mask.")
+
+        logger.debug(f"{component} → {new_component}")
+        new_mask.append(new_component)
+    return " ".join(new_mask)

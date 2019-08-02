@@ -17,17 +17,28 @@ try:
 except ImportError as e:
     taproom_not_found = True
 
+try:
+    from simtk import openmm
+    openmm_not_found = False
+except ImportError as e:
+    openmm_not_found = True
+
 taproom_status = pytest.mark.skipif(
     taproom_not_found, reason="Benchmarks not installed"
 )
 
+openmm_status = pytest.mark.skipif(
+    openmm_not_found, reason="OpenMM not installed"
+)
 
+@openmm_status
 @taproom_status
 def test_single_orientation():
     """ Test that we can load setup YAML files. """
     setup_object = paprika.setup(host="cb6", guest="but")
     print(setup_object.desolvated_window_paths)
 
+@openmm_status
 @taproom_status
 def test_double_orientation():
     """ Test that we can load setup YAML files. """
@@ -36,12 +47,14 @@ def test_double_orientation():
     setup_object = paprika.setup(host="bcd", guest="hex", guest_orientation="s")
     print(setup_object.desolvated_window_paths)
 
+@openmm_status
 @taproom_status
 def test_generate_gaff():
     """ Test that we can load setup YAML files. """
     setup_object = paprika.setup(host="cb6", guest="but", generate_gaff_files=True)
     print(setup_object.desolvated_window_paths)
 
+@openmm_status
 @taproom_status
 def test_release():
     setup_object = paprika.setup(host="bcd", guest=None)
