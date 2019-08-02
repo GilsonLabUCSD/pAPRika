@@ -440,11 +440,8 @@ class Setup(object):
         static_restraints = []
         for restraint in self.host_yaml["restraints"]["static"]:
 
-
             new_mask = _original_mask_to_solvated_mask(mask=restraint["restraint"]["atoms"],
                                                        substance="host")
-
-
             static = static_DAT_restraint(
                 restraint_mask_list=new_mask.split(),
                 num_window_list=windows,
