@@ -563,7 +563,7 @@ class Setup(object):
             logger.debug("Skipping wall restraints...")
 
         guest_restraints = []
-        for restraint in [] if not hasattr(self, 'guest_yaml') else self.guest_yaml["restraints"]:
+        for restraint in [] if not hasattr(self, 'guest_yaml') else self.guest_yaml["restraints"]["guest"]:
             mask = restraint["restraint"]["atoms"].split()
 
             guest_restraint = DAT_restraint()
