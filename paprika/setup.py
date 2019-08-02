@@ -567,7 +567,7 @@ class Setup(object):
             logger.debug("Skipping wall restraints...")
 
         guest_restraints = []
-        for restraint in [] if not hasattr(self, 'guest_yaml') else self.guest_yaml["restraints"]:
+        for restraint in [] if not hasattr(self, 'guest_yaml') else self.guest_yaml["restraints"]["guest"]:
             mask = restraint["restraint"]["atoms"].split()
 
             guest_restraint = DAT_restraint()
@@ -861,23 +861,24 @@ def _generate_frcmod(mol2_file, gaff, output_name, directory_path="benchmarks"):
               ], cwd=directory_path)
 
 def _original_mask_to_solvated_mask(mask, substance):
-    new_mask = []
-    for component in mask.split():
-        new_component = ""
-
-        if not re.search("\:\d+.*", component):
-            logger.debug("Number not found.")
-            logger.debug(component)
-            new_component = component
-            continue
-
-        if substance == "host":
-            new_component = f".A{component}"
-        elif substance == "guest":
-            new_component = f".B{component}"
-        else:
-            logger.debug("Can't map existing mask to solvated mask.")
-
-        logger.debug(f"{component} → {new_component}")
-        new_mask.append(new_component)
-    return " ".join(new_mask)
+    # new_mask = []
+    # for component in mask.split():
+    #     new_component = ""
+    #
+    #     if not re.search("\:\d+.*", component):
+    #         logger.debug("Number not found.")
+    #         logger.debug(component)
+    #         new_component = component
+    #         continue
+    #
+    #     if substance == "host":
+    #         new_component = f".A{component}"
+    #     elif substance == "guest":
+    #         new_component = f".B{component}"
+    #     else:
+    #         logger.debug("Can't map existing mask to solvated mask.")
+    #
+    #     logger.debug(f"{component} → {new_component}")
+    #     new_mask.append(new_component)
+    # return " ".join(new_mask)
+    return mask
