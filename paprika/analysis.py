@@ -151,15 +151,9 @@ class fe_calc(object):
         """
 
         orders = {"attach": [], "pull": [], "release": []}
-        active_attach_restraints = np.asarray(self.restraint_list)[
-            self.changing_restraints["attach"]
-        ]
-        active_pull_restraints = np.asarray(self.restraint_list)[
-            self.changing_restraints["pull"]
-        ]
-        active_release_restraints = np.asarray(self.restraint_list)[
-            self.changing_restraints["release"]
-        ]
+        active_attach_restraints = list(compress(self.restraint_list, self.changing_restraints["attach"]))
+        active_pull_restraints = list(compress(self.restraint_list, self.changing_restraints["pull"]))
+        active_release_restraints = list(compress(self.restraint_list, self.changing_restraints["release"]))
 
         attach_orders = []
         pull_orders = []
