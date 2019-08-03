@@ -2,6 +2,7 @@ import logging
 import os as os
 import shutil
 from datetime import datetime
+from functools import lru_cache
 
 import parmed as pmd
 import pytraj as pt
@@ -33,7 +34,7 @@ def return_parmed_structure(filename):
         logger.error("Unable to load file: {}".format(filename))
     return structure
 
-
+@lru_cache(maxsize=32)
 def index_from_mask(structure, mask, amber_index=False):
     """
     Return the atom indicies for a given selection mask.
