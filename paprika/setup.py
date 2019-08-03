@@ -382,7 +382,7 @@ class Setup(object):
         # Determine the offset coordinates for the new dummy atoms.
         if self.guest == "release":
 
-            host_coordinates = reference_structure[f":{self.host.upper()}"].coordinates
+            host_coordinates = reference_structure[f":{self.host_yaml['resname'].upper()}"].coordinates
             # Cheap way to get the center of geometry
             offset_coordinates = pmd.geometry.center_of_mass(host_coordinates,
                                                              masses=np.ones(len(host_coordinates)))
@@ -440,10 +440,8 @@ class Setup(object):
         static_restraints = []
         for restraint in self.host_yaml["restraints"]["static"]:
 
-            new_mask = _original_mask_to_solvated_mask(mask=restraint["restraint"]["atoms"],
-                                                       substance="host")
             static = static_DAT_restraint(
-                restraint_mask_list=new_mask.split(),
+                restraint_mask_list=restraint["restraint"]["atoms"].split(),
                 num_window_list=windows,
                 ref_structure=str(structure),
                 force_constant=restraint["restraint"]["force_constant"],
@@ -697,12 +695,12 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
 
         return system
     elif flat_bottom and phase == "attach" and restraint.mask3:
-        flat_bottom_force = openmm.CustomBondForce('step((x - x_0)) * k * (x - x_0)^2')
+        flat_bottom_force = openmm.CustomBondForce('step((r - r_0)) * k * (r - r_0)^2')
         # If x is greater than x_0, then the argument to step is positive, which means the force is on.
-        flat_bottom_force.addPerAngleParameter("k")
-        flat_bottom_force.addPerAngleParameter("x_0")
+        flat_bottom_force.addPerBondParameter("k")
+        flat_bottom_force.addPerBondParameter("r_0")
 
-        x_0 = restraint.phase[phase]["target"][window_number] * unit.angstrom
+        r_0 = restraint.phase[phase]["targets"][window_number] * unit.angstrom
         k = (
                 restraint.phase[phase]["force_constants"][window_number]
                 * unit.kilocalories_per_mole
@@ -711,7 +709,7 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
         flat_bottom_force.addBond(
             restraint.index1[0],
             restraint.index2[0],
-            [k, x_0],
+            [k, r_0],
         )
         system.addForce(flat_bottom_force)
         if ForceGroup:
@@ -859,26 +857,3 @@ def _generate_frcmod(mol2_file, gaff, output_name, directory_path="benchmarks"):
               "-o", f"{output_name}.{gaff}.frcmod",
               "-s", f"{gaff}"
               ], cwd=directory_path)
-
-def _original_mask_to_solvated_mask(mask, substance):
-    # new_mask = []
-    # for component in mask.split():
-    #     new_component = ""
-    #
-    #     if not re.search("\:\d+.*", component):
-    #         logger.debug("Number not found.")
-    #         logger.debug(component)
-    #         new_component = component
-    #         continue
-    #
-    #     if substance == "host":
-    #         new_component = f".A{component}"
-    #     elif substance == "guest":
-    #         new_component = f".B{component}"
-    #     else:
-    #         logger.debug("Can't map existing mask to solvated mask.")
-    #
-    #     logger.debug(f"{component} → {new_component}")
-    #     new_mask.append(new_component)
-    # return " ".join(new_mask)
-    return mask
