@@ -99,13 +99,9 @@ class Setup(object):
         try:
             if guest_orientation:
 
-                for orientation in installed_benchmarks["host_guest_systems"][self.host]["yaml"]:
-                    logger.debug(f"Looking for host-{guest_orientation} in {orientation}")
-                    if f"host-{guest_orientation}" in orientation.name:
-                        host_yaml = orientation
-                        logger.debug("Match")
+                host_yaml = installed_benchmarks["host_guest_systems"][self.host]["yaml"][guest_orientation]
             else:
-                host_yaml = installed_benchmarks["host_guest_systems"][self.host]["yaml"][0]
+                host_yaml = installed_benchmarks["host_guest_systems"][self.host]["yaml"]["p"]
 
         except KeyError:
             logger.error(f"Cannot find YAML recipe for host: {self.host}")

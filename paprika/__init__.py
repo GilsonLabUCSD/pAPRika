@@ -31,4 +31,7 @@ except ImportError as e:
 from paprika.analyze import Analyze
 analyze = Analyze
 
-__all__ = ["setup", "analyze"]
+if setup is None:
+    __all__ = ["setup", "analyze"]
+else:
+    __all__ = ["analyze"]
