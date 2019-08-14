@@ -5,7 +5,7 @@ import parmed as pmd
 import pytest
 
 from paprika import amber, restraints
-from paprika.restraints import amber_restraints
+from paprika.restraints import amber
 from paprika.restraints.restraints import create_window_list
 from paprika.tests import addons
 from paprika.utils import parse_mden
@@ -52,7 +52,7 @@ def test_amber_single_window_gbmin(clean_files):
         with open(
                 os.path.join(windows_directory, window, "restraints.in"), "a"
         ) as file:
-            string = amber_restraints.amber_restraint_line(restraint, window)
+            string = amber.amber_restraint_line(restraint, window)
             file.write(string)
 
     for window in window_list:

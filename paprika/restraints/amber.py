@@ -1,6 +1,6 @@
 import logging
 
-from paprika.restraints.restraints_utilities import parse_window
+from paprika.restraints.utils import parse_window
 
 logger = logging.getLogger(__name__)
 

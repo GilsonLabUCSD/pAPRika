@@ -111,26 +111,6 @@ def make_window_dirs(
             os.makedirs(window_path)
 
 
-def decompose_openmm_energy(
-    simulation, groups=[0, 1], names=["non-restraint", "restraint"]
-):
-    """Return individual energy components.
-    """
-
-    energies = dict()
-    # Get the total potential energy
-    state = simulation.context.getState(getEnergy=True)
-    energy = state.getPotentialEnergy() / unit.kilocalorie_per_mole
-    energies.update({"total": energy})
-
-    for index, group in enumerate(groups):
-        state = simulation.context.getState(getEnergy=True, groups={group})
-        energy = state.getPotentialEnergy() / unit.kilocalorie_per_mole
-        energies.update({names[index]: energy})
-
-    return energies
-
-
 def strip_prmtop(prmtop, mask=":WAT,:Na+,:Cl-"):
     """Strip residues from a structure and write a new parameter file. This could probably also be done with ParmEd.
 
