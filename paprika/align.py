@@ -58,7 +58,12 @@ def zalign(structure, mask1, mask2, save=False, filename=None):
 
     # 2. Find axis and angle between the mask vector and the axis using cross
     # and dot products.
-    x = np.cross(mask2_com, axis) / np.linalg.norm(np.cross(mask2_com, axis))
+    try:
+        x = np.cross(mask2_com, axis) / np.linalg.norm(np.cross(mask2_com, axis))
+    except RuntimeWarning:
+        # The structure is already aligned and the denominator is invalid
+        pass
+
     theta = np.arccos(
         np.dot(mask2_com, axis) / (np.linalg.norm(mask2_com) * np.linalg.norm(axis))
     )
