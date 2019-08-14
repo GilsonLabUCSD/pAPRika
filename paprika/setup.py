@@ -144,11 +144,27 @@ class Setup(object):
             offset_coordinates = pmd.geometry.center_of_mass(host_coordinates,
                                                              masses=np.ones(len(host_coordinates)))
 
+            # Find the principal components, take the two largest, and find the vector orthogonal to that
+            # (should be cross-product right hand rule, I think). Use that vector to align with the z-axis.
+            # This may not generalize to non-radially-symmetric host molecules.
+
+            aligned_coords = np.empty_like(structure.coordinates)
+            for atom in range(len(structure.atoms)):
+                aligned_coords[atom] = structure.coordinates[atom] - offset_coordinates
+            structure.coordinates = aligned_coords
+
+            inertia_tensor = np.dot(structure.coordinates.transpose(), structure.coordinates)
+            eigenvalues, eigenvectors = np.linalg.eig(inertia_tensor)
+            order = np.argsort(eigenvalues)
+            axis_3, axis_2, axis_1 = eigenvectors[:, order].transpose()
+
+            dummy_axis = np.cross(axis_1, axis_2)
+
             self._add_dummy_to_PDB(input_pdb=input_pdb,
                                    output_pdb=intermediate_pdb,
                                    offset_coordinates=offset_coordinates,
                                    dummy_atom_tuples=[(0, 0, 0),
-                                                      (0, 0, 5)])
+                                                      (dummy_axis[0], dummy_axis[1], dummy_axis[2])])
             structure = pmd.load_file(str(intermediate_pdb), structure=True)
 
             for atom in structure.atoms:
