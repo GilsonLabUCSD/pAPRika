@@ -649,6 +649,7 @@ class Setup(object):
                 z0 = 0.1 * atom.xz * unit.nanometers
                 positional_restraint.addParticle(atom.idx, [k, x0, y0, z0])
                 system.addForce(positional_restraint)
+                positional_restraint.setForceGroup(15)
 
         for restraint in self.static_restraints:
             system = apply_openmm_restraints(system, restraint, window, ForceGroup=10)
