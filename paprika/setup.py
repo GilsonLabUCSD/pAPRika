@@ -368,7 +368,7 @@ class Setup(object):
             openmm.app.PDBFile.writeFile(topology, positions, file)
 
     def _add_dummy_to_System(self, system, dummy_atom_tuples):
-        [system.addParticle(mass=207) for _ in range(len(dummy_atom_tuples))]
+        [system.addParticle(mass=0) for _ in range(len(dummy_atom_tuples))]
 
         for force_index in range(system.getNumForces()):
             force = system.getForce(force_index)
