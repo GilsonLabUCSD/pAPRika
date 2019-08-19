@@ -630,6 +630,7 @@ class Setup(object):
         structure = pmd.load_file(structure_path, structure=True)
 
         for atom in structure.atoms:
+            continue
             if atom.name == "DUM":
                 positional_restraint = openmm.CustomExternalForce(
                     "k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)"
