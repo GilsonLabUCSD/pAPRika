@@ -840,11 +840,11 @@ def generate_gaff(mol2_file, residue_name, output_name=None, need_gaff_atom_type
                                   directory_path=directory_path)
         logging.debug("Checking to see if we have a multi-residue MOL2 file that should be converted "
                       "to single-residue...")
-        structure = pmd.load_file(f"{output_name}.{gaff}.mol2", structure=True)
+        structure = pmd.load_file(os.path.join(directory_path, f"{output_name}.{gaff}.mol2"), structure=True)
         if len(structure.residues) > 1:
             structure[":1"].save("tmp.mol2")
             if os.path.exists("tmp.mol2"):
-                os.rename("tmp.mol2", f"{output_name}.{gaff}.mol2")
+                os.rename("tmp.mol2", os.path.join(directory_path, f"{output_name}.{gaff}.mol2"))
                 logging.debug("Saved single-residue MOL2 file for `tleap`.")
             else:
                 raise RuntimeError("Unable to convert multi-residue MOL2 file to single-residue for `tleap`.")
