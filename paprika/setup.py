@@ -856,6 +856,7 @@ def generate_gaff(mol2_file, residue_name, output_name=None, need_gaff_atom_type
                          directory_path=directory_path)
 
 def _generate_gaff_atom_types(mol2_file, residue_name, output_name, gaff="gaff2", directory_path="benchmarks"):
+    
     p = sp.Popen(["antechamber", "-i", str(mol2_file), "-fi", "mol2",
               "-o", f"{output_name}.{gaff}.mol2", "-fo", "mol2",
               "-rn", f"{residue_name.upper()}",
@@ -873,6 +874,25 @@ def _generate_gaff_atom_types(mol2_file, residue_name, output_name, gaff="gaff2"
         if file.exists():
             logger.debug(f"Removing temporary file: {file}")
             file.unlink()
+            
+    if not os.path.exists(f"{output_name}.{gaff}.mol2"):
+        # Try with the newer (AmberTools 19) version of `antechamber` which doesn't have the `-dr` flag
+        p = sp.Popen(["antechamber", "-i", str(mol2_file), "-fi", "mol2",
+                      "-o", f"{output_name}.{gaff}.mol2", "-fo", "mol2",
+                      "-rn", f"{residue_name.upper()}",
+                      "-at", f"{gaff}",
+                      "-an", "no",
+                      "-pf", "yes"], cwd=directory_path)
+        p.communicate()
+
+        files = ["ANTECHAMBER_AC.AC", "ANTECHAMBER_AC.AC0",
+                 "ANTECHAMBER_BOND_TYPE.AC", "ANTECHAMBER_BOND_TYPE.AC0",
+                 "ATOMTYPE.INF"]
+        files = [directory_path.joinpath(i) for i in files]
+        for file in files:
+            if file.exists():
+                logger.debug(f"Removing temporary file: {file}")
+                file.unlink()
 
 
 def _generate_frcmod(mol2_file, gaff, output_name, directory_path="benchmarks"):
