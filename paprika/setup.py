@@ -76,7 +76,7 @@ class Setup(object):
         self.build_desolvated_windows(guest_orientation)
         if generate_gaff_files:
             generate_gaff(mol2_file=self.benchmark_path.joinpath(self.host_yaml["structure"]),
-                          residue_name=self.host_yaml["name"],
+                          residue_name=self.host_yaml["resname"],
                           output_name=self.host,
                           directory_path=self.directory,
                           gaff=gaff_version)
@@ -839,11 +839,13 @@ def generate_gaff(mol2_file, residue_name, output_name=None, need_gaff_atom_type
                                   gaff=gaff,
                                   directory_path=directory_path)
 
-    if generate_frcmod:
-        _generate_frcmod(mol2_file=mol2_file,
-                         gaff=gaff,
-                         output_name=output_name,
-                         directory_path=directory_path)
+        if generate_frcmod:
+            _generate_frcmod(mol2_file=f'{output_name}.{gaff}.mol2',
+                             gaff=gaff,
+                             output_name=output_name,
+                             directory_path=directory_path)
+        else:
+            raise NotImplementedError()
 
 def _generate_gaff_atom_types(mol2_file, residue_name, output_name, gaff="gaff2", directory_path="benchmarks"):
     p = sp.Popen(["antechamber", "-i", str(mol2_file), "-fi", "mol2",
