@@ -368,7 +368,7 @@ class Setup(object):
             openmm.app.PDBFile.writeFile(topology, positions, file)
 
     def _add_dummy_to_System(self, system, dummy_atom_tuples):
-        [system.addParticle(mass=0) for _ in range(len(dummy_atom_tuples))]
+        [system.addParticle(mass=207) for _ in range(len(dummy_atom_tuples))]
 
         for force_index in range(system.getNumForces()):
             force = system.getForce(force_index)
@@ -630,7 +630,6 @@ class Setup(object):
         structure = pmd.load_file(structure_path, structure=True)
 
         for atom in structure.atoms:
-            continue
             if atom.name == "DUM":
                 positional_restraint = openmm.CustomExternalForce(
                     "k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)"
@@ -839,6 +838,16 @@ def generate_gaff(mol2_file, residue_name, output_name=None, need_gaff_atom_type
                                   output_name=output_name,
                                   gaff=gaff,
                                   directory_path=directory_path)
+        logging.debug("Checking to see if we have a multi-residue MOL2 file that should be converted "
+                      "to single-residue...")
+        structure = pmd.load_file(f"{output_name}.{gaff}.mol2", structure=True)
+        if len(structure.residues) > 1:
+            structure[":1"].save("tmp.mol2")
+            if os.path.exists("tmp.mol2"):
+                os.rename("tmp.mol2", f"{output_name}.{gaff}.mol2")
+                logging.debug("Saved single-residue MOL2 file for `tleap`.")
+            else:
+                raise RuntimeError("Unable to convert multi-residue MOL2 file to single-residue for `tleap`.")
 
     if generate_frcmod:
         _generate_frcmod(mol2_file=mol2_file,
