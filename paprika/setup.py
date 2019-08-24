@@ -45,7 +45,7 @@ class Setup(object):
     def __init__(self, host, guest=None,
                  backend="openmm", directory_path="benchmarks",
                  additional_benchmarks=None, generate_gaff_files=False, gaff_version="gaff2",
-                 guest_orientation=None):
+                 guest_orientation=None, build=True):
         self.host = host
         self.guest = guest if guest is not None else "release"
         self.backend = backend
@@ -71,22 +71,23 @@ class Setup(object):
         if guest:
             self.guest_yaml = read_yaml(guest_yaml["yaml"])
 
-        # Here, we build desolvated windows and pass the files to the Property Estimator.
-        # These files are stored in `self.desolvated_window_paths`.
-        self.build_desolvated_windows(guest_orientation)
-        if generate_gaff_files:
-            generate_gaff(mol2_file=self.benchmark_path.joinpath(self.host_yaml["structure"]),
-                          residue_name=self.host_yaml["resname"],
-                          output_name=self.host,
-                          directory_path=self.directory,
-                          gaff=gaff_version)
-            if guest:
-                generate_gaff(mol2_file=self.benchmark_path.joinpath(
-                    self.guest).joinpath(self.guest_yaml["structure"]),
-                              output_name=self.guest,
-                              residue_name=self.guest_yaml["name"],
+        if build:
+            # Here, we build desolvated windows and pass the files to the Property Estimator.
+            # These files are stored in `self.desolvated_window_paths`.
+            self.build_desolvated_windows(guest_orientation)
+            if generate_gaff_files:
+                generate_gaff(mol2_file=self.benchmark_path.joinpath(self.host_yaml["structure"]),
+                              residue_name=self.host_yaml["resname"],
+                              output_name=self.host,
                               directory_path=self.directory,
                               gaff=gaff_version)
+                if guest:
+                    generate_gaff(mol2_file=self.benchmark_path.joinpath(
+                        self.guest).joinpath(self.guest_yaml["structure"]),
+                                  output_name=self.guest,
+                                  residue_name=self.guest_yaml["name"],
+                                  directory_path=self.directory,
+                                  gaff=gaff_version)
 
     def parse_yaml(self, installed_benchmarks, guest_orientation):
         """
