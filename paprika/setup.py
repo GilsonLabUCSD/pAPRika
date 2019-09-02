@@ -644,7 +644,7 @@ class Setup(object):
                 # But then we can't access atom indices.
                 # Using `atom.xx` works for coordinates, but is unitless.
 
-                k = 50.0 * unit.kilocalories_per_mole / unit.angstroms ** 2
+                k = 500.0 * unit.kilocalories_per_mole / unit.angstroms ** 2
                 x0 = 0.1 * atom.xx * unit.nanometers
                 y0 = 0.1 * atom.xy * unit.nanometers
                 z0 = 0.1 * atom.xz * unit.nanometers
