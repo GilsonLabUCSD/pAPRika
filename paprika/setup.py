@@ -685,7 +685,7 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
         phase = "release"
     window_number = int(window[1:])
 
-    if flat_bottom and phase == "attach" and not restraint.mask3:
+    if flat_bottom and phase == "attach" and restraint.mask3:
         flat_bottom_force = openmm.CustomAngleForce('step(-(theta - theta_0)) * k * (theta - theta_0)^2')
         # If theta is greater than theta_0, then the argument to step is negative, which means the force is off.
         flat_bottom_force.addPerAngleParameter("k")
@@ -708,7 +708,7 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
             flat_bottom_force.setForceGroup(ForceGroup)
 
         return system
-    elif flat_bottom and phase == "attach" and restraint.mask3:
+    elif flat_bottom and phase == "attach" and not restraint.mask3:
         flat_bottom_force = openmm.CustomBondForce('step((r - r_0)) * k * (r - r_0)^2')
         # If x is greater than x_0, then the argument to step is positive, which means the force is on.
         flat_bottom_force.addPerBondParameter("k")
