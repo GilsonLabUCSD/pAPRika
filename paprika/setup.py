@@ -802,7 +802,7 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
             and not restraint.group3
             and not restraint.group4
         ):
-            dihedral_restraint = openmm.CustomTorsionForce(f"k * min(min(abs(theta - theta_0), abs(theta - theta + 2 * {_PI_})), abs(theta - thetat - 2 * {_PI_}))^2")
+            dihedral_restraint = openmm.CustomTorsionForce(f"k * min(min(abs(theta - theta_0), abs(theta - theta_0 + 2 * {_PI_})), abs(theta - theta_0 - 2 * {_PI_}))^2")
             dihedral_restraint.addPerTorsionParameter("k")
             dihedral_restraint.addPerTorsionParameter("theta_0")
 
