@@ -88,6 +88,9 @@ class Setup(object):
                                   residue_name=self.guest_yaml["name"],
                                   directory_path=self.directory,
                                   gaff=gaff_version)
+        if not build:
+            self.populate_window_list(input_pdb=os.path.join(self.directory, f"{self.host}-{self.guest}.pdb" if self.guest is not None
+            else f"{self.host}.pdb"))
 
     def parse_yaml(self, installed_benchmarks, guest_orientation):
         """
@@ -188,6 +191,14 @@ class Setup(object):
             openmm.app.PDBFile.writeFile(topology, positions, file)
         os.remove(intermediate_pdb)
 
+    def populate_window_list(self, input_pdb):
+        logger.debug("Setting up dummy restraint to build window list.")
+        _dummy_restraint = self._create_dummy_restraint(
+            initial_structure=str(input_pdb),
+        )
+        self.window_list = create_window_list([_dummy_restraint])
+        return _dummy_restraint
+
     def build_desolvated_windows(self, guest_orientation):
         if self.guest != "release":
             if not guest_orientation:
@@ -202,19 +213,14 @@ class Setup(object):
                 )
 
         else:
-
             initial_structure = self.directory.joinpath(self.benchmark_path.joinpath(self.host_yaml["structure"]))
             host = pt.iterload(str(initial_structure), str(initial_structure))
             host.save(str(self.directory.joinpath(f"{self.host}.pdb")), overwrite=True, options='conect')
             initial_structure = str(self.directory.joinpath(f"{self.host}.pdb"))
 
         self.align(input_pdb=initial_structure)
-        logger.debug("Setting up dummy restraint to build window list.")
-        _dummy_restraint = self._create_dummy_restraint(
-            initial_structure=str(initial_structure),
-        )
-        self.window_list = create_window_list([_dummy_restraint])
 
+        _dummy_restraint = self.populate_window_list(input_pdb=initial_structure)
 
         for window in self.window_list:
             logger.debug(f"Translating guest in window {window}...")
