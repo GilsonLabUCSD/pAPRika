@@ -425,6 +425,9 @@ class Setup(object):
         except FileNotFoundError:
             logger.warning(f"Missing {solvated_pdb}")
 
+
+        self._wrap(dummy_pdb)
+
         # Add dummy atoms to System
         if solvated_xml is not None:
 
@@ -440,6 +443,20 @@ class Setup(object):
 
             except:
                 logger.warning(f"Missing {solvated_xml}")
+
+    @staticmethod
+    def _wrap(file, mask=":DM3"):
+        logging.info(f"Re-wrapping {file} to avoid pulling near periodic boundaries.")
+        structure = pmd.load_file(file, structure=True)
+
+        anchor = structure[mask]
+        anchor_z = anchor.atoms[0].xz
+
+        for atom in structure.atoms:
+            atom.xz -= anchor_z - 2.0
+
+        structure.save(file, overwrite=True)
+
 
     def initialize_restraints(self, structure="output.pdb"):
 
