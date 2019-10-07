@@ -49,7 +49,7 @@ class Analyze(object):
         analysis.path = self.directory.joinpath('windows')
         analysis.restraint_list = self.restraints
         analysis.methods = ["ti-block"]
-        analysis.bootcycles = 100
+        analysis.bootcycles = 1000
         analysis.collect_data(single_prmtop=False)
         if self.guest != "release":
             analysis.compute_free_energy(phases=["attach", "pull"])
