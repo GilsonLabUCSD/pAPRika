@@ -2,6 +2,7 @@ import logging
 import os as os
 import shutil
 from datetime import datetime
+from functools import lru_cache
 
 import parmed as pmd
 import pytraj as pt
@@ -33,7 +34,7 @@ def return_parmed_structure(filename):
         logger.error("Unable to load file: {}".format(filename))
     return structure
 
-
+@lru_cache(maxsize=32)
 def index_from_mask(structure, mask, amber_index=False):
     """
     Return the atom indicies for a given selection mask.
@@ -108,26 +109,6 @@ def make_window_dirs(
         window_path = os.path.join(win_dir, window)
         if not os.path.exists(window_path):
             os.makedirs(window_path)
-
-
-def decompose_openmm_energy(
-    simulation, groups=[0, 1], names=["non-restraint", "restraint"]
-):
-    """Return individual energy components.
-    """
-
-    energies = dict()
-    # Get the total potential energy
-    state = simulation.context.getState(getEnergy=True)
-    energy = state.getPotentialEnergy() / unit.kilocalorie_per_mole
-    energies.update({"total": energy})
-
-    for index, group in enumerate(groups):
-        state = simulation.context.getState(getEnergy=True, groups={group})
-        energy = state.getPotentialEnergy() / unit.kilocalorie_per_mole
-        energies.update({names[index]: energy})
-
-    return energies
 
 
 def strip_prmtop(prmtop, mask=":WAT,:Na+,:Cl-"):

@@ -22,7 +22,7 @@ from paprika.restraints.read_yaml import read_yaml
 from paprika.restraints.restraints import create_window_list
 
 logger = logging.getLogger(__name__)
-
+_PI_ = np.pi
 
 def _get_installed_benchmarks():
     _installed_benchmarks = {}
@@ -45,7 +45,7 @@ class Setup(object):
     def __init__(self, host, guest=None,
                  backend="openmm", directory_path="benchmarks",
                  additional_benchmarks=None, generate_gaff_files=False, gaff_version="gaff2",
-                 guest_orientation=None):
+                 guest_orientation=None, build=True):
         self.host = host
         self.guest = guest if guest is not None else "release"
         self.backend = backend
@@ -71,22 +71,26 @@ class Setup(object):
         if guest:
             self.guest_yaml = read_yaml(guest_yaml["yaml"])
 
-        # Here, we build desolvated windows and pass the files to the Property Estimator.
-        # These files are stored in `self.desolvated_window_paths`.
-        self.build_desolvated_windows(guest_orientation)
-        if generate_gaff_files:
-            generate_gaff(mol2_file=self.benchmark_path.joinpath(self.host_yaml["structure"]),
-                          residue_name=self.host_yaml["name"],
-                          output_name=self.host,
-                          directory_path=self.directory,
-                          gaff=gaff_version)
-            if guest:
-                generate_gaff(mol2_file=self.benchmark_path.joinpath(
-                    self.guest).joinpath(self.guest_yaml["structure"]),
-                              output_name=self.guest,
-                              residue_name=self.guest_yaml["name"],
+        if build:
+            # Here, we build desolvated windows and pass the files to the Property Estimator.
+            # These files are stored in `self.desolvated_window_paths`.
+            self.build_desolvated_windows(guest_orientation)
+            if generate_gaff_files:
+                generate_gaff(mol2_file=self.benchmark_path.joinpath(self.host_yaml["structure"]),
+                              residue_name=self.host_yaml["resname"],
+                              output_name=self.host,
                               directory_path=self.directory,
                               gaff=gaff_version)
+                if guest:
+                    generate_gaff(mol2_file=self.benchmark_path.joinpath(
+                        self.guest).joinpath(self.guest_yaml["structure"]),
+                                  output_name=self.guest,
+                                  residue_name=self.guest_yaml["name"],
+                                  directory_path=self.directory,
+                                  gaff=gaff_version)
+        if not build:
+            self.populate_window_list(input_pdb=os.path.join(self.directory, f"{self.host}-{self.guest}.pdb" if self.guest is not None
+            else f"{self.host}.pdb"))
 
     def parse_yaml(self, installed_benchmarks, guest_orientation):
         """
@@ -99,13 +103,9 @@ class Setup(object):
         try:
             if guest_orientation:
 
-                for orientation in installed_benchmarks["host_guest_systems"][self.host]["yaml"]:
-                    logger.debug(f"Looking for host-{guest_orientation} in {orientation}")
-                    if f"host-{guest_orientation}" in orientation.name:
-                        host_yaml = orientation
-                        logger.debug("Match")
+                host_yaml = installed_benchmarks["host_guest_systems"][self.host]["yaml"][guest_orientation]
             else:
-                host_yaml = installed_benchmarks["host_guest_systems"][self.host]["yaml"][0]
+                host_yaml = installed_benchmarks["host_guest_systems"][self.host]["yaml"]["p"]
 
         except KeyError:
             logger.error(f"Cannot find YAML recipe for host: {self.host}")
@@ -148,11 +148,27 @@ class Setup(object):
             offset_coordinates = pmd.geometry.center_of_mass(host_coordinates,
                                                              masses=np.ones(len(host_coordinates)))
 
+            # Find the principal components, take the two largest, and find the vector orthogonal to that
+            # (should be cross-product right hand rule, I think). Use that vector to align with the z-axis.
+            # This may not generalize to non-radially-symmetric host molecules.
+
+            aligned_coords = np.empty_like(structure.coordinates)
+            for atom in range(len(structure.atoms)):
+                aligned_coords[atom] = structure.coordinates[atom] - offset_coordinates
+            structure.coordinates = aligned_coords
+
+            inertia_tensor = np.dot(structure.coordinates.transpose(), structure.coordinates)
+            eigenvalues, eigenvectors = np.linalg.eig(inertia_tensor)
+            order = np.argsort(eigenvalues)
+            axis_3, axis_2, axis_1 = eigenvectors[:, order].transpose()
+
+            dummy_axis = np.cross(axis_1, axis_2)
+
             self._add_dummy_to_PDB(input_pdb=input_pdb,
                                    output_pdb=intermediate_pdb,
                                    offset_coordinates=offset_coordinates,
                                    dummy_atom_tuples=[(0, 0, 0),
-                                                      (0, 0, 5)])
+                                                      (dummy_axis[0], dummy_axis[1], dummy_axis[2])])
             structure = pmd.load_file(str(intermediate_pdb), structure=True)
 
             for atom in structure.atoms:
@@ -175,6 +191,14 @@ class Setup(object):
             openmm.app.PDBFile.writeFile(topology, positions, file)
         os.remove(intermediate_pdb)
 
+    def populate_window_list(self, input_pdb):
+        logger.debug("Setting up dummy restraint to build window list.")
+        _dummy_restraint = self._create_dummy_restraint(
+            initial_structure=str(input_pdb),
+        )
+        self.window_list = create_window_list([_dummy_restraint])
+        return _dummy_restraint
+
     def build_desolvated_windows(self, guest_orientation):
         if self.guest != "release":
             if not guest_orientation:
@@ -189,19 +213,14 @@ class Setup(object):
                 )
 
         else:
-
             initial_structure = self.directory.joinpath(self.benchmark_path.joinpath(self.host_yaml["structure"]))
             host = pt.iterload(str(initial_structure), str(initial_structure))
             host.save(str(self.directory.joinpath(f"{self.host}.pdb")), overwrite=True, options='conect')
             initial_structure = str(self.directory.joinpath(f"{self.host}.pdb"))
 
         self.align(input_pdb=initial_structure)
-        logger.debug("Setting up dummy restraint to build window list.")
-        _dummy_restraint = self._create_dummy_restraint(
-            initial_structure=str(initial_structure),
-        )
-        self.window_list = create_window_list([_dummy_restraint])
 
+        _dummy_restraint = self.populate_window_list(input_pdb=initial_structure)
 
         for window in self.window_list:
             logger.debug(f"Translating guest in window {window}...")
@@ -382,7 +401,7 @@ class Setup(object):
         # Determine the offset coordinates for the new dummy atoms.
         if self.guest == "release":
 
-            host_coordinates = reference_structure[f":{self.host.upper()}"].coordinates
+            host_coordinates = reference_structure[f":{self.host_yaml['resname'].upper()}"].coordinates
             # Cheap way to get the center of geometry
             offset_coordinates = pmd.geometry.center_of_mass(host_coordinates,
                                                              masses=np.ones(len(host_coordinates)))
@@ -406,6 +425,9 @@ class Setup(object):
         except FileNotFoundError:
             logger.warning(f"Missing {solvated_pdb}")
 
+
+        self._wrap(dummy_pdb)
+
         # Add dummy atoms to System
         if solvated_xml is not None:
 
@@ -421,6 +443,20 @@ class Setup(object):
 
             except:
                 logger.warning(f"Missing {solvated_xml}")
+
+    @staticmethod
+    def _wrap(file, mask=":DM3"):
+        logging.info(f"Re-wrapping {file} to avoid pulling near periodic boundaries.")
+        structure = pmd.load_file(file, structure=True)
+
+        anchor = structure[mask]
+        anchor_z = anchor.atoms[0].xz
+
+        for atom in structure.atoms:
+            atom.xz -= anchor_z - 2.0
+
+        structure.save(file, overwrite=True)
+
 
     def initialize_restraints(self, structure="output.pdb"):
 
@@ -440,13 +476,8 @@ class Setup(object):
         static_restraints = []
         for restraint in self.host_yaml["restraints"]["static"]:
 
-
-            new_mask = _original_mask_to_solvated_mask(mask=restraint["restraint"]["atoms"],
-                                                       substance="host")
-
-
             static = static_DAT_restraint(
-                restraint_mask_list=new_mask.split(),
+                restraint_mask_list=restraint["restraint"]["atoms"].split(),
                 num_window_list=windows,
                 ref_structure=str(structure),
                 force_constant=restraint["restraint"]["force_constant"],
@@ -570,7 +601,7 @@ class Setup(object):
             logger.debug("Skipping wall restraints...")
 
         guest_restraints = []
-        for restraint in [] if not hasattr(self, 'guest_yaml') else self.guest_yaml["restraints"]:
+        for restraint in [] if not hasattr(self, 'guest_yaml') else self.guest_yaml["restraints"]["guest"]:
             mask = restraint["restraint"]["atoms"].split()
 
             guest_restraint = DAT_restraint()
@@ -636,12 +667,13 @@ class Setup(object):
                 # But then we can't access atom indices.
                 # Using `atom.xx` works for coordinates, but is unitless.
 
-                k = 50.0 * unit.kilocalories_per_mole / unit.angstroms ** 2
+                k = 500.0 * unit.kilocalories_per_mole / unit.angstroms ** 2
                 x0 = 0.1 * atom.xx * unit.nanometers
                 y0 = 0.1 * atom.xy * unit.nanometers
                 z0 = 0.1 * atom.xz * unit.nanometers
                 positional_restraint.addParticle(atom.idx, [k, x0, y0, z0])
                 system.addForce(positional_restraint)
+                positional_restraint.setForceGroup(15)
 
         for restraint in self.static_restraints:
             system = apply_openmm_restraints(system, restraint, window, ForceGroup=10)
@@ -676,7 +708,7 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
         phase = "release"
     window_number = int(window[1:])
 
-    if flat_bottom and phase == "attach" and not restraint.mask3:
+    if flat_bottom and phase == "attach" and restraint.mask3:
         flat_bottom_force = openmm.CustomAngleForce('step(-(theta - theta_0)) * k * (theta - theta_0)^2')
         # If theta is greater than theta_0, then the argument to step is negative, which means the force is off.
         flat_bottom_force.addPerAngleParameter("k")
@@ -699,13 +731,13 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
             flat_bottom_force.setForceGroup(ForceGroup)
 
         return system
-    elif flat_bottom and phase == "attach" and restraint.mask3:
-        flat_bottom_force = openmm.CustomBondForce('step((x - x_0)) * k * (x - x_0)^2')
+    elif flat_bottom and phase == "attach" and not restraint.mask3:
+        flat_bottom_force = openmm.CustomBondForce('step((r - r_0)) * k * (r - r_0)^2')
         # If x is greater than x_0, then the argument to step is positive, which means the force is on.
-        flat_bottom_force.addPerAngleParameter("k")
-        flat_bottom_force.addPerAngleParameter("x_0")
+        flat_bottom_force.addPerBondParameter("k")
+        flat_bottom_force.addPerBondParameter("r_0")
 
-        x_0 = restraint.phase[phase]["target"][window_number] * unit.angstrom
+        r_0 = restraint.phase[phase]["targets"][window_number] * unit.angstrom
         k = (
                 restraint.phase[phase]["force_constants"][window_number]
                 * unit.kilocalories_per_mole
@@ -714,7 +746,7 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
         flat_bottom_force.addBond(
             restraint.index1[0],
             restraint.index2[0],
-            [k, x_0],
+            [k, r_0],
         )
         system.addForce(flat_bottom_force)
         if ForceGroup:
@@ -793,7 +825,7 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
             and not restraint.group3
             and not restraint.group4
         ):
-            dihedral_restraint = openmm.CustomTorsionForce("k * (theta - theta_0)^2")
+            dihedral_restraint = openmm.CustomTorsionForce(f"k * min(min(abs(theta - theta_0), abs(theta - theta_0 + 2 * {_PI_})), abs(theta - theta_0 - 2 * {_PI_}))^2")
             dihedral_restraint.addPerTorsionParameter("k")
             dihedral_restraint.addPerTorsionParameter("theta_0")
 
@@ -830,14 +862,27 @@ def generate_gaff(mol2_file, residue_name, output_name=None, need_gaff_atom_type
                                   output_name=output_name,
                                   gaff=gaff,
                                   directory_path=directory_path)
+        logging.debug("Checking to see if we have a multi-residue MOL2 file that should be converted "
+                      "to single-residue...")
+        structure = pmd.load_file(os.path.join(directory_path, f"{output_name}.{gaff}.mol2"), structure=True)
+        if len(structure.residues) > 1:
+            structure[":1"].save("tmp.mol2")
+            if os.path.exists("tmp.mol2"):
+                os.rename("tmp.mol2", os.path.join(directory_path, f"{output_name}.{gaff}.mol2"))
+                logging.debug("Saved single-residue MOL2 file for `tleap`.")
+            else:
+                raise RuntimeError("Unable to convert multi-residue MOL2 file to single-residue for `tleap`.")
 
-    if generate_frcmod:
-        _generate_frcmod(mol2_file=mol2_file,
-                         gaff=gaff,
-                         output_name=output_name,
-                         directory_path=directory_path)
+        if generate_frcmod:
+            _generate_frcmod(mol2_file=f'{output_name}.{gaff}.mol2',
+                             gaff=gaff,
+                             output_name=output_name,
+                             directory_path=directory_path)
+        else:
+            raise NotImplementedError()
 
 def _generate_gaff_atom_types(mol2_file, residue_name, output_name, gaff="gaff2", directory_path="benchmarks"):
+    
     p = sp.Popen(["antechamber", "-i", str(mol2_file), "-fi", "mol2",
               "-o", f"{output_name}.{gaff}.mol2", "-fo", "mol2",
               "-rn", f"{residue_name.upper()}",
@@ -855,6 +900,25 @@ def _generate_gaff_atom_types(mol2_file, residue_name, output_name, gaff="gaff2"
         if file.exists():
             logger.debug(f"Removing temporary file: {file}")
             file.unlink()
+            
+    if not os.path.exists(f"{output_name}.{gaff}.mol2"):
+        # Try with the newer (AmberTools 19) version of `antechamber` which doesn't have the `-dr` flag
+        p = sp.Popen(["antechamber", "-i", str(mol2_file), "-fi", "mol2",
+                      "-o", f"{output_name}.{gaff}.mol2", "-fo", "mol2",
+                      "-rn", f"{residue_name.upper()}",
+                      "-at", f"{gaff}",
+                      "-an", "no",
+                      "-pf", "yes"], cwd=directory_path)
+        p.communicate()
+
+        files = ["ANTECHAMBER_AC.AC", "ANTECHAMBER_AC.AC0",
+                 "ANTECHAMBER_BOND_TYPE.AC", "ANTECHAMBER_BOND_TYPE.AC0",
+                 "ATOMTYPE.INF"]
+        files = [directory_path.joinpath(i) for i in files]
+        for file in files:
+            if file.exists():
+                logger.debug(f"Removing temporary file: {file}")
+                file.unlink()
 
 
 def _generate_frcmod(mol2_file, gaff, output_name, directory_path="benchmarks"):
@@ -862,25 +926,3 @@ def _generate_frcmod(mol2_file, gaff, output_name, directory_path="benchmarks"):
               "-o", f"{output_name}.{gaff}.frcmod",
               "-s", f"{gaff}"
               ], cwd=directory_path)
-
-def _original_mask_to_solvated_mask(mask, substance):
-    new_mask = []
-    for component in mask.split():
-        new_component = ""
-
-        if not re.search("\:\d+.*", component):
-            logger.debug("Number not found.")
-            logger.debug(component)
-            new_component = component
-            continue
-
-        if substance == "host":
-            new_component = f".A{component}"
-        elif substance == "guest":
-            new_component = f".B{component}"
-        else:
-            logger.debug("Can't map existing mask to solvated mask.")
-
-        logger.debug(f"{component} → {new_component}")
-        new_mask.append(new_component)
-    return " ".join(new_mask)
