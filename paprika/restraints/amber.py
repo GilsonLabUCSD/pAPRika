@@ -6,18 +6,38 @@ logger = logging.getLogger(__name__)
 
 
 def amber_restraint_line(restraint, window):
-    """
-    Return an AMBER restraint line a specific phase/window combination.
+    """Writes an AMBER restraint line for a specific window.
+
+    Parameters
+    ----------
+    restraint: :class:`paprika.restraints.DAT_restraint`
+    window: str,
+
+    Returns
+    -------
+    str:
+    The...
+
+    Notes
+    -----
     For example:
-    &rst iat= 3,109, r1= 0.0000, r2= 6.9665, r3= 6.9665, r4= 999.0000,
-         rk2= 5.0000000, rk3= 5.0000000, &end
+
+    .. code-block::
+
+        &rst iat= 3,109, r1= 0.0000, r2= 6.9665, r3= 6.9665, r4= 999.0000,
+             rk2= 5.0000000, rk3= 5.0000000, &end
+
     Or:
-    &rst iat= -1,-1, igr1=3,4,7,8,21,22,25,26,39,40,43,44,57,58,61,62,75,76,79,
-    80,93,94,97,98, igr2=109,113,115,119,
-    r1=     0.0000, r2=     5.9665, r3=     5.9665, r4=   999.0000,
-    rk2=   5.0000000, rk3=   5.0000000, &end
+
+    .. code-block::
+
+        &rst iat= -1,-1, igr1=3,4,7,8,21,22,25,26,39,40,43,44,57,58,61,62,75,76,79,
+        80,93,94,97,98, igr2=109,113,115,119,
+        r1=     0.0000, r2=     5.9665, r3=     5.9665, r4=   999.0000,
+        rk2=   5.0000000, rk3=   5.0000000, &end
 
     """
+
     window, phase = parse_window(window)
     if restraint.phase[phase]["force_constants"] is None and restraint.phase[phase]["targets"] is None:
         return ""
