@@ -2,6 +2,7 @@ name: paprika-dev
 channels:
   - conda-forge
   - ambermd
+  - omnia
 dependencies:
   
   # Base depends

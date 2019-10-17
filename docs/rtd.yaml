@@ -3,6 +3,7 @@ name: test
 channels:
   - conda-forge
   - ambermd
+  - omnia
 dependencies:
   
   # Base depends
