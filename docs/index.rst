@@ -31,7 +31,7 @@ Index
 * :doc:`api`
 
 .. toctree::
-  :maxdepth: 2
+  :maxdepth: 4
   :hidden:
   :caption: Developer Documentation
 

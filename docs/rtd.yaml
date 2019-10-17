@@ -1,8 +1,9 @@
 name: test
 
 channels:
+  - conda-forge
+  - ambermd
   - omnia
-  - http://ambermd.org/downloads/ambertools/conda/
 dependencies:
   
   # Base depends
@@ -14,7 +15,7 @@ dependencies:
   - mdtraj
   - pymbar
   - openmm
-  - ambertools=18
+  - ambertools=19
 
   
   # Documentation
