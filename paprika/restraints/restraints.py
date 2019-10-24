@@ -20,78 +20,269 @@ class DAT_restraint(object):
     Distance or angle or torsion restraints on atoms in the simulation.
     """
 
+    @property
+    def instances(self):
+        """A list of ``DAT_restraints`` that have been initialized.
+
+        .. note ::
+
+        This should never be called directly and ought to be private.
+        """
+        return self._instances
+
+    @instances.setter
+    def instances(self, value):
+        self._instances = value
+
+    @property
+    def topology(self):
+        """The topology file used to initialize the restraints. This is often a PDB file."""
+        return self._topology
+
+    @topology.setter
+    def topology(self, value):
+        self._topology = value
+
+    @property
+    def mask1(self):
+        """The first atom mask used for the restraint."""
+        return self._mask1
+
+    @mask1.setter
+    def mask1(self, value):
+        self._mask1 = value
+
+    @property
+    def mask2(self):
+        """The second atom mask used for the restraint."""
+        return self._mask2
+
+    @mask2.setter
+    def mask2(self, value):
+        self._mask2 = value
+
+    @property
+    def mask3(self):
+        """The third atom mask used for the restraint. Only two atom masks are required."""
+        return self._mask2
+
+    @mask3.setter
+    def mask3(self, value):
+        self._mask3 = value
+
+    @property
+    def mask4(self):
+        """The fourth atom mask used for the restraint. Only two atom masks are required."""
+        return self._mask4
+
+    @mask4.setter
+    def mask4(self, value):
+        self._mask4 = value
+
+    @property
+    def custom_restraint_values(self):
+        """In the case a non-harmonic restraint is desired, the pre-calculated values (r1, r2, and so on) can be
+        overridden with ones from this dictionary. These values will be directly written to the AMBER restraint file,
+        so the keys must be valid AMBER keywords.
+
+        Specifically, for target distance, R:
+
+        • R < r1 Linear, with the slope of the "left-hand" parabola at the point R = r1.
+        • r1 <= R < r2 Parabolic, with restraint energy k2(R − r2)².
+        • r2 <= R < r3 E = 0.
+        • r3 <= R < r4 Parabolic, with restraint energy k3(R − r3)².
+        • r4 <= R Linear, with the slope of the "right-hand" parabola at the point R = r4.
+
+        In the case of AMBER18, this is covered in section 25.1 of the manual.
+
+        For example, a flat bottom restraint can be specified by setting ``r2`` not equal to ``r3``.
+
+        >>> from paprika.restraints import DAT_restraint
+        >>>
+        >>> this = DAT_restraint
+        >>> this.custom_restraint_values["r2"] = 0.0
+        >>> this.custom_restraint_values["r3"] = 12.0
+
+        The values in this dictionary use default AMBER units for distances and force constants.
+
+        This attribute has **no effect** for OpenMM.
+        """
+        return self._custom_restraint_values
+
+    @custom_restraint_values.setter
+    def custom_restraint_values(self, value):
+        self._custom_restraint_values = value
+
+    @property
+    def auto_apr(self):
+        """If ``True``, (1) the force constant during the pulling phase will be set to the final force constant from
+        the attach phase, and (2) the initial target during the pulling phase will be equal to the final target from
+        the attach phase. If ``False``, these values must be set manually.
+        """
+        return self._auto_apr
+
+    @auto_apr.setter
+    def auto_apr(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("The ``auto_apr`` attribute is a boolean.")
+        self._auto_apr = value
+
+    @property
+    def continuous_apr(self):
+        """
+        If ``True``, (1) the final window of the attach phase is used as the first window of the pull phase, and (2) the
+        final window of the pull phase is used as the first window of the release phase.
+        """
+        return self._continuous_apr
+
+    @continuous_apr.setter
+    def continuous_apr(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("The ``continuous_apr`` attribute is a boolean.")
+        self._continuous_apr = value
+
+    @property
+    def attach(self):
+        """
+        Dictionary specifying the APR parameters during the attach phase. The dictionary keys are as follows:
+
+            - ``target``             : The target value for the restraint (mandatory)
+            - ``fc_initial``         : The initial force constant (optional)
+            - ``fc_final``           : The final force constant (optional)
+            - ``num_windows``        : The number of windows (optional)
+            - ``fc_increment``       : The force constant increment (optional)
+            - ``fraction_increment`` : The percentage of the force constant increment (optional)
+            - ``fraction_list``      : The list of force constant percentages (optional)
+            - ``fc_list``            : The list of force constants (will be created if not given)
+
+        .. note ::
+            This is fragile and this could be hardened by making these ``ENUM``s and doing much more type-checking.
+        """
+        return self._attach
+
+    @attach.setter
+    def attach(self, value):
+        self._attach = value
+
+    @property
+    def pull(self):
+        """
+        Dictionary specifying the APR parameters during the pull phase. The dictionary keys are as follows:
+
+            - ``target``             : The target value for the restraint (mandatory)
+            - ``fc_initial``         : The initial force constant (optional)
+            - ``fc_final``           : The final force constant (optional)
+            - ``num_windows``        : The number of windows (optional)
+            - ``fc_increment``       : The force constant increment (optional)
+            - ``fraction_increment`` : The percentage of the force constant increment (optional)
+            - ``fraction_list``      : The list of force constant percentages (optional)
+            - ``fc_list``            : The list of force constants (will be created if not given)
+
+        .. note ::
+            This is fragile and this could be hardened by making these ``ENUM``s and doing much more type-checking.
+        """
+        return self._attach
+
+    @pull.setter
+    def pull(self, value):
+        self._pull = value
+
+    @property
+    def release(self):
+        """
+        Dictionary specifying the APR parameters during the release phase. The dictionary keys are as follows:
+
+            - ``target``             : The target value for the restraint (mandatory)
+            - ``fc_initial``         : The initial force constant (optional)
+            - ``fc_final``           : The final force constant (optional)
+            - ``num_windows``        : The number of windows (optional)
+            - ``fc_increment``       : The force constant increment (optional)
+            - ``fraction_increment`` : The percentage of the force constant increment (optional)
+            - ``fraction_list``      : The list of force constant percentages (optional)
+            - ``fc_list``            : The list of force constants (will be created if not given)
+
+        .. note ::
+            This is fragile and this could be hardened by making these ``ENUM``s and doing much more type-checking.
+        """
+        return self._release
+
+    @release.setter
+    def release(self, value):
+        self._release = value
+
+    @property
+    def amber_index(self):
+        """
+        If ``True``, add 1 to all atom indices.
+        """
+        return self._amber_index
+
+    @amber_index.setter
+    def amber_index(self, value):
+        self._amber_index = value
+
     instances = []
 
     def __init__(self):
 
-        self.topology = None
-        self.mask1 = None
-        self.mask2 = None
-        self.mask3 = None
-        self.mask4 = None
+        self._topology = None
+        self._mask1 = None
+        self._mask2 = None
+        self._mask3 = None
+        self._mask4 = None
+
+        # These indices will be automatically populated during :meth:`paprika.restraints.DAT_restraint.initialize`.
         self.index1 = None
         self.index2 = None
         self.index3 = None
         self.index4 = None
 
-        # In the case of a non-harmonic restraint, the pre-calculated values can be overridden with
-        # ones from this dictionary.
-        self.custom_restraint_values = {}
+        self._custom_restraint_values = {}
 
-        self.auto_apr = (
-            False
-        )  # If True, sets some pull and release values automatically.
-        # If True, the first window of pull is re-used as last window of attach and the last window
-        # of pull is re-used as first window of release.
-        self.continuous_apr = True
-        self.amber_index = False
+        self._auto_apr = False
+        self._continuous_apr = True
 
-        self.attach = {
-            "target": None,  # The target value for the restraint (mandatory)
-            "fc_initial": None,  # The initial force constant (optional)
-            "fc_final": None,  # The final force constant (optional)
-            "num_windows": None,  # The number of windows (optional)
-            "fc_increment": None,  # The force constant increment (optional)
-            # The percentage of the force constant increment (optional)
+        self._amber_index = False
+
+        self._attach = {
+            "target": None,
+            "fc_initial": None,
+            "fc_final": None,
+            "num_windows": None,
+            "fc_increment": None,
             "fraction_increment": None,
-            # The list of force constant percentages (optional)
             "fraction_list": None,
-            # The list of force constants (will be created if not given)
             "fc_list": None,
         }
 
-        self.pull = {
-            "fc": None,  # The force constant for the restraint (mandatory)
-            "target_initial": None,  # The initial target value (optional)
-            "target_final": None,  # The final target value (optional)
-            "num_windows": None,  # The number of windows (optional)
-            "target_increment": None,  # The target value increment (optional)
-            # The percentage of the target value increment (optional)
+        self._pull = {
+            "target": None,
+            "fc_initial": None,
+            "fc_final": None,
+            "num_windows": None,
+            "fc_increment": None,
             "fraction_increment": None,
-            # The list of target value percentages (optional)
             "fraction_list": None,
-            # The list of target values (will be created if not given)
-            "target_list": None,
+            "fc_list": None,
         }
 
-        self.release = {
-            "target": None,  # The target value for the restraint (mandatory)
-            "fc_initial": None,  # The initial force constant (optional)
-            "fc_final": None,  # The final force constant (optional)
-            "num_windows": None,  # The number of windows (optional)
-            "fc_increment": None,  # The force constant increment (optional)
-            # The percentage of the force constant increment (optional)
+        self._release = {
+            "target": None,
+            "fc_initial": None,
+            "fc_final": None,
+            "num_windows": None,
+            "fc_increment": None,
             "fraction_increment": None,
-            # The list of force constant percentages (optional)
             "fraction_list": None,
-            # The list of force constants (will be created if not
-            "fc_list": None
-            # given)
+            "fc_list": None,
         }
 
         DAT_restraint.instances.append(self)
 
     def __eq__(self, other):
+        """
+        Test whether two ``DAT_restraint`` instances are equivalent.
+        """
         self_dictionary = self.__dict__
         other_dictionary = other.__dict__
         for dct in [self_dictionary, other_dictionary]:

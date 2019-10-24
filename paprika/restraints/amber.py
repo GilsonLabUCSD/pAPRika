@@ -6,21 +6,22 @@ logger = logging.getLogger(__name__)
 
 
 def amber_restraint_line(restraint, window):
-    """Writes an AMBER restraint line for a specific window.
+    """Writes an AMBER NMR-style restraint line for a specific window.
 
     Parameters
     ----------
     restraint: :class:`paprika.restraints.DAT_restraint`
-    window: str,
+        The pAPRika restraint to be used.
+    window: str
+        The calculation window that will be used to index the restraint values.
 
     Returns
     -------
-    str:
-    The...
+    string: str
+        A string that can be written to a file that can be read by AMBER.
 
-    Notes
-    -----
-    For example:
+    Examples
+    --------
 
     .. code-block::
 
