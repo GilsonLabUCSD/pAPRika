@@ -58,6 +58,8 @@ autosummary_generate = True
 autodoc_default_flags = ['members', 'inherited-members']
 autodoc_member_order = 'bysource' # preserve ordering in source
 
+autodoc_mock_imports = ["pytraj"]
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
