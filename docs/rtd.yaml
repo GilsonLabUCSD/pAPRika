@@ -1,4 +1,4 @@
-name: test
+name: paprika
 
 channels:
   - conda-forge
@@ -7,7 +7,16 @@ channels:
 dependencies:
   
   # Base depends
-  - python
+  - python ==3.6
+  - setuptools
+
+  # Sphinx specific
+  - numpydoc
+  - sphinx
+  - nbsphinx
+  - m2r >=0.2.1
+  - sphinx_rtd_theme
+
   - pip
   - numpy
   - scipy
@@ -16,8 +25,3 @@ dependencies:
   - pymbar
   - openmm
   - ambertools=19
-
-  
-  # Documentation
-  - sphinx
-  - sphinx_rtd_theme
