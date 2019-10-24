@@ -9,7 +9,7 @@ dependencies:
   # Base depends
   - python ==3.6
   - setuptools
-
+    -
   # Sphinx specific
   - numpydoc
   - sphinx
