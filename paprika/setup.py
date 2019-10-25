@@ -440,7 +440,7 @@ class Setup(object):
                 with open(dummy_xml, "w") as file:
                     file.write(system_xml)
 
-            except:
+            except FileNotFoundError:
                 logger.warning(f"Missing {solvated_xml}")
 
     @staticmethod
@@ -646,7 +646,7 @@ class Setup(object):
             raise NotImplementedError
         try:
             system = read_openmm_system_from_xml(input_xml)
-        except:
+        except FileNotFoundError:
             logger.warning(f"Cannot read XML from {input_xml}")
 
         # Apply the positional restraints.
