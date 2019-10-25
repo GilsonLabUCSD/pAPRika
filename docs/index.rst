@@ -28,11 +28,20 @@ Index
 
 **Developer Documentation**
 
-* :doc:`api`
+* :doc:`align`
+* :doc:`analysis`
+* :doc:`amber`
+* :doc:`restraints`
 
 .. toctree::
   :maxdepth: 4
   :hidden:
   :caption: Developer Documentation
 
-  api
+  align
+  analysis
+  amber
+  restraints
+
+
+**Write about convenience functions**
