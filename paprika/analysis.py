@@ -67,6 +67,13 @@ class fe_calc(object):
         Default: [1.0].
     results : {dict}
         TODO: description
+
+    .. warning ::
+        This call really ought to be split into a few smaller classes that sublcass a ``BaseAnalysis`` class. THere could
+        be separate ``MBARAnalysis`` and ``TIAnalysis`` classes, for example. This would make it much more modular
+        and easy to test where TI and MBAR disagree. This could also be used to benchmark autocorrelation-based and
+        blocking-analysis-based methods for evaluating the statistical inefficiency.
+
     """
 
     def __init__(self):

@@ -1,8 +1,3 @@
-API
-===
-
-A set of API documents for this projects classes and modules.
-
 Restraints API
 ---------------
 
@@ -23,4 +18,3 @@ Restraints API
 .. automodule:: paprika.restraints.utils
    :members:
    :undoc-members:
-

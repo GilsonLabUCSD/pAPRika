@@ -72,8 +72,6 @@ class Simulation(object):
         self.other_namelist = None  # Could add other namelists as dicts
         self.wt = None  # or []
         self.group = None  # or []
-
-    # Refresh file names if prefix changes
     @property
     def prefix(self):
         return self._prefix
