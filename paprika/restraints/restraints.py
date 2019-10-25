@@ -64,7 +64,7 @@ class DAT_restraint(object):
     @property
     def mask3(self):
         """The third atom mask used for the restraint. Only two atom masks are required."""
-        return self._mask2
+        return self._mask3
 
     @mask3.setter
     def mask3(self, value):
@@ -98,7 +98,6 @@ class DAT_restraint(object):
         For example, a flat bottom restraint can be specified by setting ``r2`` not equal to ``r3``.
 
         >>> from paprika.restraints import DAT_restraint
-        >>>
         >>> this = DAT_restraint
         >>> this.custom_restraint_values["r2"] = 0.0
         >>> this.custom_restraint_values["r3"] = 12.0
@@ -158,6 +157,7 @@ class DAT_restraint(object):
         .. note ::
             This is fragile and this could be hardened by making these ``ENUM``s and doing much more type-checking.
         """
+
         return self._attach
 
     @attach.setter
@@ -169,19 +169,20 @@ class DAT_restraint(object):
         """
         Dictionary specifying the APR parameters during the pull phase. The dictionary keys are as follows:
 
-            - ``target``             : The target value for the restraint (mandatory)
-            - ``fc_initial``         : The initial force constant (optional)
-            - ``fc_final``           : The final force constant (optional)
+            - ``fc``                 : The force constant for the restraint (mandatory)
+            - ``target_initial``     : The initial target value (optional)
+            - ``target_final``       : The final target value (optional)
             - ``num_windows``        : The number of windows (optional)
-            - ``fc_increment``       : The force constant increment (optional)
-            - ``fraction_increment`` : The percentage of the force constant increment (optional)
-            - ``fraction_list``      : The list of force constant percentages (optional)
-            - ``fc_list``            : The list of force constants (will be created if not given)
+            - ``target_increment``   : The target value increment (optional)
+            - ``fraction_increment`` : The percentage of the target value increment (optional)
+            - ``fraction_list``      : The list of target value percentages (optional)
+            - ``target_list``        : The list of target values (will be created if not given)
 
         .. note ::
             This is fragile and this could be hardened by making these ``ENUM``s and doing much more type-checking.
         """
-        return self._attach
+
+        return self._pull
 
     @pull.setter
     def pull(self, value):
@@ -237,6 +238,11 @@ class DAT_restraint(object):
         self.index3 = None
         self.index4 = None
 
+        self.group1 = False
+        self.group2 = False
+        self.group3 = False
+        self.group4 = False
+
         self._custom_restraint_values = {}
 
         self._auto_apr = False
@@ -254,18 +260,16 @@ class DAT_restraint(object):
             "fraction_list": None,
             "fc_list": None,
         }
-
         self._pull = {
-            "target": None,
-            "fc_initial": None,
-            "fc_final": None,
+            "fc": None,
+            "target_initial": None,
+            "target_final": None,
             "num_windows": None,
-            "fc_increment": None,
+            "target_increment": None,
             "fraction_increment": None,
             "fraction_list": None,
-            "fc_list": None,
+            "target_list": None,
         }
-
         self._release = {
             "target": None,
             "fc_initial": None,
@@ -309,8 +313,8 @@ class DAT_restraint(object):
                 for phs in ["attach", "pull", "release"]:
                     for value in ["force_constants", "targets"]:
                         if (
-                            self_dictionary["phase"][phs][value] is None
-                            and other_dictionary["phase"][phs][value] is None
+                                self_dictionary["phase"][phs][value] is None
+                                and other_dictionary["phase"][phs][value] is None
                         ):
                             continue
                         else:
@@ -320,144 +324,171 @@ class DAT_restraint(object):
                             )
         return True
 
-    def _calc_meth(self, phase, rdict, meth):
-        """ Return the appropriate list of force_constants and targets depending on the method """
+    @staticmethod
+    def _calc_method(phase, restraint_dictionary, method):
+        """
+        This helper function figures out which values in the restraint dictionary need to be set.
+
+        phase: str
+            The restraint phase.
+        restraint_dictionary: dict
+            The restraint dictionary corresponding whose values will be set.
+        method: str
+            Which "method" will be used to set the remaining values. The "method" refers to which combination of restraint
+            inputs are provided -- for example, initial value, final value, and number of windows or initial value, increment
+            size, and number of increments -- which are defined in :meth:`paprika.restraints.DAT_restraint.initialize`.
+
+            This appears to be a ``str`` but should be an ``int``.
+
+        .. note ::
+            This could do with some serious sprucing up.
+
+        """
 
         force_constants = None
         targets = None
 
         # Attach/Release, Force Constant Method 1
-        if phase in ("a", "r") and meth == "1":
+        if phase in ("a", "r") and method == "1":
             force_constants = np.linspace(
-                rdict["fc_initial"], rdict["fc_final"], rdict["num_windows"]
+                restraint_dictionary["fc_initial"], restraint_dictionary["fc_final"],
+                restraint_dictionary["num_windows"]
             )
 
         # Attach/Release, Force Constant Method 1a
-        elif phase in ("a", "r") and meth == "1a":
-            force_constants = np.linspace(0.0, rdict["fc_final"], rdict["num_windows"])
+        elif phase in ("a", "r") and method == "1a":
+            force_constants = np.linspace(0.0, restraint_dictionary["fc_final"], restraint_dictionary["num_windows"])
 
         # Attach/Release, Force Constant Method 2
-        elif phase in ("a", "r") and meth == "2":
+        elif phase in ("a", "r") and method == "2":
             force_constants = np.arange(
-                rdict["fc_initial"],
-                rdict["fc_final"] + rdict["fc_increment"],
-                rdict["fc_increment"],
+                restraint_dictionary["fc_initial"],
+                restraint_dictionary["fc_final"]+restraint_dictionary["fc_increment"],
+                restraint_dictionary["fc_increment"],
             )
 
         # Attach/Release, Force Constant Method 2a
-        elif phase in ("a", "r") and meth == "2a":
+        elif phase in ("a", "r") and method == "2a":
             force_constants = np.arange(
-                0.0, rdict["fc_final"] + rdict["fc_increment"], rdict["fc_increment"]
+                0.0, restraint_dictionary["fc_final"]+restraint_dictionary["fc_increment"],
+                restraint_dictionary["fc_increment"]
             )
 
         # Attach/Release, Force Constant Method 3
-        elif phase in ("a", "r") and meth == "3":
+        elif phase in ("a", "r") and method == "3":
             force_constants = np.asarray(
-                [fraction * rdict["fc_final"] for fraction in rdict["fraction_list"]]
+                [fraction * restraint_dictionary["fc_final"] for fraction in restraint_dictionary["fraction_list"]]
             )
 
         # Attach/Release, Force Constant Method 4
-        elif phase in ("a", "r") and meth == "4":
+        elif phase in ("a", "r") and method == "4":
             fractions = np.arange(
-                0, 1.0 + rdict["fraction_increment"], rdict["fraction_increment"]
+                0, 1.0+restraint_dictionary["fraction_increment"], restraint_dictionary["fraction_increment"]
             )
             force_constants = np.asarray(
-                [fraction * rdict["fc_final"] for fraction in fractions]
+                [fraction * restraint_dictionary["fc_final"] for fraction in fractions]
             )
 
         # Attach/Release, Force Constant Method 5
-        elif phase in ("a", "r") and meth == "5":
-            force_constants = np.asarray(rdict["fc_list"])
+        elif phase in ("a", "r") and method == "5":
+            force_constants = np.asarray(restraint_dictionary["fc_list"])
 
         # Attach/Release, Target Method
         if phase in ("a", "r"):
-            targets = np.asarray([rdict["target"]] * len(force_constants))
+            targets = np.asarray([restraint_dictionary["target"]] * len(force_constants))
 
         # Pull, Target Method 1
-        if phase == "p" and meth == "1":
+        if phase == "p" and method == "1":
             targets = np.linspace(
-                rdict["target_initial"], rdict["target_final"], rdict["num_windows"]
+                restraint_dictionary["target_initial"], restraint_dictionary["target_final"],
+                restraint_dictionary["num_windows"]
             )
 
         # Pull, Target Method 1a
-        elif phase == "p" and meth == "1a":
-            targets = np.linspace(0.0, rdict["target_final"], rdict["num_windows"])
+        elif phase == "p" and method == "1a":
+            targets = np.linspace(0.0, restraint_dictionary["target_final"], restraint_dictionary["num_windows"])
 
         # Pull, Target Method 2
-        elif phase == "p" and meth == "2":
+        elif phase == "p" and method == "2":
             targets = np.arange(
-                rdict["target_initial"],
-                rdict["target_final"] + rdict["target_increment"],
-                rdict["target_increment"],
+                restraint_dictionary["target_initial"],
+                restraint_dictionary["target_final"]+restraint_dictionary["target_increment"],
+                restraint_dictionary["target_increment"],
             )
 
         # Pull, Target Method 2a
-        elif phase == "p" and meth == "2a":
+        elif phase == "p" and method == "2a":
             targets = np.arange(
                 0.0,
-                rdict["target_final"] + rdict["target_increment"],
-                rdict["target_increment"],
+                restraint_dictionary["target_final"]+restraint_dictionary["target_increment"],
+                restraint_dictionary["target_increment"],
             )
 
         # Pull, Target Method 3
-        elif phase == "p" and meth == "3":
+        elif phase == "p" and method == "3":
             targets = np.asarray(
                 [
-                    fraction * rdict["target_final"]
-                    for fraction in rdict["fraction_list"]
+                    fraction * restraint_dictionary["target_final"]
+                    for fraction in restraint_dictionary["fraction_list"]
                 ]
             )
 
         # Pull, Target Method 4
-        elif phase == "p" and meth == "4":
+        elif phase == "p" and method == "4":
             fractions = np.arange(
-                0, 1.0 + rdict["fraction_increment"], rdict["fraction_increment"]
+                0, 1.0+restraint_dictionary["fraction_increment"], restraint_dictionary["fraction_increment"]
             )
             targets = np.asarray(
-                [fraction * rdict["target_final"] for fraction in fractions]
+                [fraction * restraint_dictionary["target_final"] for fraction in fractions]
             )
 
         # Pull, Target Method 5
-        elif phase == "p" and meth == "5":
-            targets = np.asarray(rdict["target_list"])
+        elif phase == "p" and method == "5":
+            targets = np.asarray(restraint_dictionary["target_list"])
 
         # Pull, Force Constant Method
         if phase == "p":
-            force_constants = np.asarray([rdict["fc"]] * len(targets))
+            force_constants = np.asarray([restraint_dictionary["fc"]] * len(targets))
 
         if force_constants is None and targets is None:
-            logger.error("Unsupported Phase/Method: {} / {}".format(phase, meth))
+            logger.error("Unsupported Phase/Method: {} / {}".format(phase, method))
             raise Exception("Unexpected phase/method combination passed to _calc_meth")
 
         return force_constants, targets
 
     def initialize(self):
         """
-        Depending on which dict values are provided for each phase, a different method will
-        be used to determine the list of force_constants and targets (below).
+        Automatically set remaining force constants and targets.
 
-        For Attach/Release, a `target` value is required and the method is determined if the
-        following dict values are not `None`:
-            Method 1:   num_windows, fc_initial, fc_final
-            Method 1a:  num_windows, fc_final
-            Method 2:   fc_increment, fc_initial, fc_final
-            Method 2a:  fc_increment, fc_final
-            Method 3:   fraction_list, fc_final
-            Method 4:   fraction_increment, fc_final
-            Method 5:   fc_list
+        Depending on which values are provided for each phase, a different method will
+        be used to determine the list of force constants and targets (below).
 
-        For Pull, a `fc` value is required and the method is determined if the
-        following dict values are not `None`:
-            Method 1:   num_windows, target_initial, target_final
-            Method 1a:  num_windows, target_final
-            Method 2:   target_increment, target_initial, target_final
-            Method 2a:  target_increment, target_final
-            Method 3:   fraction_list, target_final
-            Method 4:   fraction_increment, target_final
-            Method 5:   target_list
+        For attach and release, a ``target`` value is required and the method is determined if the
+        following values are not ``None``:
+
+            - Method 1:   num_windows, fc_initial, fc_final
+            - Method 1a:  num_windows, fc_final
+            - Method 2:   fc_increment, fc_initial, fc_final
+            - Method 2a:  fc_increment, fc_final
+            - Method 3:   fraction_list, fc_final
+            - Method 4:   fraction_increment, fc_final
+            - Method 5:   fc_list
+
+        For pull, a ``fc`` value is required and the method is determined if the
+        following values are not ``None``:
+
+            - Method 1:   num_windows, target_initial, target_final
+            - Method 1a:  num_windows, target_final
+            - Method 2:   target_increment, target_initial, target_final
+            - Method 2a:  target_increment, target_final
+            - Method 3:   fraction_list, target_final
+            - Method 4:   fraction_increment, target_final
+            - Method 5:   target_list
+
+        .. note ::
+            This is unnecessary overengineering.
         """
 
-        # Setup. These are the lists that will be most used by other modules
         self.phase = {
             "attach": {"force_constants": None, "targets": None},
             "pull": {"force_constants": None, "targets": None},
@@ -471,51 +502,44 @@ class DAT_restraint(object):
         targets = None
 
         if (
-            self.attach["num_windows"] is not None
-            and self.attach["fc_final"] is not None
+                self.attach["num_windows"] is not None
+                and self.attach["fc_final"] is not None
         ):
             if self.attach["fc_initial"] is not None:
-                ### METHOD 1 ###
                 logger.debug("Attach, Method #1")
-                force_constants, targets = self._calc_meth("a", self.attach, "1")
+                force_constants, targets = self._calc_method("a", self.attach, "1")
             else:
-                ### METHOD 1a ###
                 logger.debug("Attach, Method #1a")
-                force_constants, targets = self._calc_meth("a", self.attach, "1a")
+                force_constants, targets = self._calc_method("a", self.attach, "1a")
 
         elif (
-            self.attach["fc_increment"] is not None
-            and self.attach["fc_final"] is not None
+                self.attach["fc_increment"] is not None
+                and self.attach["fc_final"] is not None
         ):
             if self.attach["fc_initial"] is not None:
-                ### METHOD 2 ###
                 logger.debug("Attach, Method #2")
-                force_constants, targets = self._calc_meth("a", self.attach, "2")
+                force_constants, targets = self._calc_method("a", self.attach, "2")
             else:
-                ### METHOD 2a ###
                 logger.debug("Attach, Method #2a")
-                force_constants, targets = self._calc_meth("a", self.attach, "2a")
+                force_constants, targets = self._calc_method("a", self.attach, "2a")
 
         elif (
-            self.attach["fraction_list"] is not None
-            and self.attach["fc_final"] is not None
+                self.attach["fraction_list"] is not None
+                and self.attach["fc_final"] is not None
         ):
-            ### METHOD 3 ###
             logger.debug("Attach, Method #3")
-            force_constants, targets = self._calc_meth("a", self.attach, "3")
+            force_constants, targets = self._calc_method("a", self.attach, "3")
 
         elif (
-            self.attach["fraction_increment"] is not None
-            and self.attach["fc_final"] is not None
+                self.attach["fraction_increment"] is not None
+                and self.attach["fc_final"] is not None
         ):
-            ### METHOD 4 ###
             logger.debug("Attach, Method #4")
-            force_constants, targets = self._calc_meth("a", self.attach, "4")
+            force_constants, targets = self._calc_method("a", self.attach, "4")
 
         elif self.attach["fc_list"] is not None:
-            ### METHOD 5 ###
             logger.debug("Attach, Method #5")
-            force_constants, targets = self._calc_meth("a", self.attach, "5")
+            force_constants, targets = self._calc_method("a", self.attach, "5")
 
         elif all(v is None for k, v in self.attach.items()):
             logger.debug("No restraint info set for the attach phase! Skipping...")
@@ -545,51 +569,44 @@ class DAT_restraint(object):
             self.pull["target_initial"] = self.phase["attach"]["targets"][-1]
 
         if (
-            self.pull["num_windows"] is not None
-            and self.pull["target_final"] is not None
+                self.pull["num_windows"] is not None
+                and self.pull["target_final"] is not None
         ):
             if self.pull["target_initial"] is not None:
-                ### METHOD 1 ###
                 logger.debug("Pull, Method #1")
-                force_constants, targets = self._calc_meth("p", self.pull, "1")
+                force_constants, targets = self._calc_method("p", self.pull, "1")
             else:
-                ### METHOD 1a ###
                 logger.debug("Pull, Method #1a")
-                force_constants, targets = self._calc_meth("p", self.pull, "1a")
+                force_constants, targets = self._calc_method("p", self.pull, "1a")
 
         elif (
-            self.pull["target_increment"] is not None
-            and self.pull["target_final"] is not None
+                self.pull["target_increment"] is not None
+                and self.pull["target_final"] is not None
         ):
             if self.pull["target_initial"] is not None:
-                ### METHOD 2 ###
                 logger.debug("Pull, Method #2")
-                force_constants, targets = self._calc_meth("p", self.pull, "2")
+                force_constants, targets = self._calc_method("p", self.pull, "2")
             else:
-                ### METHOD 2a ###
                 logger.debug("Pull, Method #2a")
-                force_constants, targets = self._calc_meth("p", self.pull, "2a")
+                force_constants, targets = self._calc_method("p", self.pull, "2a")
 
         elif (
-            self.pull["fraction_list"] is not None
-            and self.pull["target_final"] is not None
+                self.pull["fraction_list"] is not None
+                and self.pull["target_final"] is not None
         ):
-            ### METHOD 3 ###
             logger.debug("Pull, Method #3")
-            force_constants, targets = self._calc_meth("p", self.pull, "3")
+            force_constants, targets = self._calc_method("p", self.pull, "3")
 
         elif (
-            self.pull["fraction_increment"] is not None
-            and self.pull["target_final"] is not None
+                self.pull["fraction_increment"] is not None
+                and self.pull["target_final"] is not None
         ):
-            ### METHOD 4 ###
             logger.debug("Pull, Method #4")
-            force_constants, targets = self._calc_meth("p", self.pull, "4")
+            force_constants, targets = self._calc_method("p", self.pull, "4")
 
         elif self.pull["target_list"] is not None:
-            ### METHOD 5 ###
             logger.debug("Pull, Method #5")
-            force_constants, targets = self._calc_meth("p", self.pull, "5")
+            force_constants, targets = self._calc_method("p", self.pull, "5")
 
         elif all(v is None for k, v in self.pull.items()):
             logger.debug("No restraint info set for the pull phase! Skipping...")
@@ -616,7 +633,8 @@ class DAT_restraint(object):
 
         # I don't want auto_apr to make release restraints, unless I'm sure the user wants them.
         # I'm gonna assume that specifying self.attach['fc_final'] indicates you want it,
-        # although this weakens the whole purpose of auto_apr
+        # although this weakens the whole purpose of auto_apr.
+
         if self.auto_apr and self.release["fc_final"] is not None:
             self.release["target"] = self.phase["pull"]["targets"][-1]
             for key in [
@@ -632,51 +650,44 @@ class DAT_restraint(object):
                     self.release[key] = self.attach[key]
 
         if (
-            self.release["num_windows"] is not None
-            and self.release["fc_final"] is not None
+                self.release["num_windows"] is not None
+                and self.release["fc_final"] is not None
         ):
             if self.release["fc_initial"] is not None:
-                ### METHOD 1 ###
                 logger.debug("Release, Method #1")
-                force_constants, targets = self._calc_meth("r", self.release, "1")
+                force_constants, targets = self._calc_method("r", self.release, "1")
             else:
-                ### METHOD 1a ###
                 logger.debug("Release, Method #1a")
-                force_constants, targets = self._calc_meth("r", self.release, "1a")
+                force_constants, targets = self._calc_method("r", self.release, "1a")
 
         elif (
-            self.release["fc_increment"] is not None
-            and self.release["fc_final"] is not None
+                self.release["fc_increment"] is not None
+                and self.release["fc_final"] is not None
         ):
             if self.release["fc_initial"] is not None:
-                ### METHOD 2 ###
                 logger.debug("Release, Method #2")
-                force_constants, targets = self._calc_meth("r", self.release, "2")
+                force_constants, targets = self._calc_method("r", self.release, "2")
             else:
-                ### METHOD 2a ###
                 logger.debug("Release, Method #2a")
-                force_constants, targets = self._calc_meth("r", self.release, "2a")
+                force_constants, targets = self._calc_method("r", self.release, "2a")
 
         elif (
-            self.release["fraction_list"] is not None
-            and self.release["fc_final"] is not None
+                self.release["fraction_list"] is not None
+                and self.release["fc_final"] is not None
         ):
-            ### METHOD 3 ###
             logger.debug("Release, Method #3")
-            force_constants, targets = self._calc_meth("r", self.release, "3")
+            force_constants, targets = self._calc_method("r", self.release, "3")
 
         elif (
-            self.release["fraction_increment"] is not None
-            and self.release["fc_final"] is not None
+                self.release["fraction_increment"] is not None
+                and self.release["fc_final"] is not None
         ):
-            ### METHOD 4 ###
             logger.debug("Release, Method #4")
-            force_constants, targets = self._calc_meth("r", self.release, "4")
+            force_constants, targets = self._calc_method("r", self.release, "4")
 
         elif self.release["fc_list"] is not None:
-            ### METHOD 5 ###
             logger.debug("Release, Method #5")
-            force_constants, targets = self._calc_meth("r", self.release, "5")
+            force_constants, targets = self._calc_method("r", self.release, "5")
 
         elif all(v is None for k, v in self.release.items()):
             logger.debug("No restraint info set for the release phase! Skipping...")
@@ -700,10 +711,8 @@ class DAT_restraint(object):
         for phase in ["attach", "pull", "release"]:
             if self.phase[phase]["targets"] is not None:
                 window_count = len(self.phase[phase]["targets"])
-                # DAT_restraint.window_counts[phase].append(window_count)
                 logger.debug("Number of {} windows = {}".format(phase, window_count))
             else:
-                # DAT_restraint.window_counts[phase].append(None)
                 logger.debug(
                     "This restraint will be skipped in the {} phase".format(phase)
                 )
@@ -725,46 +734,62 @@ class DAT_restraint(object):
         else:
             self.index4 = None
         # If any `index` has more than one atom, mark it as a group restraint.
-        # print('Masks:',self.mask1, self.mask2, self.mask3, self.mask4)
-        # print('index:',self.index1, self.index2, self.index3, self.index4)
         if self.mask1 and len(self.index1) > 1:
             self.group1 = True
-        else:
-            self.group1 = False
+
         if self.mask2 and len(self.index2) > 1:
             self.group2 = True
-        else:
-            self.group2 = False
+
         if self.mask3 and len(self.index3) > 1:
             self.group3 = True
-        else:
-            self.group3 = False
+
         if self.mask4 and len(self.index4) > 1:
             self.group4 = True
-        else:
-            self.group4 = False
-        # print('index:',self.group1, self.group2, self.group3, self.group4)
 
 
 def static_DAT_restraint(
-    restraint_mask_list,
-    num_window_list,
-    ref_structure,
-    force_constant,
-    continuous_apr=True,
-    amber_index=False,
+        restraint_mask_list,
+        num_window_list,
+        ref_structure,
+        force_constant,
+        continuous_apr=True,
+        amber_index=False,
 ):
-    """ Create a static restraint """
-    ref_traj = pt.iterload(ref_structure, traj=True)
+    """
+    Create a restraint whose value does not change during a calculation.
+
+    Parameters
+    ----------
+    restraint_mask_list: list
+        A list of masks for which this restraint applies.
+    num_window_list: list
+        A list of windows during which this restraint will be applied, which should be in the form: [attach windows,
+        pull windows, release windows].
+    ref_structure: Path-like
+        The reference structure that is used to determine the initial, **static** value for this restraint.
+    force_constant: float
+        The force constant for this reestraint.
+    continuous_apr: bool
+        Whether this restraint uses ``continuous_apr``. This must be consistent with existing restraints.
+    amber_index: bool
+        Whether the atom indices for the restraint should be AMBER-style (+1) or not.
+
+    Returns
+    -------
+    rest: ``DAT_restraint``
+        A static restraint.
+
+    """
+
+    reference_trajectory = pt.iterload(ref_structure, traj=True)
 
     # Check num_window_list
     if len(num_window_list) != 3:
-        raise Exception(
+        raise ValueError(
             "The num_window_list needs to contain three integers corresponding to the number of windows in the "
             "attach, pull, and release phase, respectively "
         )
 
-    # Setup restraint
     rest = DAT_restraint()
     rest.continuous_apr = continuous_apr
     rest.amber_index = amber_index
@@ -780,18 +805,17 @@ def static_DAT_restraint(
     mask_string = " ".join(restraint_mask_list)
     if len(restraint_mask_list) == 2:
         # Distance restraint
-        target = pt.distance(ref_traj, mask_string, image=True)[0]
+        target = pt.distance(reference_trajectory, mask_string, image=True)[0]
     elif len(restraint_mask_list) == 3:
         # Angle restraint
-        target = pt.angle(ref_traj, mask_string)[0]
+        target = pt.angle(reference_trajectory, mask_string)[0]
     elif len(restraint_mask_list) == 4:
         # Dihedral restraint
-        target = pt.dihedral(ref_traj, mask_string)[0]
+        target = pt.dihedral(reference_trajectory, mask_string)[0]
     else:
-        raise Exception(
-            "The number of masks ("
-            + str(len(restraint_mask_list))
-            + ") in restraint_mask_list is not 2, 3, or 4 and thus is not one of the supported types: distance, angle, dihedral"
+        raise IndexError(
+            f"The number of masks -- {len(restraint_mask_list)} -- is not 2, 3, or 4 and thus is not one of the "
+            f"supported types: distance, angle, or dihedral."
         )
 
     # Attach phase
@@ -822,8 +846,16 @@ def static_DAT_restraint(
 
 def check_restraints(restraint_list, create_window_list=False):
     """
-    Do basic tests to ensure a list of DAT_restraints are consistent.
-    We're gonna create the window list here too, because it needs the same code.
+    Do basic tests to ensure a list of ``DAT_restraint``s are consistent.
+    This function is also overloaded to create window lists as well, which is not ideal.
+
+    Parameters
+    ----------
+    restraint_list: list
+        A list of restraints.
+    create_window_list: bool
+        Whether to use the restraints to create windows for the calculation.
+
     """
 
     if all(restraint.continuous_apr is True for restraint in restraint_list):
@@ -833,9 +865,7 @@ def check_restraints(restraint_list, create_window_list=False):
         logger.debug('All restraints are not "continuous_apr" style.')
         all_continuous_apr = False
     else:
-        logger.error("All restraints must have the same setting for .continuous_apr")
-        # Should we do the following?
-        raise Exception("All restraints must have the same setting for .continuous_apr")
+        raise ValueError("All restraints must have the same setting for ``.continuous_apr``.")
 
     window_list = []
     phases = ["attach", "pull", "release"]
@@ -863,27 +893,27 @@ def check_restraints(restraint_list, create_window_list=False):
 
                 if phase == "attach" and all_continuous_apr:
                     window_list += [
-                        phase[0] + str("{:03.0f}".format(val))
-                        for val in np.arange(0, max_count - 1, 1)
+                        phase[0]+str("{:03.0f}".format(val))
+                        for val in np.arange(0, max_count-1, 1)
                     ]
                 elif phase == "attach" and not all_continuous_apr:
                     window_list += [
-                        phase[0] + str("{:03.0f}".format(val))
+                        phase[0]+str("{:03.0f}".format(val))
                         for val in np.arange(0, max_count, 1)
                     ]
                 elif phase == "pull":
                     window_list += [
-                        phase[0] + str("{:03.0f}".format(val))
+                        phase[0]+str("{:03.0f}".format(val))
                         for val in np.arange(0, max_count, 1)
                     ]
                 elif phase == "release" and all_continuous_apr:
                     window_list += [
-                        phase[0] + str("{:03.0f}".format(val))
+                        phase[0]+str("{:03.0f}".format(val))
                         for val in np.arange(1, max_count, 1)
                     ]
                 elif phase == "release" and not all_continuous_apr:
                     window_list += [
-                        phase[0] + str("{:03.0f}".format(val))
+                        phase[0]+str("{:03.0f}".format(val))
                         for val in np.arange(0, max_count, 1)
                     ]
         else:
