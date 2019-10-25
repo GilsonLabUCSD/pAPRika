@@ -6,12 +6,6 @@ import pytraj as pt
 
 from paprika import utils
 
-try:
-    import simtk.openmm as mm
-    import simtk.unit as unit
-except ImportError:
-    pass
-
 logger = logging.getLogger(__name__)
 
 
