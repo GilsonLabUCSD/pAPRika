@@ -4,7 +4,6 @@ This class contains a simulation setup wrapper for use with the Property Estimat
 
 import logging
 import os
-import re
 import shutil
 import subprocess as sp
 from pathlib import Path
