@@ -6,6 +6,20 @@ import yaml
 logger = logging.getLogger(__name__)
 
 def read_yaml(file):
+    """
+    Read `Taproom <https://github.com/slochower/host-guest-benchmarks>`_ -style YAML-formatted instructions for
+    preparing host-guest systems.
+
+    Parameters
+    ----------
+    file: Path-like
+        A YAML-formatted file.
+    Returns
+    -------
+    yaml_data: dict
+        Dictionary containing simulation setup parameters.
+
+    """
 
     with open(file, "r") as f:
         yaml_data = yaml.safe_load(f)
@@ -19,6 +33,9 @@ def read_yaml(file):
 
 
 def multiple_replace(dict, text):
+    """
+    Create a regular expression to do multiple find and replace.
+    """
     # Create a regular expression  from the dictionary keys
     regex = re.compile("(%s)" % "|".join(map(re.escape, dict.keys())))
 
@@ -27,6 +44,9 @@ def multiple_replace(dict, text):
 
 
 def de_alias(yaml_data):
+    """
+    Replace aliased atoms in a ``taproom`` recipe.
+    """
     mapping_list = yaml_data["aliases"]
     mapping_dictionary = {}
 
@@ -40,7 +60,6 @@ def de_alias(yaml_data):
             mapped_atoms = multiple_replace(mapping_dictionary, atoms)
             logger.info(f"{atoms} → {mapped_atoms}")
             restraint["restraint"]["atoms"] = mapped_atoms
-
 
     if "symmetry_correction" in yaml_data.keys():
         for restraint in yaml_data["symmetry_correction"]["restraints"]:
