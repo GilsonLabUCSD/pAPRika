@@ -3,7 +3,6 @@ import os
 import base64
 import json
 import numpy as np
-import parmed as pmd
 from paprika.restraints import DAT_restraint
 from parmed.amber import AmberParm
 from parmed import Structure
