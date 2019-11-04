@@ -32,6 +32,8 @@ Index
 * :doc:`analysis`
 * :doc:`amber`
 * :doc:`restraints`
+* :doc:`tleap`
+
 
 .. toctree::
   :maxdepth: 4
@@ -42,6 +44,7 @@ Index
   analysis
   amber
   restraints
+  tleap
 
 
 **Write about convenience functions**
