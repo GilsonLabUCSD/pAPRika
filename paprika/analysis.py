@@ -208,7 +208,7 @@ class fe_calc(object):
         bool: Whether to find and store the maximum SEM to the neighbor windows. This is useful if using the "scale_w"
         approach which is described in Equation (1) in: https://pubs.acs.org/doi/10.1021/acs.jctc.9b00748.
         """
-        return self._compute_larges_neighbor
+        return self._compute_largest_neighbor
 
     @compute_largest_neighbor.setter
     def compute_largest_neighbor(self, value):
