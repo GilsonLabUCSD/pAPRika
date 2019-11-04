@@ -104,13 +104,11 @@ def load_restraints(filepath="restraints.json"):
         loaded = json.loads(restraint, object_hook=json_numpy_obj_hook)
         tmp = DAT_restraint()
         tmp.__dict__ = loaded
-        try:
-            log.debug("Setting topology from file name.")
-            tmp.topology = pmd.load_file(loaded["topology"], structure=True)
-        except IOError:
-            log.debug(
-                "Unable to set topology information after loading from JSON.")
-            log.debug("Topology is set to the file name of the topology file.")
-            tmp.topology = loaded["topology"]
+
+        properties = ["mask1", "mask2", "mask3", "mask4", "topology", "instances", "custom_restraint_values",
+                      "auto_apr", "continuous_apr", "attach", "pull", "release", "amber_index"]
+        for class_property in properties:
+            if f"_{class_property}" in tmp.__dict__.keys():
+                tmp.__dict__[class_property] = tmp.__dict__[f"_{class_property}"]
         restraints.append(tmp)
     return restraints
