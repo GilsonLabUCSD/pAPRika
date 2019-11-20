@@ -687,9 +687,11 @@ class fe_calc(object):
             frac_N_k = np.array([int(fraction * n) for n in N_k], dtype=np.int32)
 
             mbar = pymbar.MBAR(u_kln, frac_N_k, verbose=verbose)
-            Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(
+            result = mbar.getFreeEnergyDifferences(
                 compute_uncertainty=True
             )
+            Deltaf_ij =  result['Delta_f']
+            dDeltaf_ij = result['dDelta_f']
             Deltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             if method == "mbar-block" or "mbar-autoc":
@@ -712,7 +714,7 @@ class fe_calc(object):
                 # But dDeltaf_ij will replace the previous, because it correctly accounts for the
                 # correlation in the data.
                 mbar = pymbar.MBAR(u_kln_err, frac_N_ss, verbose=verbose)
-                junk_Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(
+                result = mbar.getFreeEnergyDifferences(
                     compute_uncertainty=True
                 )
                 dDeltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
