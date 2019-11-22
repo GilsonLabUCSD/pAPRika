@@ -688,10 +688,11 @@ class fe_calc(object):
 
             mbar = pymbar.MBAR(u_kln, frac_N_k, verbose=verbose)
             result = mbar.getFreeEnergyDifferences(
-                compute_uncertainty=True
+                compute_uncertainty=True,
             )
             Deltaf_ij =  result['Delta_f']
             dDeltaf_ij = result['dDelta_f']
+            Theta_ij = None
             Deltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             if method == "mbar-block" or "mbar-autoc":
@@ -715,8 +716,11 @@ class fe_calc(object):
                 # correlation in the data.
                 mbar = pymbar.MBAR(u_kln_err, frac_N_ss, verbose=verbose)
                 result = mbar.getFreeEnergyDifferences(
-                    compute_uncertainty=True
+                    compute_uncertainty=True, 
                 )
+                junk_Deltaf_ij =  result['Delta_f']
+                dDeltaf_ij = result['dDelta_f']
+                Theta_ij = None
                 dDeltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             # Put back into kcal/mol
