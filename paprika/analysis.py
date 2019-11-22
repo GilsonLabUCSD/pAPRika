@@ -690,9 +690,8 @@ class fe_calc(object):
             result = mbar.getFreeEnergyDifferences(
                 compute_uncertainty=True,
             )
-            Deltaf_ij =  result['Delta_f']
+            Deltaf_ij = result['Delta_f']
             dDeltaf_ij = result['dDelta_f']
-            Theta_ij = None
             Deltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             if method == "mbar-block" or "mbar-autoc":
@@ -718,9 +717,7 @@ class fe_calc(object):
                 result = mbar.getFreeEnergyDifferences(
                     compute_uncertainty=True, 
                 )
-                junk_Deltaf_ij =  result['Delta_f']
                 dDeltaf_ij = result['dDelta_f']
-                Theta_ij = None
                 dDeltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             # Put back into kcal/mol
