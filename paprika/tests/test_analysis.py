@@ -87,7 +87,7 @@ def setup_free_energy_calculation():
     # Phase abbreviations
     phase_dict = {"a": "attach", "p": "pull", "r": "release"}
 
-    np.random.seed(12345)
+    seed = 12345
 
     fecalc = analysis.fe_calc()
     fecalc.prmtop = os.path.join(os.path.dirname(__file__), "../data/cb6-but-apr/vac.prmtop")
@@ -100,7 +100,7 @@ def setup_free_energy_calculation():
     fecalc.compute_largest_neighbor = True
     fecalc.compute_roi = True
     fecalc.collect_data(single_prmtop=True)
-    fecalc.compute_free_energy()
+    fecalc.compute_free_energy(seed=seed)
     fecalc.compute_ref_state_work([rest1, rest2, rest3, None, None, None])
 
     return fecalc
