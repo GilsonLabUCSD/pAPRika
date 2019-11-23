@@ -971,7 +971,7 @@ class fe_calc(object):
                 # ROI
                 self.results[phase][method]["roi"][k] = deriv1 * deriv2
 
-    def compute_free_energy(self, phases=["attach", "pull", "release"]):
+    def compute_free_energy(self, phases=["attach", "pull", "release"], seed=None):
         """
         Compute the free energy of binding from a simulation. This function populates the ``results`` dictionary
         of the :class:`fe_calc` object.
@@ -981,7 +981,12 @@ class fe_calc(object):
         ----------
         phases: list of str, optional, default=["attach, "pull", "release"]
             Which phases of the calculation to analyze.
+        seed: int
+            Random number seed.
         """
+
+        if seed is not None:
+            np.random.seed(seed)
 
         for fraction in self.fractions:
             if fraction <= 0.0 or fraction > 1.0:
