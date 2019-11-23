@@ -985,9 +985,6 @@ class fe_calc(object):
             Random number seed.
         """
 
-        if seed is not None:
-            np.random.seed(seed)
-
         for fraction in self.fractions:
             if fraction <= 0.0 or fraction > 1.0:
                 raise Exception("The fraction of data to analyze must be 0 < fraction ≤ 1.0.")
@@ -996,6 +993,9 @@ class fe_calc(object):
             self.results[phase] = {}
             self.results[phase]["window_order"] = self.orders[phase]
             for method in self.methods:
+                if seed is not None:
+                    np.random.seed(seed)
+
                 self.results[phase][method] = {}
 
                 # Prepare data
