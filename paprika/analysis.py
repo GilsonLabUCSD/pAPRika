@@ -995,6 +995,7 @@ class fe_calc(object):
             for method in self.methods:
                 if seed is not None:
                     np.random.seed(seed)
+                    logger.debug(f"Setting random number seed = {seed}")
 
                 self.results[phase][method] = {}
 
