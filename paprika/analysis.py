@@ -687,9 +687,13 @@ class fe_calc(object):
             frac_N_k = np.array([int(fraction * n) for n in N_k], dtype=np.int32)
 
             mbar = pymbar.MBAR(u_kln, frac_N_k, verbose=verbose)
-            Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(
+            mbar_results = mbar.getFreeEnergyDifferences(
                 compute_uncertainty=True
             )
+
+            Deltaf_ij = mbar_results["Delta_f"]
+            dDeltaf_ij = mbar_results["dDelta_f"]
+
             Deltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             if method == "mbar-block" or "mbar-autoc":
@@ -712,9 +716,10 @@ class fe_calc(object):
                 # But dDeltaf_ij will replace the previous, because it correctly accounts for the
                 # correlation in the data.
                 mbar = pymbar.MBAR(u_kln_err, frac_N_ss, verbose=verbose)
-                junk_Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(
+                mbar_results = mbar.getFreeEnergyDifferences(
                     compute_uncertainty=True
                 )
+                dDeltaf_ij = mbar_results["dDelta_f"]
                 dDeltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             # Put back into kcal/mol
@@ -966,7 +971,7 @@ class fe_calc(object):
                 # ROI
                 self.results[phase][method]["roi"][k] = deriv1 * deriv2
 
-    def compute_free_energy(self, phases=["attach", "pull", "release"]):
+    def compute_free_energy(self, phases=["attach", "pull", "release"], seed=None):
         """
         Compute the free energy of binding from a simulation. This function populates the ``results`` dictionary
         of the :class:`fe_calc` object.
@@ -976,6 +981,8 @@ class fe_calc(object):
         ----------
         phases: list of str, optional, default=["attach, "pull", "release"]
             Which phases of the calculation to analyze.
+        seed: int
+            Random number seed.
         """
 
         for fraction in self.fractions:
@@ -986,6 +993,10 @@ class fe_calc(object):
             self.results[phase] = {}
             self.results[phase]["window_order"] = self.orders[phase]
             for method in self.methods:
+                if seed is not None:
+                    np.random.seed(seed)
+                    logger.debug(f"Setting random number seed = {seed}")
+
                 self.results[phase][method] = {}
 
                 # Prepare data
