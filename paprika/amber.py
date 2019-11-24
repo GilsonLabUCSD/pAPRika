@@ -36,7 +36,7 @@ class Simulation(object):
     @property
     def CUDA_VISIBLE_DEVICES(self):
         """A wrapper around the environmental variable ``CUDA_VISIBLE_DEVICES``."""
-        return self._executable
+        return self._CUDA_VISIBLE_DEVICES
 
     @CUDA_VISIBLE_DEVICES.setter
     def CUDA_VISIBLE_DEVICES(self, value):
