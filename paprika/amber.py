@@ -8,95 +8,266 @@ logger = logging.getLogger(__name__)
 
 class Simulation(object):
     """
-    AMBER simulation class.
+    A wrapper that can be used to set AMBER simulation parameters .
     """
 
-    def __init__(self):
+    @property
+    def path(self):
+        """os.PathLike: The path for the creation and execution of files for this protocol."""
+        return self._path
 
-        # Setup simulation directory and files
-        self.path = "."  # Assume everything will be created/executed in this path
-        self.executable = "sander"
-        self.CUDA_VISIBLE_DEVICES = None
-        self.phase = None
-        self.window = None
-        self.topology = "prmtop"
-        self.restraint_file = "restraints.in"
-        self.title = "PBC MD Simulation"
-        self.converged = False
+    @path.setter
+    def path(self, value):
+        self._path = value
 
-        # File names
-        self._prefix = "md"
-        self.input = self._prefix + ".in"
-        self.inpcrd = self._prefix + ".inpcrd"
-        self.ref = self._prefix + ".inpcrd"
-        self.output = self._prefix + ".out"
-        self.restart = self._prefix + ".rst7"
-        self.mdinfo = self._prefix + ".mdinfo"
-        self.mdcrd = self._prefix + ".nc"
-        self.mden = self._prefix + ".mden"
+    @property
+    def executable(self):
+        """The AMBER executable that will be used.
 
-        # Input file cntrl settings (Default = NTP)
-        self.cntrl = OrderedDict()
-        self.cntrl["imin"] = 0
-        self.cntrl["ntx"] = 1
-        self.cntrl["irest"] = 0
-        self.cntrl["maxcyc"] = 0
-        self.cntrl["ncyc"] = 0
-        self.cntrl["dt"] = 0.002
-        self.cntrl["nstlim"] = 5000
-        self.cntrl["ntpr"] = 500
-        self.cntrl["ntwe"] = 500
-        self.cntrl["ntwr"] = 5000
-        self.cntrl["ntwx"] = 500
-        self.cntrl["ntxo"] = 1
-        self.cntrl["ioutfm"] = 1
-        self.cntrl["ntf"] = 2
-        self.cntrl["ntc"] = 2
-        self.cntrl["cut"] = 8.0
-        self.cntrl["igb"] = 0
-        self.cntrl["tempi"] = 298.15
-        self.cntrl["temp0"] = 298.15
-        self.cntrl["ntt"] = 3
-        self.cntrl["gamma_ln"] = 1.0
-        self.cntrl["ig"] = -1
-        self.cntrl["ntp"] = 1
-        self.cntrl["barostat"] = 2
-        self.cntrl["ntr"] = None
-        self.cntrl["restraint_wt"] = None
-        self.cntrl["restraintmask"] = None
-        self.cntrl["nmropt"] = 1
-        self.cntrl["pencut"] = -1
+        .. note ::
+            This could be made safer by making an ``ENUM`` of ``sander``, ``pmemd`` and ``pmemd.cuda``.
+        """
+        return self._executable
 
-        # Other input file sections
-        self.ewald = None
-        self.other_namelist = None  # Could add other namelists as dicts
-        self.wt = None  # or []
-        self.group = None  # or []
+    @executable.setter
+    def executable(self, value):
+        self._executable = value
 
-    # Refresh file names if prefix changes
+    @property
+    def CUDA_VISIBLE_DEVICES(self):
+        """A wrapper around the environmental variable ``CUDA_VISIBLE_DEVICES``."""
+        return self._CUDA_VISIBLE_DEVICES
+
+    @CUDA_VISIBLE_DEVICES.setter
+    def CUDA_VISIBLE_DEVICES(self, value):
+        self._CUDA_VISIBLE_DEVICES = value
+
+    @property
+    def phase(self):
+        """str: Which phase of the calculation to simulate.
+
+        .. note ::
+            This could probably be combined with the ``window`` attribute for simplicity.
+        """
+        return self._phase
+
+    @phase.setter
+    def phase(self, value):
+        self._phase = value
+
+    @property
+    def window(self):
+        """str: Which window of the calculation to simulate."""
+        return self._window
+
+    @window.setter
+    def window(self, value):
+        self._window = value
+
+    @property
+    def topology(self):
+        """os.PathLike: The topology file to simulate."""
+        return self._topology
+
+    @topology.setter
+    def topology(self, value):
+        self._topology = value
+
+    @property
+    def restraint_file(self):
+        """os.PathLike: The file containing NMR-style restraints for AMBER."""
+        return self._restraint_file
+
+    @restraint_file.setter
+    def restraint_file(self, value):
+        self._restraint_file = value
+
+    @property
+    def converged(self) -> bool:
+        """bool: Whether the simulation is converged.
+
+        .. warning ::
+            This is just a placeholder and is not implemented yet.
+        """
+        return self._converged
+
+    @converged.setter
+    def converged(self, value: bool):
+        self._converged = value
+
     @property
     def prefix(self):
+        """
+        The prefix for file names generated from this simulation.
+        """
         return self._prefix
 
     @prefix.setter
     def prefix(self, new_prefix):
         self._prefix = new_prefix
-        self.input = new_prefix + ".in"
-        self.inpcrd = new_prefix + ".inpcrd"
-        self.ref = new_prefix + ".inpcrd"
-        self.output = new_prefix + ".out"
-        self.restart = new_prefix + ".rst7"
-        self.mdinfo = new_prefix + ".mdinfo"
-        self.mdcrd = new_prefix + ".nc"
-        self.mden = new_prefix + ".mden"
+        self.input = new_prefix+".in"
+        self.inpcrd = new_prefix+".inpcrd"
+        self.ref = new_prefix+".inpcrd"
+        self.output = new_prefix+".out"
+        self.restart = new_prefix+".rst7"
+        self.mdinfo = new_prefix+".mdinfo"
+        self.mdcrd = new_prefix+".nc"
+        self.mden = new_prefix+".mden"
+
+    @property
+    def cntrl(self):
+        """
+        An ordered dictionary of simulation "control" namelist parameters. The main puprose of this class attribute is
+        to make it easy to override certain simulation parameters, such as positional restraints on dummy atoms, and
+        the inclusion of exclusion of the NMR-style APR restraints.
+
+        As of AMBER18, these are described, in part, in chapter 18 on ``pmemd``.
+
+        .. note ::
+            I can't recall why we wanted an ``OrderedDict`` here.
+
+        .. note ::
+            **This is fragile** and this could be hardened by making these ``ENUM``s and doing much more type-checking.
+
+            These must be valid AMBER keywords or else the simulation will crash. The default keywords that are set when
+            this class is initialized are partially overridden by the specific "config" functions detailed below.
+
+        The default dictionary keys and values are as follows:
+
+            - ``imin``       : 0
+            - ``ntx``        : 1
+            - ``irest``      : 0
+            - ``maxcyc``     : 0
+            - ``ncyc``       : 0
+            - ``dt``         : 0.002
+            - ``nstlim``     : 5000
+            - ``ntpr``       : 500
+            - ``ntwe``       : 500
+            - ``ntwr``       : 5000
+            - ``ntwx``       : 500
+            - ``ntxo``       : 1
+            - ``ioutfm``     : 1
+            - ``ntf``        : 2
+            - ``ntc``        : 2
+            - ``cut``        : 8
+            - ``igb``        : 0
+            - ``tempi``      : 298.15
+            - ``tempo``      : 298.15
+            - ``ntt``        : 3
+            - ``gamma_ln``   : 1.0
+            - ``ig``         : -1
+            - ``ntp``        : 1
+            - ``barostat``   : 2
+            - ``ntr``        : ``None``
+            - ``restraint_wt``  : ``None``
+            - ``restraintmask`` : ``None``
+            - ``nmropt``     : 1
+            - ``pencut``     : -1
+
+        """
+        return self._cntrl
+
+    @cntrl.setter
+    def cntrl(self, value):
+        self._cntrl = value
+
+    @property
+    def ewald(self):
+        """Additional Ewald summation settings."""
+        return self._ewald
+
+    @ewald.setter
+    def ewald(self, value):
+        self._ewald = value
+
+    @property
+    def wt(self):
+        """ "Weight" assigned to various simulation parameters. Written to the "&wt" line in the input file."""
+        return self._wt
+
+    @wt.setter
+    def wt(self, value):
+        self._wt = value
+
+    @property
+    def group(self):
+        """Group specification for restraints applied to multiple atoms.
+
+        .. note::
+            I don't recall ever having to this option and this seems distinct from applying restraints to a collection
+            of atoms.
+        """
+        return self._group
+
+    @group.setter
+    def group(self, value):
+        self._group = value
+
+    def __init__(self):
+
+        # I/O
+        self._path = "."
+        self._executable = "sander"
+        self._CUDA_VISIBLE_DEVICES = None
+        self._phase = None
+        self._window = None
+        self._topology = "prmtop"
+        self._restraint_file = "restraints.in"
+        self.title = "PBC MD Simulation"
+        self.converged = False
+
+        # File names
+        self._prefix = "md"
+        self.input = self._prefix+".in"
+        self.inpcrd = self._prefix+".inpcrd"
+        self.ref = self._prefix+".inpcrd"
+        self.output = self._prefix+".out"
+        self.restart = self._prefix+".rst7"
+        self.mdinfo = self._prefix+".mdinfo"
+        self.mdcrd = self._prefix+".nc"
+        self.mden = self._prefix+".mden"
+
+        # Input file cntrl settings (Default = NTP)
+        self._cntrl = OrderedDict()
+        self._cntrl["imin"] = 0
+        self._cntrl["ntx"] = 1
+        self._cntrl["irest"] = 0
+        self._cntrl["maxcyc"] = 0
+        self._cntrl["ncyc"] = 0
+        self._cntrl["dt"] = 0.002
+        self._cntrl["nstlim"] = 5000
+        self._cntrl["ntpr"] = 500
+        self._cntrl["ntwe"] = 500
+        self._cntrl["ntwr"] = 5000
+        self._cntrl["ntwx"] = 500
+        self._cntrl["ntxo"] = 1
+        self._cntrl["ioutfm"] = 1
+        self._cntrl["ntf"] = 2
+        self._cntrl["ntc"] = 2
+        self._cntrl["cut"] = 8.0
+        self._cntrl["igb"] = 0
+        self._cntrl["tempi"] = 298.15
+        self._cntrl["temp0"] = 298.15
+        self._cntrl["ntt"] = 3
+        self._cntrl["gamma_ln"] = 1.0
+        self._cntrl["ig"] = -1
+        self._cntrl["ntp"] = 1
+        self._cntrl["barostat"] = 2
+        self._cntrl["ntr"] = None
+        self._cntrl["restraint_wt"] = None
+        self._cntrl["restraintmask"] = None
+        self._cntrl["nmropt"] = 1
+        self._cntrl["pencut"] = -1
+
+        # Other input file sections
+        self._ewald = None
+        self._wt = None  # or []
+        self._group = None  # or []
 
     def _config_min(self):
         """
-        Configure input settings for minimization.
+        Configure input settings for minimization (without periodic boundary conditions).
 
-        Returns
-        -------
-        
         """
         self.cntrl["imin"] = 1
         self.cntrl["ntx"] = 1
@@ -122,7 +293,7 @@ class Simulation(object):
 
     def config_pbc_min(self):
         """
-        Configure input settings to minimization in periodic boundary conditions.
+        Configure input settings for minimization in periodic boundary conditions.
         """
         self._config_min()
         self.title = "PBC Minimization"
@@ -131,7 +302,7 @@ class Simulation(object):
 
     def config_gb_min(self):
         """
-        Configure input settings to minimization in continuum solvent.
+        Configure input settings for minimization in continuum solvent.
         """
 
         self._config_min()
@@ -176,7 +347,7 @@ class Simulation(object):
 
     def config_pbc_md(self):
         """
-        Configure input settings to default NTP.
+        Configure input settings for default NTP.
         """
 
         self._config_md()
@@ -188,16 +359,31 @@ class Simulation(object):
         self.cntrl["barostat"] = 2
 
     def _write_dict_to_mdin(self, f, dictionary):
+        """
+        Write dictionary to file, following AMBER format.
+
+        Parameters
+        ----------
+        f : os.PathLike
+            File where the dictionary should be written
+        dictionary : dict
+            Dictionary of values
+
+        """
+
         for key, val in dictionary.items():
             if val is not None:
-                f.write("  {:15s} {:s},\n".format(key + " =", str(val)))
+                f.write("  {:15s} {:s},\n".format(key+" =", str(val)))
         f.write(" /\n")
 
     def _amber_write_input_file(self):
-        logger.debug("Writing {}".format(self.input))
-        with open(self.path + "/" + self.input, "w") as f:
-            f.write("{}\n".format(self.title))
+        """
+        Write the input file specification to file.
 
+        """
+        logger.debug("Writing {}".format(self.input))
+        with open(os.path.join(self.path, self.input), "w") as f:
+            f.write("{}\n".format(self.title))
             f.write(" &cntrl\n")
             self._write_dict_to_mdin(f, self.cntrl)
 
@@ -208,7 +394,7 @@ class Simulation(object):
             if self.cntrl["nmropt"] == 1:
                 if self.wt is not None:
                     for line in self.wt:
-                        f.write(" " + line + "\n")
+                        f.write(" "+line+"\n")
                 f.write(" &wt type = 'END', /\n")
                 if self.restraint_file is not None:
                     f.write("DISANG = {}\n".format(self.restraint_file))
@@ -218,11 +404,16 @@ class Simulation(object):
 
     def run(self, soft_minimize=False, overwrite=False, fail_ok=False):
         """
-        Minimize the system.
+        Run minimization.
 
-        If soft=True, slowly turn on non-bonded interactions during minimization
-        so that the restraints get enforced first.
-
+        Parameters
+        ----------
+        soft_minimize: bool
+            Whether to slowly turn on non-bonded interactions so that restraints get enforced first.
+        overwrite: bool
+            Whether to overwrite simulation files.
+        fail_ok: bool
+            Whether a failing simulation should stop execution of ``pAPRika``.
         """
 
         if overwrite or not self.has_timings():
@@ -234,13 +425,13 @@ class Simulation(object):
                 # maxcyc
                 ncyc = self.cntrl["ncyc"]
                 maxcyc = self.cntrl["maxcyc"]
-                burn_in = int(float(ncyc) + 0.20 * (float(maxcyc) - float(ncyc)))
+                burn_in = int(float(ncyc)+0.20 * (float(maxcyc)-float(ncyc)))
                 # If the burn_in value is nuts, then just set it to zero
                 if burn_in < 0 or burn_in >= maxcyc:
                     burn_in = 0
                 # Set an end_soft value that is 75% of way between ncyc and
                 # maxcyc
-                end_soft = int(float(ncyc) + 0.60 * (float(maxcyc) - float(ncyc)))
+                end_soft = int(float(ncyc)+0.60 * (float(maxcyc)-float(ncyc)))
                 self.wt = [
                     "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(
                         burn_in
@@ -259,7 +450,7 @@ class Simulation(object):
                 logger.info("Running MD at {}".format(self.path))
 
             # Create executable list for subprocess
-            exec_list = self.executable.split() + ["-O", "-p", self.topology]
+            exec_list = self.executable.split()+["-O", "-p", self.topology]
             if self.ref is not None:
                 exec_list += ["-ref", self.ref]
             exec_list += [
@@ -279,7 +470,7 @@ class Simulation(object):
             if self.mden is not None:
                 exec_list += ["-e", self.mden]
 
-            logger.debug("Exec line: " + " ".join(exec_list))
+            logger.debug("Exec line: "+" ".join(exec_list))
 
             # Execute
             if self.CUDA_VISIBLE_DEVICES:
@@ -327,17 +518,18 @@ class Simulation(object):
 
     def has_timings(self, alternate_file=None):
         """
-        Check for the string TIMINGS in self.ouput file.
+        Check for the string "TIMINGS" in ``self.output`` file. If "TIMINGS" is found, then the simulation completed
+        successfully, as of AMBER18.
 
         Parameters
         ----------
-        alternate_file : str
-            If present, check for TIMINGS in this file rather than self.output. Default: None
+        alternate_file : os.PathLike
+            If present, check for "TIMINGS" in this file rather than ``self.output``. Default: None
 
         Returns
         -------
         timings : bool
-            True if 'TIMINGS' is found in file. False, otherwise.
+            True if "TIMINGS" is found in file. False, otherwise.
 
         """
 

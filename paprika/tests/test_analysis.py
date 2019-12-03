@@ -25,10 +25,12 @@ def clean_files(directory="tmp"):
     # This happens after the test function call
     shutil.rmtree(directory)
 
+
 @pytest.fixture(scope="module", autouse=True)
 def setup_free_energy_calculation():
-    input_pdb = pmd.load_file(os.path.join(os.path.dirname(__file__),
-                                           "../data/cb6-but/vac.pdb"))
+    input_pdb = pmd.load_file(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
+    )
 
     # Distance restraint
     rest1 = restraints.DAT_restraint()
@@ -84,13 +86,12 @@ def setup_free_energy_calculation():
     # Create window directories
     restraints.restraints.create_window_list([rest1, rest2, rest3])
 
-    # Phase abbreviations
-    phase_dict = {"a": "attach", "p": "pull", "r": "release"}
-
-    np.random.seed(12345)
+    seed = 12345
 
     fecalc = analysis.fe_calc()
-    fecalc.prmtop = os.path.join(os.path.dirname(__file__), "../data/cb6-but-apr/vac.prmtop")
+    fecalc.prmtop = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but-apr/vac.prmtop"
+    )
     fecalc.trajectory = "*.nc"
     fecalc.path = os.path.join(os.path.dirname(__file__), "../data/cb6-but-apr/")
     fecalc.restraint_list = [rest1, rest2, rest3]
@@ -100,7 +101,7 @@ def setup_free_energy_calculation():
     fecalc.compute_largest_neighbor = True
     fecalc.compute_roi = True
     fecalc.collect_data(single_prmtop=True)
-    fecalc.compute_free_energy()
+    fecalc.compute_free_energy(seed=seed)
     fecalc.compute_ref_state_work([rest1, rest2, rest3, None, None, None])
 
     return fecalc
@@ -109,10 +110,11 @@ def setup_free_energy_calculation():
 def test_setup(clean_files, setup_free_energy_calculation):
     pass
 
-def test_mbar_block(clean_files, setup_free_energy_calculation):
 
+def test_mbar_block(clean_files, setup_free_energy_calculation):
     results = setup_free_energy_calculation.results
     method = "mbar-block"
+
     # Test mbar-block free energies and uncertainties
     test_vals = [
         results["attach"][method]["fe"],
@@ -157,12 +159,7 @@ def test_mbar_block(clean_files, setup_free_energy_calculation):
 
 
 def test_ti_block(clean_files, setup_free_energy_calculation):
-
     results = setup_free_energy_calculation.results
-
-    ##################
-    # Test ti-block
-    ##################
 
     method = "ti-block"
 
@@ -173,36 +170,45 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
         results["pull"][method]["fe"],
         results["pull"][method]["sem"],
     ]
-    reference_values = np.array([13.36, 0.26, -1.76, 0.99])
+    reference_values = np.array([13.35, 0.26, -1.85, 0.78])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # ROI only runs during TI.
 
     # Test attach ti-block largest_neighbor values
     test_vals = results["attach"][method]["largest_neighbor"]
-    reference_values = np.array([0.03, 0.07, 0.10, 0.17, 0.17])
+    reference_values = np.array([0.03, 0.07, 0.10, 0.18, 0.18])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # Test pull ti-block largest_neighbor values
     test_vals = results["pull"][method]["largest_neighbor"]
 
     reference_values = np.array(
-        [0.33661434, 0.33661434, 0.26449941, 0.24163207, 0.24163207,
-         0.13113109, 0.11156622, 0.13638522, 0.14764856, 0.14764856,
-         0.11973532, 0.13198464, 0.13198464, 0.14426896, 0.14426896,
-         0.15240513, 0.15240513, 0.13536142, 0.11481813]
-
+        [
+            0.33156402,
+            0.33156402,
+            0.22515133,
+            0.2219127,
+            0.2219127,
+            0.1311959,
+            0.13514015,
+            0.15078472,
+            0.15078472,
+            0.12448228,
+            0.10678047,
+            0.10678047,
+            0.10157904,
+            0.14122943,
+            0.16608568,
+            0.16608568,
+            0.14718857,
+            0.14090383,
+            0.11005729,
+        ]
     )
     assert reference_values == approx(test_vals, abs=0.01)
 
 
 def test_reference_state_work(clean_files, setup_free_energy_calculation):
-
     results = setup_free_energy_calculation.results
-
-    #######################
-    # Test ref_state_work
-    #######################
-
-    # Test reference state calculation
     assert np.isclose(-4.34372240, results["ref_state_work"])

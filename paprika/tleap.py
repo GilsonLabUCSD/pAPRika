@@ -13,8 +13,8 @@ class System(object):
     """
     Class for building AMBER prmtop/rst7 files with tleap.
 
-    Class Variables
-    ---------------
+    Parameters
+    ----------
     template_file : str
         Name of template file to read boilerplate `tleap` input (e.g., `source leaprc`... lines). Any
         frcmod/mol2/pdb files which are loaded by the template must be present in output_path.
@@ -55,9 +55,6 @@ class System(object):
         files (frcmod, mol2, pdb, etc) need to present in that path.
     output_prefix : str
         Append a prefix to files created by this module. Default: 'build'
-
-    Advanced/Internal Class Variables
-    ------------------------
     unit : str
         The tleap unit name. Default: 'model'
     exponent : int

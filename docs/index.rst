@@ -28,11 +28,23 @@ Index
 
 **Developer Documentation**
 
-* :doc:`api`
+* :doc:`align`
+* :doc:`analysis`
+* :doc:`amber`
+* :doc:`restraints`
+* :doc:`tleap`
+
 
 .. toctree::
   :maxdepth: 4
   :hidden:
   :caption: Developer Documentation
 
-  api
+  align
+  analysis
+  amber
+  restraints
+  tleap
+
+
+**Write about convenience functions**
