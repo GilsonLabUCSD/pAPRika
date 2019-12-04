@@ -688,7 +688,8 @@ class fe_calc(object):
 
             mbar = pymbar.MBAR(u_kln, frac_N_k, verbose=verbose)
             mbar_results = mbar.getFreeEnergyDifferences(
-                compute_uncertainty=True
+                compute_uncertainty=True,
+                return_dict=True
             )
 
             Deltaf_ij = mbar_results["Delta_f"]
@@ -717,7 +718,8 @@ class fe_calc(object):
                 # correlation in the data.
                 mbar = pymbar.MBAR(u_kln_err, frac_N_ss, verbose=verbose)
                 mbar_results = mbar.getFreeEnergyDifferences(
-                    compute_uncertainty=True
+                    compute_uncertainty=True,
+                    return_dict=True
                 )
                 dDeltaf_ij = mbar_results["dDelta_f"]
                 dDeltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
