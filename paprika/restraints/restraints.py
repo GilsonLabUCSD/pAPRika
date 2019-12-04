@@ -759,7 +759,7 @@ def static_DAT_restraint(
     num_window_list: list
         A list of windows during which this restraint will be applied, which should be in the form: [attach windows,
         pull windows, release windows].
-    ref_structure: Path-like
+    ref_structure: Path-like or parmed Amber object
         The reference structure that is used to determine the initial, **static** value for this restraint.
     force_constant: float
         The force constant for this restraint.
@@ -793,7 +793,7 @@ def static_DAT_restraint(
         reference_trajectory = pt.iterload(ref_structure, traj=True)
         rest.topology = pmd.load_file(ref_structure, structure=True)
     else:
-        raise Exception(
+        raise TypeError(
             "static_DAT_restraint does not support the type associated with ref_structure:"
             + type(ref_structure)
         )
