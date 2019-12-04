@@ -1,4 +1,4 @@
-name: paprika-dev
+name: paprika-devs
 channels:
   - conda-forge
   - ambermd
