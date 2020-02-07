@@ -809,7 +809,12 @@ def static_DAT_restraint(
     mask_string = " ".join(restraint_mask_list)
     if len(restraint_mask_list) == 2:
         # Distance restraint
-        target = pt.distance(reference_trajectory, mask_string, image=True)[0]
+        if reference_trajectory.top.has_box():
+            target = pt.distance(reference_trajectory, mask_string, image=True)[0]
+            logger.debug("Calculating distance with 'image = True' ...")
+        else:
+            target = pt.distance(reference_trajectory, mask_string, image=False)[0]
+            logger.debug("Calculating distance with 'image = False' ...")
     elif len(restraint_mask_list) == 3:
         # Angle restraint
         target = pt.angle(reference_trajectory, mask_string)[0]
