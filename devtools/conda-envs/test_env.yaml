@@ -12,7 +12,7 @@ dependencies:
   - scipy
   - parmed
   - mdtraj
-  - pymbar
+  - pymbar >= 3.0.5
   - openmm
   - ambertools=19
   - pyyaml
