@@ -9,6 +9,13 @@ pAPRika is a toolkit for setting up, running, and analyzing free energy molecula
 [![codecov](https://codecov.io/gh/slochower/pAPRika/branch/master/graph/badge.svg)](https://codecov.io/gh/slochower/pAPRika)
 
 
+# Contributors
+- Niel Henriksen (UCSD, Atomwise Inc.)
+- David Slochower (UCSD, Vertex Pharmaceuticals)
+- Simon Boothroyd (Sloan Kettering Institute, Open Force Field, XtalPi Inc.)
+- Jeff Setiadi (UCSD)
+- Willa Wang (UCSD)
+
 # Installation
 
 We recommend installing pAPRika in a fresh `conda` environment if possible. There are three ways to install this package:
