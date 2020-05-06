@@ -759,10 +759,10 @@ def static_DAT_restraint(
     num_window_list: list
         A list of windows during which this restraint will be applied, which should be in the form: [attach windows,
         pull windows, release windows].
-    ref_structure: Path-like
+    ref_structure: Path-like or parmed Amber object
         The reference structure that is used to determine the initial, **static** value for this restraint.
     force_constant: float
-        The force constant for this reestraint.
+        The force constant for this restraint.
     continuous_apr: bool
         Whether this restraint uses ``continuous_apr``. This must be consistent with existing restraints.
     amber_index: bool
@@ -775,8 +775,6 @@ def static_DAT_restraint(
 
     """
 
-    reference_trajectory = pt.iterload(ref_structure, traj=True)
-
     # Check num_window_list
     if len(num_window_list) != 3:
         raise ValueError(
@@ -787,7 +785,19 @@ def static_DAT_restraint(
     rest = DAT_restraint()
     rest.continuous_apr = continuous_apr
     rest.amber_index = amber_index
-    rest.topology = pmd.load_file(ref_structure, structure=True)
+
+    if isinstance(ref_structure, pmd.amber._amberparm.AmberParm):
+        reference_trajectory = pt.load_parmed(ref_structure, traj=True)
+        rest.topology = ref_structure
+    elif isinstance(ref_structure, str):
+        reference_trajectory = pt.iterload(ref_structure, traj=True)
+        rest.topology = pmd.load_file(ref_structure, structure=True)
+    else:
+        raise TypeError(
+            "static_DAT_restraint does not support the type associated with ref_structure:"
+            + type(ref_structure)
+        )
+
     rest.mask1 = restraint_mask_list[0]
     rest.mask2 = restraint_mask_list[1]
     if len(restraint_mask_list) >= 3:
@@ -799,7 +809,12 @@ def static_DAT_restraint(
     mask_string = " ".join(restraint_mask_list)
     if len(restraint_mask_list) == 2:
         # Distance restraint
-        target = pt.distance(reference_trajectory, mask_string, image=True)[0]
+        if reference_trajectory.top.has_box():
+            target = pt.distance(reference_trajectory, mask_string, image=True)[0]
+            logger.debug("Calculating distance with 'image = True' ...")
+        else:
+            target = pt.distance(reference_trajectory, mask_string, image=False)[0]
+            logger.debug("Calculating distance with 'image = False' ...")
     elif len(restraint_mask_list) == 3:
         # Angle restraint
         target = pt.angle(reference_trajectory, mask_string)[0]
