@@ -725,20 +725,18 @@ class System(object):
                 )
             )
 
-    def repartition_hydrogen_mass(self, dowater=False):
+    def repartition_hydrogen_mass(self, options=None):
         """
         Repartitions the masses of Hydrogen atoms in the system by a factor 3 and 
         overwrites the prmtop file: "self.output_path/self.output_prefix.prmtop"
 
         Parameters
         ----------
-        dowater : bool
-            Option to repartition the masses of the Hydrogen atoms of water as well.
+        options : str
+            Optional keyword(s) for the repartitioning and following the 
+            parmed.tools.actions documentation the usage is '[<mass>] [dowater]'.
 
         """
-        options = ''
-        if dowater:
-            options = 'dowater'
 
         prmtop = os.path.join(self.output_path, self.output_prefix + ".prmtop")
 
