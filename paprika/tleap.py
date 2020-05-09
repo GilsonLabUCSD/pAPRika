@@ -3,6 +3,7 @@ import re as re
 import subprocess as sp
 import logging as log
 import numpy as np
+import parmed as pmd
 
 
 N_A = 6.0221409 * 10 ** 23

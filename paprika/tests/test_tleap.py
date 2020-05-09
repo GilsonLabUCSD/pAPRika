@@ -306,3 +306,34 @@ def test_add_dummy(clean_files):
         contents = f.read()
         new = [float(i) for i in contents.split()[2:]]
     assert np.allclose(reference, new)
+
+
+def test_hydrogen_mass_repartitioning(clean_files):
+    """ Test that hydrogen mass is repartitioned. """
+    temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
+    sys = System()
+    but_frcmod = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.frcmod")
+    )
+    but_mol2 = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.mol2")
+    )
+
+    sys.template_lines = [
+        "source leaprc.gaff",
+        f"loadamberparams {but_frcmod}",
+        f"BUT = loadmol2 {but_mol2}",
+        f"model = loadmol2 {but_mol2}",
+    ]
+    sys.output_path = temporary_directory
+    sys.output_prefix = "but"
+    sys.pbc_type = None
+    sys.neutralize = False
+    sys.build()
+
+    but = pmd.load_file(os.path.join(temporary_directory, sys.output_prefix + ".prmtop"))
+    assert np.allclose(but["@H="].atoms[0].mass, 1.008)
+
+    sys.repartition_hydrogen_mass()
+    but = pmd.load_file(os.path.join(temporary_directory, sys.output_prefix + ".prmtop"))
+    assert np.allclose(but["@H="].atoms[0].mass, 3.024)
