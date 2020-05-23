@@ -1,5 +1,5 @@
 """
-This class contains a simulation setup wrapper for use with the Property Estimator.
+This class contains a simulation setup wrapper for use with the OpenFF Evaluator.
 """
 
 import logging
@@ -71,7 +71,7 @@ class Setup(object):
             self.guest_yaml = read_yaml(guest_yaml["yaml"])
 
         if build:
-            # Here, we build desolvated windows and pass the files to the Property Estimator.
+            # Here, we build desolvated windows and pass the files to the OpenFF Evaluator.
             # These files are stored in `self.desolvated_window_paths`.
             self.build_desolvated_windows(guest_orientation)
             if generate_gaff_files:
@@ -280,7 +280,7 @@ class Setup(object):
             guest_restraint.pull["num_windows"] = windows[1]
         else:
             # Remember, the purpose of this *fake* restraint is *only* to figure out how many windows to make,
-            # so we can use the Property Estimator to solvate the structures for us. To figure out how many winodws
+            # so we can use the OpenFF Evaluator to solvate the structures for us. To figure out how many winodws
             # we need, just setting the lambda values should be sufficient.
             guest_restraint.auto_apr = False
             guest_restraint.continuous_apr = False
@@ -571,27 +571,27 @@ class Setup(object):
             logger.debug("Skipping symmetry restraints...")
 
         wall_restraints = []
-        if self.guest != "release" and "wall_restraints" in self.guest_yaml:
-            for wall in self.guest_yaml["wall_restraints"]["restraints"]:
+        if self.guest != "release" and "wall_restraints" in self.guest_yaml['restraints']:
+            for wall in self.guest_yaml["restraints"]["wall_restraints"]:
                 wall_restraint = DAT_restraint()
                 wall_restraint.auto_apr = True
                 wall_restraint.continuous_apr = True
                 wall_restraint.amber_index = False if self.backend == "openmm" else True
                 wall_restraint.topology = str(structure)
-                wall_restraint.mask1 = wall["atoms"].split()[0]
-                wall_restraint.mask2 = wall["atoms"].split()[1]
+                wall_restraint.mask1 = wall["restraint"]["atoms"].split()[0]
+                wall_restraint.mask2 = wall["restraint"]["atoms"].split()[1]
 
-                wall_restraint.attach["fc_final"] = wall["force_constant"]
+                wall_restraint.attach["fc_final"] = wall["restraint"]["force_constant"]
                 wall_restraint.attach["fraction_list"] = [1.0] * len(self.host_yaml["calculation"][
                                                                              "lambda"
                                                                          ]["attach"])
-                wall_restraint.attach["target"] = wall["target"]
+                wall_restraint.attach["target"] = wall["restraint"]["target"]
                 # Minimum distance is 0 Angstrom
                 wall_restraint.custom_restraint_values["r1"] = 0
                 wall_restraint.custom_restraint_values["r2"] = 0
                 # Harmonic force constant beyond target distance.
-                wall_restraint.custom_restraint_values["rk2"] = wall["force_constant"]
-                wall_restraint.custom_restraint_values["rk3"] = wall["force_constant"]
+                wall_restraint.custom_restraint_values["rk2"] = wall["restraint"]["force_constant"]
+                wall_restraint.custom_restraint_values["rk3"] = wall["restraint"]["force_constant"]
                 wall_restraint.initialize()
 
                 wall_restraints.append(wall_restraint)
@@ -666,7 +666,7 @@ class Setup(object):
                 # But then we can't access atom indices.
                 # Using `atom.xx` works for coordinates, but is unitless.
 
-                k = 500.0 * unit.kilocalories_per_mole / unit.angstroms ** 2
+                k = 50.0 * unit.kilocalories_per_mole / unit.angstroms ** 2
                 x0 = 0.1 * atom.xx * unit.nanometers
                 y0 = 0.1 * atom.xy * unit.nanometers
                 z0 = 0.1 * atom.xz * unit.nanometers
