@@ -1,5 +1,5 @@
 """
-This class contains a simulation setup wrapper for use with the Property Estimator.
+This class contains a simulation setup wrapper for use with the OpenFF Evaluator.
 """
 
 import logging
@@ -71,7 +71,7 @@ class Setup(object):
             self.guest_yaml = read_yaml(guest_yaml["yaml"])
 
         if build:
-            # Here, we build desolvated windows and pass the files to the Property Estimator.
+            # Here, we build desolvated windows and pass the files to the OpenFF Evaluator.
             # These files are stored in `self.desolvated_window_paths`.
             self.build_desolvated_windows(guest_orientation)
             if generate_gaff_files:
@@ -280,7 +280,7 @@ class Setup(object):
             guest_restraint.pull["num_windows"] = windows[1]
         else:
             # Remember, the purpose of this *fake* restraint is *only* to figure out how many windows to make,
-            # so we can use the Property Estimator to solvate the structures for us. To figure out how many winodws
+            # so we can use the OpenFF Evaluator to solvate the structures for us. To figure out how many winodws
             # we need, just setting the lambda values should be sufficient.
             guest_restraint.auto_apr = False
             guest_restraint.continuous_apr = False
