@@ -194,16 +194,20 @@ def offset_structure(structure, offset):
     return structure
 
 
-def translate_to_origin(structure, mask=None):
-    """Translate the structure to the origin based on the center of 
-       mass of the whole system or of a particular subset of atoms.
+def translate_to_origin(structure, weight="mass", atom_mask=None, dim_mask=None):
+    """Translate a structure to the origin based on the center of 
+       mass of the whole system or of a particular choice of atom(s).
 
     Parameters
     ----------
     structure : str or parmed.Structure
         Molecular structure containing coordinates.
-    mask : str
-        Selection of atoms if a particular subset is preferred to estimate the center of mass.
+    weight : str
+        Calculate the center based on atomic masses ('mass' default) or geometric center ('geo')?
+    atom_mask : str
+        Selection of atom(s) if a particular subset is preferred to estimate the center.
+    dim_mask : list
+        A mask that will filter the dimensions to which the translation will be applied (default is [1,1,1]).
 
     Returns
     -------
@@ -211,18 +215,35 @@ def translate_to_origin(structure, mask=None):
         A molecular structure with the coordinates translated to the origin.
 
     """
-    structure_ref = structure
-    if mask:
-        structure_ref = structure[mask]
+    # Check if weight variable is properly chosen
+    if weight not in ["mass", "geo"]:
+        raise SystemExit('Error: "weight" must either be "mass" or "geo"')
 
-    # Get masses of atoms
-    masses = [atom.mass for atom in structure_ref.atoms]
+    # Dimension mask
+    if dim_mask is None:
+        dim_mask = [1, 1, 1]
+    elif len(dim_mask) != 3:
+        raise SystemExit(
+            'Error: "dim_mask" must be a list with 3 elements, e.g. [1,1,1]'
+        )
+    dim_mask = np.array(dim_mask)
 
-    # Shift COM to origin
-    com = pmd.geometry.center_of_mass(
-        structure_ref.coordinates, np.asarray(masses)
-    )
-    structure.coordinates -= com
+    # Atom coordinates and masses
+    if atom_mask is None:
+        coordinates = structure.coordinates
+        masses = np.asarray([atom.mass for atom in structure.atoms])
+    else:
+        coordinates = structure[atom_mask].coordinates
+        masses = np.asarray([atom.mass for atom in structure[atom_mask].atoms])
+
+    # Convert weight if geometric center
+    if weight == "geo":
+        masses[:] = 1.0
+
+    # Center of mass/geometry
+    centroid = pmd.geometry.center_of_mass(coordinates, masses)
+
+    # Translate coordinates
+    structure.coordinates -= centroid * dim_mask
 
     return structure
-
