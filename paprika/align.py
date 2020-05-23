@@ -192,3 +192,37 @@ def offset_structure(structure, offset):
     structure.coordinates = offset_coords
     logger.info("Added offset of {} to atomic coordinates...".format(offset))
     return structure
+
+
+def translate_to_origin(structure, mask=None):
+    """Translate the structure to the origin based on the center of 
+       mass of the whole system or of a particular subset of atoms.
+
+    Parameters
+    ----------
+    structure : str or parmed.Structure
+        Molecular structure containing coordinates.
+    mask : str
+        Selection of atoms if a particular subset is preferred to estimate the center of mass.
+
+    Returns
+    -------
+    structure : parmed.Structure
+        A molecular structure with the coordinates translated to the origin.
+
+    """
+    structure_ref = structure
+    if mask:
+        structure_ref = structure[mask]
+
+    # Get masses of atoms
+    masses = [atom.mass for atom in structure_ref.atoms]
+
+    # Shift COM to origin
+    com = pmd.geometry.center_of_mass(
+        structure_ref.coordinates, np.asarray(masses)
+    )
+    structure.coordinates -= com
+
+    return structure
+
