@@ -73,9 +73,9 @@ def zalign(structure, mask1, mask2, save=False, filename=None):
     )
 
     rotation_matrix = (
-        identity
-        + np.dot(np.sin(theta), A)
-        + np.dot((1.0 - np.cos(theta)), np.dot(A, A))
+            identity
+            + np.dot(np.sin(theta), A)
+            + np.dot((1.0 - np.cos(theta)), np.dot(A, A))
     )
 
     # This is certainly not the fastest approach, but it is explicit.
@@ -244,6 +244,108 @@ def translate_to_origin(structure, weight="mass", atom_mask=None, dim_mask=None)
     centroid = pmd.geometry.center_of_mass(coordinates, masses)
 
     # Translate coordinates
-    structure.coordinates -= centroid * dim_mask
+    aligned_coords = np.empty_like(structure.coordinates)
+    for atom in range(len(structure.atoms)):
+        aligned_coords[atom] = structure.coordinates[atom] - centroid * dim_mask
+    structure.coordinates = aligned_coords
+
+    return structure
+
+
+def align_principal_axes(structure, atom_mask=None, princ_axis=None, v_axis=None):
+    """Aligns the a chosen principal axis of a system to a specified axis. 
+       This function is based on the method given in the link:
+
+        * https://www.ks.uiuc.edu/Research/vmd/script_library/scripts/orient/
+
+    Parameters
+    ----------
+    structure : parmed.Structure
+        Molecular structure containing coordinates.
+    atom_mask : str
+        A mask that filter specific atoms for calculating the moment of inertia.
+    princ_axis : int
+        Which principal axis to align? (choice: 1, 2 or 3, default: 1).
+    v_axis: list
+        The axis vector to align the system to (default: [0, 0, 1]).
+
+    Returns
+    -------
+    structure : parmed.Structure
+        A molecular structure with a principal axis aligned to a vector.
+
+    Examples
+    --------
+    The commands below mimics the example given in the link above for VMD.
+
+        >>> structure = align_principal_axes(structure, princ_axis=0, v_axis=[0,0,1])
+        >>> structure = align_principal_axes(structure, princ_axis=1, v_axis=[0,1,0])
+
+    """
+    # Check princ_axis
+    if princ_axis is None:
+        princ_axis = 1
+    elif princ_axis not in [0, 1, 2]:
+        raise SystemExit('Error: "princ_axis" can only be an integer value of 0, 1 or 2.')
+
+    # Axis vector for alignment
+    if v_axis is None:
+        v_axis = [0, 0, 1]
+    elif len(v_axis) != 3:
+        raise SystemExit(
+            'Error: "v_axis" must be a list with 3 elements, e.g. [0,0,1]'
+        )
+    v_axis = np.array(v_axis)
+
+    # Get coordinates and masses
+    coordinates = structure.coordinates
+    masses = np.asarray([atom.mass for atom in structure.atoms])
+    if atom_mask:
+        coordinates = structure[atom_mask].coordinates
+        masses = np.asarray([atom.mass for atom in structure[atom_mask].atoms])
+
+    # Calculate center of mass
+    centroid = pmd.geometry.center_of_mass(coordinates, masses)
+
+    # Construct Inertia tensor
+    Ixx = Ixy = Ixz = Iyy = Iyz = Izz = 0
+    for xyz, mass in zip(coordinates, masses):
+        xyz -= centroid
+        Ixx += mass * (xyz[1] * xyz[1] + xyz[2] * xyz[2])
+        Ixy -= mass * (xyz[0] * xyz[1])
+        Ixz -= mass * (xyz[0] * xyz[2])
+        Iyy += mass * (xyz[0] * xyz[0] + xyz[2] * xyz[2])
+        Iyz -= mass * (xyz[1] * xyz[2])
+        Izz += mass * (xyz[0] * xyz[0] + xyz[1] * xyz[1])
+
+    inertia = np.array([[Ixx, Ixy, Ixz],
+                        [Ixy, Iyy, Iyz],
+                        [Ixz, Iyz, Izz]])
+
+    # Principal axis
+    evals, evecs = np.linalg.eig(inertia)
+    evecs = evecs[:, evals.argsort()]  # <-- Numpy does not sort the vectors properly
+    p_axis = evecs[:, princ_axis]
+
+    # Calculate Rotation matrix
+    x = np.cross(p_axis, v_axis) / np.linalg.norm(np.cross(p_axis, v_axis))
+    theta = np.arccos(np.dot(p_axis, v_axis) / (np.linalg.norm(p_axis) * np.linalg.norm(v_axis)))
+    A = np.array(
+        [[0, -1.0 * x[2], x[1]],
+         [x[2], 0, -1.0 * x[0]],
+         [-1.0 * x[1], x[0], 0]]
+    )
+    rotation_matrix = (
+            np.identity(3)
+            + np.dot(np.sin(theta), A)
+            + np.dot((1.0 - np.cos(theta)), np.dot(A, A))
+    )
+
+    # Align the principal axis to specified axis
+    aligned_coords = np.empty_like(structure.coordinates)
+    for atom in range(len(structure.atoms)):
+        aligned_coords[atom] = structure.coordinates[atom]
+        aligned_coords[atom] = np.dot(rotation_matrix, aligned_coords[atom])
+    structure.coordinates = aligned_coords
 
     return structure
