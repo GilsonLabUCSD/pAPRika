@@ -571,27 +571,27 @@ class Setup(object):
             logger.debug("Skipping symmetry restraints...")
 
         wall_restraints = []
-        if self.guest != "release" and "wall_restraints" in self.guest_yaml:
-            for wall in self.guest_yaml["wall_restraints"]["restraints"]:
+        if self.guest != "release" and "wall_restraints" in self.guest_yaml['restraints']:
+            for wall in self.guest_yaml["restraints"]["wall_restraints"]:
                 wall_restraint = DAT_restraint()
                 wall_restraint.auto_apr = True
                 wall_restraint.continuous_apr = True
                 wall_restraint.amber_index = False if self.backend == "openmm" else True
                 wall_restraint.topology = str(structure)
-                wall_restraint.mask1 = wall["atoms"].split()[0]
-                wall_restraint.mask2 = wall["atoms"].split()[1]
+                wall_restraint.mask1 = wall["restraint"]["atoms"].split()[0]
+                wall_restraint.mask2 = wall["restraint"]["atoms"].split()[1]
 
-                wall_restraint.attach["fc_final"] = wall["force_constant"]
+                wall_restraint.attach["fc_final"] = wall["restraint"]["force_constant"]
                 wall_restraint.attach["fraction_list"] = [1.0] * len(self.host_yaml["calculation"][
                                                                              "lambda"
                                                                          ]["attach"])
-                wall_restraint.attach["target"] = wall["target"]
+                wall_restraint.attach["target"] = wall["restraint"]["target"]
                 # Minimum distance is 0 Angstrom
                 wall_restraint.custom_restraint_values["r1"] = 0
                 wall_restraint.custom_restraint_values["r2"] = 0
                 # Harmonic force constant beyond target distance.
-                wall_restraint.custom_restraint_values["rk2"] = wall["force_constant"]
-                wall_restraint.custom_restraint_values["rk3"] = wall["force_constant"]
+                wall_restraint.custom_restraint_values["rk2"] = wall["restraint"]["force_constant"]
+                wall_restraint.custom_restraint_values["rk3"] = wall["restraint"]["force_constant"]
                 wall_restraint.initialize()
 
                 wall_restraints.append(wall_restraint)
