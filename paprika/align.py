@@ -73,9 +73,9 @@ def zalign(structure, mask1, mask2, save=False, filename=None):
     )
 
     rotation_matrix = (
-            identity
-            + np.dot(np.sin(theta), A)
-            + np.dot((1.0 - np.cos(theta)), np.dot(A, A))
+        identity
+        + np.dot(np.sin(theta), A)
+        + np.dot((1.0 - np.cos(theta)), np.dot(A, A))
     )
 
     # This is certainly not the fastest approach, but it is explicit.
@@ -286,15 +286,15 @@ def align_principal_axes(structure, atom_mask=None, princ_axis=None, v_axis=None
     if princ_axis is None:
         princ_axis = 1
     elif princ_axis not in [0, 1, 2]:
-        raise SystemExit('Error: "princ_axis" can only be an integer value of 0, 1 or 2.')
+        raise SystemExit(
+            'Error: "princ_axis" can only be an integer value of 0, 1 or 2.'
+        )
 
     # Axis vector for alignment
     if v_axis is None:
         v_axis = [0, 0, 1]
     elif len(v_axis) != 3:
-        raise SystemExit(
-            'Error: "v_axis" must be a list with 3 elements, e.g. [0,0,1]'
-        )
+        raise SystemExit('Error: "v_axis" must be a list with 3 elements, e.g. [0,0,1]')
     v_axis = np.array(v_axis)
 
     # Get coordinates and masses
@@ -318,9 +318,7 @@ def align_principal_axes(structure, atom_mask=None, princ_axis=None, v_axis=None
         Iyz -= mass * (xyz[1] * xyz[2])
         Izz += mass * (xyz[0] * xyz[0] + xyz[1] * xyz[1])
 
-    inertia = np.array([[Ixx, Ixy, Ixz],
-                        [Ixy, Iyy, Iyz],
-                        [Ixz, Iyz, Izz]])
+    inertia = np.array([[Ixx, Ixy, Ixz], [Ixy, Iyy, Iyz], [Ixz, Iyz, Izz]])
 
     # Principal axis
     evals, evecs = np.linalg.eig(inertia)
@@ -329,16 +327,16 @@ def align_principal_axes(structure, atom_mask=None, princ_axis=None, v_axis=None
 
     # Calculate Rotation matrix
     x = np.cross(p_axis, v_axis) / np.linalg.norm(np.cross(p_axis, v_axis))
-    theta = np.arccos(np.dot(p_axis, v_axis) / (np.linalg.norm(p_axis) * np.linalg.norm(v_axis)))
+    theta = np.arccos(
+        np.dot(p_axis, v_axis) / (np.linalg.norm(p_axis) * np.linalg.norm(v_axis))
+    )
     A = np.array(
-        [[0, -1.0 * x[2], x[1]],
-         [x[2], 0, -1.0 * x[0]],
-         [-1.0 * x[1], x[0], 0]]
+        [[0, -1.0 * x[2], x[1]], [x[2], 0, -1.0 * x[0]], [-1.0 * x[1], x[0], 0]]
     )
     rotation_matrix = (
-            np.identity(3)
-            + np.dot(np.sin(theta), A)
-            + np.dot((1.0 - np.cos(theta)), np.dot(A, A))
+        np.identity(3)
+        + np.dot(np.sin(theta), A)
+        + np.dot((1.0 - np.cos(theta)), np.dot(A, A))
     )
 
     # Align the principal axis to specified axis
