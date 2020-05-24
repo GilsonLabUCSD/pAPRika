@@ -108,6 +108,15 @@ def extract_guest_restraints(structure, guest_resname, restraints):
     list
         list of guest-specific DAT_restraint().
 
+    Examples
+    --------
+
+        >>> free_energy = analysis.fe_calc()
+        >>> free_energy.restraint_list = restraints
+            ...
+        >>> free_energy.compute_ref_state_work(extract_guest_restraints(restraints))
+        >>> print(free_energy["ref_state_work"])
+
     """
     guest_resname = guest_resname.upper()
 
