@@ -1,9 +1,8 @@
-
 import os
 import logging
 
-from paprika.utils import index_from_mask
-from paprika.restraints.utils import parse_window
+from paprika.io import extract_dummy_atoms
+from paprika.restraints.utils import parse_window, restraint_to_colvar
 
 logger = logging.getLogger(__name__)
 
@@ -36,15 +35,15 @@ def plumed_colvar_file(file, restraints, window, legacy_k=True):
     paprika.restraints.utils.parse_restraints to convert the list of restraints to
     a dictionary.
 
-    >>> for window in window_list:
-    >>>     with open(f"windows/{window}/plumed.dat", "w") as file:
-    >>>      restraints =  parse_restraints(
-    >>>         static=static_restraints,
-    >>>         host=conformational_restraints,
-    >>>         guest=guest_restraints,
-    >>>         list_type='dict',
-    >>>     )
-    >>>     plumed_colvar_file(file, restraints, window, legacy_k=True)
+        >>> for window in window_list:
+        >>>     with open(f"windows/{window}/plumed.dat", "w") as file:
+        >>>      restraints =  parse_restraints(
+        >>>         static=static_restraints,
+        >>>         host=conformational_restraints,
+        >>>         guest=guest_restraints,
+        >>>         list_type='dict',
+        >>>     )
+        >>>     plumed_colvar_file(file, restraints, window, legacy_k=True)
 
     """
 
@@ -68,89 +67,6 @@ def plumed_colvar_file(file, restraints, window, legacy_k=True):
         write_colvar_to_plumed(file, colvar, "wall")
 
 
-def restraint_to_colvar(restraints, phase, window, legacy_k=True):
-    """
-    Extract information about restraints and store in a python dictionary.
-
-    Parameters
-    ----------
-    restraints : list
-        List of static_DAT_restraint/DAT_restraint() objects.
-    phase : str
-        Which phase of the simulation ('attach', 'pull', 'release').
-    window : int
-        Current window index
-    legacy_k : bool
-        Option to specify whether the restraints defined in static_DAT_restraint()
-        and DAT_restraint() uses legacy k. Old MD codes like AMBER and CHARMM
-        requires the user to multiply the force constant by 1/2 beforehand. New MD
-        codes like GROMACS and NAMD requires the user to set the force constant
-        without the 1/2 factor. NOTE: PLUMED uses the latter for the spring constant..
-
-    Returns
-    -------
-    colvar : dict
-        A dictionary containing the information of a particular restraint block.
-
-    """
-    factor = 1.0
-    if legacy_k:
-        factor = 2.0
-
-    colvar = {
-        "atoms": [],
-        "AT": [],
-        "KAPPA": [],
-        "type": [],
-        "factor": factor,
-        "ncolvar": len(restraints),
-    }
-
-    for restraint in restraints:
-        atoms = []
-        angle = False
-
-        # Atom indices
-        if restraint.index1:
-            atoms.append(restraint.index1[0])
-        else:
-            raise Exception("There must be at least two atoms in a restraint.")
-
-        if restraint.index2:
-            atoms.append(restraint.index2[0])
-        else:
-            raise Exception("There must be at least two atoms in a restraint.")
-
-        if restraint.index3:
-            angle = True
-            atoms.append(restraint.index3[0])
-
-        if restraint.index4:
-            angle = True
-            atoms.append(restraint.index4[0])
-
-        # Type of collective variable
-        if len(atoms) == 2:
-            colvar["type"].append("DISTANCE")
-        elif len(atoms) == 3:
-            colvar["type"].append("ANGLE")
-        elif len(atoms) == 4:
-            colvar["type"].append("TORSION")
-
-        # Target and force constant
-        target = restraint.phase[phase]["targets"][window]
-        force_constant = restraint.phase[phase]["force_constants"][window]
-        if angle:
-            target *= PI / 180.0
-
-        # Store info to dict
-        colvar["atoms"].append(atoms)
-        colvar["AT"].append(target)
-        colvar["KAPPA"].append(force_constant)
-
-    return colvar
-
-
 def write_colvar_to_plumed(file, colvar, label):
     """
     Write collective variable and restraints to file.
@@ -166,8 +82,8 @@ def write_colvar_to_plumed(file, colvar, label):
 
     Examples
     --------
-    >>> static_colvar = restraint_to_colvar(restraints["static"], "attach", "a000")
-    >>> write_colvar_to_plumed("plumed.dat", static_colvar, "static")
+        >>> static_colvar = restraint_to_colvar(restraints["static"], "attach", "a000")
+        >>> write_colvar_to_plumed("plumed.dat", static_colvar, "static")
 
     plumed.dat
     ==========
@@ -277,9 +193,9 @@ def write_dummy_to_plumed(file, dummy_atoms, kpos=100.0):
 
     Example
     -------
-    >>> dummy_atoms = extract_dummy_atoms(structure)
-    >>> with open("plumed.dat", "a") as file:
-    >>>     write_dummy_to_plumed(file, dummy_atoms)
+        >>> dummy_atoms = extract_dummy_atoms(structure)
+        >>> with open("plumed.dat", "a") as file:
+        >>>     write_dummy_to_plumed(file, dummy_atoms)
 
     plumed.dat
     ==========
@@ -331,56 +247,3 @@ def write_dummy_to_plumed(file, dummy_atoms, kpos=100.0):
     file.write(f"LABEL=dummy\n")
     file.write(f"... RESTRAINT\n")
 
-
-def extract_dummy_atoms(structure, serial=True):
-    """
-    Extract information about dummy atoms from a parmed structure and
-    returns the information as a dictionary.
-
-    Parameters
-    ----------
-    structure : :class:`parmed.structure.Structure`
-        The parmed structure object we want to extract from
-    serial : bool
-        Get indices in serial (starts from 1) or index (starts from 0).
-        (NOTE: This wording "serial/index" is a convention from VMD)
-
-    Returns
-    -------
-    dummy_atoms : dict
-        Information about dummy atoms in dictionary form
-
-    Examples
-    --------
-
-        main keys: {'DM1', 'DM2', 'DM3'}
-        sub keys: 'pos'      - cartesian coordinates (x,y,z)
-                  'idx'      - atom indices
-                  'idx_type' - type of atom index (serial or index)
-                  'mass'     - mass of dummy atom
-
-    """
-
-    dummy_atoms = {"DM1": {}, "DM2": {}, "DM3": {}}
-
-    # coordinates
-    dummy_atoms["DM1"]["pos"] = structure[":DM1"].coordinates[0]
-    dummy_atoms["DM2"]["pos"] = structure[":DM2"].coordinates[0]
-    dummy_atoms["DM3"]["pos"] = structure[":DM3"].coordinates[0]
-
-    # mass
-    dummy_atoms["DM1"]["mass"] = [atom.mass for atom in structure[":DM1"].atoms][0]
-    dummy_atoms["DM2"]["mass"] = [atom.mass for atom in structure[":DM2"].atoms][0]
-    dummy_atoms["DM3"]["mass"] = [atom.mass for atom in structure[":DM3"].atoms][0]
-
-    # atom index
-    dummy_atoms["DM1"]["idx"] = index_from_mask(structure, ":DM1", amber_index=serial)[0]
-    dummy_atoms["DM2"]["idx"] = index_from_mask(structure, ":DM2", amber_index=serial)[0]
-    dummy_atoms["DM3"]["idx"] = index_from_mask(structure, ":DM3", amber_index=serial)[0]
-
-    # index type
-    dummy_atoms["DM1"]["idx_type"] = "serial" if serial else "index"
-    dummy_atoms["DM2"]["idx_type"] = "serial" if serial else "index"
-    dummy_atoms["DM3"]["idx_type"] = "serial" if serial else "index"
-
-    return dummy_atoms

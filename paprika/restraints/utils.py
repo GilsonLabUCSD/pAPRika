@@ -1,3 +1,7 @@
+
+PI = 3.14159265359
+
+
 def parse_window(window):
     """
     Utility function to use a path to index a :class:`paprika.restraints.DAT_restraint` instance.
@@ -130,3 +134,86 @@ def restraints_from_ascii(filename):
                     print("Restraint given is not a bond, angle or dihedral... skipping line.")
 
     return restraints
+
+
+def restraint_to_colvar(restraints, phase, window, legacy_k=True):
+    """
+    Extract information about restraints and store in a python dictionary.
+
+    Parameters
+    ----------
+    restraints : list
+        List of static_DAT_restraint/DAT_restraint() objects.
+    phase : str
+        Which phase of the simulation ('attach', 'pull', 'release').
+    window : int
+        Current window index
+    legacy_k : bool
+        Option to specify whether the restraints defined in static_DAT_restraint()
+        and DAT_restraint() uses legacy k. Old MD codes like AMBER and CHARMM
+        requires the user to multiply the force constant by 1/2 beforehand. New MD
+        codes like GROMACS and NAMD requires the user to set the force constant
+        without the 1/2 factor. NOTE: PLUMED uses the latter for the spring constant..
+
+    Returns
+    -------
+    colvar : dict
+        A dictionary containing the information of a particular restraint block.
+
+    """
+    factor = 1.0
+    if legacy_k:
+        factor = 2.0
+
+    colvar = {
+        "atoms": [],
+        "AT": [],
+        "KAPPA": [],
+        "type": [],
+        "factor": factor,
+        "ncolvar": len(restraints),
+    }
+
+    for restraint in restraints:
+        atoms = []
+        angle = False
+
+        # Atom indices
+        if restraint.index1:
+            atoms.append(restraint.index1[0])
+        else:
+            raise Exception("There must be at least two atoms in a restraint.")
+
+        if restraint.index2:
+            atoms.append(restraint.index2[0])
+        else:
+            raise Exception("There must be at least two atoms in a restraint.")
+
+        if restraint.index3:
+            angle = True
+            atoms.append(restraint.index3[0])
+
+        if restraint.index4:
+            angle = True
+            atoms.append(restraint.index4[0])
+
+        # Type of collective variable
+        if len(atoms) == 2:
+            colvar["type"].append("DISTANCE")
+        elif len(atoms) == 3:
+            colvar["type"].append("ANGLE")
+        elif len(atoms) == 4:
+            colvar["type"].append("TORSION")
+
+        # Target and force constant
+        target = restraint.phase[phase]["targets"][window]
+        force_constant = restraint.phase[phase]["force_constants"][window]
+        if angle:
+            target *= PI / 180.0
+
+        # Store info to dict
+        colvar["atoms"].append(atoms)
+        colvar["AT"].append(target)
+        colvar["KAPPA"].append(force_constant)
+
+    return colvar
