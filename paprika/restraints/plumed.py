@@ -57,26 +57,26 @@ def plumed_colvar_file(file, restraints, window, legacy_k=True):
 
     if "static" in restraints.keys():
         colvar = restraint_to_colvar(restraints["static"], phase, window, legacy_k)
-        write_colvar_plumed(file, colvar, "static")
+        write_plumed_colvar(file, colvar, "static")
 
     if "host" in restraints.keys():
         colvar = restraint_to_colvar(restraints["host"], phase, window, legacy_k)
-        write_colvar_plumed(file, colvar, "host")
+        write_plumed_colvar(file, colvar, "host")
 
     if "guest" in restraints.keys():
         colvar = restraint_to_colvar(restraints["guest"], phase, window, legacy_k)
-        write_colvar_plumed(file, colvar, "guest")
+        write_plumed_colvar(file, colvar, "guest")
 
     if "wall" in restraints.keys():
         colvar = restraint_to_colvar(restraints["wall"], phase, window, legacy_k)
-        write_colvar_plumed(file, colvar, "wall")
+        write_plumed_colvar(file, colvar, "wall")
 
     if "symmetry" in restraints.keys():
         colvar = restraint_to_colvar(restraints["symmetry"], phase, window, legacy_k)
-        write_colvar_plumed(file, colvar, "symmetry")
+        write_plumed_colvar(file, colvar, "symmetry")
 
 
-def write_colvar_plumed(file, colvar, label):
+def write_plumed_colvar(file, colvar, label):
     """
     Write collective variable and restraints to file.
 
