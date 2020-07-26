@@ -12,7 +12,7 @@ PI = 3.1415926535
 def colvar_module_file(file, restraints, window, legacy_k=True):
     """
     Writes a COLVAR Module file for a specific APR window. The COLVAR
-    Module is supported in the MD codes NAMD and LAMMPS.
+    Module is supported in the MD codes NAMD, LAMMPS and VMD.
 
     Giacomo Fiorin, Michael L. Klein and Jérôme Hénin. Using collectie
     variables to drive molecular dynamics simulations. Mol. Phys. 111,
