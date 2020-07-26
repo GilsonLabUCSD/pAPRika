@@ -85,7 +85,6 @@ def amber_restraint_line(restraint, window):
         for index in restraint.index4:
             igr4 += "{},".format(index)
 
-
     # Set upper/lower bounds depending on whether distance, angle, or torsion
     lower_bound = 0.0
     upper_bound = 999.0
@@ -115,12 +114,12 @@ def amber_restraint_line(restraint, window):
     atoms = "".join([iat1, iat2, iat3, iat4])
     string = "&rst iat= {:16s} ".format(atoms)
     string += (
-        " r1= {0:10.5f},".format(amber_restraint_values["r1"])
-        + " r2= {0:10.5f},".format(amber_restraint_values["r2"])
-        + " r3= {0:10.5f},".format(amber_restraint_values["r3"])
-        + " r4= {0:10.5f},".format(amber_restraint_values["r4"])
-        + " rk2= {0:10.5f},".format(amber_restraint_values["rk2"])
-        + " rk3= {0:10.5f},".format(amber_restraint_values["rk3"])
+            " r1= {0:10.5f},".format(amber_restraint_values["r1"])
+            + " r2= {0:10.5f},".format(amber_restraint_values["r2"])
+            + " r3= {0:10.5f},".format(amber_restraint_values["r3"])
+            + " r4= {0:10.5f},".format(amber_restraint_values["r4"])
+            + " rk2= {0:10.5f},".format(amber_restraint_values["rk2"])
+            + " rk3= {0:10.5f},".format(amber_restraint_values["rk3"])
     )
 
     if any([restraint.group1, restraint.group2, restraint.group3, restraint.group4]):

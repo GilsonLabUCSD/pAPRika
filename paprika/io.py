@@ -4,6 +4,7 @@ import base64
 import json
 import numpy as np
 from paprika.restraints import DAT_restraint
+from paprika.utils import index_from_mask
 from parmed.amber import AmberParm
 from parmed import Structure
 
@@ -195,3 +196,58 @@ def extract_guest_restraints(structure, guest_resname, restraints):
                 gamma = restraint
 
     return [r, theta, phi, alpha, beta, gamma]
+
+
+def extract_dummy_atoms(structure, serial=True):
+    """
+    Extract information about dummy atoms from a parmed structure and
+    returns the information as a dictionary.
+
+    Parameters
+    ----------
+    structure : :class:`parmed.structure.Structure`
+        The parmed structure object we want to extract from
+    serial : bool
+        Get indices in serial (starts from 1) or index (starts from 0).
+        (NOTE: This wording "serial/index" is a convention from VMD)
+
+    Returns
+    -------
+    dummy_atoms : dict
+        Information about dummy atoms in dictionary form
+
+    Examples
+    --------
+        >>> dummy_atoms = extract_dummy_atoms(structure)
+
+        main keys: {'DM1', 'DM2', 'DM3'}
+        sub keys: 'pos'      - cartesian coordinates (x,y,z)
+                  'idx'      - atom indices
+                  'idx_type' - type of atom index (serial or index)
+                  'mass'     - mass of dummy atom
+
+    """
+
+    dummy_atoms = {"DM1": {}, "DM2": {}, "DM3": {}}
+
+    # coordinates
+    dummy_atoms["DM1"]["pos"] = structure[":DM1"].coordinates[0]
+    dummy_atoms["DM2"]["pos"] = structure[":DM2"].coordinates[0]
+    dummy_atoms["DM3"]["pos"] = structure[":DM3"].coordinates[0]
+
+    # mass
+    dummy_atoms["DM1"]["mass"] = [atom.mass for atom in structure[":DM1"].atoms][0]
+    dummy_atoms["DM2"]["mass"] = [atom.mass for atom in structure[":DM2"].atoms][0]
+    dummy_atoms["DM3"]["mass"] = [atom.mass for atom in structure[":DM3"].atoms][0]
+
+    # atom index
+    dummy_atoms["DM1"]["idx"] = index_from_mask(structure, ":DM1", amber_index=serial)[0]
+    dummy_atoms["DM2"]["idx"] = index_from_mask(structure, ":DM2", amber_index=serial)[0]
+    dummy_atoms["DM3"]["idx"] = index_from_mask(structure, ":DM3", amber_index=serial)[0]
+
+    # index type
+    dummy_atoms["DM1"]["idx_type"] = "serial" if serial else "index"
+    dummy_atoms["DM2"]["idx_type"] = "serial" if serial else "index"
+    dummy_atoms["DM3"]["idx_type"] = "serial" if serial else "index"
+
+    return dummy_atoms
