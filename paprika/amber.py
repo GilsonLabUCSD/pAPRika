@@ -134,35 +134,36 @@ class Simulation(object):
 
         The default dictionary keys and values are as follows:
 
-            - ``imin``       : 0
-            - ``ntx``        : 1
-            - ``irest``      : 0
-            - ``maxcyc``     : 0
-            - ``ncyc``       : 0
-            - ``dt``         : 0.002
-            - ``nstlim``     : 5000
-            - ``ntpr``       : 500
-            - ``ntwe``       : 500
-            - ``ntwr``       : 5000
-            - ``ntwx``       : 500
-            - ``ntxo``       : 1
-            - ``ioutfm``     : 1
-            - ``ntf``        : 2
-            - ``ntc``        : 2
-            - ``cut``        : 8
-            - ``igb``        : 0
-            - ``tempi``      : 298.15
-            - ``tempo``      : 298.15
-            - ``ntt``        : 3
-            - ``gamma_ln``   : 1.0
-            - ``ig``         : -1
-            - ``ntp``        : 1
-            - ``barostat``   : 2
-            - ``ntr``        : ``None``
+            - ``imin``          : 0
+            - ``ntx``           : 1
+            - ``irest``         : 0
+            - ``maxcyc``        : 0
+            - ``ncyc``          : 0
+            - ``dt``            : 0.002
+            - ``nstlim``        : 5000
+            - ``ntpr``          : 500
+            - ``ntwe``          : 500
+            - ``ntwr``          : 5000
+            - ``ntwx``          : 500
+            - ``ntxo``          : 1
+            - ``ioutfm``        : 1
+            - ``ntf``           : 2
+            - ``ntc``           : 2
+            - ``cut``           : 8
+            - ``igb``           : 0
+            - ``tempi``         : 298.15
+            - ``tempo``         : 298.15
+            - ``ntt``           : 3
+            - ``gamma_ln``      : 1.0
+            - ``ig``            : -1
+            - ``ntp``           : 1
+            - ``barostat``      : 2
+            - ``ntr``           : ``None``
             - ``restraint_wt``  : ``None``
             - ``restraintmask`` : ``None``
-            - ``nmropt``     : 1
-            - ``pencut``     : -1
+            - ``nmropt``        : 1
+            - ``pencut``        : -1
+            - ``infe``          : 0
 
         """
         return self._cntrl
@@ -437,7 +438,7 @@ class Simulation(object):
                         f.write(" " + line + "\n")
                 f.write(" &wt type = 'END', /\n")
 
-                # Write "disang.rest" if specified (if Plumed is used this will be skipped)
+                # Specify "disang.rest" file, if a plumed file is specified instead this will be skipped
                 if self.restraint_file is not None and self.restraint_file == 'disang.rest':
                     f.write("DISANG = {}\n".format(self.restraint_file))
                     f.write("LISTOUT = POUT\n\n")
@@ -450,7 +451,7 @@ class Simulation(object):
                     f.write("&{}\n".format(nfe_type))
                     f.write("  cv_file = \'{}\',\n".format(cv_input))
                     f.write("  output_file = \'{}\',\n".format(cv_output))
-                    f.write("  output_freq = {},\n".format(cv_freq))
+                    f.write("  output_freq = {},\n".format(str(cv_freq)))
                     f.write("/\n")
 
             if self.group is not None:
