@@ -105,14 +105,14 @@ class Simulation(object):
     @prefix.setter
     def prefix(self, new_prefix):
         self._prefix = new_prefix
-        self.input = new_prefix+".in"
-        self.inpcrd = new_prefix+".inpcrd"
-        self.ref = new_prefix+".inpcrd"
-        self.output = new_prefix+".out"
-        self.restart = new_prefix+".rst7"
-        self.mdinfo = new_prefix+".mdinfo"
-        self.mdcrd = new_prefix+".nc"
-        self.mden = new_prefix+".mden"
+        self.input = new_prefix + ".in"
+        self.inpcrd = new_prefix + ".inpcrd"
+        self.ref = new_prefix + ".inpcrd"
+        self.output = new_prefix + ".out"
+        self.restart = new_prefix + ".rst7"
+        self.mdinfo = new_prefix + ".mdinfo"
+        self.mdcrd = new_prefix + ".nc"
+        self.mden = new_prefix + ".mden"
 
     @property
     def cntrl(self):
@@ -213,19 +213,20 @@ class Simulation(object):
         self._window = None
         self._topology = "prmtop"
         self._restraint_file = "restraints.in"
+        self._colvars = {'input': [], 'output': [], 'freq': [], 'type': []}
         self.title = "PBC MD Simulation"
         self.converged = False
 
         # File names
         self._prefix = "md"
-        self.input = self._prefix+".in"
-        self.inpcrd = self._prefix+".inpcrd"
-        self.ref = self._prefix+".inpcrd"
-        self.output = self._prefix+".out"
-        self.restart = self._prefix+".rst7"
-        self.mdinfo = self._prefix+".mdinfo"
-        self.mdcrd = self._prefix+".nc"
-        self.mden = self._prefix+".mden"
+        self.input = self._prefix + ".in"
+        self.inpcrd = self._prefix + ".inpcrd"
+        self.ref = self._prefix + ".inpcrd"
+        self.output = self._prefix + ".out"
+        self.restart = self._prefix + ".rst7"
+        self.mdinfo = self._prefix + ".mdinfo"
+        self.mdcrd = self._prefix + ".nc"
+        self.mden = self._prefix + ".mden"
 
         # Input file cntrl settings (Default = NTP)
         self._cntrl = OrderedDict()
@@ -258,6 +259,7 @@ class Simulation(object):
         self._cntrl["restraintmask"] = None
         self._cntrl["nmropt"] = 1
         self._cntrl["pencut"] = -1
+        self._cntrl["infe"] = 0
 
         # Other input file sections
         self._ewald = None
@@ -358,6 +360,32 @@ class Simulation(object):
         self.cntrl["ntp"] = 1
         self.cntrl["barostat"] = 2
 
+    def add_nfe(self, cv_input, cv_output, cv_freq, nfe_type="pmd"):
+        """
+        Add NFE colvars to the input script. This is used to specify
+        umbrella sampling (pmd) or streered MD (smd) simulations using
+        the NFE module of Amber.
+
+        Parameters
+        ----------
+        cv_input : str
+            Name of colvar file (may contain multiple colvars definition in this file)
+        cv_output : str
+            Name of output file to print colvars
+        cv_freq : int
+            Frequency of output
+        nfe_type : str
+            Type of NFE module run (pmd or smd)
+
+        """
+        if nfe_type not in ["pmd", "smd"]:
+            raise NotImplementedError
+
+        self._colvars['input'].append(cv_input)
+        self._colvars['output'].append(cv_output)
+        self._colvars['freq'].append(cv_freq)
+        self._colvars['type'].append(nfe_type)
+
     def _write_dict_to_mdin(self, f, dictionary):
         """
         Write dictionary to file, following AMBER format.
@@ -373,7 +401,13 @@ class Simulation(object):
 
         for key, val in dictionary.items():
             if val is not None:
-                f.write("  {:15s} {:s},\n".format(key+" =", str(val)))
+                f.write("  {:15s} {:s},\n".format(key + " =", str(val)))
+
+        # Write PLUMED option if preferred over Amber NMR restraints
+        if self.restraint_file is not None and self.restraint_file == 'plumed.dat':
+            f.write("  {:15s} {:s},\n".format("plumed = ", str(1)))
+            f.write("  {:15s} {:s},\n".format("plumedfile =", "'plumed.dat'"))
+
         f.write(" /\n")
 
     def _amber_write_input_file(self):
@@ -382,6 +416,11 @@ class Simulation(object):
 
         """
         logger.debug("Writing {}".format(self.input))
+
+        # Turn on NFE module if colvars is specified
+        if len(self._colvars['input']) != 0:
+            self.cntrl["infe"] = 1
+
         with open(os.path.join(self.path, self.input), "w") as f:
             f.write("{}\n".format(self.title))
             f.write(" &cntrl\n")
@@ -394,11 +433,24 @@ class Simulation(object):
             if self.cntrl["nmropt"] == 1:
                 if self.wt is not None:
                     for line in self.wt:
-                        f.write(" "+line+"\n")
+                        f.write(" " + line + "\n")
                 f.write(" &wt type = 'END', /\n")
-                if self.restraint_file is not None:
+
+                # Write Amber NMR restraint file "disang.rest" (if Plumed is used this will be skipped)
+                if self.restraint_file is not None and self.restraint_file == 'disang.rest':
                     f.write("DISANG = {}\n".format(self.restraint_file))
                     f.write("LISTOUT = POUT\n\n")
+
+            if self.cntrl["infe"] == 1:
+                for cv_input, cv_output, cv_freq, nfe_type in zip(
+                        self._colvars["input"], self._colvars["output"], self._colvars["freq"], self._colvars["type"]
+                ):
+                    f.write("&{} \n".format(nfe_type))
+                    f.write("  cv_file = \'{}\',\n".format(cv_input))
+                    f.write("  output_file = \'{}\',\n".format(cv_output))
+                    f.write("  output_freq = {},\n".format(cv_freq))
+                    f.write("/\n")
+
             if self.group is not None:
                 f.write("{:s}".format(self.group))
 
@@ -425,13 +477,13 @@ class Simulation(object):
                 # maxcyc
                 ncyc = self.cntrl["ncyc"]
                 maxcyc = self.cntrl["maxcyc"]
-                burn_in = int(float(ncyc)+0.20 * (float(maxcyc)-float(ncyc)))
+                burn_in = int(float(ncyc) + 0.20 * (float(maxcyc) - float(ncyc)))
                 # If the burn_in value is nuts, then just set it to zero
                 if burn_in < 0 or burn_in >= maxcyc:
                     burn_in = 0
                 # Set an end_soft value that is 75% of way between ncyc and
                 # maxcyc
-                end_soft = int(float(ncyc)+0.60 * (float(maxcyc)-float(ncyc)))
+                end_soft = int(float(ncyc) + 0.60 * (float(maxcyc) - float(ncyc)))
                 self.wt = [
                     "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(
                         burn_in
@@ -450,7 +502,7 @@ class Simulation(object):
                 logger.info("Running MD at {}".format(self.path))
 
             # Create executable list for subprocess
-            exec_list = self.executable.split()+["-O", "-p", self.topology]
+            exec_list = self.executable.split() + ["-O", "-p", self.topology]
             if self.ref is not None:
                 exec_list += ["-ref", self.ref]
             exec_list += [
@@ -470,7 +522,7 @@ class Simulation(object):
             if self.mden is not None:
                 exec_list += ["-e", self.mden]
 
-            logger.debug("Exec line: "+" ".join(exec_list))
+            logger.debug("Exec line: " + " ".join(exec_list))
 
             # Execute
             if self.CUDA_VISIBLE_DEVICES:
