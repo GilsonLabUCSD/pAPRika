@@ -369,7 +369,7 @@ class Simulation(object):
         Parameters
         ----------
         cv_input : str
-            Name of colvar file (may contain multiple colvars definition in this file)
+            Name of colvar file (may contain multiple colvar definitions in this file)
         cv_output : str
             Name of output file to print colvars
         cv_freq : int
@@ -430,22 +430,24 @@ class Simulation(object):
                 f.write(" &ewald\n")
                 self._write_dict_to_mdin(f, self.ewald)
 
+            # Write Amber NMR restraint options
             if self.cntrl["nmropt"] == 1:
                 if self.wt is not None:
                     for line in self.wt:
                         f.write(" " + line + "\n")
                 f.write(" &wt type = 'END', /\n")
 
-                # Write Amber NMR restraint file "disang.rest" (if Plumed is used this will be skipped)
+                # Write "disang.rest" if specified (if Plumed is used this will be skipped)
                 if self.restraint_file is not None and self.restraint_file == 'disang.rest':
                     f.write("DISANG = {}\n".format(self.restraint_file))
                     f.write("LISTOUT = POUT\n\n")
 
+            # Write NFE options
             if self.cntrl["infe"] == 1:
-                for cv_input, cv_output, cv_freq, nfe_type in zip(
-                        self._colvars["input"], self._colvars["output"], self._colvars["freq"], self._colvars["type"]
+                for nfe_type, cv_input, cv_output, cv_freq in zip(
+                        self._colvars["type"], self._colvars["input"], self._colvars["output"], self._colvars["freq"],
                 ):
-                    f.write("&{} \n".format(nfe_type))
+                    f.write("&{}\n".format(nfe_type))
                     f.write("  cv_file = \'{}\',\n".format(cv_input))
                     f.write("  output_file = \'{}\',\n".format(cv_output))
                     f.write("  output_freq = {},\n".format(cv_freq))
