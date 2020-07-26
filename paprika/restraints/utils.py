@@ -28,9 +28,59 @@ def parse_window(window):
     return window, phase
 
 
+def parse_restraints(static=None, host=None, guest=None, wall=None, symmetry=None, list_type='tuple'):
+    """
+    Utility function to parse restraints that is used when writing the
+    restraints to file. If list_type='tuple' (default) the function simply
+    returns a list of all the restraints, which is required for writing
+    amber NMR restraint file (paprika.restraints.amber.amber_restraint_line).
+    The option list_type='dict' is useful for parsing pAPRika restraints
+    into a PLUMED-based restraint file.
+
+    Parameters
+    ----------
+    static : list
+        List of host static DAT_restraint()
+    guest : list
+        List of DAT_restraint() for guest
+    host : list
+        List of DAT_restraint() for host-conformation
+    wall : list
+        List of DAT_restraint() for guest-wall
+    symmetry : list
+        List of DAT_restraint() for guest-symmetry
+    list_type : str
+        Type of list to return (tuple or dict)
+
+    Returns
+    -------
+    restraints_list : tuple/dict
+        The list of restraints returned as a tuple or dictionary
+
+    """
+
+    if list_type is 'tuple':
+        restraints_list = []
+    elif list_type is 'dict':
+        restraints_list = {}
+
+    for restraint in ["static", "host", "guest", "wall", "symmetry"]:
+        if eval(restraint) is not None:
+            if len(eval(restraint)) != 0:
+                if list_type is 'tuple':
+                    restraints_list += eval(restraint)
+                elif list_type is 'dict':
+                    restraints_list[restraint] = eval(restraint)
+
+    return restraints_list
+
+
 def restraints_from_ascii(filename):
     """
-    Utility function to read in restraints from a simple ASCII file.
+    Utility function to read in restraints from a simple ASCII file. This is
+    useful when parsing restraints definition from VMD (you can mouse click
+    bond, angle and dihedral restraints and write a TCL script to print these
+    to a file).
 
     Parameters
     ----------
