@@ -163,7 +163,7 @@ def add_dummy_to_plumed(structure, plumed_file='plumed.dat'):
     # Extract dummy atoms
     dummy_atoms = extract_dummy_atoms(structure, serial=True)
 
-    # Write dummy atom info to 'plumed.dat'
+    # Write dummy atoms info
     if os.path.isfile(plumed_file):
         with open(plumed_file, "a") as file:
             write_dummy_to_plumed(file, dummy_atoms)

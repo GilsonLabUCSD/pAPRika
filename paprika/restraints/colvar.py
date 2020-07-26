@@ -1,5 +1,7 @@
+import os
 import logging
 
+from paprika.io import extract_dummy_atoms
 from paprika.restraints.utils import parse_window, restraint_to_colvar
 
 logger = logging.getLogger(__name__)
@@ -156,6 +158,101 @@ def write_colvar_module(file, colvar, label, convert_kangle=True):
         bias = "harmonic"
         target = "centers"
         force = "forceConstant"
+
+    harmonic = f"{bias} {{\n" \
+               f"\tcolvars {arg}\n" \
+               f"\t{target} {at}\n" \
+               f"\t{force} {kappa}\n" \
+               f"}}\n"
+
+    file.write(harmonic)
+
+
+def add_dummy_to_colvar(structure, colvar_file='colvars.tcl'):
+    """
+    Add dummy atom restraints to a COLVAR Module file.
+
+    Parameters
+    ----------
+    structure : :class:`parmed.structure.Structure`
+        The parmed structure object we want to extract from
+    colvar_file : str
+        Name of COLVAR Module file to append dummy atoms to.
+
+    """
+    # Extract dummy atoms
+    dummy_atoms = extract_dummy_atoms(structure, serial=True)
+
+    # Write dummy atoms info
+    if os.path.isfile(colvar_file):
+        with open(colvar_file, "a") as file:
+            write_dummy_to_colvar(file, dummy_atoms)
+    else:
+        raise Exception(
+            f"ERROR: '{colvar_file}' file does not exists, please check your setup script"
+        )
+
+
+def write_dummy_to_colvar(file, dummy_atoms, kpos=100.0):
+    """
+    Add dummy atoms to a COLVAR Module file. It is necessary to add information
+    about the dummy atoms after solvation because the absolute coordinates is
+    needed (coordinates of the host-guest system gets shifted after TLeap solvation).
+    In pAPRika-Amber simulations we can restraint the dummy atoms by specifying:
+        ...
+        simulation.ref = "structure.rst7"
+        simulation.cntrl["ntr"] = 1
+        simulation.cntrl["restraint_wt"] = 50.0
+        simulation.cntrl["restraintmask"] = "'@DUM'"
+        ...
+    without the need to explicitly defining the absolute coordinates of the
+    dummy atoms as it is defined in "simulation.ref". However, this option
+    to write the dummy atoms to plumed after solvation is required when using
+    pAPRika with a different MD engine.
+
+    Parameters
+    ----------
+    file : class '_io.TextIOWrapper'
+        The file object handle to save the plumed file.
+    dummy_atoms : dict
+        Dictionary containing information about the dummy atoms.
+    kpos : float
+        Spring constant used to restrain dummy atoms (kcal/mol/A^2).
+
+    Example
+    -------
+        >>> dummy_atoms = extract_dummy_atoms(structure)
+        >>> with open("colvars.tcl", "a") as file:
+        >>>     write_dummy_to_colvar(file, dummy_atoms)
+
+    """
+
+    file.write("# dummy atoms\n")
+    arg = ""
+    at = ""
+    kappa = ""
+
+    # Write COLVAR definition
+    for ndx in range(3):
+        colvar_name = f"dm{ndx + 1}"
+        arg += f"{colvar_name}"
+        at += f"0.0 "
+        colvar_def = f"colvar {{\n" \
+                     f"\tname {colvar_name}\n" \
+                     f"\tdistance {{\n" \
+                     f"\t\tforceNoPBC yes\n" \
+                     f"\t\tgroup1 {{ atomNumbers {{ {dummy_atoms[f'DM{ndx+1}']['idx']} }} }}\n" \
+                     f"\t\tgroup2 {{ dummyAtoms (" \
+                     f"{dummy_atoms[f'DM{ndx+1}']['pos'][0]:.3f}, " \
+                     f"{dummy_atoms[f'DM{ndx+1}']['pos'][1]:.3f}, " \
+                     f"{dummy_atoms[f'DM{ndx+1}']['pos'][2]:.3f}) }}\n" \
+                     f"\t}}\n}}\n"
+
+        file.write(colvar_def)
+
+    bias = "harmonic"
+    target = "centers"
+    force = "forceConstant"
 
     harmonic = f"{bias} {{\n" \
                f"\tcolvars {arg}\n" \
