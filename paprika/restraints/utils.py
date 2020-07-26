@@ -136,7 +136,7 @@ def restraints_from_ascii(filename):
     return restraints
 
 
-def restraint_to_colvar(restraints, phase, window, legacy_k=True):
+def restraint_to_colvar(restraints, phase, window, legacy_k=True, radians=True):
     """
     Extract information about restraints and store in a python dictionary.
 
@@ -145,7 +145,7 @@ def restraint_to_colvar(restraints, phase, window, legacy_k=True):
     restraints : list
         List of static_DAT_restraint/DAT_restraint() objects.
     phase : str
-        Which phase of the simulation ('attach', 'pull', 'release').
+        Phase of the simulation ('attach', 'pull', 'release').
     window : int
         Current window index
     legacy_k : bool
@@ -153,7 +153,10 @@ def restraint_to_colvar(restraints, phase, window, legacy_k=True):
         and DAT_restraint() uses legacy k. Old MD codes like AMBER and CHARMM
         requires the user to multiply the force constant by 1/2 beforehand. New MD
         codes like GROMACS and NAMD requires the user to set the force constant
-        without the 1/2 factor. NOTE: PLUMED uses the latter for the spring constant..
+        without the 1/2 factor. NOTE: PLUMED uses the latter for the spring constant.
+    radians : bool
+        Specify whether angles defined in static_DAT_restraint/DAT_restraint() are
+        in radians or degrees (default: radians).
 
     Returns
     -------
@@ -199,7 +202,7 @@ def restraint_to_colvar(restraints, phase, window, legacy_k=True):
 
         # Type of collective variable
         if len(atoms) == 2:
-            colvar["type"].append("DISTANCE")
+            colvar["type"].append("BOND")
         elif len(atoms) == 3:
             colvar["type"].append("ANGLE")
         elif len(atoms) == 4:
@@ -208,7 +211,7 @@ def restraint_to_colvar(restraints, phase, window, legacy_k=True):
         # Target and force constant
         target = restraint.phase[phase]["targets"][window]
         force_constant = restraint.phase[phase]["force_constants"][window]
-        if angle:
+        if angle and radians:
             target *= PI / 180.0
 
         # Store info to dict

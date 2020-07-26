@@ -11,7 +11,12 @@ PI = 3.14159265359
 
 def plumed_colvar_file(file, restraints, window, legacy_k=True):
     """
-    Writes a PLUMED colvar file for a specific APR window.
+    Writes a PLUMED colvar file for a specific APR window. The PLUMED
+    program can be interfaced to a number of MD engines.
+
+    Gareth A. Tribello, Massimiliano Bonomi, Davide Branduardi, Carlo Camilloni,
+    and Giovanni Bussi. Plumed 2: New feathers for an old bird. Comput. Phys.
+    Commun., 185(2):604–613, 2014.
 
     Parameters
     ----------
@@ -20,7 +25,7 @@ def plumed_colvar_file(file, restraints, window, legacy_k=True):
     restraints: dict
         The pAPRika restraints in dictionary form.
     window: str
-        The calculation window that will be used to index the restraint values.
+        The APR window that will be used to index the restraint values.
     legacy_k : bool
         Option to specify whether the restraints defined in static_DAT_restraint()
         and DAT_restraint() uses legacy k. Old MD codes like AMBER and CHARMM
@@ -52,22 +57,26 @@ def plumed_colvar_file(file, restraints, window, legacy_k=True):
 
     if "static" in restraints.keys():
         colvar = restraint_to_colvar(restraints["static"], phase, window, legacy_k)
-        write_colvar_to_plumed(file, colvar, "static")
+        write_colvar_plumed(file, colvar, "static")
 
     if "host" in restraints.keys():
         colvar = restraint_to_colvar(restraints["host"], phase, window, legacy_k)
-        write_colvar_to_plumed(file, colvar, "host")
+        write_colvar_plumed(file, colvar, "host")
 
     if "guest" in restraints.keys():
         colvar = restraint_to_colvar(restraints["guest"], phase, window, legacy_k)
-        write_colvar_to_plumed(file, colvar, "guest")
+        write_colvar_plumed(file, colvar, "guest")
 
     if "wall" in restraints.keys():
         colvar = restraint_to_colvar(restraints["wall"], phase, window, legacy_k)
-        write_colvar_to_plumed(file, colvar, "wall")
+        write_colvar_plumed(file, colvar, "wall")
+
+    if "symmetry" in restraints.keys():
+        colvar = restraint_to_colvar(restraints["symmetry"], phase, window, legacy_k)
+        write_colvar_plumed(file, colvar, "symmetry")
 
 
-def write_colvar_to_plumed(file, colvar, label):
+def write_colvar_plumed(file, colvar, label):
     """
     Write collective variable and restraints to file.
 
@@ -108,7 +117,7 @@ def write_colvar_to_plumed(file, colvar, label):
 
     for ndx in range(colvar["ncolvar"]):
         atoms = f""
-        if colvar["type"][ndx] == "DISTANCE":
+        if colvar["type"][ndx] == "BOND":
             atoms = f"{colvar['atoms'][ndx][0]},{colvar['atoms'][ndx][1]}"
         elif colvar["type"][ndx] == "ANGLE":
             atoms = (
