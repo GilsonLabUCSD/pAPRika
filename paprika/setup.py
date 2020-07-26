@@ -23,6 +23,7 @@ from paprika.restraints.restraints import create_window_list
 logger = logging.getLogger(__name__)
 _PI_ = np.pi
 
+
 def _get_installed_benchmarks():
     _installed_benchmarks = {}
 
@@ -88,8 +89,11 @@ class Setup(object):
                                   directory_path=self.directory,
                                   gaff=gaff_version)
         if not build:
-            self.populate_window_list(input_pdb=os.path.join(self.directory, f"{self.host}-{self.guest}.pdb" if self.guest is not None
-            else f"{self.host}.pdb"))
+            self.populate_window_list(
+                input_pdb=os.path.join(
+                    self.directory, f"{self.host}-{self.guest}.pdb" if self.guest is not None else f"{self.host}.pdb"
+                )
+            )
 
     def parse_yaml(self, installed_benchmarks, guest_orientation):
         """
@@ -179,7 +183,6 @@ class Setup(object):
             aligned_structure["!:DM1&!:DM2"].save(str(intermediate_pdb),
                                                   overwrite=True)
 
-
         # Save aligned PDB file with CONECT records.
         positions_pdb = openmm.app.PDBFile(str(intermediate_pdb))
         topology_pdb = openmm.app.PDBFile(str(input_pdb))
@@ -233,8 +236,8 @@ class Setup(object):
             self.desolvated_window_paths.append(
                 str(
                     self.directory.joinpath("windows")
-                    .joinpath(window)
-                    .joinpath(window_pdb_file_name)
+                        .joinpath(window)
+                        .joinpath(window_pdb_file_name)
                 )
             )
 
@@ -252,7 +255,6 @@ class Setup(object):
                 None,
                 self.host_yaml["calculation"]["windows"]["release"]
             ]
-
 
         guest_restraint = DAT_restraint()
         guest_restraint.auto_apr = True
@@ -307,8 +309,8 @@ class Setup(object):
 
             structure = pmd.load_file(str(source_pdb), structure=True)
             target_difference = (
-                restraint.phase["pull"]["targets"][int(window[1:])]
-                - restraint.pull["target_initial"]
+                    restraint.phase["pull"]["targets"][int(window[1:])]
+                    - restraint.pull["target_initial"]
             )
             for atom in structure.atoms:
                 if atom.residue.name == self.guest.upper():
@@ -317,7 +319,6 @@ class Setup(object):
             intermediate_pdb = window_path.joinpath(f"tmp.pdb")
             destination_pdb = window_path.joinpath(f"{self.host}-{self.guest}.pdb")
             structure.save(str(intermediate_pdb), overwrite=True)
-
 
             input_pdb = openmm.app.PDBFile(str(intermediate_pdb))
             topology_pdb = openmm.app.PDBFile(str(topology_pdb))
@@ -332,14 +333,14 @@ class Setup(object):
                 # Copy the final pull window, if it exists
                 source_pdb = (
                     self.directory.joinpath("windows")
-                    .joinpath(f"p{self.host_yaml['calculation']['windows']['pull']:03d}")
-                    .joinpath(f"{self.host}-{self.guest}.pdb")
+                        .joinpath(f"p{self.host_yaml['calculation']['windows']['pull']:03d}")
+                        .joinpath(f"{self.host}-{self.guest}.pdb")
                 )
                 shutil.copy(source_pdb, window_path)
             except FileNotFoundError:
                 # Copy the initial structure, assuming we are doing a standalone release calculation.
                 shutil.copy(self.directory.joinpath(f"{self.host}-{self.guest}.pdb"),
-                window_path)
+                            window_path)
 
     def _add_dummy_to_PDB(self, input_pdb, output_pdb, offset_coordinates,
                           dummy_atom_tuples):
@@ -354,7 +355,6 @@ class Setup(object):
             offset_coordinates = [offset_coordinates, ]
 
         for index, dummy_atom_tuple in enumerate(dummy_atom_tuples):
-
             positions.append(
                 openmm.Vec3(
                     offset_coordinates[0][0] + dummy_atom_tuple[0],
@@ -387,12 +387,12 @@ class Setup(object):
         return system
 
     def add_dummy_atoms(
-        self,
-        reference_pdb="reference.pdb",
-        solvated_pdb="output.pdb",
-        solvated_xml="system.xml",
-        dummy_pdb="output.pdb",
-        dummy_xml="output.xml",
+            self,
+            reference_pdb="reference.pdb",
+            solvated_pdb="output.pdb",
+            solvated_xml="system.xml",
+            dummy_pdb="output.pdb",
+            dummy_xml="output.xml",
     ):
 
         reference_structure = pmd.load_file(reference_pdb, structure=True)
@@ -410,8 +410,10 @@ class Setup(object):
                 "atoms"
             ].split()
 
-            offset_coordinates = reference_structure[f':{self.guest_yaml["name"].upper()} | :{self.host_yaml["resname"].upper()}']\
-                [guest_angle_restraint_mask[1]].coordinates
+            offset_coordinates = \
+                reference_structure[
+                    f':{self.guest_yaml["name"].upper()} | :{self.host_yaml["resname"].upper()}'
+                ][guest_angle_restraint_mask[1]].coordinates
 
         # First add dummy atoms to structure
         logger.debug(f"Adding dummy atoms to {solvated_pdb}")
@@ -423,7 +425,6 @@ class Setup(object):
                                                       (0, 2.2, -11.2)])
         except FileNotFoundError:
             logger.warning(f"Missing {solvated_pdb}")
-
 
         self._wrap(dummy_pdb)
 
@@ -456,7 +457,6 @@ class Setup(object):
 
         structure.save(file, overwrite=True)
 
-
     def initialize_restraints(self, structure="output.pdb"):
 
         if self.guest != "release":
@@ -470,11 +470,10 @@ class Setup(object):
             windows = [None,
                        None,
                        self.host_yaml["calculation"]["windows"]["release"]
-            ]
+                       ]
 
         static_restraints = []
         for restraint in self.host_yaml["restraints"]["static"]:
-
             static = static_DAT_restraint(
                 restraint_mask_list=restraint["restraint"]["atoms"].split(),
                 num_window_list=windows,
@@ -487,10 +486,7 @@ class Setup(object):
         conformational_restraints = []
         if self.host_yaml["restraints"]["conformational"]:
 
-            for conformational in self.host_yaml["restraints"][
-                "conformational"
-            ]:
-
+            for conformational in self.host_yaml["restraints"]["conformational"]:
                 mask = conformational["restraint"]["atoms"].split()
 
                 conformational_restraint = DAT_restraint()
@@ -504,7 +500,6 @@ class Setup(object):
                 conformational_restraint.mask4 = mask[3] if len(mask) > 3 else None
 
                 if self.guest != "release":
-
                     conformational_restraint.attach["target"] = conformational["restraint"][
                         "target"
                     ]
@@ -521,7 +516,6 @@ class Setup(object):
                     conformational_restraint.pull["num_windows"] = windows[1]
 
                 else:
-
                     conformational_restraint.auto_apr = False
                     conformational_restraint.continuous_apr = False
 
@@ -534,7 +528,6 @@ class Setup(object):
                     conformational_restraint.release["fraction_list"] = self.host_yaml["calculation"][
                         "lambda"
                     ]["release"]
-
 
                 conformational_restraint.initialize()
                 conformational_restraints.append(conformational_restraint)
@@ -554,9 +547,8 @@ class Setup(object):
                 symmetry_restraint.mask3 = symmetry["atoms"].split()[2]
 
                 symmetry_restraint.attach["fc_final"] = symmetry["force_constant"]
-                symmetry_restraint.attach["fraction_list"] = [1.0] * len(self.host_yaml["calculation"][
-                        "lambda"
-                    ]["attach"])
+                symmetry_restraint.attach["fraction_list"] = \
+                    [1.0] * len(self.host_yaml["calculation"]["lambda"]["attach"])
                 # This target should be overridden by the custom values.
                 symmetry_restraint.attach["target"] = 999.99
                 symmetry_restraint.custom_restraint_values["r2"] = 91
@@ -582,9 +574,8 @@ class Setup(object):
                 wall_restraint.mask2 = wall["restraint"]["atoms"].split()[1]
 
                 wall_restraint.attach["fc_final"] = wall["restraint"]["force_constant"]
-                wall_restraint.attach["fraction_list"] = [1.0] * len(self.host_yaml["calculation"][
-                                                                             "lambda"
-                                                                         ]["attach"])
+                wall_restraint.attach["fraction_list"] = \
+                    [1.0] * len(self.host_yaml["calculation"]["lambda"]["attach"])
                 wall_restraint.attach["target"] = wall["restraint"]["target"]
                 # Minimum distance is 0 Angstrom
                 wall_restraint.custom_restraint_values["r1"] = 0
@@ -690,6 +681,7 @@ class Setup(object):
         with open(output_xml, "w") as file:
             file.write(system_xml)
 
+
 def get_benchmarks():
     """
     Determine the installed benchmarks.
@@ -697,6 +689,7 @@ def get_benchmarks():
     """
     installed_benchmarks = _get_installed_benchmarks()
     return installed_benchmarks
+
 
 def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceGroup=None):
     if window[0] == "a":
@@ -766,23 +759,23 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
 
             r_0 = restraint.phase[phase]["targets"][window_number] * unit.angstroms
             k = (
-                restraint.phase[phase]["force_constants"][window_number]
-                * unit.kilocalories_per_mole
-                / unit.angstrom ** 2
+                    restraint.phase[phase]["force_constants"][window_number]
+                    * unit.kilocalories_per_mole
+                    / unit.angstrom ** 2
             )
             bond_restraint.addBond(restraint.index1[0], restraint.index2[0], [k, r_0])
             system.addForce(bond_restraint)
         else:
             bond_restraint = openmm.CustomCentroidBondForce(
-                2, "k * (distance(g1, g2) - r_0)^2"
+                2, "k * (r - r_0)^2; r=distance(g1, g2)"
             )
             bond_restraint.addPerBondParameter("k")
             bond_restraint.addPerBondParameter("r_0")
             r_0 = restraint.phase[phase]["targets"][window_number] * unit.angstroms
             k = (
-                restraint.phase[phase]["force_constants"][window_number]
-                * unit.kilocalories_per_mole
-                / unit.angstrom ** 2
+                    restraint.phase[phase]["force_constants"][window_number]
+                    * unit.kilocalories_per_mole
+                    / unit.angstrom ** 2
             )
             g1 = bond_restraint.addGroup(restraint.index1)
             g2 = bond_restraint.addGroup(restraint.index2)
@@ -800,9 +793,9 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
 
             theta_0 = restraint.phase[phase]["targets"][window_number] * unit.degrees
             k = (
-                restraint.phase[phase]["force_constants"][window_number]
-                * unit.kilocalories_per_mole
-                / unit.radian ** 2
+                    restraint.phase[phase]["force_constants"][window_number]
+                    * unit.kilocalories_per_mole
+                    / unit.radian ** 2
             )
             angle_restraint.addAngle(
                 restraint.index1[0],
@@ -812,27 +805,46 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
             )
             system.addForce(angle_restraint)
         else:
-            # Probably needs openmm.CustomCentroidAngleForce (?)
-            raise NotImplementedError
+            angle_restraint = openmm.CustomCentroidBondForce(
+                3, "k * (theta - theta_0)^2; theta=angle(g1, g2, g3)"
+            )
+            angle_restraint.addPerBondParameter("k")
+            angle_restraint.addPerBondParameter("theta_0")
+
+            theta_0 = restraint.phase[phase]["targets"][window_number] * unit.degrees
+            k = (
+                    restraint.phase[phase]["force_constants"][window_number]
+                    * unit.kilocalories_per_mole
+                    / unit.radian ** 2
+            )
+            g1 = angle_restraint.addGroup(restraint.index1)
+            g2 = angle_restraint.addGroup(restraint.index2)
+            g3 = angle_restraint.addGroup(restraint.index3)
+            angle_restraint.addBond([g1, g2, g3], [k, theta_0])
+            system.addForce(angle_restraint)
+
         if ForceGroup:
             angle_restraint.setForceGroup(ForceGroup)
 
     elif restraint.mask4:
         if (
-            not restraint.group1
-            and not restraint.group2
-            and not restraint.group3
-            and not restraint.group4
+                not restraint.group1
+                and not restraint.group2
+                and not restraint.group3
+                and not restraint.group4
         ):
-            dihedral_restraint = openmm.CustomTorsionForce(f"k * min(min(abs(theta - theta_0), abs(theta - theta_0 + 2 * {_PI_})), abs(theta - theta_0 - 2 * {_PI_}))^2")
+            dihedral_restraint = openmm.CustomTorsionForce(
+                f"k * min(min(abs(theta - theta_0), abs(theta - theta_0 + 2 * {_PI_})), abs(theta - theta_0 - 2 * "
+                f"{_PI_}))^2"
+            )
             dihedral_restraint.addPerTorsionParameter("k")
             dihedral_restraint.addPerTorsionParameter("theta_0")
 
             theta_0 = restraint.phase[phase]["targets"][window_number] * unit.degrees
             k = (
-                restraint.phase[phase]["force_constants"][window_number]
-                * unit.kilocalories_per_mole
-                / unit.radian ** 2
+                    restraint.phase[phase]["force_constants"][window_number]
+                    * unit.kilocalories_per_mole
+                    / unit.radian ** 2
             )
             dihedral_restraint.addTorsion(
                 restraint.index1[0],
@@ -843,15 +855,34 @@ def apply_openmm_restraints(system, restraint, window, flat_bottom=False, ForceG
             )
             system.addForce(dihedral_restraint)
         else:
-            # Probably needs openmm.CustomCentroidTorsionForce (?)
-            raise NotImplementedError
+            dihedral_restraint = openmm.CustomCentroidBondForce(
+                4, f"k * min(min(abs(theta - theta_0), abs(theta - theta_0 + 2 * {_PI_})), abs(theta - theta_0 - 2 * "
+                   f"{_PI_}))^2; theta=dihedral(g1, g2, g3, g4)"
+            )
+            dihedral_restraint.addPerBondParameter("k")
+            dihedral_restraint.addPerBondParameter("theta_0")
+
+            theta_0 = restraint.phase[phase]["targets"][window_number] * unit.degrees
+            k = (
+                    restraint.phase[phase]["force_constants"][window_number]
+                    * unit.kilocalories_per_mole
+                    / unit.radian ** 2
+            )
+            g1 = dihedral_restraint.addGroup(restraint.index1)
+            g2 = dihedral_restraint.addGroup(restraint.index2)
+            g3 = dihedral_restraint.addGroup(restraint.index3)
+            g4 = dihedral_restraint.addGroup(restraint.index4)
+            dihedral_restraint.addBond([g1, g2, g3, g4], [k, theta_0])
+            system.addForce(dihedral_restraint)
+
         if ForceGroup:
             dihedral_restraint.setForceGroup(ForceGroup)
+
     return system
+
 
 def generate_gaff(mol2_file, residue_name, output_name=None, need_gaff_atom_types=True, generate_frcmod=True,
                   directory_path="benchmarks", gaff="gaff2"):
-
     if output_name is None:
         output_name = mol2_file.stem
 
@@ -880,15 +911,15 @@ def generate_gaff(mol2_file, residue_name, output_name=None, need_gaff_atom_type
         else:
             raise NotImplementedError()
 
+
 def _generate_gaff_atom_types(mol2_file, residue_name, output_name, gaff="gaff2", directory_path="benchmarks"):
-    
     p = sp.Popen(["antechamber", "-i", str(mol2_file), "-fi", "mol2",
-              "-o", f"{output_name}.{gaff}.mol2", "-fo", "mol2",
-              "-rn", f"{residue_name.upper()}",
-              "-at", f"{gaff}",
-              "-an", "no",
-              "-dr", "no",
-              "-pf", "yes"], cwd=directory_path)
+                  "-o", f"{output_name}.{gaff}.mol2", "-fo", "mol2",
+                  "-rn", f"{residue_name.upper()}",
+                  "-at", f"{gaff}",
+                  "-an", "no",
+                  "-dr", "no",
+                  "-pf", "yes"], cwd=directory_path)
     p.communicate()
 
     files = ["ANTECHAMBER_AC.AC", "ANTECHAMBER_AC.AC0",
@@ -899,7 +930,7 @@ def _generate_gaff_atom_types(mol2_file, residue_name, output_name, gaff="gaff2"
         if file.exists():
             logger.debug(f"Removing temporary file: {file}")
             file.unlink()
-            
+
     if not os.path.exists(f"{output_name}.{gaff}.mol2"):
         # Try with the newer (AmberTools 19) version of `antechamber` which doesn't have the `-dr` flag
         p = sp.Popen(["antechamber", "-i", str(mol2_file), "-fi", "mol2",
