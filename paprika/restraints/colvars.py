@@ -152,6 +152,9 @@ def write_colvar_module(file, colvar, label, convert_kangle=True):
 
         file.write(colvar_def)
 
+    # TODO: Determine unique force constants (This is a limitation of the COLVAR module)
+    # kappa = kappa.split()
+
     # Write Harmonic restraints
     if label == "wall" or label == "symmetry":
         bias = "harmonicWalls"
@@ -233,19 +236,18 @@ def write_dummy_to_colvar(file, dummy_atoms, kpos=100.0):
     file.write("# dummy atoms\n")
     arg = ""
     at = ""
-    kappa = ""
 
     # Write COLVAR definition
     for ndx in range(3):
         colvar_name = f"dm{ndx + 1}"
-        arg += f"{colvar_name}"
+        arg += f"{colvar_name} "
         at += f"0.0 "
         colvar_def = f"colvar {{\n" \
                      f"\tname {colvar_name}\n" \
                      f"\tdistance {{\n" \
                      f"\t\tforceNoPBC yes\n" \
                      f"\t\tgroup1 {{ atomNumbers {{ {dummy_atoms[f'DM{ndx+1}']['idx']} }} }}\n" \
-                     f"\t\tgroup2 {{ dummyAtoms (" \
+                     f"\t\tgroup2 {{ dummyAtom (" \
                      f"{dummy_atoms[f'DM{ndx+1}']['pos'][0]:.3f}, " \
                      f"{dummy_atoms[f'DM{ndx+1}']['pos'][1]:.3f}, " \
                      f"{dummy_atoms[f'DM{ndx+1}']['pos'][2]:.3f}) }}\n" \
@@ -260,7 +262,7 @@ def write_dummy_to_colvar(file, dummy_atoms, kpos=100.0):
     harmonic = f"{bias} {{\n" \
                f"\tcolvars {arg}\n" \
                f"\t{target} {at}\n" \
-               f"\t{force} {kappa}\n" \
+               f"\t{force} {kpos}\n" \
                f"}}\n"
 
     file.write(harmonic)
