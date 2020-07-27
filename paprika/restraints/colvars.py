@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 PI = 3.1415926535
 
 
-def colvar_module_file(file, restraints, window, legacy_k=True):
+def colvar_module_file(file, restraints, window, legacy_k=True, radians=False):
     """
     Writes a COLVAR Module file for a specific APR window. The COLVAR
     Module is supported in the MD codes NAMD, LAMMPS and VMD.
@@ -33,6 +33,9 @@ def colvar_module_file(file, restraints, window, legacy_k=True):
         codes like GROMACS and NAMD requires the user to set the force constant
         without the 1/2 factor. NOTE: The COLVAR Module uses the latter for the
         spring constant.
+    radians : bool
+        Specify whether angles defined in static_DAT_restraint/DAT_restraint() are
+        in radians or degrees (default: radians).
 
     Examples
     --------
@@ -52,30 +55,30 @@ def colvar_module_file(file, restraints, window, legacy_k=True):
         >>>     colvar_module_file(file, restraints, window)
 
     """
-
+    convert_k = True if radians is False else False
     window, phase = parse_window(window)
     file.write("ColvarsTrajFrequency    5000\n")
     file.write("ColvarsRestartFrequency 50000\n")
 
     if "static" in restraints.keys():
-        colvar = restraint_to_colvar(restraints["static"], phase, window, legacy_k=legacy_k, radians=False,)
-        write_colvar_module(file, colvar, "static")
+        colvar = restraint_to_colvar(restraints["static"], phase, window, legacy_k=legacy_k, radians=radians)
+        write_colvar_module(file, colvar, "static", convert_k)
 
     if "host" in restraints.keys():
-        colvar = restraint_to_colvar(restraints["host"], phase, window, legacy_k=legacy_k, radians=False)
-        write_colvar_module(file, colvar, "host")
+        colvar = restraint_to_colvar(restraints["host"], phase, window, legacy_k=legacy_k, radians=radians)
+        write_colvar_module(file, colvar, "host", convert_k)
 
     if "guest" in restraints.keys():
-        colvar = restraint_to_colvar(restraints["guest"], phase, window, legacy_k=legacy_k, radians=False)
-        write_colvar_module(file, colvar, "guest")
+        colvar = restraint_to_colvar(restraints["guest"], phase, window, legacy_k=legacy_k, radians=radians)
+        write_colvar_module(file, colvar, "guest", convert_k)
 
     if "wall" in restraints.keys():
-        colvar = restraint_to_colvar(restraints["wall"], phase, window, legacy_k=legacy_k, radians=False)
-        write_colvar_module(file, colvar, "wall")
+        colvar = restraint_to_colvar(restraints["wall"], phase, window, legacy_k=legacy_k, radians=radians)
+        write_colvar_module(file, colvar, "wall", convert_k)
 
     if "symmetry" in restraints.keys():
-        colvar = restraint_to_colvar(restraints["symmetry"], phase, window, legacy_k=legacy_k, radians=False)
-        write_colvar_module(file, colvar, "symmetry")
+        colvar = restraint_to_colvar(restraints["symmetry"], phase, window, legacy_k=legacy_k, radians=radians)
+        write_colvar_module(file, colvar, "symmetry", convert_k)
 
 
 def write_colvar_module(file, colvar, label, convert_kangle=True):
