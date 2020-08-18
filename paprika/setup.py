@@ -18,15 +18,7 @@ logger = logging.getLogger(__name__)
 _PI_ = np.pi
 
 
-def _get_installed_benchmarks():
-    _installed_benchmarks = {}
-
-    for entry_point in pkg_resources.iter_entry_points(group="taproom.benchmarks"):
-        _installed_benchmarks[entry_point.name] = entry_point.load()
-    return _installed_benchmarks
-
-
-class Setup(object):
+class Setup:
     """
     The Setup class provides a wrapper function around the preparation of the host-guest
     system and the application of restraints.
@@ -36,8 +28,16 @@ class Setup(object):
     def prepare_host_structure(
         cls, coordinate_path: str, host_atom_indices: Optional[List[int]] = None
     ) -> pmd.Structure:
-        """Attempts to align the cavity of the host along the z-axis ready
-        for the APR calculation.
+        """Prepares the coordinates of a host molecule ready for the release phase of
+        an APR calculation.
+
+        This currently involves aligning the cavity of the host along the z-axis, and
+        positioning the host so that its center of geometry at (0, 0, 0).
+
+        Notes
+        -----
+        The hosts cavity axis is for now determined as the vector orthogonal to the
+        two largest principal components of the host.
 
         Parameters
         ----------
@@ -46,6 +46,12 @@ class Setup(object):
         host_atom_indices
             The indices of the host atoms in the coordinate file if the file. This may
             be used if the coordinate file contains more than a single molecule.
+
+        Returns
+        -------
+            A ParmEd structure which contains only the aligned and centered host.
+            If ``host_atom_indices`` are provided, the structure will contain only
+            the referenced host atoms.
         """
         import parmed.geometry
 
@@ -112,8 +118,13 @@ class Setup(object):
         pull_window_index: int,
         n_pull_windows: int,
     ) -> pmd.Structure:
-        """Prepares the coordinates of both the host and the guest molecule in a
-        given APR window.
+        """Prepares the coordinates of a host molecule ready for the pull (+ attach)
+        phase of an APR calculation.
+
+        This currently involves aligning the complex so that the guest molecule (or
+        rather, the guest atoms specified by ``guest_orientation_mask``) is aligned
+        with the z-axis, and the first atom specified by ``guest_orientation_mask`` is
+        positioned at (0, 0, 0).
 
         Parameters
         ----------
@@ -121,10 +132,30 @@ class Setup(object):
             The path to the coordinate file which contains the guest molecule
             bound to the host.
         guest_atom_indices
+            The indices of the atoms in the coordinate file which correspond to the
+            guest molecule.
         guest_orientation_mask
+            The string mask which describes which guest atoms will be restrained to
+            keep the molecule aligned to the z-axis and at a specific distance from
+            the host. This should be of the form 'X Y' where X Y are ParmEd selectors
+            for the two guest atoms to restrain relative to the dummy atoms.
         pull_distance
+            The total distance that the guest will be pulled along the z-axis during
+            the pull phase in units of Angstroms.
         pull_window_index
+            The index of the window to prepare coordinates for. This determines the
+            distance to place the guest from the host in the returned structure. An
+            index of zero corresponds to the guest in its initial position, while an
+            ``index = n_pull_windows - `` corresponds to the guest positioned
+            a distance of ``pull_distance`` away from the host.
         n_pull_windows
+            The total number of pull windows being used in the calculation. This
+            will determine the distance to move the guest at each window.
+
+        Returns
+        -------
+            A ParmEd structure which contains the aligned and positioned host and
+            guest molecules.
         """
 
         # Align the host-guest complex so the first guest atom is at (0, 0, 0) and the
@@ -140,11 +171,6 @@ class Setup(object):
         aligned_structure = align.zalign(
             structure, guest_orientation_mask_0, guest_orientation_mask_1
         )
-
-        # n_pull_windows = self.host_yaml["calculation"]["windows"]["pull"]
-
-        # target_initial = self.guest_yaml["restraints"]["guest"][0]["attach"]["target"]
-        # target_final = self.host_yaml["calculation"]["target"]["pull"]
 
         target_distance = np.linspace(0.0, pull_distance, n_pull_windows)[
             pull_window_index
@@ -162,6 +188,20 @@ class Setup(object):
         dummy_atom_offsets: List[np.ndarray],
         offset_coordinates: Optional[np.ndarray] = None,
     ):
+        """A convenience method to add a number of dummy atoms to an existing
+        ParmEd structure, and to position those atoms at a specified set of positions.
+
+        Parameters
+        ----------
+        structure
+            The structure to add the dummy atoms to.
+        dummy_atom_offsets
+            The list of positions (defined by a 3-d numpy array) of the dummy atoms
+            to add.
+        offset_coordinates
+            An optional amount to offset each of the dummy atom positions by with
+            shape=(3,).
+        """
 
         if offset_coordinates is None:
             offset_coordinates = np.zeros(3)
@@ -181,96 +221,6 @@ class Setup(object):
 
         structure.positions = full_coordinates
 
-    # def __init__(self, host, guest=None,
-    #              backend="openmm", directory_path="benchmarks",
-    #              additional_benchmarks=None, generate_gaff_files=False,
-    #              gaff_version="gaff2",
-    #              guest_orientation=None, build=True):
-    #     self.host = host
-    #     self.guest = guest if guest is not None else "release"
-    #     self.backend = backend
-    #     self.directory = Path(directory_path).joinpath(self.host).joinpath(
-    #     f"{self.guest}-{guest_orientation}" if
-    #     guest_orientation is not None else
-    #     f"{self.guest}")
-    #     self.desolvated_window_paths = []
-    #     self.window_list = []
-    #
-    #     if self.backend == "amber":
-    #         # Generate `frcmod` and dummy atom files.
-    #         raise NotImplementedError
-    #
-    #     self.directory.mkdir(parents=True, exist_ok=True)
-    #     installed_benchmarks = get_benchmarks()
-    #     if additional_benchmarks is not None:
-    #         installed_benchmarks.update(additional_benchmarks)
-    #
-    #     host_yaml, guest_yaml = self.parse_yaml(installed_benchmarks,
-    #     guest_orientation)
-    #
-    #     self.benchmark_path = host_yaml.parent
-    #     self.host_yaml = read_yaml(host_yaml)
-    #     if guest:
-    #         self.guest_yaml = read_yaml(guest_yaml["yaml"])
-    #
-    #     if build:
-    #         # Here, we build desolvated windows and pass the files to the OpenFF
-    #         Evaluator.
-    #         # These files are stored in `self.desolvated_window_paths`.
-    #         self.build_desolvated_windows(guest_orientation)
-    #         if generate_gaff_files:
-    #             generate_gaff(mol2_file=self.benchmark_path.joinpath(
-    #             self.host_yaml["structure"]),
-    #                           residue_name=self.host_yaml["resname"],
-    #                           output_name=self.host,
-    #                           directory_path=self.directory,
-    #                           gaff=gaff_version)
-    #             if guest:
-    #                 generate_gaff(mol2_file=self.benchmark_path.joinpath(
-    #                     self.guest).joinpath(self.guest_yaml["structure"]),
-    #                               output_name=self.guest,
-    #                               residue_name=self.guest_yaml["name"],
-    #                               directory_path=self.directory,
-    #                               gaff=gaff_version)
-    #     if not build:
-    #         self.populate_window_list(input_pdb=os.path.join(self.directory,
-    #         f"{self.host}-{self.guest}.pdb" if self.guest is not None
-    #         else f"{self.host}.pdb"))
-
-    # def parse_yaml(self, installed_benchmarks, guest_orientation):
-    #     """
-    #     Read the YAML recipe for the host and guest.
-    #
-    #     Returns
-    #     -------
-    #
-    #     """
-    #     try:
-    #         if guest_orientation:
-    #
-    #             host_yaml = installed_benchmarks["host_guest_systems"][self.host]
-    #             ["yaml"][guest_orientation]
-    #         else:
-    #             host_yaml = installed_benchmarks["host_guest_systems"][self.host]
-    #             ["yaml"]["p"]
-    #
-    #     except KeyError:
-    #         logger.error(f"Cannot find YAML recipe for host: {self.host}")
-    #         logger.debug(installed_benchmarks)
-    #         raise FileNotFoundError
-    #     try:
-    #         guest_yaml = installed_benchmarks["host_guest_systems"][self.host]
-    #         [self.guest]
-    #     except KeyError:
-    #         if self.guest == "release":
-    #             guest_yaml = None
-    #         else:
-    #             logger.error(f"Cannot find YAML recipe for guest: {self.guest}")
-    #             logger.debug(installed_benchmarks)
-    #             raise FileNotFoundError
-    #
-    #     return host_yaml, guest_yaml
-
     @classmethod
     def build_static_restraints(
         cls,
@@ -281,32 +231,45 @@ class Setup(object):
         restraint_schemas: List[Dict[str, Any]],
         use_amber_indices: bool = False,
     ) -> List[DAT_restraint]:
-        """
+        """A method to convert a set of static restraints defined by their 'schemas'
+        into corresponding ``DAT_restraint``objects.
+
+        Each 'schema' should be a dictionary with:
+
+            * an ``atoms`` entry with a value of the atom selection make which specifies
+              which atoms the restraint will apply to
+            * a ``force_constant`` entry which specifies the force constant of the
+              restraint.
+
+        These 'schemas` map directly to the 'restraints -> static -> restraint'
+        dictionaries specified in the `taproom` host YAML files.
 
         Parameters
         ----------
         coordinate_path
+            The path to the coordinate file which the restraints will be applied to.
+            This should contain either the host or the complex, the dummy atoms and
+            and solvent.
         n_attach_windows
+            The total number of attach windows being used in the APR calculation.
         n_pull_windows
+            The total number of pull windows being used in the APR calculation.
         n_release_windows
+            The total number of release windows being used in the APR calculation.
         restraint_schemas
-
-            This should be a dictionary of the form:
-
-                * atoms: List[str]
-                * force_constant: float
-
+            The list of dictionaries which provide the settings to use for each
+            static restraint to add.
         use_amber_indices
+            Whether to use amber based (i.e. starting from 1) restraint indices or
+            OpenMM based (i.e. starting from 0) indices.
 
         Returns
         -------
-
+            The constructed static restraint objects.
         """
 
         if n_pull_windows is not None:
             assert n_attach_windows is not None
-
-        # restraint_schemas = self.host_yaml["restraints"]["static"]
 
         static_restraints: List[DAT_restraint] = []
 
@@ -336,36 +299,48 @@ class Setup(object):
         restraint_schemas: List[Dict[str, Any]],
         use_amber_indices: bool = False,
     ) -> List[DAT_restraint]:
-        """
+        """A method to convert a set of conformational restraints defined by their
+        'schemas' into corresponding ``DAT_restraint``objects.
+
+        Each 'schema' should be a dictionary with:
+
+            * an ``atoms`` entry with a value of the atom selection make which specifies
+              which atoms the restraint will apply to
+            * a ``force_constant`` entry which specifies the force constant of the
+              restraint.
+            * a ``target`` entry which specifies the target value of the restraint.
+
+        These 'schemas` map directly to the 'restraints -> conformational -> restraint'
+        dictionaries specified in the ``taproom`` host YAML files.
 
         Parameters
         ----------
         coordinate_path
+            The path to the coordinate file which the restraints will be applied to.
+            This should contain either the host or the complex, the dummy atoms and
+            and solvent.
         attach_lambdas
+            The values 'lambda' being used during the attach phase of the APR
+            calculation.
         n_pull_windows
+            The total number of pull windows being used in the APR calculation.
         release_lambdas
+            The values 'lambda' being used during the release phase of the APR
+            calculation.
         restraint_schemas
-
-            This should be a dictionary of the form:
-
-                * atoms: List[str]
-                * force_constant: float
-                * target: float
-
+            The list of dictionaries which provide the settings to use for each
+            conformational restraint to add.
         use_amber_indices
+            Whether to use amber based (i.e. starting from 1) restraint indices or
+            OpenMM based (i.e. starting from 0) indices.
 
         Returns
         -------
-
+            The constructed conformational restraint objects.
         """
 
         if n_pull_windows is not None:
             assert attach_lambdas is not None
-
-        # restraint_schemas = self.host_yaml["restraints"]["conformational"]
-
-        # attach_lambdas = self.host_yaml["calculation"]["lambda"]["attach"]
-        # release_lambdas = self.host_yaml["calculation"]["lambda"]["release"]
 
         restraints = []
 
@@ -414,27 +389,38 @@ class Setup(object):
         restraint_schemas: List[Dict[str, Any]],
         use_amber_indices: bool = False,
     ) -> List[DAT_restraint]:
-        """
+        """A method to convert a set of symmetry restraints defined by their 'schemas'
+        into corresponding ``DAT_restraint``objects.
+
+        Each 'schema' should be a dictionary with:
+
+            * an ``atoms`` entry with a value of the atom selection make which specifies
+              which atoms the restraint will apply to
+            * a ``force_constant`` entry which specifies the force constant of the
+              restraint.
+
+        These 'schemas` map directly to the 'restraints -> symmetry_correction
+        -> restraint' dictionaries specified in the `taproom` guest YAML files.
 
         Parameters
         ----------
         coordinate_path
+            The path to the coordinate file which the restraints will be applied to.
+            This should contain either the host or the complex, the dummy atoms and
+            and solvent.
         n_attach_windows
+            The total number of attach windows being used in the APR calculation.
         restraint_schemas
-
-            This should be a dictionary of the form:
-
-                * atoms: List[str]
-                * force_constant: float
-
+            The list of dictionaries which provide the settings to use for each
+            symmetry restraint to add.
         use_amber_indices
+            Whether to use amber based (i.e. starting from 1) restraint indices or
+            OpenMM based (i.e. starting from 0) indices.
 
         Returns
         -------
-
+            The constructed symmetry restraint objects.
         """
-
-        # restraint_schemas = self.guest_yaml["symmetry_correction"]["restraints"]
 
         restraints = []
 
@@ -473,28 +459,39 @@ class Setup(object):
         restraint_schemas: List[Dict[str, Any]],
         use_amber_indices: bool = False,
     ) -> List[DAT_restraint]:
-        """
+        """A method to convert a set of wall restraints defined by their 'schemas'
+        into corresponding ``DAT_restraint``objects.
+
+        Each 'schema' should be a dictionary with:
+
+            * an ``atoms`` entry with a value of the atom selection make which specifies
+              which atoms the restraint will apply to
+            * a ``force_constant`` entry which specifies the force constant of the
+              restraint.
+            * a ``target`` entry which specifies the target value of the restraint.
+
+        These 'schemas` map directly to the 'restraints -> wall_restraints -> restraint'
+        dictionaries specified in the `taproom` guest YAML files.
 
         Parameters
         ----------
         coordinate_path
+            The path to the coordinate file which the restraints will be applied to.
+            This should contain either the host or the complex, the dummy atoms and
+            and solvent.
         n_attach_windows
+            The total number of attach windows being used in the APR calculation.
         restraint_schemas
-
-            This should be a dictionary of the form:
-
-                * atoms: List[str]
-                * force_constant: float
-                * target: float
-
+            The list of dictionaries which provide the settings to use for each
+            wall restraint to add.
         use_amber_indices
+            Whether to use amber based (i.e. starting from 1) restraint indices or
+            OpenMM based (i.e. starting from 0) indices.
 
         Returns
         -------
-
+            The constructed wall restraint objects.
         """
-
-        # restraint_schemas = self.guest_yaml["restraints"]["wall_restraints"]
 
         restraints = []
 
@@ -539,30 +536,45 @@ class Setup(object):
         restraint_schemas: List[Dict[str, Any]],
         use_amber_indices: bool = False,
     ) -> List[DAT_restraint]:
-        """
+        """A method to convert a set of guest restraints defined by their 'schemas'
+        into corresponding ``DAT_restraint``objects.
+
+        Each 'schema' should be a dictionary with:
+
+            * an ``atoms`` entry with a value of the atom selection make which specifies
+              which atoms the restraint will apply to
+
+        and additionally a nested ``attach`` and ``pull`` dictionary with
+
+            * a ``force_constant`` entry which specifies the force constant of the
+              restraint.
+            * a ``target`` entry which specifies the target value of the restraint.
+
+        These 'schemas` map directly to the 'restraints -> guest -> restraint'
+        dictionaries specified in the `taproom` guest YAML files.
 
         Parameters
         ----------
         coordinate_path
+            The path to the coordinate file which the restraints will be applied to.
+            This should contain either the host or the complex, the dummy atoms and
+            and solvent.
         attach_lambdas
+            The values 'lambda' being used during the attach phase of the APR
+            calculation.
         n_pull_windows
+            The total number of pull windows being used in the APR calculation.
         restraint_schemas
-
-            This should be a dictionary of the form:
-
-                * atoms: List[str]
-                * force_constant: float
-                * target: float
-
+            The list of dictionaries which provide the settings to use for each
+            wall restraint to add.
         use_amber_indices
+            Whether to use amber based (i.e. starting from 1) restraint indices or
+            OpenMM based (i.e. starting from 0) indices.
 
         Returns
         -------
-
+            The constructed wall restraint objects.
         """
-
-        # restraint_schemas = self.guest_yaml["restraints"]["guest"]
-        # attach_lambdas = self.host_yaml["calculation"]["lambda"]["attach"]
 
         restraints = []
 
@@ -600,19 +612,22 @@ class Setup(object):
 
     @classmethod
     def apply_openmm_positional_restraints(
-        cls, coordinate_path, system, force_group: int = 15
+        cls, coordinate_path: str, system, force_group: int = 15
     ):
-        """
+        """A utility function which will add OpenMM harmonic positional restraints to
+        any dummy atoms found within a system to restrain them to their initial
+        positions.
 
         Parameters
         ----------
         coordinate_path
-        system
+            The path to the coordinate file which the restraints will be applied to.
+            This should contain either the host or the complex, the dummy atoms and
+            and solvent.
+        system: openmm.System
+            The system object to add the positional restraints to.
         force_group
-
-        Returns
-        -------
-
+            The force group to add the positional restraints to.
         """
 
         from simtk import openmm, unit
@@ -802,10 +817,13 @@ def apply_openmm_restraints(
 
 def get_benchmarks():
     """
-    Determine the installed benchmarks.
-
+    Determine the installed `taproom` benchmarks.
     """
-    installed_benchmarks = _get_installed_benchmarks()
+    installed_benchmarks = {}
+
+    for entry_point in pkg_resources.iter_entry_points(group="taproom.benchmarks"):
+        installed_benchmarks[entry_point.name] = entry_point.load()
+
     return installed_benchmarks
 
 
