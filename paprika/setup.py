@@ -44,8 +44,9 @@ class Setup:
         coordinate_path
             The path to the coordinate file which contains the host molecule.
         host_atom_indices
-            The indices of the host atoms in the coordinate file if the file. This may
-            be used if the coordinate file contains more than a single molecule.
+            The (0-based) indices of the host atoms in the coordinate file if the
+            file. This may be used if the coordinate file contains more than a single
+            molecule.
 
         Returns
         -------
@@ -132,8 +133,8 @@ class Setup:
             The path to the coordinate file which contains the guest molecule
             bound to the host.
         guest_atom_indices
-            The indices of the atoms in the coordinate file which correspond to the
-            guest molecule.
+            The (0-based) indices of the atoms in the coordinate file which
+            correspond to the guest molecule.
         guest_orientation_mask
             The string mask which describes which guest atoms will be restrained to
             keep the molecule aligned to the z-axis and at a specific distance from
