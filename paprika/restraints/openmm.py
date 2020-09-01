@@ -17,13 +17,13 @@ def apply_positional_restraints(
 
     Parameters
     ----------
-    coordinate_path
+    coordinate_path : str
         The path to the coordinate file which the restraints will be applied to.
         This should contain either the host or the complex, the dummy atoms and
         and solvent.
-    system: openmm.System
+    system : openmm.System
         The system object to add the positional restraints to.
-    force_group
+    force_group : int
         The force group to add the positional restraints to.
     """
 
@@ -35,7 +35,6 @@ def apply_positional_restraints(
     for atom in structure.atoms:
 
         if atom.name == "DUM":
-
             positional_restraint = openmm.CustomExternalForce(
                 "k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)"
             )
@@ -62,6 +61,25 @@ def apply_positional_restraints(
 def apply_dat_restraint(
     system, restraint, phase, window_number, flat_bottom=False, force_group=None
 ):
+    """A utility function which takes in pAPRika restraints and applies the
+    restraints to an OpenMM System object.
+
+    Parameters
+    ----------
+    system : openmm.System
+        The system object to add the positional restraints to.
+    restraint : list
+        List of static_DAT_restraints or DAT_restraints
+    phase : str
+        Phase of calculation ('attach', 'pull' or 'release')
+    window_number : int
+        The corresponding window number of the current phase
+    flat_bottom : bool
+        Specify whether the restraint is a flat bottom potential
+    force_group : int
+        The force group to add the positional restraints to.
+
+    """
 
     from simtk import openmm, unit
 
