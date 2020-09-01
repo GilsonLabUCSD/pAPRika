@@ -69,9 +69,9 @@ def apply_dat_restraint(
     system : openmm.System
         The system object to add the positional restraints to.
     restraint : list
-        List of static_DAT_restraints or DAT_restraints
+        List of pAPRika defined restraints
     phase : str
-        Phase of calculation ('attach', 'pull' or 'release')
+        Phase of calculation ("attach", "pull" or "release")
     window_number : int
         The corresponding window number of the current phase
     flat_bottom : bool
