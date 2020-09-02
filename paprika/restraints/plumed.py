@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import parmed as pmd
 
+from paprika.dummy import extract_dummy_atoms
 from paprika.utils import get_key, return_parmed_structure
 from paprika.restraints.utils import get_bias_potential_type, parse_window
 from parmed.structure import Structure as ParmedStructureClass
@@ -25,7 +26,7 @@ class Plumed(object):
         >>> plumed.restraint_list = restraint_list
         >>> plumed.dump_to_file()
 
-
+    plumed.dat:
         UNITS LENGTH=A ENERGY=kcal/mol TIME=ns
         # Collective variables
         c1 : DISTANCE ATOMS=175,150 NOPBC
@@ -167,8 +168,6 @@ class Plumed(object):
             except IOError:
                 raise Exception("Cannot write header to file. Please check the specified path exist.")
 
-            print(f"Converting pAPRika restraint in {windows} to Plumed")
-
             cv_index = 1
 
             center_list = []
@@ -297,9 +296,6 @@ class Plumed(object):
                     file.write(line)
 
     def add_dummy_atoms_to_file(self, structure):
-        from paprika.dummy import extract_dummy_atoms
-        from paprika.utils import return_parmed_structure
-        
         # Extract dummy atoms
         for windows in self.window_list:
             if isinstance(structure, str):
@@ -327,7 +323,7 @@ class Plumed(object):
 
 def _check_plumed_units(energy, length, time):
     """
-    Checks the specified units and makes sure that its supported
+    Checks the specified units and makes sure that its supported.
     """
     if energy not in ['kj/mol', 'kcal/mol']:
         raise Exception(f"Specified unit for energy ({energy}) is not supported.")
