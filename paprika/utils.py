@@ -11,6 +11,11 @@ from parmed.structure import Structure as ParmedStructureClass
 logger = logging.getLogger(__name__)
 
 
+def get_key(dct, value):
+    """Get dictionary key given the value"""
+    return [key for key in dct if (dct[key] == value)]
+
+
 def return_parmed_structure(filename):
     """
     Return a structure object from a filename.
