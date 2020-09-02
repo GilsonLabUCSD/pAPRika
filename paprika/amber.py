@@ -83,6 +83,15 @@ class Simulation(object):
         self._restraint_file = value
 
     @property
+    def plumed_file(self):
+        """os.PathLike: The file containing Plumed-style restraints."""
+        return self._plumed_file
+
+    @plumed_file.setter
+    def plumed_file(self, value):
+        self._plumed_file = value
+
+    @property
     def converged(self) -> bool:
         """bool: Whether the simulation is converged.
 
@@ -212,7 +221,8 @@ class Simulation(object):
         self._phase = None
         self._window = None
         self._topology = "prmtop"
-        self._restraint_file = "restraints.in"
+        self._restraint_file = None
+        self._plumed_file = None
         self.title = "PBC MD Simulation"
         self.converged = False
 
@@ -376,9 +386,10 @@ class Simulation(object):
                 f.write("  {:15s} {:s},\n".format(key+" =", str(val)))
 
         # Write PLUMED option if preferred over Amber NMR restraints
-        if self.restraint_file is not None and self.restraint_file is 'plumed.dat':
+        if self.plumed_file:
+            print("okay")
             f.write("  {:15s} {:s},\n".format("plumed = ", str(1)))
-            f.write("  {:15s} {:s},\n".format("plumedfile =", "'plumed.dat'"))
+            f.write("  {:15s} {:s},\n".format("plumedfile =", f"'{self.plumed_file}'"))
 
         f.write(" /\n")
 
@@ -403,8 +414,8 @@ class Simulation(object):
                         f.write(" "+line+"\n")
                 f.write(" &wt type = 'END', /\n")
 
-                # Specify Amber NMR file, for Plumed this step will be skipped
-                if self.restraint_file is not None and self.restraint_file is not 'plumed.dat':
+                # Specify Amber NMR file
+                if self.restraint_file is not None:
                     f.write("DISANG = {}\n".format(self.restraint_file))
                     f.write("LISTOUT = POUT\n\n")
 
