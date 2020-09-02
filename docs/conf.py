@@ -20,9 +20,9 @@ sys.path.insert(0, os.path.abspath('.'))
 # -- Project information -----------------------------------------------------
 
 project = 'pAPRika'
-copyright = ("2019, David R. Slochower and Niel M. Henriksen. Project structure based on the "
+copyright = ("2020, Niel M. Henriksen, David R. Slochower, Simon Boothroyd, Jeff Setiadi, and Willa Wang. Project structure based on the "
              "Computational Molecular Science Python Cookiecutter version 1.0")
-author = 'David R. Slochower and Niel M. Henriksen'
+author = 'Niel M. Henriksen, David R. Slochower, Simon Boothroyd, Jeff Setiadi, and Willa Wang'
 
 # The short X.Y version
 version = ''
@@ -44,13 +44,13 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
+    'sphinx.ext.autosectionlabel',
     'sphinx.ext.doctest',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'nbsphinx',
-    'm2r'
 ]
 
 # Autodoc settings
@@ -59,6 +59,14 @@ autodoc_default_flags = ['members', 'inherited-members']
 autodoc_member_order = 'bysource' # preserve ordering in source
 
 autodoc_mock_imports = ["pytraj"]
+
+# Autolabel settings
+autosectionlabel_maxdepth = 3
+autosectionlabel_prefix_document = True
+
+suppress_warnings = [
+    'autosectionlabel.releasehistory',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
