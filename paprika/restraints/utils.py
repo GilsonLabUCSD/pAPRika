@@ -65,10 +65,7 @@ def get_bias_potential_type(restraint, phase, window):
         "rk2": restraint.phase[phase]["force_constants"][window],
         "rk3": restraint.phase[phase]["force_constants"][window],
     }
-    for key, value in restraint.custom_restraint_values.items():
-        if value is not None:
-            logger.debug("Overriding {} = {}".format(key, value))
-            amber_restraint_values[key] = value
+    override_dict(amber_restraint_values, restraint.custom_restraint_values)
 
     if amber_restraint_values["r2"] == amber_restraint_values["r3"] and \
             amber_restraint_values["rk2"] == amber_restraint_values["rk3"]:

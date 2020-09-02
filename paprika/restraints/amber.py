@@ -1,5 +1,6 @@
 import logging
 
+from paprika.utils import override_dict
 from paprika.restraints.utils import parse_window
 
 logger = logging.getLogger(__name__)
@@ -105,11 +106,7 @@ def amber_restraint_line(restraint, window):
         "rk2": restraint.phase[phase]["force_constants"][window],
         "rk3": restraint.phase[phase]["force_constants"][window],
     }
-
-    for key, value in restraint.custom_restraint_values.items():
-        if value is not None:
-            logger.debug("Overriding {} = {}".format(key, value))
-            amber_restraint_values[key] = value
+    override_dict(amber_restraint_values, restraint.custom_restraint_values)
 
     # Prepare AMBER NMR-style restraint
     atoms = "".join([iat1, iat2, iat3, iat4])

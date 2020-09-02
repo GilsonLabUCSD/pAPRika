@@ -16,6 +16,14 @@ def get_key(dct, value):
     return [key for key in dct if (dct[key] == value)]
 
 
+def override_dict(dct, custom):
+    """Override dictionary values from that of a custom dictionary."""
+    for key, value in custom.items():
+        if value is not None:
+            logger.debug("Overriding {} = {}".format(key, value))
+            dct[key] = value
+
+
 def return_parmed_structure(filename):
     """
     Return a structure object from a filename.
