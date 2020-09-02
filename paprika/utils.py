@@ -34,6 +34,7 @@ def return_parmed_structure(filename):
         logger.error("Unable to load file: {}".format(filename))
     return structure
 
+
 @lru_cache(maxsize=32)
 def index_from_mask(structure, mask, amber_index=False):
     """
@@ -76,7 +77,7 @@ def index_from_mask(structure, mask, amber_index=False):
 
 
 def make_window_dirs(
-    window_list, stash_existing=False, path="./", window_dir_name="windows"
+        window_list, stash_existing=False, path="./", window_dir_name="windows"
 ):
     """
     Make a series of windows to hold simulation data.
@@ -181,6 +182,7 @@ def parse_mden(file):
 
     return energies
 
+
 def parse_mdout(file):
     """
     Return energies from an AMBER `mdout` file.
@@ -229,3 +231,46 @@ def parse_mdout(file):
     }
 
     return energies
+
+
+def extract_dummy_atoms(structure, resname=None, serial=True):
+    """
+    Extract information about dummy atoms from a parmed structure and
+    returns the information as a dictionary.
+
+    Parameters
+    ----------
+    structure : :class:`parmed.structure.Structure`
+        The parmed structure object we want to extract from
+    resname : list
+        List of residue name for the dummy atoms (default: ["DM1", "DM2", "DM3"])
+    serial : bool
+        get indices in serial (starts from 1) or index (starts from 0)
+
+    Returns
+    -------
+    dummy_atoms : dict
+
+    Output example
+    --------------
+
+        main keys: {'DM1', 'DM2', 'DM3'}
+        sub keys: 'pos'      - cartesian coordinates (x,y,z)
+                  'idx'      - atom indices
+                  'idx_type' - type of atom index (serial or index)
+                  'mass'     - mass of dummy atom
+    """
+
+    if resname is None:
+        resname = ["DM1", "DM2", "DM3"]
+
+    dummy_atoms = {name: {} for name in resname}
+
+    for dummy_atom in resname:
+        residue = f":{dummy_atom}"
+        dummy_atoms[dummy_atom]["pos"] = structure[residue].coordinates[0]
+        dummy_atoms[dummy_atom]["mass"] = [atom.mass for atom in structure[residue].atoms][0]
+        dummy_atoms[dummy_atom]["idx"] = index_from_mask(structure, residue, amber_index=serial)[0]
+        dummy_atoms[dummy_atom]["idx_type"] = "serial" if serial else "index"
+
+    return dummy_atoms
