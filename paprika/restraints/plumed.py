@@ -83,16 +83,16 @@ class Plumed(object):
         self._path = value
 
     @property
-    def legacy_k(self):
+    def uses_legacy_k(self):
         """
         bool: Option to specify whether the force constant parsed into DAT_restraint()
         is halved or not (i.e. value is already multiplied by a factor of 1/2).
         """
-        return self._legacy_k
+        return self._uses_legacy_k
 
-    @legacy_k.setter
-    def legacy_k(self, value: bool):
-        self._legacy_k = value
+    @uses_legacy_k.setter
+    def uses_legacy_k(self, value: bool):
+        self._uses_legacy_k = value
 
     @property
     def energy_unit(self):
@@ -132,7 +132,7 @@ class Plumed(object):
         self._restraint_list = None
         self._window_list = None
         self._path = './'
-        self._legacy_k = True
+        self._uses_legacy_k = True
         self.k_factor = 1.0
         self._energy_unit = "kcal/mol"
         self._length_unit = "A"
@@ -141,7 +141,7 @@ class Plumed(object):
 
     def _initialize(self):
         # Set factor for spring constant
-        if self.legacy_k:
+        if self.uses_legacy_k:
             self.k_factor = 2.0
 
         # Check units
@@ -274,8 +274,8 @@ class Plumed(object):
                     bias_type = "restraint"
 
                 # Append string to lists
-                colvar_list.append(f"c{cv_index:<2}: {colvar_type.upper():<8} ATOMS={atom_string} NOPBC\n")
-                bias_list.append(f"{bias_type.upper():<11} ARG=c{cv_index:<2} AT={target:>7.3f} KAPPA={force_constant:>7.2f}\n")
+                colvar_list.append(f"c{cv_index}: {colvar_type.upper()} ATOMS={atom_string} NOPBC\n")
+                bias_list.append(f"{bias_type.upper()} ARG=c{cv_index} AT={target:.4f} KAPPA={force_constant:.2f}\n")
 
                 # Increment colvar index
                 cv_index += 1

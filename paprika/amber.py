@@ -387,7 +387,6 @@ class Simulation(object):
 
         # Write PLUMED option if preferred over Amber NMR restraints
         if self.plumed_file:
-            print("okay")
             f.write("  {:15s} {:s},\n".format("plumed = ", str(1)))
             f.write("  {:15s} {:s},\n".format("plumedfile =", f"'{self.plumed_file}'"))
 
