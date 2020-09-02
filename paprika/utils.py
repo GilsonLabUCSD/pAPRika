@@ -90,7 +90,7 @@ def index_from_mask(structure, mask, amber_index=False):
 
 
 def make_window_dirs(
-        window_list, stash_existing=False, path="./", window_dir_name="windows"
+    window_list, stash_existing=False, path="./", window_dir_name="windows"
 ):
     """
     Make a series of windows to hold simulation data.

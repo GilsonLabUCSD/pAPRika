@@ -1,7 +1,7 @@
 import logging
 
-from paprika.utils import override_dict
 from paprika.restraints.utils import parse_window
+from paprika.utils import override_dict
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,10 @@ def amber_restraint_line(restraint, window):
     """
 
     window, phase = parse_window(window)
-    if restraint.phase[phase]["force_constants"] is None and restraint.phase[phase]["targets"] is None:
+    if (
+        restraint.phase[phase]["force_constants"] is None
+        and restraint.phase[phase]["targets"] is None
+    ):
         return ""
 
     if not restraint.index1:
@@ -85,7 +88,6 @@ def amber_restraint_line(restraint, window):
         igr4 = ""
         for index in restraint.index4:
             igr4 += "{},".format(index)
-
 
     # Set upper/lower bounds depending on whether distance, angle, or torsion
     lower_bound = 0.0

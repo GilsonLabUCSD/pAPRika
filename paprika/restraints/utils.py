@@ -1,5 +1,8 @@
 import logging
+
 import numpy as np
+
+from paprika.utils import override_dict
 
 logger = logging.getLogger(__name__)
 
@@ -67,20 +70,28 @@ def get_bias_potential_type(restraint, phase, window):
     }
     override_dict(amber_restraint_values, restraint.custom_restraint_values)
 
-    if amber_restraint_values["r2"] == amber_restraint_values["r3"] and \
-            amber_restraint_values["rk2"] == amber_restraint_values["rk3"]:
+    if (
+        amber_restraint_values["r2"] == amber_restraint_values["r3"]
+        and amber_restraint_values["rk2"] == amber_restraint_values["rk3"]
+    ):
         bias_type = "harmonic"
 
-    if amber_restraint_values["r2"] < amber_restraint_values["r3"] and \
-            amber_restraint_values["rk2"] == amber_restraint_values["rk3"]:
+    if (
+        amber_restraint_values["r2"] < amber_restraint_values["r3"]
+        and amber_restraint_values["rk2"] == amber_restraint_values["rk3"]
+    ):
         bias_type = "upper_walls"
 
-    if amber_restraint_values["r2"] == amber_restraint_values["r3"] and \
-            amber_restraint_values["rk2"] < amber_restraint_values["rk3"]:
+    if (
+        amber_restraint_values["r2"] == amber_restraint_values["r3"]
+        and amber_restraint_values["rk2"] < amber_restraint_values["rk3"]
+    ):
         bias_type = "upper_walls"
 
-    elif amber_restraint_values["r2"] == amber_restraint_values["r3"] and \
-            amber_restraint_values["rk2"] > amber_restraint_values["rk3"]:
+    elif (
+        amber_restraint_values["r2"] == amber_restraint_values["r3"]
+        and amber_restraint_values["rk2"] > amber_restraint_values["rk3"]
+    ):
         bias_type = "lower_walls"
 
     if bias_type is None:

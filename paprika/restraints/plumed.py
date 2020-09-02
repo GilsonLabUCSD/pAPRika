@@ -1,12 +1,12 @@
-import os
 import logging
+import os
+
 import numpy as np
-import parmed as pmd
+from parmed.structure import Structure as ParmedStructureClass
 
 from paprika.dummy import extract_dummy_atoms
-from paprika.utils import get_key, return_parmed_structure
 from paprika.restraints.utils import get_bias_potential_type, parse_window
-from parmed.structure import Structure as ParmedStructureClass
+from paprika.utils import get_key, override_dict, return_parmed_structure
 
 logger = logging.getLogger(__name__)
 
@@ -131,13 +131,15 @@ class Plumed(object):
         self._file_name = "plumed.dat"
         self._restraint_list = None
         self._window_list = None
-        self._path = './'
+        self._path = "./"
         self._uses_legacy_k = True
         self.k_factor = 1.0
         self._energy_unit = "kcal/mol"
         self._length_unit = "A"
         self._time_unit = "ns"
         self.header_line = None
+        self.group_index = None
+        self.group_atoms = None
 
     def _initialize(self):
         # Set factor for spring constant
@@ -161,21 +163,15 @@ class Plumed(object):
             window, phase = parse_window(windows)
 
             # Check if file exist and write header line
-            try:
-                with open(os.path.join(self.path, windows, self.file_name), "w") as file:
-                    file.write(self.header_line + "\n")
-
-            except IOError:
-                raise Exception("Cannot write header to file. Please check the specified path exist.")
+            with open(os.path.join(self.path, windows, self.file_name), "w") as file:
+                file.write(self.header_line + "\n")
 
             cv_index = 1
-
-            center_list = []
-            colvar_list = []
+            cv_list = []
             bias_list = []
 
-            group_index = 1
-            group_atoms = {}
+            self.group_index = 1
+            self.group_atoms = {}
 
             # Parse each restraint in the list
             for restraint in self.restraint_list:
@@ -183,81 +179,16 @@ class Plumed(object):
                 # Example: wall restraints only used during the attach phase.
                 try:
                     target = restraint.phase[phase]["targets"][window]
-                    force_constant = restraint.phase[phase]["force_constants"][window] * self.k_factor
+                    force_constant = (
+                        restraint.phase[phase]["force_constants"][window]
+                        * self.k_factor
+                    )
                 except TypeError:
                     continue
 
-                # Check atom index setting
-                index_shift = 0
-                if not restraint.amber_index:
-                    index_shift = 1
-                    logger.info("Atom indices starts from 0 --> shifting indices by 1.")
-
-                # Collect DAT atom indices
-                atom_index = []
-
-                if not restraint.index1:
-                    raise Exception("There must be at least two atoms in a restraint.")
-                elif not restraint.group1:
-                    atom_index.append(restraint.index1[0] + index_shift)
-                else:
-                    igr1 = ""
-                    for index in restraint.index1:
-                        igr1 += "{},".format(index + index_shift)
-
-                    if not get_key(group_atoms, igr1):
-                        group_atoms[f"g{group_index}"] = igr1
-                        group_index += 1
-
-                    atom_index.append(get_key(group_atoms, igr1)[0])
-
-                if not restraint.index2:
-                    raise Exception("There must be at least two atoms in a restraint.")
-                elif not restraint.group2:
-                    atom_index.append(restraint.index2[0] + index_shift)
-                else:
-                    igr2 = ""
-                    for index in restraint.index2:
-                        igr2 += "{},".format(index + index_shift)
-
-                    if not get_key(group_atoms, igr2):
-                        group_atoms[f"g{group_index}"] = igr2
-                        group_index += 1
-
-                    atom_index.append(get_key(group_atoms, igr2)[0])
-
-                if not restraint.index3:
-                    pass
-                elif not restraint.group3:
-                    atom_index.append(restraint.index3[0] + index_shift)
-                else:
-                    igr3 = ""
-                    for index in restraint.index3:
-                        igr3 += "{},".format(index + index_shift)
-
-                    if not get_key(group_atoms, igr3):
-                        group_atoms[f"g{group_index}"] = igr3
-                        group_index += 1
-
-                    atom_index.append(get_key(group_atoms, igr3)[0])
-
-                if not restraint.index4:
-                    pass
-                elif not restraint.group4:
-                    atom_index.append(restraint.index4[0] + index_shift)
-                else:
-                    igr4 = ""
-                    for index in restraint.index4:
-                        igr4 += "{},".format(index + index_shift)
-
-                    if not get_key(group_atoms, igr4):
-                        group_atoms[f"g{group_index}"] = igr4
-                        group_index += 1
-
-                    atom_index.append(get_key(group_atoms, igr4)[0])
-
                 # Convert list to comma-separated string
-                atom_string = ','.join(map(str, atom_index))
+                atom_index = self._get_atom_indices(restraint)
+                atom_string = ",".join(map(str, atom_index))
 
                 # Determine collective variable type
                 colvar_type = "distance"
@@ -274,26 +205,105 @@ class Plumed(object):
                     bias_type = "restraint"
 
                 # Append string to lists
-                colvar_list.append(f"c{cv_index}: {colvar_type.upper()} ATOMS={atom_string} NOPBC\n")
-                bias_list.append(f"{bias_type.upper()} ARG=c{cv_index} AT={target:.4f} KAPPA={force_constant:.2f}\n")
+                cv_list.append(
+                    f"c{cv_index}: {colvar_type.upper()} ATOMS={atom_string} NOPBC\n"
+                )
+                bias_list.append(
+                    f"{bias_type.upper()} ARG=c{cv_index} AT={target:.4f} KAPPA={force_constant:.2f}\n"
+                )
 
                 # Increment colvar index
                 cv_index += 1
 
-            # Write info to file
-            with open(os.path.join(self.path, windows, self.file_name), "a") as file:
-                if len(group_atoms) != 0:
-                    file.write("# Center groups\n")
-                    for key, value in group_atoms.items():
-                        file.write(f"{key:<3}: COM ATOMS={value}\n")
+            # Write collective variables to file
+            self._write_colvar_to_file(windows, cv_list, bias_list)
 
-                file.write("# Collective variables\n")
-                for line in colvar_list:
-                    file.write(line)
+    def _write_colvar_to_file(self, window, cv_list, bias_list):
+        with open(os.path.join(self.path, window, self.file_name), "a") as file:
+            if len(self.group_atoms) != 0:
+                file.write("# Center groups\n")
+                for key, value in self.group_atoms.items():
+                    file.write(f"{key}: COM ATOMS={value}\n")
 
-                file.write("# Bias potentials\n")
-                for line in bias_list:
-                    file.write(line)
+            file.write("# Collective variables\n")
+            for line in cv_list:
+                file.write(line)
+
+            file.write("# Bias potentials\n")
+            for line in bias_list:
+                file.write(line)
+
+    def _get_atom_indices(self, restraint):
+        # Check atom index setting
+        index_shift = 0
+        if not restraint.amber_index:
+            index_shift = 1
+            logger.info("Atom indices starts from 0 --> shifting indices by 1.")
+
+        # Collect DAT atom indices
+        atom_index = []
+
+        if not restraint.index1:
+            raise Exception("There must be at least two atoms in a restraint.")
+        elif not restraint.group1:
+            atom_index.append(restraint.index1[0] + index_shift)
+        else:
+            igr1 = ""
+            for index in restraint.index1:
+                igr1 += "{},".format(index + index_shift)
+
+            if not get_key(self.group_atoms, igr1):
+                self.group_atoms[f"g{self.group_index}"] = igr1
+                self.group_index += 1
+
+            atom_index.append(get_key(self.group_atoms, igr1)[0])
+
+        if not restraint.index2:
+            raise Exception("There must be at least two atoms in a restraint.")
+        elif not restraint.group2:
+            atom_index.append(restraint.index2[0] + index_shift)
+        else:
+            igr2 = ""
+            for index in restraint.index2:
+                igr2 += "{},".format(index + index_shift)
+
+            if not get_key(self.group_atoms, igr2):
+                self.group_atoms[f"g{self.group_index}"] = igr2
+                self.group_index += 1
+
+            atom_index.append(get_key(self.group_atoms, igr2)[0])
+
+        if not restraint.index3:
+            pass
+        elif not restraint.group3:
+            atom_index.append(restraint.index3[0] + index_shift)
+        else:
+            igr3 = ""
+            for index in restraint.index3:
+                igr3 += "{},".format(index + index_shift)
+
+            if not get_key(self.group_atoms, igr3):
+                self.group_atoms[f"g{self.group_index}"] = igr3
+                self.group_index += 1
+
+            atom_index.append(get_key(self.group_atoms, igr3)[0])
+
+        if not restraint.index4:
+            pass
+        elif not restraint.group4:
+            atom_index.append(restraint.index4[0] + index_shift)
+        else:
+            igr4 = ""
+            for index in restraint.index4:
+                igr4 += "{},".format(index + index_shift)
+
+            if not get_key(self.group_atoms, igr4):
+                self.group_atoms[f"g{self.group_index}"] = igr4
+                self.group_index += 1
+
+            atom_index.append(get_key(self.group_atoms, igr4)[0])
+
+        return atom_index
 
     def add_dummy_atoms_to_file(self, structure):
         # Extract dummy atoms
@@ -316,22 +326,20 @@ class Plumed(object):
                 with open(plumed_file, "a") as file:
                     _write_dummy_to_file(file, dummy_atoms)
             else:
-                raise Exception(
-                    f"ERROR: '{plumed_file}' file does not exists!"
-                )
+                raise Exception(f"ERROR: '{plumed_file}' file does not exists!")
 
 
 def _check_plumed_units(energy, length, time):
     """
     Checks the specified units and makes sure that its supported.
     """
-    if energy not in ['kj/mol', 'kcal/mol']:
+    if energy not in ["kj/mol", "kcal/mol"]:
         raise Exception(f"Specified unit for energy ({energy}) is not supported.")
 
-    if length not in ['nm', 'A']:
+    if length not in ["nm", "A"]:
         raise Exception(f"Specified unit for length ({length}) is not supported.")
 
-    if time not in ['ps', 'fs', 'ns']:
+    if time not in ["ps", "fs", "ns"]:
         raise Exception(f"Specified unit for time ({time}) is not supported.")
 
 

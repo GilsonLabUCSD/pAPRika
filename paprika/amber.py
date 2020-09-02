@@ -114,14 +114,14 @@ class Simulation(object):
     @prefix.setter
     def prefix(self, new_prefix):
         self._prefix = new_prefix
-        self.input = new_prefix+".in"
-        self.inpcrd = new_prefix+".inpcrd"
-        self.ref = new_prefix+".inpcrd"
-        self.output = new_prefix+".out"
-        self.restart = new_prefix+".rst7"
-        self.mdinfo = new_prefix+".mdinfo"
-        self.mdcrd = new_prefix+".nc"
-        self.mden = new_prefix+".mden"
+        self.input = new_prefix + ".in"
+        self.inpcrd = new_prefix + ".inpcrd"
+        self.ref = new_prefix + ".inpcrd"
+        self.output = new_prefix + ".out"
+        self.restart = new_prefix + ".rst7"
+        self.mdinfo = new_prefix + ".mdinfo"
+        self.mdcrd = new_prefix + ".nc"
+        self.mden = new_prefix + ".mden"
 
     @property
     def cntrl(self):
@@ -228,14 +228,14 @@ class Simulation(object):
 
         # File names
         self._prefix = "md"
-        self.input = self._prefix+".in"
-        self.inpcrd = self._prefix+".inpcrd"
-        self.ref = self._prefix+".inpcrd"
-        self.output = self._prefix+".out"
-        self.restart = self._prefix+".rst7"
-        self.mdinfo = self._prefix+".mdinfo"
-        self.mdcrd = self._prefix+".nc"
-        self.mden = self._prefix+".mden"
+        self.input = self._prefix + ".in"
+        self.inpcrd = self._prefix + ".inpcrd"
+        self.ref = self._prefix + ".inpcrd"
+        self.output = self._prefix + ".out"
+        self.restart = self._prefix + ".rst7"
+        self.mdinfo = self._prefix + ".mdinfo"
+        self.mdcrd = self._prefix + ".nc"
+        self.mden = self._prefix + ".mden"
 
         # Input file cntrl settings (Default = NTP)
         self._cntrl = OrderedDict()
@@ -383,7 +383,7 @@ class Simulation(object):
 
         for key, val in dictionary.items():
             if val is not None:
-                f.write("  {:15s} {:s},\n".format(key+" =", str(val)))
+                f.write("  {:15s} {:s},\n".format(key + " =", str(val)))
 
         # Write PLUMED option if preferred over Amber NMR restraints
         if self.plumed_file:
@@ -410,7 +410,7 @@ class Simulation(object):
             if self.cntrl["nmropt"] == 1:
                 if self.wt is not None:
                     for line in self.wt:
-                        f.write(" "+line+"\n")
+                        f.write(" " + line + "\n")
                 f.write(" &wt type = 'END', /\n")
 
                 # Specify Amber NMR file
@@ -444,13 +444,13 @@ class Simulation(object):
                 # maxcyc
                 ncyc = self.cntrl["ncyc"]
                 maxcyc = self.cntrl["maxcyc"]
-                burn_in = int(float(ncyc)+0.20 * (float(maxcyc)-float(ncyc)))
+                burn_in = int(float(ncyc) + 0.20 * (float(maxcyc) - float(ncyc)))
                 # If the burn_in value is nuts, then just set it to zero
                 if burn_in < 0 or burn_in >= maxcyc:
                     burn_in = 0
                 # Set an end_soft value that is 75% of way between ncyc and
                 # maxcyc
-                end_soft = int(float(ncyc)+0.60 * (float(maxcyc)-float(ncyc)))
+                end_soft = int(float(ncyc) + 0.60 * (float(maxcyc) - float(ncyc)))
                 self.wt = [
                     "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(
                         burn_in
@@ -469,7 +469,7 @@ class Simulation(object):
                 logger.info("Running MD at {}".format(self.path))
 
             # Create executable list for subprocess
-            exec_list = self.executable.split()+["-O", "-p", self.topology]
+            exec_list = self.executable.split() + ["-O", "-p", self.topology]
             if self.ref is not None:
                 exec_list += ["-ref", self.ref]
             exec_list += [
@@ -489,7 +489,7 @@ class Simulation(object):
             if self.mden is not None:
                 exec_list += ["-e", self.mden]
 
-            logger.debug("Exec line: "+" ".join(exec_list))
+            logger.debug("Exec line: " + " ".join(exec_list))
 
             # Execute
             if self.CUDA_VISIBLE_DEVICES:

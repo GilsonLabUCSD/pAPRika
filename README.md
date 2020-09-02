@@ -478,8 +478,9 @@ We use the guest restraints to create a list of windows with the appropriate nam
 
 ```python
 import os
+from paprika.restraints.restraints import create_window_list
 
-window_list = restraints.create_window_list(guest_restraints)
+window_list = create_window_list(guest_restraints)
 for window in window_list:
     os.makedirs(f"windows/{window}")
 ```
@@ -492,11 +493,13 @@ The functional form of the restraints is specified in section 25.1 of the AMBER1
 
 
 ```python
+from paprika.restraints.amber import amber_restraint_line
+
 host_guest_restraints = static_restraints + guest_restraints
 for window in window_list:
     with open(f"windows/{window}/disang.rest", "a") as file:
         for restraint in host_guest_restraints:
-            string = restraints.amber_restraint_line(restraint, window)
+            string = amber_restraint_line(restraint, window)
             if string is not None:
                 file.write(string)
 ```
