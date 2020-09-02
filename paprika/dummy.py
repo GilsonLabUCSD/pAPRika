@@ -225,7 +225,7 @@ def extract_dummy_atoms(structure, resname=None, serial=True):
         residue = f":{dummy_atom}"
         dummy_atoms[dummy_atom]["pos"] = structure[residue].coordinates[0]
         dummy_atoms[dummy_atom]["mass"] = [atom.mass for atom in structure[residue].atoms][0]
-        dummy_atoms[dummy_atom]["idx"] = index_from_mask(structure, residue, amber_index=serial)[0]
+        dummy_atoms[dummy_atom]["idx"] = utils.index_from_mask(structure, residue, amber_index=serial)[0]
         dummy_atoms[dummy_atom]["idx_type"] = "serial" if serial else "index"
 
     return dummy_atoms

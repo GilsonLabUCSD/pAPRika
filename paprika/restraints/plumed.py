@@ -297,9 +297,10 @@ class Plumed(object):
                     file.write(line)
 
     def add_dummy_atoms_to_file(self, structure):
+        from paprika.dummy import extract_dummy_atoms
+        from paprika.utils import return_parmed_structure
+        
         # Extract dummy atoms
-        from paprika.utils import extract_dummy_atoms, return_parmed_structure
-
         for windows in self.window_list:
             if isinstance(structure, str):
                 structure = return_parmed_structure(structure)
