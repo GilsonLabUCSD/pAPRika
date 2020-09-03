@@ -1,6 +1,6 @@
 import logging
 
-from paprika.restraints.utils import parse_window
+from paprika.restraints.utils import parse_window, get_restraint_values
 from paprika.utils import override_dict
 
 logger = logging.getLogger(__name__)
@@ -89,26 +89,8 @@ def amber_restraint_line(restraint, window):
         for index in restraint.index4:
             igr4 += "{},".format(index)
 
-    # Set upper/lower bounds depending on whether distance, angle, or torsion
-    lower_bound = 0.0
-    upper_bound = 999.0
-
-    if restraint.mask3 and not restraint.mask4:
-        upper_bound = 180.0
-
-    if restraint.mask3 and restraint.mask4:
-        lower_bound = restraint.phase[phase]["targets"][window] - 180.0
-        upper_bound = restraint.phase[phase]["targets"][window] + 180.0
-
-    amber_restraint_values = {
-        "r1": lower_bound,
-        "r2": restraint.phase[phase]["targets"][window],
-        "r3": restraint.phase[phase]["targets"][window],
-        "r4": upper_bound,
-        "rk2": restraint.phase[phase]["force_constants"][window],
-        "rk3": restraint.phase[phase]["force_constants"][window],
-    }
-    override_dict(amber_restraint_values, restraint.custom_restraint_values)
+    # Restraint values - Amber NMR-style
+    amber_restraint_values = get_restraint_values(restraint)
 
     # Prepare AMBER NMR-style restraint
     atoms = "".join([iat1, iat2, iat3, iat4])
