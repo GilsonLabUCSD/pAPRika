@@ -2,18 +2,17 @@ import logging
 import os
 
 import numpy as np
-from parmed.structure import Structure as ParmedStructureClass
-
 from paprika.dummy import extract_dummy_atoms
 from paprika.restraints.utils import get_bias_potential_type, parse_window
-from paprika.utils import get_key, override_dict, return_parmed_structure
+from paprika.utils import get_key, return_parmed_structure
+from parmed.structure import Structure as ParmedStructureClass
 
 logger = logging.getLogger(__name__)
 
 _PI_ = np.pi
 
 
-class Plumed(object):
+class Plumed:
     """
     This class is converts restraints generated in pAPRika DAT_restraints into Plumed restraints.
 
@@ -95,37 +94,15 @@ class Plumed(object):
         self._uses_legacy_k = value
 
     @property
-    def energy_unit(self):
+    def units(self):
         """
-        str: Units for energies in Plumed.
+        dict: Dictionary of units for Plumed, dict requires key values of 'energy', 'length, 'time'.
         """
-        return self._energy_unit
+        return self._units
 
-    @energy_unit.setter
-    def energy_unit(self, value: bool):
-        self._energy_unit = value
-
-    @property
-    def length_unit(self):
-        """
-        str: Units for length in Plumed.
-        """
-        return self._length_unit
-
-    @length_unit.setter
-    def length_unit(self, value: bool):
-        self._length_unit = value
-
-    @property
-    def time_unit(self):
-        """
-        str: Units for time in Plumed.
-        """
-        return self._time_unit
-
-    @time_unit.setter
-    def time_unit(self, value: bool):
-        self._time_unit = value
+    @units.setter
+    def units(self, value):
+        self._units = value
 
     def __init__(self):
         self._file_name = "plumed.dat"
@@ -134,9 +111,7 @@ class Plumed(object):
         self._path = "./"
         self._uses_legacy_k = True
         self.k_factor = 1.0
-        self._energy_unit = "kcal/mol"
-        self._length_unit = "A"
-        self._time_unit = "ns"
+        self._units = None
         self.header_line = None
         self.group_index = None
         self.group_atoms = None
@@ -147,11 +122,13 @@ class Plumed(object):
             self.k_factor = 2.0
 
         # Check units
-        # NOTE: We have to resort to strings until we migrate all quantities to Pint/SimTK units
-        _check_plumed_units(self.energy_unit, self.length_unit, self.time_unit)
+        # NOTE: We have to resort to strings until (if) we migrate all quantities to Pint/SimTK units
+        if self.units is None:
+            self.units = {"energy": "kcal/mol", "length": "A", "time": "ns"}
+        _check_plumed_units(self.units)
 
         # header line
-        self.header_line = f"UNITS LENGTH={self.length_unit} ENERGY={self.energy_unit} TIME={self.time_unit}"
+        self.header_line = f"UNITS LENGTH={self.units['length']} ENERGY={self.units['energy']} TIME={self.units['time']}"
 
     def dump_to_file(self):
 
@@ -242,66 +219,26 @@ class Plumed(object):
 
         # Collect DAT atom indices
         atom_index = []
+        for i in range(4):
+            ii = i + 1
 
-        if not restraint.index1:
-            raise Exception("There must be at least two atoms in a restraint.")
-        elif not restraint.group1:
-            atom_index.append(restraint.index1[0] + index_shift)
-        else:
-            igr1 = ""
-            for index in restraint.index1:
-                igr1 += "{},".format(index + index_shift)
+            if not eval(f"restraint.index{ii}"):
+                if ii in [1, 2]:
+                    raise Exception("There must be at least two atoms in a restraint.")
+                else:
+                    pass
+            elif not eval(f"restraint.group{ii}"):
+                atom_index.append(eval(f"restraint.index{ii}")[0] + index_shift)
+            else:
+                igr1 = ""
+                for index in eval(f"restraint.index{ii}"):
+                    igr1 += "{},".format(index + index_shift)
 
-            if not get_key(self.group_atoms, igr1):
-                self.group_atoms[f"g{self.group_index}"] = igr1
-                self.group_index += 1
+                if not get_key(self.group_atoms, igr1):
+                    self.group_atoms[f"g{self.group_index}"] = igr1
+                    self.group_index += 1
 
-            atom_index.append(get_key(self.group_atoms, igr1)[0])
-
-        if not restraint.index2:
-            raise Exception("There must be at least two atoms in a restraint.")
-        elif not restraint.group2:
-            atom_index.append(restraint.index2[0] + index_shift)
-        else:
-            igr2 = ""
-            for index in restraint.index2:
-                igr2 += "{},".format(index + index_shift)
-
-            if not get_key(self.group_atoms, igr2):
-                self.group_atoms[f"g{self.group_index}"] = igr2
-                self.group_index += 1
-
-            atom_index.append(get_key(self.group_atoms, igr2)[0])
-
-        if not restraint.index3:
-            pass
-        elif not restraint.group3:
-            atom_index.append(restraint.index3[0] + index_shift)
-        else:
-            igr3 = ""
-            for index in restraint.index3:
-                igr3 += "{},".format(index + index_shift)
-
-            if not get_key(self.group_atoms, igr3):
-                self.group_atoms[f"g{self.group_index}"] = igr3
-                self.group_index += 1
-
-            atom_index.append(get_key(self.group_atoms, igr3)[0])
-
-        if not restraint.index4:
-            pass
-        elif not restraint.group4:
-            atom_index.append(restraint.index4[0] + index_shift)
-        else:
-            igr4 = ""
-            for index in restraint.index4:
-                igr4 += "{},".format(index + index_shift)
-
-            if not get_key(self.group_atoms, igr4):
-                self.group_atoms[f"g{self.group_index}"] = igr4
-                self.group_index += 1
-
-            atom_index.append(get_key(self.group_atoms, igr4)[0])
+                atom_index.append(get_key(self.group_atoms, igr1)[0])
 
         return atom_index
 
@@ -320,7 +257,7 @@ class Plumed(object):
 
             dummy_atoms = extract_dummy_atoms(structure, serial=True)
 
-            # Write dummy atom info to 'plumed.dat'
+            # Write dummy atom info to plumed file
             plumed_file = os.path.join(self.path, windows, self.file_name)
             if os.path.isfile(plumed_file):
                 with open(plumed_file, "a") as file:
@@ -329,18 +266,22 @@ class Plumed(object):
                 raise Exception(f"ERROR: '{plumed_file}' file does not exists!")
 
 
-def _check_plumed_units(energy, length, time):
+def _check_plumed_units(units):
     """
     Checks the specified units and makes sure that its supported.
     """
-    if energy not in ["kj/mol", "kcal/mol"]:
-        raise Exception(f"Specified unit for energy ({energy}) is not supported.")
+    if units["energy"] not in ["kj/mol", "kcal/mol"]:
+        raise Exception(
+            f"Specified unit for energy ({units['energy']}) is not supported."
+        )
 
-    if length not in ["nm", "A"]:
-        raise Exception(f"Specified unit for length ({length}) is not supported.")
+    if units["length"] not in ["nm", "A"]:
+        raise Exception(
+            f"Specified unit for length ({units['length']}) is not supported."
+        )
 
-    if time not in ["ps", "fs", "ns"]:
-        raise Exception(f"Specified unit for time ({time}) is not supported.")
+    if units["time"] not in ["ps", "fs", "ns"]:
+        raise Exception(f"Specified unit for time ({units['time']}) is not supported.")
 
 
 def _write_dummy_to_file(file, dummy_atoms, kpos=100.0):
