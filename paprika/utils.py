@@ -3,6 +3,7 @@ import os as os
 import shutil
 from datetime import datetime
 from functools import lru_cache
+import warnings
 
 import parmed as pmd
 import pytraj as pt
@@ -12,12 +13,21 @@ logger = logging.getLogger(__name__)
 
 
 def get_key(dct, value):
-    """Get dictionary key given the value"""
-    return [key for key in dct if (dct[key] == value)]
+    """
+    Get dictionary key given the value.
+
+    NOTE: this function will return a list of keys if there are more than one key with the same value in the order they are found.
+    """
+    key = [key for key in dct if (dct[key] == value)]
+
+    if len(key) > 1:
+        warnings.warn("There more than one key with the same value. Please check if this is the desired output.")
+
+    return key
 
 
 def override_dict(dct, custom):
-    """Override dictionary values from that of a custom dictionary."""
+    """Overrides dictionary values from that of a custom dictionary."""
     for key, value in custom.items():
         if value is not None:
             logger.debug("Overriding {} = {}".format(key, value))
