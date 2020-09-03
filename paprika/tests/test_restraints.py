@@ -5,6 +5,7 @@ Tests the restraints utilities.
 import pytest
 import os
 
+from paprika.restraints.utils import *
 from paprika.restraints.restraints import *
 
 logger = logging.getLogger(__name__)
@@ -488,3 +489,125 @@ def test_DAT_restraint():
     # Test inconsistent windows:
     with pytest.raises(Exception) as e_info:
         window_list = create_window_list([rest1, rest10])
+
+
+def test_bias_potential_type():
+    # Test Harmonic restraint
+    attach_fractions = np.linspace(0, 1.0, 25)
+    initial_distance = 2.65
+    pull_distances = np.linspace(0 + initial_distance, 16.0 + initial_distance, 40)
+
+    restraint = DAT_restraint()
+    restraint.continuous_apr = True
+    restraint.amber_index = True
+    restraint.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    restraint.mask1 = "@K+"
+    restraint.mask2 = "@Cl-"
+
+    restraint.attach["target"] = initial_distance
+    restraint.attach["fraction_list"] = attach_fractions
+    restraint.attach["fc_final"] = 10.0
+
+    restraint.pull["fc"] = restraint.attach["fc_final"]
+    restraint.pull["target_list"] = pull_distances
+
+    restraint.initialize()
+
+    assert (get_bias_potential_type(restraint, "attach", 0) == "restraint")
+    assert (get_bias_potential_type(restraint, "pull", 0) == "restraint")
+
+    # Test upper wall restraint (1)
+    upper = DAT_restraint()
+    upper.auto_apr = False
+    upper.amber_index = True
+    upper.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    upper.mask1 = "@K+"
+    upper.mask2 = "@Cl-"
+
+    upper.attach["fc_initial"] = 1.0
+    upper.attach["fc_final"] = 1.0
+
+    upper.custom_restraint_values["rk2"] = 1.0
+    upper.custom_restraint_values["rk3"] = 1.0
+    upper.custom_restraint_values["r2"] = 0.0
+    upper.custom_restraint_values["r3"] = 3.5
+
+    upper.attach["target"] = 3.5
+    upper.attach["num_windows"] = len(attach_fractions)
+
+    upper.initialize()
+
+    assert (get_bias_potential_type(upper, "attach", 0) == "upper_walls")
+    assert (get_bias_potential_type(upper, "attach", 1) == "upper_walls")
+
+    # Test upper wall restraint (2)
+    upper = DAT_restraint()
+    upper.auto_apr = False
+    upper.amber_index = True
+    upper.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    upper.mask1 = "@K+"
+    upper.mask2 = "@Cl-"
+
+    upper.attach["fc_initial"] = 1.0
+    upper.attach["fc_final"] = 1.0
+
+    upper.custom_restraint_values["rk2"] = 0.0
+    upper.custom_restraint_values["rk3"] = 1.0
+    upper.custom_restraint_values["r2"] = 3.5
+    upper.custom_restraint_values["r3"] = 3.5
+
+    upper.attach["target"] = 3.5
+    upper.attach["num_windows"] = len(attach_fractions)
+
+    upper.initialize()
+
+    assert (get_bias_potential_type(upper, "attach", 0) == "upper_walls")
+    assert (get_bias_potential_type(upper, "attach", 1) == "upper_walls")
+
+    # Test lower wall restraint (1)
+    lower = DAT_restraint()
+    lower.auto_apr = False
+    lower.amber_index = True
+    lower.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    lower.mask1 = "@K+"
+    lower.mask2 = "@Cl-"
+
+    lower.attach["fc_initial"] = 1.0
+    lower.attach["fc_final"] = 1.0
+
+    lower.custom_restraint_values["rk2"] = 1.0
+    lower.custom_restraint_values["rk3"] = 1.0
+    lower.custom_restraint_values["r2"] = 3.5
+    lower.custom_restraint_values["r3"] = 0.0
+
+    lower.attach["target"] = 3.5
+    lower.attach["num_windows"] = len(attach_fractions)
+
+    lower.initialize()
+
+    assert (get_bias_potential_type(lower, "attach", 0) == "lower_walls")
+    assert (get_bias_potential_type(lower, "attach", 1) == "lower_walls")
+
+    # Test lower wall restraint (2)
+    lower = DAT_restraint()
+    lower.auto_apr = False
+    lower.amber_index = True
+    lower.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    lower.mask1 = "@K+"
+    lower.mask2 = "@Cl-"
+
+    lower.attach["fc_initial"] = 1.0
+    lower.attach["fc_final"] = 1.0
+
+    lower.custom_restraint_values["rk2"] = 1.0
+    lower.custom_restraint_values["rk3"] = 0.0
+    lower.custom_restraint_values["r2"] = 3.5
+    lower.custom_restraint_values["r3"] = 3.5
+
+    lower.attach["target"] = 3.5
+    lower.attach["num_windows"] = len(attach_fractions)
+
+    lower.initialize()
+
+    assert (get_bias_potential_type(lower, "attach", 0) == "lower_walls")
+    assert (get_bias_potential_type(lower, "attach", 1) == "lower_walls")

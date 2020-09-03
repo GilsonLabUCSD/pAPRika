@@ -38,7 +38,27 @@ def parse_window(window):
     return window, phase
 
 
-def get_restraint_values(restraint):
+def get_restraint_values(restraint, phase, window):
+    """
+    Extract the values of the restraints (Amber NMR-style) including positions
+    and force constants. See the Amber documentation for further explanation
+    on the NMR-style values.
+
+    Parameters
+    ----------
+    restraint: DAT_restraint()
+        Restraint object to extract the information from
+    phase: str
+        Current phase of APR calculation
+    window: int
+        Current window number
+
+    Return
+    ------
+    restraint_values: dict
+        Dictionary containing the Amber NMR-style values
+
+    """
     lower_bound = 0.0
     upper_bound = 999.0
 
@@ -66,7 +86,7 @@ def get_restraint_values(restraint):
 def get_bias_potential_type(restraint, phase, window):
     """
     Function to determine the bias potential type for a particular restraint.
-    The possible types of bias are: "harmonic", "upper_walls" and "lower_walls"
+    The possible types of biases are: "restraint", "upper_walls" and "lower_walls"
 
     Parameters
     ----------
@@ -86,7 +106,7 @@ def get_bias_potential_type(restraint, phase, window):
 
     bias_type = None
 
-    amber_restraint_values = get_restraint_values(restraint)
+    amber_restraint_values = get_restraint_values(restraint, phase, window)
 
     if (
         amber_restraint_values["r2"] == amber_restraint_values["r3"]
@@ -94,25 +114,25 @@ def get_bias_potential_type(restraint, phase, window):
     ):
         bias_type = "restraint"
 
-    if (
+    elif (
         amber_restraint_values["r2"] < amber_restraint_values["r3"]
         or amber_restraint_values["r2"] == 0.0
     ) and amber_restraint_values["rk2"] == amber_restraint_values["rk3"]:
         bias_type = "upper_walls"
 
-    if amber_restraint_values["r2"] == amber_restraint_values["r3"] and (
+    elif amber_restraint_values["r2"] == amber_restraint_values["r3"] and (
         amber_restraint_values["rk2"] < amber_restraint_values["rk3"]
         or amber_restraint_values["rk2"] == 0.0
     ):
         bias_type = "upper_walls"
 
-    if (
+    elif (
         amber_restraint_values["r2"] > amber_restraint_values["r3"]
         or amber_restraint_values["r3"] == 0.0
     ) and amber_restraint_values["rk2"] == amber_restraint_values["rk3"]:
         bias_type = "lower_walls"
 
-    if amber_restraint_values["r2"] == amber_restraint_values["r3"] and (
+    elif amber_restraint_values["r2"] == amber_restraint_values["r3"] and (
         amber_restraint_values["rk2"] > amber_restraint_values["rk3"]
         or amber_restraint_values["rk3"] == 0.0
     ):
