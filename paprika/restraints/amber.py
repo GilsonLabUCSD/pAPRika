@@ -90,7 +90,7 @@ def amber_restraint_line(restraint, window):
             igr4 += "{},".format(index)
 
     # Restraint values - Amber NMR-style
-    amber_restraint_values = get_restraint_values(restraint)
+    amber_restraint_values = get_restraint_values(restraint, phase, window)
 
     # Prepare AMBER NMR-style restraint
     atoms = "".join([iat1, iat2, iat3, iat4])

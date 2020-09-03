@@ -491,7 +491,103 @@ def test_DAT_restraint():
         window_list = create_window_list([rest1, rest10])
 
 
-def test_bias_potential_type():
+def test_get_restraint_values():
+    # Test Harmonic restraint
+    attach_fractions = np.linspace(0, 1.0, 25)
+    initial_distance = 2.65
+    pull_distances = np.linspace(0 + initial_distance, 16.0 + initial_distance, 40)
+
+    restraint = DAT_restraint()
+    restraint.continuous_apr = True
+    restraint.amber_index = True
+    restraint.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    restraint.mask1 = "@K+"
+    restraint.mask2 = "@Cl-"
+
+    restraint.attach["target"] = initial_distance
+    restraint.attach["fraction_list"] = attach_fractions
+    restraint.attach["fc_final"] = 10.0
+
+    restraint.pull["fc"] = restraint.attach["fc_final"]
+    restraint.pull["target_list"] = pull_distances
+
+    restraint.initialize()
+
+    restraint_values = get_restraint_values(restraint, "attach", 0)
+    assert (restraint_values["r1"] == 0.0)
+    assert (restraint_values["r2"] == 2.65)
+    assert (restraint_values["r3"] == 2.65)
+    assert (restraint_values["r4"] == 999.0)
+    assert (restraint_values["rk2"] == 0.0)
+    assert (restraint_values["rk3"] == 0.0)
+
+    restraint_values = get_restraint_values(restraint, "pull", 0)
+    assert (restraint_values["r1"] == 0.0)
+    assert (restraint_values["r2"] == 2.65)
+    assert (restraint_values["r3"] == 2.65)
+    assert (restraint_values["r4"] == 999.0)
+    assert (restraint_values["rk2"] == 10.0)
+    assert (restraint_values["rk3"] == 10.0)
+
+    # Test custom values
+    wall = DAT_restraint()
+    wall.auto_apr = False
+    wall.amber_index = True
+    wall.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    wall.mask1 = "@K+"
+    wall.mask2 = "@Cl-"
+
+    wall.attach["fc_initial"] = 1.0
+    wall.attach["fc_final"] = 1.0
+
+    wall.custom_restraint_values["rk2"] = 1.0
+    wall.custom_restraint_values["rk3"] = 1.0
+    wall.custom_restraint_values["r2"] = 0.0
+    wall.custom_restraint_values["r3"] = 3.5
+
+    wall.attach["target"] = 3.5
+    wall.attach["num_windows"] = len(attach_fractions)
+
+    wall.initialize()
+
+    restraint_values = get_restraint_values(wall, "attach", 0)
+    assert (restraint_values["r1"] == 0.0)
+    assert (restraint_values["r2"] == 0.0)
+    assert (restraint_values["r3"] == 3.5)
+    assert (restraint_values["r4"] == 999.0)
+    assert (restraint_values["rk2"] == 1.0)
+    assert (restraint_values["rk3"] == 1.0)
+
+    wall = DAT_restraint()
+    wall.auto_apr = False
+    wall.amber_index = True
+    wall.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    wall.mask1 = "@K+"
+    wall.mask2 = "@Cl-"
+
+    wall.attach["fc_initial"] = 1.0
+    wall.attach["fc_final"] = 1.0
+
+    wall.custom_restraint_values["rk2"] = 1.0
+    wall.custom_restraint_values["rk3"] = 1.0
+    wall.custom_restraint_values["r2"] = 3.5
+    wall.custom_restraint_values["r3"] = 0.0
+
+    wall.attach["target"] = 3.5
+    wall.attach["num_windows"] = len(attach_fractions)
+
+    wall.initialize()
+
+    restraint_values = get_restraint_values(wall, "attach", 0)
+    assert (restraint_values["r1"] == 0.0)
+    assert (restraint_values["r2"] == 3.5)
+    assert (restraint_values["r3"] == 0.0)
+    assert (restraint_values["r4"] == 999.0)
+    assert (restraint_values["rk2"] == 1.0)
+    assert (restraint_values["rk3"] == 1.0)
+
+
+def test_get_bias_potential_type():
     # Test Harmonic restraint
     attach_fractions = np.linspace(0, 1.0, 25)
     initial_distance = 2.65
