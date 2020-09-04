@@ -46,7 +46,6 @@ def amber_restraint_line(restraint, window):
     ):
         return ""
 
-    iat1 = " "
     if not restraint.group1:
         iat1 = "{},".format(restraint.index1[0])
     else:
@@ -55,7 +54,6 @@ def amber_restraint_line(restraint, window):
         for index in restraint.index1:
             igr1 += "{},".format(index)
 
-    iat2 = " "
     if not restraint.group2:
         iat2 = "{},".format(restraint.index2[0])
     else:
