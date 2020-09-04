@@ -14,7 +14,7 @@ _PI_ = np.pi
 
 class Plumed:
     """
-    This class is converts restraints generated in pAPRika DAT_restraints into Plumed restraints.
+    This class converts restraints generated in pAPRika DAT_restraints into Plumed restraints.
 
     Example:
     -------
@@ -85,7 +85,15 @@ class Plumed:
     def uses_legacy_k(self):
         """
         bool: Option to specify whether the force constant parsed into DAT_restraint()
-        is halved or not (i.e. value is already multiplied by a factor of 1/2).
+        is Amber-style or Gromacs/NAMD-style. Amber-style force constants have their value
+        multiplied by a factor of 1/2 whereas Gromacs/NAMD-style does not. Plumed follows
+        the Gromacs/NAMD-style for the force constant and the equations below demonstrates
+        this point.
+
+            * Amber:  U = K x (x - x0)²    * Plumed: U = 1/2 x k x (x - x0)²
+            --> K(Amber) = 1/2 k(Plumed)
+
+        i.e. "uses_legacy_k" is set to True (default) the force constants will be multiplied by 2.
         """
         return self._uses_legacy_k
 
@@ -96,12 +104,13 @@ class Plumed:
     @property
     def units(self):
         """
-        dict: Dictionary of units for Plumed, dict requires key values of 'energy', 'length, 'time'.
+        dict: Dictionary of units for Plumed as strings. The dictionary requires the key values
+        of 'energy', 'length, 'time'.
         """
         return self._units
 
     @units.setter
-    def units(self, value):
+    def units(self, value: dict):
         self._units = value
 
     def __init__(self):
@@ -178,8 +187,6 @@ class Plumed:
 
                 # Determine bias type for this restraint
                 bias_type = get_bias_potential_type(restraint, phase, window)
-                if bias_type is "harmonic":
-                    bias_type = "restraint"
 
                 # Append string to lists
                 cv_list.append(
@@ -198,7 +205,7 @@ class Plumed:
     def _write_colvar_to_file(self, window, cv_list, bias_list):
         with open(os.path.join(self.path, window, self.file_name), "a") as file:
             if len(self.group_atoms) != 0:
-                file.write("# Center groups\n")
+                file.write("# Centroid groups\n")
                 for key, value in self.group_atoms.items():
                     file.write(f"{key}: COM ATOMS={value}\n")
 
@@ -215,7 +222,7 @@ class Plumed:
         index_shift = 0
         if not restraint.amber_index:
             index_shift = 1
-            logger.info("Atom indices starts from 0 --> shifting indices by 1.")
+            logger.debug("Atom indices starts from 0 --> shifting indices by 1.")
 
         # Collect DAT atom indices
         atom_index = []
@@ -225,8 +232,6 @@ class Plumed:
             if not eval(f"restraint.index{ii}"):
                 if ii in [1, 2]:
                     raise Exception("There must be at least two atoms in a restraint.")
-                else:
-                    pass
             elif not eval(f"restraint.group{ii}"):
                 atom_index.append(eval(f"restraint.index{ii}")[0] + index_shift)
             else:
