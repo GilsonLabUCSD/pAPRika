@@ -46,10 +46,8 @@ def amber_restraint_line(restraint, window):
     ):
         return ""
 
-    if not restraint.index1:
-        iat1 = " "
-        raise Exception("There must be at least two atoms in a restraint.")
-    elif not restraint.group1:
+    iat1 = " "
+    if not restraint.group1:
         iat1 = "{},".format(restraint.index1[0])
     else:
         iat1 = "-1,"
@@ -57,10 +55,8 @@ def amber_restraint_line(restraint, window):
         for index in restraint.index1:
             igr1 += "{},".format(index)
 
-    if not restraint.index2:
-        iat2 = " "
-        raise Exception("There must be at least two atoms in a restraint.")
-    elif not restraint.group2:
+    iat2 = " "
+    if not restraint.group2:
         iat2 = "{},".format(restraint.index2[0])
     else:
         iat2 = "-1,"
@@ -68,21 +64,19 @@ def amber_restraint_line(restraint, window):
         for index in restraint.index2:
             igr2 += "{},".format(index)
 
-    if not restraint.index3:
-        iat3 = ""
-    elif not restraint.group3:
+    iat3 = ""
+    if restraint.index3 and not restraint.group3:
         iat3 = "{},".format(restraint.index3[0])
-    else:
+    elif restraint.group3:
         iat3 = "-1,"
         igr3 = ""
         for index in restraint.index3:
             igr3 += "{},".format(index)
 
-    if not restraint.index4:
-        iat4 = ""
-    elif not restraint.group4:
+    iat4 = ""
+    if restraint.index4 and not restraint.group4:
         iat4 = "{},".format(restraint.index4[0])
-    else:
+    elif restraint.group4:
         iat4 = "-1,"
         igr4 = ""
         for index in restraint.index4:

@@ -137,7 +137,11 @@ class Plumed:
         _check_plumed_units(self.units)
 
         # header line
-        self.header_line = f"UNITS LENGTH={self.units['length']} ENERGY={self.units['energy']} TIME={self.units['time']}"
+        self.header_line = (
+            f"UNITS LENGTH={self.units['length']} "
+            f"ENERGY={self.units['energy']} "
+            f"TIME={self.units['time']}"
+        )
 
     def dump_to_file(self):
 
@@ -240,9 +244,7 @@ class Plumed:
         # Collect DAT atom indices
         atom_index = []
 
-        if not restraint.index1:
-            raise Exception("There must be at least two atoms in a restraint.")
-        elif not restraint.group1:
+        if not restraint.group1:
             atom_index.append(restraint.index1[0] + index_shift)
         else:
             igr1 = ""
@@ -255,9 +257,7 @@ class Plumed:
 
             atom_index.append(get_key(self.group_atoms, igr1)[0])
 
-        if not restraint.index2:
-            raise Exception("There must be at least two atoms in a restraint.")
-        elif not restraint.group2:
+        if not restraint.group2:
             atom_index.append(restraint.index2[0] + index_shift)
         else:
             igr2 = ""
@@ -270,11 +270,9 @@ class Plumed:
 
             atom_index.append(get_key(self.group_atoms, igr2)[0])
 
-        if not restraint.index3:
-            pass
-        elif not restraint.group3:
+        if restraint.index3 and not restraint.group3:
             atom_index.append(restraint.index3[0] + index_shift)
-        else:
+        elif restraint.group3:
             igr3 = ""
             for index in restraint.index3:
                 igr3 += "{},".format(index + index_shift)
@@ -285,11 +283,9 @@ class Plumed:
 
             atom_index.append(get_key(self.group_atoms, igr3)[0])
 
-        if not restraint.index4:
-            pass
-        elif not restraint.group4:
+        if restraint.index4 and not restraint.group4:
             atom_index.append(restraint.index4[0] + index_shift)
-        else:
+        elif restraint.group4:
             igr4 = ""
             for index in restraint.index4:
                 igr4 += "{},".format(index + index_shift)
@@ -400,9 +396,9 @@ def _write_dummy_to_file(file, dummy_atoms, kpos=100.0):
         f"{kpos:0.1f},{kpos:0.1f},{kpos:0.1f},"
     )
 
-    file.write(f"RESTRAINT ...\n")
+    file.write("RESTRAINT ...\n")
     file.write(f"ARG={arg}\n")
     file.write(f"AT={at}\n")
     file.write(f"KAPPA={kappa}\n")
-    file.write(f"LABEL=dummy\n")
-    file.write(f"... RESTRAINT\n")
+    file.write("LABEL=dummy\n")
+    file.write("... RESTRAINT\n")
