@@ -1,7 +1,6 @@
 import logging
 
 from paprika.restraints.utils import get_restraint_values, parse_window
-from paprika.utils import override_dict
 
 logger = logging.getLogger(__name__)
 
