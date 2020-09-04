@@ -16,6 +16,8 @@ class Plumed:
     """
     This class converts restraints generated in pAPRika DAT_restraints into Plumed restraints.
 
+    # TODO: possibly change this module to use the python wrapper of Plumed.
+
     Example:
     -------
         >>> plumed = Plumed()
