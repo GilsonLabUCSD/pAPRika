@@ -2,6 +2,7 @@ import logging
 import os
 import subprocess as sp
 from collections import OrderedDict
+from sys import platform
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +35,13 @@ class Simulation(object):
         self._executable = value
 
     @property
-    def CUDA_VISIBLE_DEVICES(self):
+    def gpu_devices(self):
         """A wrapper around the environmental variable ``CUDA_VISIBLE_DEVICES``."""
-        return self._CUDA_VISIBLE_DEVICES
+        return self._gpu_devices
 
-    @CUDA_VISIBLE_DEVICES.setter
-    def CUDA_VISIBLE_DEVICES(self, value):
-        self._CUDA_VISIBLE_DEVICES = value
+    @gpu_devices.setter
+    def gpu_devices(self, value):
+        self._gpu_devices = value
 
     @property
     def phase(self):
@@ -83,13 +84,25 @@ class Simulation(object):
         self._restraint_file = value
 
     @property
-    def plumed_file(self):
-        """os.PathLike: The file containing Plumed-style restraints."""
+    def plumed_file(self) -> str:
+        """str: The name of the Plumed-style restraints file."""
         return self._plumed_file
 
     @plumed_file.setter
-    def plumed_file(self, value):
+    def plumed_file(self, value: str):
         self._plumed_file = value
+
+    @property
+    def plumed_kernel_library(self) -> str:
+        """os.PathLike: The file path of the Plumed kernel library if it is different from the default. The default
+        name is `libplumedKernel` with its extension determined automatically depending on the operating system and is
+        located in `os.environ['CONDA_PREFIX']/lib`. This variable is useful for users who did not install or want to
+        use Plumed from the conda repository."""
+        return self._plumed_kernel_library
+
+    @plumed_kernel_library.setter
+    def plumed_kernel_library(self, value: str):
+        self._plumed_kernel_library = value
 
     @property
     def converged(self) -> bool:
@@ -217,12 +230,13 @@ class Simulation(object):
         # I/O
         self._path = "."
         self._executable = "sander"
-        self._CUDA_VISIBLE_DEVICES = None
+        self._gpu_devices = None
         self._phase = None
         self._window = None
         self._topology = "prmtop"
         self._restraint_file = None
         self._plumed_file = None
+        self._plumed_kernel_library = None
         self.title = "PBC MD Simulation"
         self.converged = False
 
@@ -491,28 +505,61 @@ class Simulation(object):
 
             logger.debug("Exec line: " + " ".join(exec_list))
 
-            # Execute
-            if self.CUDA_VISIBLE_DEVICES:
-                amber_output = sp.Popen(
-                    exec_list,
-                    cwd=self.path,
-                    stdout=sp.PIPE,
-                    stderr=sp.PIPE,
-                    env=dict(
-                        os.environ, CUDA_VISIBLE_DEVICES=str(self.CUDA_VISIBLE_DEVICES)
-                    ),
-                )
-            else:
-                amber_output = sp.Popen(
-                    exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE
-                )
+            # Add CUDA_VISIBLE_DEVICES variable to env dict
+            if self.gpu_devices:
+                if "CUDA_VISIBLE_DEVICES" not in os.environ.keys():
+                    os.environ = dict(
+                        os.environ, CUDA_VISIBLE_DEVICES=str(self.gpu_devices)
+                    )
+                else:
+                    os.environ["CUDA_VISIBLE_DEVICES"] = self.gpu_devices
 
-            amber_output = amber_output.stdout.read().splitlines()
+            # Set the Plumed kernel library path
+            if not self.plumed_kernel_library:
+                # using "startswith" as recommended from https://docs.python.org/3/library/sys.html#sys.platform
+                if platform.startswith("linux"):
+                    self.plumed_kernel_library = os.path.join(
+                        os.environ["CONDA_PREFIX"], "lib", "libplumedKernel.so"
+                    )
+                elif platform.startswith("darwin"):
+                    self.plumed_kernel_library = os.path.join(
+                        os.environ["CONDA_PREFIX"], "lib", "libplumedKernel.dylib"
+                    )
+                else:
+                    logger.warning(
+                        f"Plumed is not supported with the '{platform}' platform."
+                    )
+
+            # Add Plumed kernel library to env dict
+            if not self.plumed_kernel_library:
+                if "PLUMED_KERNEL" not in os.environ.keys():
+                    os.environ = dict(
+                        os.environ, PLUMED_KERNEL=self.plumed_kernel_library
+                    )
+                else:
+                    os.environ["PLUMED_KERNEL"] = self.plumed_kernel_library
+
+            # Execute
+            amber_output = sp.Popen(
+                exec_list,
+                cwd=self.path,
+                stdout=sp.PIPE,
+                stderr=sp.PIPE,
+                env=os.environ,
+            )
+
+            amber_stdout = amber_output.stdout.read().splitlines()
+            amber_stderr = amber_output.stderr.read().splitlines()
 
             # Report any stdout/stderr which are output from execution
-            if amber_output:
-                logger.info("STDOUT/STDERR received from AMBER execution")
-                for line in amber_output:
+            if amber_stdout:
+                logger.info("STDOUT received from AMBER execution")
+                for line in amber_stdout:
+                    logger.info(line)
+
+            if amber_stderr:
+                logger.info("STDERR received from AMBER execution")
+                for line in amber_stderr:
                     logger.info(line)
 
             # Check completion status
