@@ -507,15 +507,12 @@ class Simulation(object):
 
             # Add CUDA_VISIBLE_DEVICES variable to env dict
             if self.gpu_devices is not None:
-                if "CUDA_VISIBLE_DEVICES" not in os.environ.keys():
-                    os.environ = dict(
-                        os.environ, CUDA_VISIBLE_DEVICES=str(self.gpu_devices)
-                    )
-                else:
-                    os.environ["CUDA_VISIBLE_DEVICES"] = self.gpu_devices
+                os.environ = dict(
+                    os.environ, CUDA_VISIBLE_DEVICES=str(self.gpu_devices)
+                )
 
             # Set the Plumed kernel library path
-            if self.plumed_kernel_library is not None:
+            if self.plumed_kernel_library is None:
                 # using "startswith" as recommended from https://docs.python.org/3/library/sys.html#sys.platform
                 if platform.startswith("linux"):
                     self.plumed_kernel_library = os.path.join(
@@ -532,12 +529,7 @@ class Simulation(object):
 
             # Add Plumed kernel library to env dict
             if os.path.isfile(self.plumed_kernel_library):
-                if "PLUMED_KERNEL" not in os.environ.keys():
-                    os.environ = dict(
-                        os.environ, PLUMED_KERNEL=self.plumed_kernel_library
-                    )
-                else:
-                    os.environ["PLUMED_KERNEL"] = self.plumed_kernel_library
+                os.environ = dict(os.environ, PLUMED_KERNEL=self.plumed_kernel_library)
             else:
                 logger.warning(
                     f"Plumed kernel library {self.plumed_kernel_library} does not exist, "
