@@ -1,6 +1,7 @@
 import logging
 
 import numpy as np
+
 from paprika.utils import override_dict
 
 logger = logging.getLogger(__name__)

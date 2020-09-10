@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class Simulation(object):
     """
-    A wrapper that can be used to set AMBER simulation parameters .
+    A wrapper that can be used to set AMBER simulation parameters.
     """
 
     @property
@@ -76,7 +76,12 @@ class Simulation(object):
 
     @property
     def restraint_file(self):
-        """os.PathLike: The file containing NMR-style restraints for AMBER."""
+        """os.PathLike: The file containing NMR-style restraints for AMBER.
+
+        .. note ::
+            When running AMBER simulations, you can only use either an AMBER NMR-style
+            restraints or a Plumed-style restraints and not both.
+        """
         return self._restraint_file
 
     @restraint_file.setter
@@ -85,7 +90,12 @@ class Simulation(object):
 
     @property
     def plumed_file(self) -> str:
-        """str: The name of the Plumed-style restraints file."""
+        """os.PathLike: The name of the Plumed-style restraints file for AMBER.
+
+        .. note ::
+            When running AMBER simulations, you can only use either an AMBER NMR-style
+            restraints or a Plumed-style restraints and not both.
+        """
         return self._plumed_file
 
     @plumed_file.setter
@@ -473,6 +483,12 @@ class Simulation(object):
                         burn_in, end_soft
                     ),
                 ]
+
+            # Check restraints file
+            if self.restraint_file and self.plumed_file:
+                raise Exception(
+                    "Cannot use both NMR-style and Plumed-style restraints at the same time."
+                )
 
             # _amber_write_input_file(self.path+'/'+self.input, self.min, title='GB Minimization.')
             self._amber_write_input_file()
