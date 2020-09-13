@@ -15,6 +15,7 @@ dependencies:
   - openmm
   - ambertools >=20.0
   - pyyaml
+  - plumed
   
   # Documentation
   - sphinx

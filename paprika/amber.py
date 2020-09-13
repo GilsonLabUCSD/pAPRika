@@ -2,13 +2,14 @@ import logging
 import os
 import subprocess as sp
 from collections import OrderedDict
+from sys import platform
 
 logger = logging.getLogger(__name__)
 
 
 class Simulation(object):
     """
-    A wrapper that can be used to set AMBER simulation parameters .
+    A wrapper that can be used to set AMBER simulation parameters.
     """
 
     @property
@@ -34,13 +35,13 @@ class Simulation(object):
         self._executable = value
 
     @property
-    def CUDA_VISIBLE_DEVICES(self):
+    def gpu_devices(self):
         """A wrapper around the environmental variable ``CUDA_VISIBLE_DEVICES``."""
-        return self._CUDA_VISIBLE_DEVICES
+        return self._gpu_devices
 
-    @CUDA_VISIBLE_DEVICES.setter
-    def CUDA_VISIBLE_DEVICES(self, value):
-        self._CUDA_VISIBLE_DEVICES = value
+    @gpu_devices.setter
+    def gpu_devices(self, value):
+        self._gpu_devices = value
 
     @property
     def phase(self):
@@ -75,12 +76,43 @@ class Simulation(object):
 
     @property
     def restraint_file(self):
-        """os.PathLike: The file containing NMR-style restraints for AMBER."""
+        """os.PathLike: The file containing NMR-style restraints for AMBER.
+
+        .. note ::
+            When running AMBER simulations, you can only use either an AMBER NMR-style
+            restraints or a Plumed-style restraints and not both.
+        """
         return self._restraint_file
 
     @restraint_file.setter
     def restraint_file(self, value):
         self._restraint_file = value
+
+    @property
+    def plumed_file(self) -> str:
+        """os.PathLike: The name of the Plumed-style restraints file for AMBER.
+
+        .. note ::
+            When running AMBER simulations, you can only use either an AMBER NMR-style
+            restraints or a Plumed-style restraints and not both.
+        """
+        return self._plumed_file
+
+    @plumed_file.setter
+    def plumed_file(self, value: str):
+        self._plumed_file = value
+
+    @property
+    def plumed_kernel_library(self) -> str:
+        """os.PathLike: The file path of the Plumed kernel library if it is different from the default. The default
+        name is `libplumedKernel` with its extension determined automatically depending on the operating system and is
+        located in `os.environ['CONDA_PREFIX']/lib`. This variable is useful for users who did not install or want to
+        use Plumed from the conda repository."""
+        return self._plumed_kernel_library
+
+    @plumed_kernel_library.setter
+    def plumed_kernel_library(self, value: str):
+        self._plumed_kernel_library = value
 
     @property
     def converged(self) -> bool:
@@ -105,14 +137,14 @@ class Simulation(object):
     @prefix.setter
     def prefix(self, new_prefix):
         self._prefix = new_prefix
-        self.input = new_prefix+".in"
-        self.inpcrd = new_prefix+".inpcrd"
-        self.ref = new_prefix+".inpcrd"
-        self.output = new_prefix+".out"
-        self.restart = new_prefix+".rst7"
-        self.mdinfo = new_prefix+".mdinfo"
-        self.mdcrd = new_prefix+".nc"
-        self.mden = new_prefix+".mden"
+        self.input = new_prefix + ".in"
+        self.inpcrd = new_prefix + ".inpcrd"
+        self.ref = new_prefix + ".inpcrd"
+        self.output = new_prefix + ".out"
+        self.restart = new_prefix + ".rst7"
+        self.mdinfo = new_prefix + ".mdinfo"
+        self.mdcrd = new_prefix + ".nc"
+        self.mden = new_prefix + ".mden"
 
     @property
     def cntrl(self):
@@ -208,24 +240,26 @@ class Simulation(object):
         # I/O
         self._path = "."
         self._executable = "sander"
-        self._CUDA_VISIBLE_DEVICES = None
+        self._gpu_devices = None
         self._phase = None
         self._window = None
         self._topology = "prmtop"
-        self._restraint_file = "restraints.in"
+        self._restraint_file = None
+        self._plumed_file = None
+        self._plumed_kernel_library = None
         self.title = "PBC MD Simulation"
         self.converged = False
 
         # File names
         self._prefix = "md"
-        self.input = self._prefix+".in"
-        self.inpcrd = self._prefix+".inpcrd"
-        self.ref = self._prefix+".inpcrd"
-        self.output = self._prefix+".out"
-        self.restart = self._prefix+".rst7"
-        self.mdinfo = self._prefix+".mdinfo"
-        self.mdcrd = self._prefix+".nc"
-        self.mden = self._prefix+".mden"
+        self.input = self._prefix + ".in"
+        self.inpcrd = self._prefix + ".inpcrd"
+        self.ref = self._prefix + ".inpcrd"
+        self.output = self._prefix + ".out"
+        self.restart = self._prefix + ".rst7"
+        self.mdinfo = self._prefix + ".mdinfo"
+        self.mdcrd = self._prefix + ".nc"
+        self.mden = self._prefix + ".mden"
 
         # Input file cntrl settings (Default = NTP)
         self._cntrl = OrderedDict()
@@ -373,7 +407,13 @@ class Simulation(object):
 
         for key, val in dictionary.items():
             if val is not None:
-                f.write("  {:15s} {:s},\n".format(key+" =", str(val)))
+                f.write("  {:15s} {:s},\n".format(key + " =", str(val)))
+
+        # Write PLUMED option if preferred over Amber NMR restraints
+        if self.plumed_file:
+            f.write("  {:15s} {:s},\n".format("plumed = ", str(1)))
+            f.write("  {:15s} {:s},\n".format("plumedfile =", f"'{self.plumed_file}'"))
+
         f.write(" /\n")
 
     def _amber_write_input_file(self):
@@ -394,11 +434,14 @@ class Simulation(object):
             if self.cntrl["nmropt"] == 1:
                 if self.wt is not None:
                     for line in self.wt:
-                        f.write(" "+line+"\n")
+                        f.write(" " + line + "\n")
                 f.write(" &wt type = 'END', /\n")
+
+                # Specify Amber NMR file
                 if self.restraint_file is not None:
                     f.write("DISANG = {}\n".format(self.restraint_file))
                     f.write("LISTOUT = POUT\n\n")
+
             if self.group is not None:
                 f.write("{:s}".format(self.group))
 
@@ -425,13 +468,13 @@ class Simulation(object):
                 # maxcyc
                 ncyc = self.cntrl["ncyc"]
                 maxcyc = self.cntrl["maxcyc"]
-                burn_in = int(float(ncyc)+0.20 * (float(maxcyc)-float(ncyc)))
+                burn_in = int(float(ncyc) + 0.20 * (float(maxcyc) - float(ncyc)))
                 # If the burn_in value is nuts, then just set it to zero
                 if burn_in < 0 or burn_in >= maxcyc:
                     burn_in = 0
                 # Set an end_soft value that is 75% of way between ncyc and
                 # maxcyc
-                end_soft = int(float(ncyc)+0.60 * (float(maxcyc)-float(ncyc)))
+                end_soft = int(float(ncyc) + 0.60 * (float(maxcyc) - float(ncyc)))
                 self.wt = [
                     "&wt type = 'NB', istep1=0, istep2={:.0f}, value1 = 0.0, value2=0.0, IINC=50, /".format(
                         burn_in
@@ -440,6 +483,12 @@ class Simulation(object):
                         burn_in, end_soft
                     ),
                 ]
+
+            # Check restraints file
+            if self.restraint_file and self.plumed_file:
+                raise Exception(
+                    "Cannot use both NMR-style and Plumed-style restraints at the same time."
+                )
 
             # _amber_write_input_file(self.path+'/'+self.input, self.min, title='GB Minimization.')
             self._amber_write_input_file()
@@ -450,7 +499,7 @@ class Simulation(object):
                 logger.info("Running MD at {}".format(self.path))
 
             # Create executable list for subprocess
-            exec_list = self.executable.split()+["-O", "-p", self.topology]
+            exec_list = self.executable.split() + ["-O", "-p", self.topology]
             if self.ref is not None:
                 exec_list += ["-ref", self.ref]
             exec_list += [
@@ -470,30 +519,60 @@ class Simulation(object):
             if self.mden is not None:
                 exec_list += ["-e", self.mden]
 
-            logger.debug("Exec line: "+" ".join(exec_list))
+            logger.debug("Exec line: " + " ".join(exec_list))
+
+            # Add CUDA_VISIBLE_DEVICES variable to env dict
+            if self.gpu_devices is not None:
+                os.environ = dict(
+                    os.environ, CUDA_VISIBLE_DEVICES=str(self.gpu_devices)
+                )
+
+            # Set the Plumed kernel library path
+            if self.plumed_kernel_library is None:
+                # using "startswith" as recommended from https://docs.python.org/3/library/sys.html#sys.platform
+                if platform.startswith("linux"):
+                    self.plumed_kernel_library = os.path.join(
+                        os.environ["CONDA_PREFIX"], "lib", "libplumedKernel.so"
+                    )
+                elif platform.startswith("darwin"):
+                    self.plumed_kernel_library = os.path.join(
+                        os.environ["CONDA_PREFIX"], "lib", "libplumedKernel.dylib"
+                    )
+                else:
+                    logger.warning(
+                        f"Plumed is not supported with the '{platform}' platform."
+                    )
+
+            # Add Plumed kernel library to env dict
+            if os.path.isfile(self.plumed_kernel_library):
+                os.environ = dict(os.environ, PLUMED_KERNEL=self.plumed_kernel_library)
+            else:
+                logger.warning(
+                    f"Plumed kernel library {self.plumed_kernel_library} does not exist, "
+                    "PLUMED_KERNEL environment variable is not set."
+                )
 
             # Execute
-            if self.CUDA_VISIBLE_DEVICES:
-                amber_output = sp.Popen(
-                    exec_list,
-                    cwd=self.path,
-                    stdout=sp.PIPE,
-                    stderr=sp.PIPE,
-                    env=dict(
-                        os.environ, CUDA_VISIBLE_DEVICES=str(self.CUDA_VISIBLE_DEVICES)
-                    ),
-                )
-            else:
-                amber_output = sp.Popen(
-                    exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE
-                )
+            amber_output = sp.Popen(
+                exec_list,
+                cwd=self.path,
+                stdout=sp.PIPE,
+                stderr=sp.PIPE,
+                env=os.environ,
+            )
 
-            amber_output = amber_output.stdout.read().splitlines()
+            amber_stdout = amber_output.stdout.read().splitlines()
+            amber_stderr = amber_output.stderr.read().splitlines()
 
             # Report any stdout/stderr which are output from execution
-            if amber_output:
-                logger.info("STDOUT/STDERR received from AMBER execution")
-                for line in amber_output:
+            if amber_stdout:
+                logger.info("STDOUT received from AMBER execution")
+                for line in amber_stdout:
+                    logger.info(line)
+
+            if amber_stderr:
+                logger.info("STDERR received from AMBER execution")
+                for line in amber_stderr:
                     logger.info(line)
 
             # Check completion status

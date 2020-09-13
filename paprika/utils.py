@@ -11,6 +11,31 @@ from parmed.structure import Structure as ParmedStructureClass
 logger = logging.getLogger(__name__)
 
 
+def get_key(dct, value):
+    """
+    Get dictionary key given the value.
+
+    NOTE: this function will return a list of keys if there are more than one key with the same value
+          in the order they are found.
+    """
+    key = [key for key in dct if (dct[key] == value)]
+
+    if len(key) > 1:
+        logger.warning(
+            "There more than one key with the same value. Please check if this is the desired output."
+        )
+
+    return key
+
+
+def override_dict(dct, custom):
+    """Overrides dictionary values from that of a custom dictionary."""
+    for key, value in custom.items():
+        if value is not None:
+            logger.debug("Overriding {} = {}".format(key, value))
+            dct[key] = value
+
+
 def return_parmed_structure(filename):
     """
     Return a structure object from a filename.
@@ -33,6 +58,7 @@ def return_parmed_structure(filename):
     except IOError:
         logger.error("Unable to load file: {}".format(filename))
     return structure
+
 
 @lru_cache(maxsize=32)
 def index_from_mask(structure, mask, amber_index=False):
@@ -180,6 +206,7 @@ def parse_mden(file):
     }
 
     return energies
+
 
 def parse_mdout(file):
     """

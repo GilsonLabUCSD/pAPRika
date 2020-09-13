@@ -1,6 +1,6 @@
 import logging
 
-from paprika.restraints.utils import parse_window
+from paprika.restraints.utils import get_restraint_values, parse_window
 
 logger = logging.getLogger(__name__)
 
@@ -40,13 +40,13 @@ def amber_restraint_line(restraint, window):
     """
 
     window, phase = parse_window(window)
-    if restraint.phase[phase]["force_constants"] is None and restraint.phase[phase]["targets"] is None:
+    if (
+        restraint.phase[phase]["force_constants"] is None
+        and restraint.phase[phase]["targets"] is None
+    ):
         return ""
 
-    if not restraint.index1:
-        iat1 = " "
-        raise Exception("There must be at least two atoms in a restraint.")
-    elif not restraint.group1:
+    if not restraint.group1:
         iat1 = "{},".format(restraint.index1[0])
     else:
         iat1 = "-1,"
@@ -54,10 +54,7 @@ def amber_restraint_line(restraint, window):
         for index in restraint.index1:
             igr1 += "{},".format(index)
 
-    if not restraint.index2:
-        iat2 = " "
-        raise Exception("There must be at least two atoms in a restraint.")
-    elif not restraint.group2:
+    if not restraint.group2:
         iat2 = "{},".format(restraint.index2[0])
     else:
         iat2 = "-1,"
@@ -65,51 +62,26 @@ def amber_restraint_line(restraint, window):
         for index in restraint.index2:
             igr2 += "{},".format(index)
 
-    if not restraint.index3:
-        iat3 = ""
-    elif not restraint.group3:
+    iat3 = ""
+    if restraint.index3 and not restraint.group3:
         iat3 = "{},".format(restraint.index3[0])
-    else:
+    elif restraint.group3:
         iat3 = "-1,"
         igr3 = ""
         for index in restraint.index3:
             igr3 += "{},".format(index)
 
-    if not restraint.index4:
-        iat4 = ""
-    elif not restraint.group4:
+    iat4 = ""
+    if restraint.index4 and not restraint.group4:
         iat4 = "{},".format(restraint.index4[0])
-    else:
+    elif restraint.group4:
         iat4 = "-1,"
         igr4 = ""
         for index in restraint.index4:
             igr4 += "{},".format(index)
 
-
-    # Set upper/lower bounds depending on whether distance, angle, or torsion
-    lower_bound = 0.0
-    upper_bound = 999.0
-
-    if restraint.mask3 and not restraint.mask4:
-        upper_bound = 180.0
-
-    if restraint.mask3 and restraint.mask4:
-        lower_bound = restraint.phase[phase]["targets"][window] - 180.0
-        upper_bound = restraint.phase[phase]["targets"][window] + 180.0
-
-    amber_restraint_values = {
-        "r1": lower_bound,
-        "r2": restraint.phase[phase]["targets"][window],
-        "r3": restraint.phase[phase]["targets"][window],
-        "r4": upper_bound,
-        "rk2": restraint.phase[phase]["force_constants"][window],
-        "rk3": restraint.phase[phase]["force_constants"][window],
-    }
-
-    for key, value in restraint.custom_restraint_values.items():
-        if value is not None:
-            logger.debug("Overriding {} = {}".format(key, value))
-            amber_restraint_values[key] = value
+    # Restraint values - Amber NMR-style
+    amber_restraint_values = get_restraint_values(restraint, phase, window)
 
     # Prepare AMBER NMR-style restraint
     atoms = "".join([iat1, iat2, iat3, iat4])

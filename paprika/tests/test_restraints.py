@@ -2,10 +2,12 @@
 Tests the restraints utilities.
 """
 
-import pytest
 import os
 
+import pytest
+
 from paprika.restraints.restraints import *
+from paprika.restraints.utils import *
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,9 @@ def test_DAT_restraint():
     rest1.amber_index = True
     rest1.continuous_apr = False
     rest1.auto_apr = False
-    rest1.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
+    rest1.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
     rest1.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
     rest1.mask2 = ":BUT@C3"
     rest1.attach["target"] = 3.0
@@ -73,7 +77,9 @@ def test_DAT_restraint():
     rest2.amber_index = True
     rest2.continuous_apr = False
     rest2.auto_apr = False
-    rest2.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
+    rest2.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
     rest2.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
     rest2.mask2 = ":BUT@C3"
     rest2.mask3 = ":BUT@C"
@@ -131,7 +137,9 @@ def test_DAT_restraint():
     rest3.amber_index = True
     rest3.continuous_apr = False
     rest3.auto_apr = True
-    rest3.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
+    rest3.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
     rest3.mask1 = ":CB6@O2"
     rest3.mask2 = ":CB6@O"
     rest3.mask3 = ":BUT@C3"
@@ -188,7 +196,9 @@ def test_DAT_restraint():
     rest4.amber_index = True
     rest4.continuous_apr = False
     rest4.auto_apr = False
-    rest4.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
+    rest4.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
     rest4.mask1 = ":CB6@O2"
     rest4.mask2 = ":CB6@O"
     rest4.mask3 = ":BUT@C3"
@@ -243,7 +253,9 @@ def test_DAT_restraint():
     rest5.amber_index = True
     rest5.continuous_apr = False
     rest5.auto_apr = False
-    rest5.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
+    rest5.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
     rest5.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
     rest5.mask2 = ":BUT@C*"
     rest5.attach["target"] = 0.0
@@ -295,7 +307,9 @@ def test_DAT_restraint():
     rest6.amber_index = True
     rest6.continuous_apr = False
     rest6.auto_apr = False
-    rest6.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
+    rest6.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
     rest6.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
     rest6.mask2 = ":BUT@C*"
     rest6.attach["target"] = 0.0
@@ -352,7 +366,9 @@ def test_DAT_restraint():
     rest7.amber_index = True
     rest7.continuous_apr = True
     rest7.auto_apr = False
-    rest7.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
+    rest7.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
     rest7.mask1 = ":1@O,O1,:BUT@H1"
     rest7.mask2 = ":CB6@N"
     rest7.attach["target"] = 0.0
@@ -400,7 +416,9 @@ def test_DAT_restraint():
     rest8.amber_index = True
     rest8.continuous_apr = False
     rest8.auto_apr = False
-    rest8.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
+    rest8.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
     rest8.mask1 = ":CB6@O"
     rest8.mask2 = ":BUT@C3"
     rest8.attach["target"] = 0.0
@@ -429,7 +447,9 @@ def test_DAT_restraint():
     rest9.amber_index = True
     rest9.continuous_apr = False
     rest9.auto_apr = False
-    rest9.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
+    rest9.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
     rest9.mask1 = ":CB6@O"
     rest9.mask2 = ":BUT@C3"
     rest9.pull["fc"] = 3.0
@@ -458,7 +478,9 @@ def test_DAT_restraint():
     rest10.amber_index = True
     rest10.continuous_apr = False
     rest10.auto_apr = False
-    rest10.topology = os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb")
+    rest10.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
     rest10.mask1 = ":CB6@O"
     rest10.mask2 = ":BUT@C3"
     rest10.release["target"] = 0.0
@@ -488,3 +510,273 @@ def test_DAT_restraint():
     # Test inconsistent windows:
     with pytest.raises(Exception) as e_info:
         window_list = create_window_list([rest1, rest10])
+
+
+def test_get_restraint_values():
+    # Test Harmonic restraint
+    attach_fractions = np.linspace(0, 1.0, 25)
+    initial_distance = 2.65
+    pull_distances = np.linspace(0 + initial_distance, 16.0 + initial_distance, 40)
+
+    restraint = DAT_restraint()
+    restraint.continuous_apr = True
+    restraint.amber_index = True
+    restraint.topology = os.path.join(
+        os.path.dirname(__file__), "../data/k-cl/k-cl.pdb"
+    )
+    restraint.mask1 = "@K+"
+    restraint.mask2 = "@Cl-"
+
+    restraint.attach["target"] = initial_distance
+    restraint.attach["fraction_list"] = attach_fractions
+    restraint.attach["fc_final"] = 10.0
+
+    restraint.pull["fc"] = restraint.attach["fc_final"]
+    restraint.pull["target_list"] = pull_distances
+
+    restraint.initialize()
+
+    restraint_values = get_restraint_values(restraint, "attach", 0)
+    assert restraint_values["r1"] == 0.0
+    assert restraint_values["r2"] == 2.65
+    assert restraint_values["r3"] == 2.65
+    assert restraint_values["r4"] == 999.0
+    assert restraint_values["rk2"] == 0.0
+    assert restraint_values["rk3"] == 0.0
+
+    restraint_values = get_restraint_values(restraint, "pull", 0)
+    assert restraint_values["r1"] == 0.0
+    assert restraint_values["r2"] == 2.65
+    assert restraint_values["r3"] == 2.65
+    assert restraint_values["r4"] == 999.0
+    assert restraint_values["rk2"] == 10.0
+    assert restraint_values["rk3"] == 10.0
+
+    # Test custom values
+    wall = DAT_restraint()
+    wall.auto_apr = False
+    wall.amber_index = True
+    wall.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    wall.mask1 = "@K+"
+    wall.mask2 = "@Cl-"
+
+    wall.attach["fc_initial"] = 1.0
+    wall.attach["fc_final"] = 1.0
+
+    wall.custom_restraint_values["rk2"] = 1.0
+    wall.custom_restraint_values["rk3"] = 1.0
+    wall.custom_restraint_values["r2"] = 0.0
+    wall.custom_restraint_values["r3"] = 3.5
+
+    wall.attach["target"] = 3.5
+    wall.attach["num_windows"] = len(attach_fractions)
+
+    wall.initialize()
+
+    restraint_values = get_restraint_values(wall, "attach", 0)
+    assert restraint_values["r1"] == 0.0
+    assert restraint_values["r2"] == 0.0
+    assert restraint_values["r3"] == 3.5
+    assert restraint_values["r4"] == 999.0
+    assert restraint_values["rk2"] == 1.0
+    assert restraint_values["rk3"] == 1.0
+
+    wall = DAT_restraint()
+    wall.auto_apr = False
+    wall.amber_index = True
+    wall.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    wall.mask1 = "@K+"
+    wall.mask2 = "@Cl-"
+
+    wall.attach["fc_initial"] = 1.0
+    wall.attach["fc_final"] = 1.0
+
+    wall.custom_restraint_values["rk2"] = 1.0
+    wall.custom_restraint_values["rk3"] = 1.0
+    wall.custom_restraint_values["r2"] = 3.5
+    wall.custom_restraint_values["r3"] = 0.0
+
+    wall.attach["target"] = 3.5
+    wall.attach["num_windows"] = len(attach_fractions)
+
+    wall.initialize()
+
+    restraint_values = get_restraint_values(wall, "attach", 0)
+    assert restraint_values["r1"] == 0.0
+    assert restraint_values["r2"] == 3.5
+    assert restraint_values["r3"] == 0.0
+    assert restraint_values["r4"] == 999.0
+    assert restraint_values["rk2"] == 1.0
+    assert restraint_values["rk3"] == 1.0
+
+
+def test_get_bias_potential_type():
+    # Test Harmonic restraint
+    attach_fractions = np.linspace(0, 1.0, 25)
+    initial_distance = 2.65
+    pull_distances = np.linspace(0 + initial_distance, 16.0 + initial_distance, 40)
+
+    restraint = DAT_restraint()
+    restraint.continuous_apr = True
+    restraint.amber_index = True
+    restraint.topology = os.path.join(
+        os.path.dirname(__file__), "../data/k-cl/k-cl.pdb"
+    )
+    restraint.mask1 = "@K+"
+    restraint.mask2 = "@Cl-"
+
+    restraint.attach["target"] = initial_distance
+    restraint.attach["fraction_list"] = attach_fractions
+    restraint.attach["fc_final"] = 10.0
+
+    restraint.pull["fc"] = restraint.attach["fc_final"]
+    restraint.pull["target_list"] = pull_distances
+
+    restraint.initialize()
+
+    assert get_bias_potential_type(restraint, "attach", 0) == "restraint"
+    assert get_bias_potential_type(restraint, "pull", 0) == "restraint"
+
+    # Test upper wall restraint (1)
+    upper = DAT_restraint()
+    upper.auto_apr = False
+    upper.amber_index = True
+    upper.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    upper.mask1 = "@K+"
+    upper.mask2 = "@Cl-"
+
+    upper.attach["fc_initial"] = 1.0
+    upper.attach["fc_final"] = 1.0
+
+    upper.custom_restraint_values["rk2"] = 1.0
+    upper.custom_restraint_values["rk3"] = 1.0
+    upper.custom_restraint_values["r2"] = 0.0
+    upper.custom_restraint_values["r3"] = 3.5
+
+    upper.attach["target"] = 3.5
+    upper.attach["num_windows"] = len(attach_fractions)
+
+    upper.initialize()
+
+    assert get_bias_potential_type(upper, "attach", 0) == "upper_walls"
+    assert get_bias_potential_type(upper, "attach", 1) == "upper_walls"
+
+    # Test upper wall restraint (2)
+    upper = DAT_restraint()
+    upper.auto_apr = False
+    upper.amber_index = True
+    upper.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    upper.mask1 = "@K+"
+    upper.mask2 = "@Cl-"
+
+    upper.attach["fc_initial"] = 1.0
+    upper.attach["fc_final"] = 1.0
+
+    upper.custom_restraint_values["rk2"] = 0.0
+    upper.custom_restraint_values["rk3"] = 1.0
+    upper.custom_restraint_values["r2"] = 3.5
+    upper.custom_restraint_values["r3"] = 3.5
+
+    upper.attach["target"] = 3.5
+    upper.attach["num_windows"] = len(attach_fractions)
+
+    upper.initialize()
+
+    assert get_bias_potential_type(upper, "attach", 0) == "upper_walls"
+    assert get_bias_potential_type(upper, "attach", 1) == "upper_walls"
+
+    # Test upper wall restraint (3)
+    upper = DAT_restraint()
+    upper.auto_apr = False
+    upper.amber_index = True
+    upper.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    upper.mask1 = "@K+"
+    upper.mask2 = "@Cl-"
+
+    upper.attach["fc_initial"] = 1.0
+    upper.attach["fc_final"] = 1.0
+
+    upper.custom_restraint_values["rk2"] = 0.0
+    upper.custom_restraint_values["rk3"] = 1.0
+    upper.custom_restraint_values["r2"] = 0.0
+    upper.custom_restraint_values["r3"] = 3.5
+
+    upper.attach["target"] = 3.5
+    upper.attach["num_windows"] = len(attach_fractions)
+
+    upper.initialize()
+
+    assert get_bias_potential_type(upper, "attach", 0) == "upper_walls"
+    assert get_bias_potential_type(upper, "attach", 1) == "upper_walls"
+
+    # Test lower wall restraint (1)
+    lower = DAT_restraint()
+    lower.auto_apr = False
+    lower.amber_index = True
+    lower.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    lower.mask1 = "@K+"
+    lower.mask2 = "@Cl-"
+
+    lower.attach["fc_initial"] = 1.0
+    lower.attach["fc_final"] = 1.0
+
+    lower.custom_restraint_values["rk2"] = 1.0
+    lower.custom_restraint_values["rk3"] = 1.0
+    lower.custom_restraint_values["r2"] = 3.5
+    lower.custom_restraint_values["r3"] = 0.0
+
+    lower.attach["target"] = 3.5
+    lower.attach["num_windows"] = len(attach_fractions)
+
+    lower.initialize()
+
+    assert get_bias_potential_type(lower, "attach", 0) == "lower_walls"
+    assert get_bias_potential_type(lower, "attach", 1) == "lower_walls"
+
+    # Test lower wall restraint (2)
+    lower = DAT_restraint()
+    lower.auto_apr = False
+    lower.amber_index = True
+    lower.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    lower.mask1 = "@K+"
+    lower.mask2 = "@Cl-"
+
+    lower.attach["fc_initial"] = 1.0
+    lower.attach["fc_final"] = 1.0
+
+    lower.custom_restraint_values["rk2"] = 1.0
+    lower.custom_restraint_values["rk3"] = 0.0
+    lower.custom_restraint_values["r2"] = 3.5
+    lower.custom_restraint_values["r3"] = 3.5
+
+    lower.attach["target"] = 3.5
+    lower.attach["num_windows"] = len(attach_fractions)
+
+    lower.initialize()
+
+    assert get_bias_potential_type(lower, "attach", 0) == "lower_walls"
+    assert get_bias_potential_type(lower, "attach", 1) == "lower_walls"
+
+    # Test lower wall restraint (3)
+    lower = DAT_restraint()
+    lower.auto_apr = False
+    lower.amber_index = True
+    lower.topology = os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.pdb")
+    lower.mask1 = "@K+"
+    lower.mask2 = "@Cl-"
+
+    lower.attach["fc_initial"] = 1.0
+    lower.attach["fc_final"] = 1.0
+
+    lower.custom_restraint_values["rk2"] = 1.0
+    lower.custom_restraint_values["rk3"] = 0.0
+    lower.custom_restraint_values["r2"] = 3.5
+    lower.custom_restraint_values["r3"] = 6.5
+
+    lower.attach["target"] = 3.5
+    lower.attach["num_windows"] = len(attach_fractions)
+
+    lower.initialize()
+
+    assert get_bias_potential_type(lower, "attach", 0) == "lower_walls"
+    assert get_bias_potential_type(lower, "attach", 1) == "lower_walls"
