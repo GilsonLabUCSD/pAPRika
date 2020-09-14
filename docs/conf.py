@@ -50,7 +50,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
-    'nbsphinx',
+    #'nbsphinx',
 ]
 
 # Autodoc settings

@@ -36,34 +36,10 @@ paprika.dummy module
     :undoc-members:
     :show-inheritance:
 
-paprika.openmm module
----------------------
-
-.. automodule:: paprika.openmm
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-paprika.openmm\_simulate module
--------------------------------
-
-.. automodule:: paprika.openmm_simulate
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 paprika.restraints module
 -------------------------
 
 .. automodule:: paprika.restraints
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-paprika.restraints\_json module
--------------------------------
-
-.. automodule:: paprika.restraints_json
     :members:
     :undoc-members:
     :show-inheritance:
@@ -84,10 +60,10 @@ paprika.utils module
     :undoc-members:
     :show-inheritance:
 
-paprika.version module
+paprika._version module
 ----------------------
 
-.. automodule:: paprika.version
+.. automodule:: paprika._version
     :members:
     :undoc-members:
     :show-inheritance:

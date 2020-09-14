@@ -6,7 +6,7 @@ channels:
 dependencies:
   
   # Base depends
-  - python ==3.6
+  - python ==3.7
   - setuptools
 
   # Sphinx specific
