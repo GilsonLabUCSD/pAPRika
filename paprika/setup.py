@@ -54,7 +54,6 @@ class Setup:
             If ``host_atom_indices`` are provided, the structure will contain only
             the referenced host atoms.
         """
-        import parmed.geometry
 
         # noinspection PyTypeChecker
         structure = pmd.load_file(coordinate_path, structure=True)
