@@ -1,0 +1,39 @@
+name: lint
+
+on:
+  push:
+    paths:
+      - 'paprika/**.py'
+      - 'setup.cfg'
+
+jobs:
+
+  lint:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: '3.7'
+      - name: Install the package
+        run: |
+          python setup.py develop --no-deps
+
+      - name: Install isort / flake8 / black
+        run: |
+          pip install isort flake8 black
+
+      - name: Run isort
+        run: |
+          isort --check-only paprika
+
+      - name: Run black
+        run: |
+          black paprika --check
+
+      - name: Run flake8
+        run: |
+          flake8 paprika
