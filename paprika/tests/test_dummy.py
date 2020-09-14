@@ -5,7 +5,6 @@ Tests the dummy atoms utilities.
 import os
 
 import parmed as pmd
-import pytest
 
 import paprika.dummy as dummy
 from paprika.align import zalign

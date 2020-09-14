@@ -2,12 +2,14 @@
 Tests the restraints utilities.
 """
 
+import logging
 import os
 
+import numpy as np
 import pytest
 
-from paprika.restraints.restraints import *
-from paprika.restraints.utils import *
+from paprika.restraints.restraints import DAT_restraint, create_window_list
+from paprika.restraints.utils import get_bias_potential_type, get_restraint_values
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +41,8 @@ def test_DAT_restraint():
     rest1.initialize()
     assert rest1.index1 == [13, 31, 49, 67, 85, 103]
     assert rest1.index2 == [119]
-    assert rest1.index3 == None
-    assert rest1.index4 == None
+    assert rest1.index3 is None
+    assert rest1.index4 is None
     assert np.allclose(
         rest1.phase["attach"]["force_constants"], np.array([0.0, 1.0, 2.0, 3.0])
     )
@@ -96,7 +98,7 @@ def test_DAT_restraint():
     assert rest2.index1 == [13, 31, 49, 67, 85, 103]
     assert rest2.index2 == [119]
     assert rest2.index3 == [109]
-    assert rest2.index4 == None
+    assert rest2.index4 is None
     assert np.allclose(
         rest2.phase["attach"]["force_constants"], np.array([0.0, 25.0, 50.0, 75.0])
     )
@@ -270,8 +272,8 @@ def test_DAT_restraint():
     rest5.initialize()
     assert rest5.index1 == [13, 31, 49, 67, 85, 103]
     assert rest5.index2 == [109, 113, 115, 119]
-    assert rest5.index3 == None
-    assert rest5.index4 == None
+    assert rest5.index3 is None
+    assert rest5.index4 is None
     assert np.allclose(
         rest5.phase["attach"]["force_constants"], np.array([0.0, 1.0, 2.5, 5.0])
     )
@@ -324,8 +326,8 @@ def test_DAT_restraint():
     rest6.initialize()
     assert rest6.index1 == [13, 31, 49, 67, 85, 103]
     assert rest6.index2 == [109, 113, 115, 119]
-    assert rest6.index3 == None
-    assert rest6.index4 == None
+    assert rest6.index3 is None
+    assert rest6.index4 is None
     assert np.allclose(
         rest6.phase["attach"]["force_constants"], np.array([0.0, 1.25, 2.5, 3.75, 5.0])
     )
@@ -380,8 +382,8 @@ def test_DAT_restraint():
     rest7.initialize()
     assert rest7.index1 == [13, 14, 111]
     assert rest7.index2 == [3]
-    assert rest7.index3 == None
-    assert rest7.index4 == None
+    assert rest7.index3 is None
+    assert rest7.index4 is None
     assert np.allclose(
         rest7.phase["attach"]["force_constants"], np.array([0.0, 0.5, 1.0, 2.0])
     )
@@ -428,16 +430,16 @@ def test_DAT_restraint():
     rest8.initialize()
     assert rest8.index1 == [13]
     assert rest8.index2 == [119]
-    assert rest8.index3 == None
-    assert rest8.index4 == None
+    assert rest8.index3 is None
+    assert rest8.index4 is None
     assert np.allclose(
         rest8.phase["attach"]["force_constants"], np.array([0.0, 1.0, 2.0, 3.0])
     )
     assert np.allclose(rest8.phase["attach"]["targets"], np.array([0.0, 0.0, 0.0, 0.0]))
-    assert rest8.phase["pull"]["force_constants"] == None
-    assert rest8.phase["pull"]["targets"] == None
-    assert rest8.phase["release"]["force_constants"] == None
-    assert rest8.phase["release"]["targets"] == None
+    assert rest8.phase["pull"]["force_constants"] is None
+    assert rest8.phase["pull"]["targets"] is None
+    assert rest8.phase["release"]["force_constants"] is None
+    assert rest8.phase["release"]["targets"] is None
     window_list = create_window_list([rest8])
     assert window_list == ["a000", "a001", "a002", "a003"]
 
@@ -459,16 +461,16 @@ def test_DAT_restraint():
     rest9.initialize()
     assert rest9.index1 == [13]
     assert rest9.index2 == [119]
-    assert rest9.index3 == None
-    assert rest9.index4 == None
-    assert rest9.phase["attach"]["force_constants"] == None
-    assert rest9.phase["attach"]["targets"] == None
+    assert rest9.index3 is None
+    assert rest9.index4 is None
+    assert rest9.phase["attach"]["force_constants"] is None
+    assert rest9.phase["attach"]["targets"] is None
     assert np.allclose(
         rest9.phase["pull"]["force_constants"], np.array([3.0, 3.0, 3.0, 3.0])
     )
     assert np.allclose(rest9.phase["pull"]["targets"], np.array([0.0, 1.0, 2.0, 3.0]))
-    assert rest9.phase["release"]["force_constants"] == None
-    assert rest9.phase["release"]["targets"] == None
+    assert rest9.phase["release"]["force_constants"] is None
+    assert rest9.phase["release"]["targets"] is None
     window_list = create_window_list([rest9])
     assert window_list == ["p000", "p001", "p002", "p003"]
 
@@ -490,12 +492,12 @@ def test_DAT_restraint():
     rest10.initialize()
     assert rest10.index1 == [13]
     assert rest10.index2 == [119]
-    assert rest10.index3 == None
-    assert rest10.index4 == None
-    assert rest10.phase["attach"]["force_constants"] == None
-    assert rest10.phase["attach"]["targets"] == None
-    assert rest10.phase["pull"]["force_constants"] == None
-    assert rest10.phase["pull"]["targets"] == None
+    assert rest10.index3 is None
+    assert rest10.index4 is None
+    assert rest10.phase["attach"]["force_constants"] is None
+    assert rest10.phase["attach"]["targets"] is None
+    assert rest10.phase["pull"]["force_constants"] is None
+    assert rest10.phase["pull"]["targets"] is None
     assert np.allclose(
         rest10.phase["release"]["force_constants"], np.array([0.0, 1.0, 2.0])
     )
@@ -504,11 +506,11 @@ def test_DAT_restraint():
     assert window_list == ["r000", "r001", "r002"]
 
     # Test inconsistent continuous_apr:
-    with pytest.raises(Exception) as e_info:
+    with pytest.raises(Exception):
         window_list = create_window_list([rest7, rest8])
 
     # Test inconsistent windows:
-    with pytest.raises(Exception) as e_info:
+    with pytest.raises(Exception):
         window_list = create_window_list([rest1, rest10])
 
 

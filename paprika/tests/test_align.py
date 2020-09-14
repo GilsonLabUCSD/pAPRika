@@ -4,9 +4,11 @@ Tests the alignment of residues to the z axis.
 
 import os
 
+import numpy as np
+import parmed as pmd
 import pytest
 
-from paprika.align import *
+from paprika.align import check_coordinates, get_theta, offset_structure, zalign
 
 
 def test_center_mask():
