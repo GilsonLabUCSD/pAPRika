@@ -11,15 +11,17 @@ from ._version import get_versions
 
 # Add imports here
 versions = get_versions()
-__version__ = versions['version']
-__git_revision__ = versions['full-revisionid']
+__version__ = versions["version"]
+__git_revision__ = versions["full-revisionid"]
 del get_versions, versions
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 try:
     from simtk import openmm
+
     from paprika.setup import Setup
 
     setup = Setup
@@ -29,6 +31,7 @@ except ImportError as e:
     setup = None
 
 from paprika.analyze import Analyze
+
 analyze = Analyze
 
 if setup is None:

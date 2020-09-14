@@ -296,8 +296,8 @@ def test_add_dummy(clean_files):
     sys.neutralize = False
     sys.build()
     with open(
-            os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"),
-            "r",
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"),
+        "r",
     ) as f:
         contents = f.read()
         reference = [float(i) for i in contents.split()[2:]]
@@ -331,9 +331,13 @@ def test_hydrogen_mass_repartitioning(clean_files):
     sys.neutralize = False
     sys.build()
 
-    but = pmd.load_file(os.path.join(temporary_directory, sys.output_prefix + ".prmtop"))
+    but = pmd.load_file(
+        os.path.join(temporary_directory, sys.output_prefix + ".prmtop")
+    )
     assert np.allclose(but["@H="].atoms[0].mass, 1.008)
 
     sys.repartition_hydrogen_mass()
-    but = pmd.load_file(os.path.join(temporary_directory, sys.output_prefix + ".prmtop"))
+    but = pmd.load_file(
+        os.path.join(temporary_directory, sys.output_prefix + ".prmtop")
+    )
     assert np.allclose(but["@H="].atoms[0].mass, 3.024)

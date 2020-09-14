@@ -9,8 +9,7 @@ from paprika.amber import Simulation
 from paprika.restraints import amber
 from paprika.restraints.restraints import create_window_list
 from paprika.tests import addons
-from paprika.utils import parse_mden
-from paprika.utils import parse_mdout
+from paprika.utils import parse_mden, parse_mdout
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -51,7 +50,7 @@ def test_amber_single_window_gbmin(clean_files):
     for window in window_list:
         os.makedirs(os.path.join(windows_directory, window))
         with open(
-                os.path.join(windows_directory, window, "restraints.in"), "a"
+            os.path.join(windows_directory, window, "restraints.in"), "a"
         ) as file:
             string = amber.amber_restraint_line(restraint, window)
             file.write(string)
@@ -83,8 +82,8 @@ def test_amber_single_window_gbmin(clean_files):
                 structure=True,
             )
             target_difference = (
-                    restraint.phase["pull"]["targets"][int(window[1:])]
-                    - restraint.phase["pull"]["targets"][0]
+                restraint.phase["pull"]["targets"][int(window[1:])]
+                - restraint.phase["pull"]["targets"][0]
             )
 
             for atom in structure.atoms:
@@ -137,8 +136,12 @@ def test_amber_minimization(clean_files):
     simulation = Simulation()
     simulation.path = os.path.join("tmp")
 
-    shutil.copy(os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.prmtop"), "tmp")
-    shutil.copy(os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.rst7"), "tmp")
+    shutil.copy(
+        os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.prmtop"), "tmp"
+    )
+    shutil.copy(
+        os.path.join(os.path.dirname(__file__), "../data/k-cl/k-cl.rst7"), "tmp"
+    )
 
     simulation.executable = "sander"
     simulation.restraint_file = None

@@ -7,9 +7,7 @@ import parmed as pmd
 import pytest
 from pytest import approx
 
-from paprika import analysis
-from paprika import log
-from paprika import restraints
+from paprika import analysis, log, restraints
 
 log.config_root_logger(verbose=True)
 logger = logging.getLogger(__name__)
