@@ -23,7 +23,7 @@ class Simulation(object):
 
     @property
     def executable(self):
-        """The AMBER executable that will be used.
+        """str: The AMBER executable that will be used.
 
         .. note ::
             This could be made safer by making an ``ENUM`` of ``sander``, ``pmemd`` and ``pmemd.cuda``.
@@ -36,7 +36,7 @@ class Simulation(object):
 
     @property
     def gpu_devices(self):
-        """A wrapper around the environmental variable ``CUDA_VISIBLE_DEVICES``."""
+        """int or str: A wrapper around the environmental variable ``CUDA_VISIBLE_DEVICES``."""
         return self._gpu_devices
 
     @gpu_devices.setter
@@ -105,8 +105,8 @@ class Simulation(object):
     @property
     def plumed_kernel_library(self) -> str:
         """os.PathLike: The file path of the Plumed kernel library if it is different from the default. The default
-        name is `libplumedKernel` with its extension determined automatically depending on the operating system and is
-        located in `os.environ['CONDA_PREFIX']/lib`. This variable is useful for users who did not install or want to
+        name is ``libplumedKernel`` with its extension determined automatically depending on the operating system and is
+        located in ``os.environ['CONDA_PREFIX']/lib``. This variable is useful for users who did not install or want to
         use Plumed from the conda repository."""
         return self._plumed_kernel_library
 
@@ -130,7 +130,7 @@ class Simulation(object):
     @property
     def prefix(self):
         """
-        The prefix for file names generated from this simulation.
+        str: The prefix for file names generated from this simulation.
         """
         return self._prefix
 
@@ -149,7 +149,8 @@ class Simulation(object):
     @property
     def cntrl(self):
         """
-        An ordered dictionary of simulation "control" namelist parameters. The main puprose of this class attribute is
+        dict: An ordered dictionary of simulation "control" namelist parameters. The main puprose of this class
+        attribute is
         to make it easy to override certain simulation parameters, such as positional restraints on dummy atoms, and
         the inclusion of exclusion of the NMR-style APR restraints.
 
@@ -205,7 +206,7 @@ class Simulation(object):
 
     @property
     def ewald(self):
-        """Additional Ewald summation settings."""
+        """dict: Additional Ewald summation settings."""
         return self._ewald
 
     @ewald.setter
@@ -214,7 +215,8 @@ class Simulation(object):
 
     @property
     def wt(self):
-        """ "Weight" assigned to various simulation parameters. Written to the "&wt" line in the input file."""
+        """dict: **Weights** assigned to various simulation parameters. Written to the ``&wt`` line in the input
+        file."""
         return self._wt
 
     @wt.setter
@@ -223,7 +225,7 @@ class Simulation(object):
 
     @property
     def group(self):
-        """Group specification for restraints applied to multiple atoms.
+        """dict: Group specification for restraints applied to multiple atoms.
 
         .. note::
             I don't recall ever having to this option and this seems distinct from applying restraints to a collection
@@ -451,11 +453,11 @@ class Simulation(object):
 
         Parameters
         ----------
-        soft_minimize: bool
+        soft_minimize: bool, optional
             Whether to slowly turn on non-bonded interactions so that restraints get enforced first.
-        overwrite: bool
+        overwrite: bool, optional
             Whether to overwrite simulation files.
-        fail_ok: bool
+        fail_ok: bool, optional
             Whether a failing simulation should stop execution of ``pAPRika``.
         """
 
@@ -602,7 +604,7 @@ class Simulation(object):
 
         Parameters
         ----------
-        alternate_file : os.PathLike
+        alternate_file : os.PathLike, optional
             If present, check for "TIMINGS" in this file rather than ``self.output``. Default: None
 
         Returns

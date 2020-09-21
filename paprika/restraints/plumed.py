@@ -15,11 +15,13 @@ _PI_ = np.pi
 
 class Plumed:
     """
-    This class converts restraints generated in pAPRika DAT_restraints into Plumed restraints.
+    This class converts restraints generated in pAPRika :class:`paprika.restraints.DAT_restraint` into `Plumed
+    <https://www.plumed.org/>`_ restraints.
 
-    # TODO: possibly change this module to use the python wrapper of Plumed.
+    .. todo::
+        possibly change this module to use the python wrapper of Plumed.
 
-    Example:
+    Example
     -------
         >>> plumed = Plumed()
         >>> plumed.file_name = 'plumed.dat'
@@ -28,7 +30,10 @@ class Plumed:
         >>> plumed.restraint_list = restraint_list
         >>> plumed.dump_to_file()
 
-    plumed.dat:
+    The commands above will write the restraints to ``windows/*/plumed.dat`` and contains the Plumed-style restraints
+
+    .. code-block::
+
         UNITS LENGTH=A ENERGY=kcal/mol TIME=ns
         # Collective variables
         c1 : DISTANCE ATOMS=175,150 NOPBC
@@ -39,6 +44,17 @@ class Plumed:
         RESTRAINT   ARG=c8  AT=  3.142 KAPPA= 200.00
         RESTRAINT   ARG=c9  AT=  3.142 KAPPA= 200.00
     """
+
+    @property
+    def path(self):
+        """
+        os.PathLike: The parent directory that contains the APR simulation windows.
+        """
+        return self._path
+
+    @path.setter
+    def path(self, value: str):
+        self._path = value
 
     @property
     def file_name(self):
@@ -54,7 +70,7 @@ class Plumed:
     @property
     def window_list(self):
         """
-        list: The list of APR windows
+        list: The list of APR windows where the Plumed files will be stored.
         """
         return self._window_list
 
@@ -74,29 +90,28 @@ class Plumed:
         self._restraint_list = value
 
     @property
-    def path(self):
-        """
-        os.PathLike: The parent directory that contains the simulation windows.
-        """
-        return self._path
-
-    @path.setter
-    def path(self, value: str):
-        self._path = value
-
-    @property
     def uses_legacy_k(self):
         """
-        bool: Option to specify whether the force constant parsed into DAT_restraint()
-        is Amber-style or Gromacs/NAMD-style. Amber-style force constants have their value
-        multiplied by a factor of 1/2 whereas Gromacs/NAMD-style does not. Plumed follows
-        the Gromacs/NAMD-style for the force constant and the equations below demonstrates
-        this point.
+        bool: Option to specify whether the force constant parsed into ``DAT_restraint`` uses
+        legacy force constant.
 
-            * Amber:  U = K x (x - x0)²    * Plumed: U = 1/2 x k x (x - x0)²
-            --> K(Amber) = 1/2 k(Plumed)
+        .. note ::
+            Amber-style force constants have their value multiplied by a factor of 1/2 whereas
+            Gromacs/NAMD-style do not. Plumed follows the Gromacs/NAMD-style convention for the
+            force constant and the equations below demonstrates this point.
 
-        i.e. "uses_legacy_k" is set to True (default) the force constants will be multiplied by 2.
+            .. math::
+               :nowrap:
+
+               $$
+               \\begin{eqnarray}
+               U_{Amber} & = & K (x-x_{0})^2 \\\\
+               U_{Plumed} & = & \\frac{1}{2} k (x-x_{0})^2 \\\\
+               \\therefore K_{Amber} & = & \\frac{1}{2} k_{Plumed}
+               \\end{eqnarray}
+               $$
+
+            i.e. ``uses_legacy_k`` is set to True (default) the force constants will be multiplied by 2.
         """
         return self._uses_legacy_k
 
@@ -108,7 +123,7 @@ class Plumed:
     def units(self):
         """
         dict: Dictionary of units for Plumed as strings. The dictionary requires the key values
-        of 'energy', 'length, 'time'.
+        of ``energy``, ``length``, ``time``.
         """
         return self._units
 
@@ -147,6 +162,9 @@ class Plumed:
         )
 
     def dump_to_file(self):
+        """
+        Write the Plumed-style restraints to file.
+        """
 
         self._initialize()
 
@@ -302,6 +320,15 @@ class Plumed:
         return atom_index
 
     def add_dummy_atoms_to_file(self, structure):
+        """
+        Add positional restraints on dummy atoms to the Plumed restraint files.
+
+        Parameters
+        ----------
+        structure: os.PathLike or :class:`parmed.Structure`
+            The reference structure that is used to determine the absolute coordinate of the dummy atoms.
+
+        """
         # Extract dummy atoms
         for windows in self.window_list:
             if isinstance(structure, str):

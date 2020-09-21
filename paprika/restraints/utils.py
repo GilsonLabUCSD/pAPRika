@@ -20,10 +20,10 @@ def parse_window(window):
 
     Returns
     -------
-    window : int
-        The window number
+    window_number : int
+        The window number.
     phase : str
-        The calculation phase
+        The calculation phase.
 
     """
     if window[0] == "a":
@@ -34,12 +34,12 @@ def parse_window(window):
         phase = "release"
     else:
         raise Exception("Cannot determine the phase for this restraint.")
-    window = int(window[1:])
+    window_number = int(window[1:])
 
-    return window, phase
+    return window_number, phase
 
 
-def get_restraint_values(restraint, phase, window):
+def get_restraint_values(restraint, phase, window_number):
     """
     Extract the values of the restraints (Amber NMR-style) including positions
     and force constants. See the Amber documentation for further explanation
@@ -47,12 +47,12 @@ def get_restraint_values(restraint, phase, window):
 
     Parameters
     ----------
-    restraint: DAT_restraint()
+    restraint: :class:`paprika.restraints.DAT_restraint`
         Restraint object to extract the information from
     phase: str
-        Current phase of APR calculation
-    window: int
-        Current window number
+        Current phase of the window.
+    window_number: int
+        Current window number.
 
     Return
     ------
@@ -67,16 +67,16 @@ def get_restraint_values(restraint, phase, window):
         upper_bound = 180.0
 
     if restraint.mask3 and restraint.mask4:
-        lower_bound = restraint.phase[phase]["targets"][window] - 180.0
-        upper_bound = restraint.phase[phase]["targets"][window] + 180.0
+        lower_bound = restraint.phase[phase]["targets"][window_number] - 180.0
+        upper_bound = restraint.phase[phase]["targets"][window_number] + 180.0
 
     restraint_values = {
         "r1": lower_bound,
-        "r2": restraint.phase[phase]["targets"][window],
-        "r3": restraint.phase[phase]["targets"][window],
+        "r2": restraint.phase[phase]["targets"][window_number],
+        "r3": restraint.phase[phase]["targets"][window_number],
         "r4": upper_bound,
-        "rk2": restraint.phase[phase]["force_constants"][window],
-        "rk3": restraint.phase[phase]["force_constants"][window],
+        "rk2": restraint.phase[phase]["force_constants"][window_number],
+        "rk3": restraint.phase[phase]["force_constants"][window_number],
     }
 
     override_dict(restraint_values, restraint.custom_restraint_values)
@@ -84,19 +84,19 @@ def get_restraint_values(restraint, phase, window):
     return restraint_values
 
 
-def get_bias_potential_type(restraint, phase, window):
+def get_bias_potential_type(restraint, phase, window_number):
     """
     Function to determine the bias potential type for a particular restraint.
-    The possible types of biases are: "restraint", "upper_walls" and "lower_walls"
+    The possible types of biases are: ``restraint``, ``upper_walls`` and ``lower_walls``.
 
     Parameters
     ----------
-    restraint: DAT_restraints
+    restraint: :class:`paprika.restraints.DAT_restraint`
         restraints to extract information from
     phase: str
-        current phase of the window
-    window: int
-        window number
+        Current phase of the window
+    window_number: int
+        Current window number.
 
     Returns
     -------
@@ -107,7 +107,7 @@ def get_bias_potential_type(restraint, phase, window):
 
     bias_type = None
 
-    amber_restraint_values = get_restraint_values(restraint, phase, window)
+    amber_restraint_values = get_restraint_values(restraint, phase, window_number)
 
     if (
         amber_restraint_values["r2"] == amber_restraint_values["r3"]

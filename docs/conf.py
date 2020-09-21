@@ -65,14 +65,7 @@ autodoc_default_options = {
     "member-order": "bysource",
 }
 
-autodoc_mock_imports = [
-    "pydantic",
-    "pytraj",
-    "scipy",
-    "simtk",
-    "typing_extensions",
-    "yaml",
-]
+autodoc_mock_imports = ["pytraj"]
 
 # Autolabel settings
 autosectionlabel_maxdepth = 3

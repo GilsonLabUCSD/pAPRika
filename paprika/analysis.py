@@ -1,5 +1,5 @@
 import logging
-import os as os
+import os
 import traceback
 from itertools import compress
 
@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 class fe_calc(object):
     """
-    Computes the free energy for an APR transformation. After calling `compute_free_energy()`, the
-    results are stored in a dictionary called `results` in kcal/mol.
+    Computes the free energy for an APR transformation. After calling ``compute_free_energy()``, the
+    results are stored in a dictionary called ``results`` in units of kcal/mol.
 
     To get the binding free energy at standard state (ΔG°), we have used the following sign convention:
 
@@ -35,7 +35,7 @@ class fe_calc(object):
 
     @property
     def temperature(self):
-        """The temperature used during the simulation. This will update β (1/kT) as well."""
+        """float: The temperature used during the simulation. This will update β (1/kT) as well."""
         return self._temperature
 
     @temperature.setter
@@ -91,7 +91,7 @@ class fe_calc(object):
     @property
     def changing_restraints(self):
         """
-        Dictionary containing which restraints change during which phase of the calculation.
+        dict: Dictionary containing which restraints change during which phase of the calculation.
 
         .. note ::
             This should probably be a private attribute, as this property is determined automatically.
@@ -127,7 +127,7 @@ class fe_calc(object):
     @property
     def simulation_data(self):
         """
-        Dictionary containing collected trajectory values for the relevant restraints and windows
+        dict: Dictionary containing collected trajectory values for the relevant restraints and windows
 
         .. note ::
             This should probably be a private attribute, as this property is determined automatically.
@@ -145,18 +145,20 @@ class fe_calc(object):
         list: List of analysis methods to be performed. This is a combination of free energy method (e.g., MBAR, TI, ...)
         and de-correlation method (blocking, autocorrelation, ...).
 
-        Implemented examples are:
+        Implemented methods are:
 
-            - "mbar-autoc"
-            - "mbar-block"
-            - "ti-block"
+            - ``mbar-autoc``
+            - ``mbar-block``
+            - ``ti-block``
 
         .. note ::
             This is really fragile. We should definitely use something like an ``ENUM`` here to check for the few combinations
             that we support.
 
         .. todo ::
-            - Add "ti-autoc".
+            - Add ``ti-autoc``.
+            - Add ``wham-block``.
+            - Add ``wham-autoc``.
             - Clarify naming.
             - Look into using ``pymbar`` for decorrelation.
 
@@ -170,19 +172,22 @@ class fe_calc(object):
     @property
     def conservative_subsample(self):
         """
-        bool: Wehther the statistical inefficiency is rounded up to the nearest integer. If False, a non-integer value
+        bool: Whether the statistical inefficiency is rounded up to the nearest integer. If ``False``, a non-integer
+        value
         is used.
         """
         return self._conservative_subsample
 
     @conservative_subsample.setter
     def conservative_subsample(self, value):
-        self._conservative_subample = value
+        self._conservative_subsample = value
 
     @property
     def bootcycles(self) -> int:
         """
         int: The number of bootstrap iterations for the TI methods.
+
+        **Default**: ``1000``
         """
         return self._bootcycles
 
@@ -217,12 +222,12 @@ class fe_calc(object):
     @property
     def ti_matrix(self):
         """
-        str: If "full", the TI mean and SEM free energy is computed between all windows (i.e., the energy differences between
-        all windows and all other windows). If "diagonal", the mean and SEM of the free energy is computed between the
-        first window and all other windows, as well as between all neighboring windows. If "endpoints", the mean and
+        str: If ``full``, the TI mean and SEM free energy is computed between all windows (i.e., the energy differences between
+        all windows and all other windows). If ``diagonal``, the mean and SEM of the free energy is computed between the
+        first window and all other windows, as well as between all neighboring windows. If ``endpoints``, the mean and
         SEM free energy is computed between only the first and the last window.
 
-        For most cases, I think "diagonal" should be sufficient and "full" is overkill.
+        For most cases, ``diagonal`` should be sufficient and ``full`` is overkill.
 
         .. note ::
             This is fragile and we should be checking for the valid strings supported.
@@ -272,11 +277,9 @@ class fe_calc(object):
     @property
     def results(self):
         """
-        dict: A dictionary containing the results.
-
-        The results dictionary is indexed first by phase, and then by method. That is,
-         ``results["attach"]["mbar-block"]`` will contain the results from analyzing the attach phase with
-         the MBAR free energy estimator and blocking analysis used to estimate the SEM.
+        dict: A dictionary containing the results. The results dictionary is indexed first by phase, and then by
+        method. That is, ``results["attach"]["mbar-block"]`` will contain the results from analyzing the attach
+        phase with the MBAR free energy estimator and blocking analysis used to estimate the SEM.
 
         The final free energy and uncertainty estimate is specified in the ``fe`` and ``sem`` keys.
 
@@ -344,7 +347,7 @@ class fe_calc(object):
         self._simulation_data = None
         self._methods = ["mbar-block"]
         self._conservative_subsample = False
-        self._bootcycles = 10000
+        self._bootcycles = 1000
         self._compute_roi = False
         self._compute_largest_neighbor = False
         self._ti_matrix = "full"
@@ -358,7 +361,8 @@ class fe_calc(object):
 
         Parameters
         ----------
-
+        single_prmtop: bool
+            Whether a single `prmtop` is read for all windows
         """
 
         self.changing_restraints = self.identify_changing_restraints()
@@ -370,7 +374,7 @@ class fe_calc(object):
 
         Returns
         -------
-        changing_restraints : {dict}
+        changing_restraints : dict
             A dictionary containing which restraints change during which phase of the calculation
         """
 
@@ -400,7 +404,7 @@ class fe_calc(object):
 
         Returns
         -------
-        orders : {dict}
+        orders : dict
             The sorted order of windows for analysis
         """
 
@@ -464,12 +468,12 @@ class fe_calc(object):
 
         Parameters
         ----------
-        single_prmtop : {bool}
+        single_prmtop : bool
             Whether a single `prmtop` is read for all windows
 
         Returns
         -------
-        data : {dict}
+        data : dict
             Dictionary containing restraint values for analysis
         """
 
@@ -597,6 +601,19 @@ class fe_calc(object):
     def run_mbar(self, phase, prepared_data, method, verbose=False):
         """
         Compute the free energy matrix for a series of windows. We'll follow the pymbar nomenclature for data structures.
+
+        Parameters
+        ----------
+            phase: str
+                The phase of the calculation to analyze.
+            prepared_data: :class:`np.array`
+                The list of "prepared data" including the number of windows, data points, which restraints are changing,
+                their force constants and targets, and well as the order of the windows. This probably ought to be
+                redesigned.
+            method: str
+                The method used to calculate the SEM.
+            verbose: bool, optional
+                Whether to set the `verbose` option on pyMBAR.
         """
 
         # Unpack the prepared data
@@ -756,8 +773,8 @@ class fe_calc(object):
         Compute the free energy using the TI method.
 
         We compute the partial derivative of the potential (i.e., forces), for each frame, with respect to the
-        changing parameter, either a lambda or target value. The force constants
-        are scaled by the λ parameter which controls their strength: 0 to fc_max.
+        changing parameter, either a lambda or target value. The force constants are scaled by the λ parameter which
+        controls their strength: ``0`` to ``fc_max``.
 
         Potential:
           U = λ × fc_max × (values - target)²
@@ -1006,7 +1023,7 @@ class fe_calc(object):
 
         Parameters
         ----------
-        phases: list of str, optional, default=["attach, "pull", "release"]
+        phases: list
             Which phases of the calculation to analyze.
         seed: int
             Random number seed.
@@ -1118,14 +1135,14 @@ class fe_calc(object):
 
         Parameters
         ----------
-        restraints : list of :class:`DAT_restraint`
+        restraints : list
             A list of :class:`paprika.restraints.DAT_restraint` objects in order of the six translational and
             orientational restraints needed to describe the configuration of one molecule
             relative to another. The six restraints are: r, theta, phi, alpha, beta, gamma and they should be passed to
             this function in that order. If any of these coordinates is not being restrained, use a `None` in place of a
             :class:`paprika.restraints.DAT_restraint` object.
 
-            See :meth:`paprika.restraints.ref_state_work` for details on the calculation.
+            See :meth:`paprika.analysis.ref_state_work` for details on the calculation.
         """
 
         if not restraints or restraints[0] is None:
@@ -1185,7 +1202,7 @@ def get_factors(n):
 
     Returns
     -------
-    sorted(factors): list
+    sorted: list
         A list of sorted factors.
 
     """
@@ -1238,6 +1255,11 @@ def get_block_sem(data_array):
     """
     Compute the standard error of the mean (SEM) using the blocking method.
 
+    Note
+    ----
+        This is a conservative approach. Here, we report the maximum SEM determined from blocking analysis (cf. the
+        "plateau" on the blocking curve).
+
     Parameters
     ----------
     data_array: :class:`np.array`
@@ -1247,10 +1269,6 @@ def get_block_sem(data_array):
     -------
     np.max(sems): float
         The maximum SEM obtained from te blocking curve.
-
-    .. note ::
-        This is a conservative approach. Here, we report the maximum SEM determined from blocking analysis (cf. the
-        "plateau" on the blocking curve).
 
     """
     # Get the integer factors for the number of data points. These
@@ -1291,7 +1309,7 @@ def get_subsampled_indices(N, g, conservative=False):
     Parameters
     ----------
     N: int
-        The length of the array to be indexed (?).
+        The length of the array to be indexed.
     g: int
         The statistical inefficiency of the data.
     conservative: bool, optional, default=False
@@ -1326,22 +1344,23 @@ def get_subsampled_indices(N, g, conservative=False):
 
 
 def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
-    """Load a trajectory (or trajectories).
+    """Load a trajectory (or trajectories) and return a pytraj ``trajectory`` object.
 
-    Parameters:
+    Parameters
     ----------
     window: str
         The simulation window to analyze
     trajectory: str or list
         The name or names of the trajectory
-    prmtop: str or :class:`parmed.AmberParm`
+    prmtop: str or :class:`parmed.Structure`
         The parameters for the simulation
     single_prmtop: bool
         Whether a single `prmtop` is read for all windows
+
     Returns
     -------
-    data: :class:`np.array`
-        The values for this restraint in this window
+    traj: pytraj.trajectory
+        The trajectory of stored as a pytraj object.
     """
 
     logger.debug("Load trajectories from {}/{}...".format(window, trajectory))
@@ -1352,6 +1371,7 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
         logger.debug("Received list of trajectories: {}".format(trajectory_path))
     else:
         raise RuntimeError("Trajectory path should be a `str` or `list`.")
+
     if isinstance(prmtop, str) and not single_prmtop:
         if not os.path.isfile(os.path.join(window, prmtop)):
             raise FileNotFoundError(
@@ -1380,13 +1400,13 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
 
 
 def read_restraint_data(traj, restraint):
-    """Given a trajectory and restraint, read the restraint values.
+    """Given a trajectory and restraint, read the restraint and return the DAT values.
 
-    Parameters:
+    Parameters
     ----------
     traj: :class:`pytraj.trajectory`
         A trajectory, probably loaded by load_trajectory
-    restraint: :class:`paprika.restraints.DAT_restraint`
+    restraint: :class:`DAT_restraint`
         The restraint to analyze
 
     Returns
