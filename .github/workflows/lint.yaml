@@ -28,11 +28,11 @@ jobs:
 
       - name: Run isort
         run: |
-          isort --check-only paprika
+          isort paprika
 
       - name: Run black
         run: |
-          black paprika --check
+          black paprika
 
       - name: Run flake8
         run: |
