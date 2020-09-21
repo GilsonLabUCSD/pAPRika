@@ -101,7 +101,7 @@ def zalign(structure, mask1, mask2, save=False, filename=None):
 
 def get_theta(structure, mask1, mask2, axis):
     """Get the angle (theta) between the vector formed by two masks and an axis.
-    
+
     Parameters
     ----------
     structure : parmed.Structure
@@ -112,7 +112,7 @@ def get_theta(structure, mask1, mask2, axis):
         Selection of second set of atoms
     axis : str
         Axis: x, y, or z
-    
+
     Returns
     -------
     float
@@ -148,14 +148,14 @@ def get_theta(structure, mask1, mask2, axis):
 
 def check_coordinates(structure, mask):
     """Return the coordinates of an atom selection.
-    
+
     Parameters
     ----------
     structure : parmed.Structure
         Molecular structure containing coordinates
     mask : str
         Atom selection
-    
+
     Returns
     -------
     np.array
@@ -172,14 +172,14 @@ def check_coordinates(structure, mask):
 
 def offset_structure(structure, offset):
     """Return a structure whose coordinates have been offset.
-    
+
     Parameters
     ----------
     structure : parmed.Structure
         Molecular structure containing coordinates
     offset : float
         The offset that will be added to *every* atom in the structure
-    
+
     Returns
     -------
     :py:class:`parmed.Structure`

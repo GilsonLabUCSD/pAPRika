@@ -8,9 +8,7 @@ logger = logging.getLogger(__name__)
 _PI_ = np.pi
 
 
-def apply_positional_restraints(
-    coordinate_path: str, system, force_group: int = 15
-):
+def apply_positional_restraints(coordinate_path: str, system, force_group: int = 15):
     """A utility function which will add OpenMM harmonic positional restraints to
     any dummy atoms found within a system to restrain them to their initial
     positions.
@@ -101,7 +99,10 @@ def apply_dat_restraint(
             / unit.radian ** 2
         )
         flat_bottom_force.addAngle(
-            restraint.index1[0], restraint.index2[0], restraint.index3[0], [k, theta_0],
+            restraint.index1[0],
+            restraint.index2[0],
+            restraint.index3[0],
+            [k, theta_0],
         )
         system.addForce(flat_bottom_force)
         if force_group:
@@ -123,7 +124,9 @@ def apply_dat_restraint(
             / unit.radian ** 2
         )
         flat_bottom_force.addBond(
-            restraint.index1[0], restraint.index2[0], [k, r_0],
+            restraint.index1[0],
+            restraint.index2[0],
+            [k, r_0],
         )
         system.addForce(flat_bottom_force)
         if force_group:

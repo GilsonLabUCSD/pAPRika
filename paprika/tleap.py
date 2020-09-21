@@ -1,10 +1,10 @@
+import logging as log
 import os as os
 import re as re
 import subprocess as sp
-import logging as log
+
 import numpy as np
 import parmed as pmd
-
 
 N_A = 6.0221409 * 10 ** 23
 ANGSTROM_CUBED_TO_LITERS = 1 * 10 ** -27
@@ -196,7 +196,7 @@ class System(object):
         if not os.path.exists(os.path.dirname(file_path)):
             try:
                 os.makedirs(os.path.dirname(file_path))
-            except OSError as e:
+            except OSError:
                 raise
 
         with open(file_path, "w") as f:
@@ -341,7 +341,7 @@ class System(object):
         # to the target_waters. This will control when we can start manually deleting
         # waters rather than adjusting the buffer_value.
         if self.manual_switch_thresh is None:
-            self.manual_switch_thresh = int(np.ceil(self.target_waters ** (1. / 3.)))
+            self.manual_switch_thresh = int(np.ceil(self.target_waters ** (1.0 / 3.0)))
             if self.manual_switch_thresh < 12:
                 self.manual_switch_thresh = 12
             log.debug(
@@ -728,13 +728,13 @@ class System(object):
 
     def repartition_hydrogen_mass(self, options=None):
         """
-        Repartitions the masses of Hydrogen atoms in the system by a factor 3 and 
+        Repartitions the masses of Hydrogen atoms in the system by a factor 3 and
         overwrites the prmtop file: "self.output_path/self.output_prefix.prmtop"
 
         Parameters
         ----------
         options : str
-            Optional keyword(s) for the repartitioning and following the 
+            Optional keyword(s) for the repartitioning and following the
             parmed.tools.actions documentation the usage is '[<mass>] [dowater]'.
 
         """
@@ -746,4 +746,3 @@ class System(object):
         pmd.tools.actions.HMassRepartition(structure, arg_list=options).execute()
 
         structure.save(prmtop, overwrite=True)
-

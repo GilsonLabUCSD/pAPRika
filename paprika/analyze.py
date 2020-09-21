@@ -27,7 +27,7 @@ class Analyze:
         topology_name: str,
         trajectory_mask: str = "*.dcd",
         bootstrap_cycles: int = 1000,
-        analysis_method: str = "ti-block"
+        analysis_method: str = "ti-block",
     ) -> Dict[str, Any]:
         """Computes the free energy of a specified phase of an APR calculation.
 
@@ -104,7 +104,7 @@ class Analyze:
                 and restraint.mask3 is None
                 and restraint.mask4 is None
             ),
-            None
+            None,
         )
 
         theta_restraint = next(
@@ -116,7 +116,7 @@ class Analyze:
                 and restraint.mask3 is not None
                 and restraint.mask4 is None
             ),
-            None
+            None,
         )
         beta_restraint = next(
             (
@@ -127,7 +127,7 @@ class Analyze:
                 and restraint.mask3 is not None
                 and restraint.mask4 is None
             ),
-            None
+            None,
         )
 
         if not distance_restraint or not theta_restraint or not beta_restraint:
@@ -144,7 +144,11 @@ class Analyze:
         return analysis.results["ref_state_work"]
 
     @classmethod
-    def symmetry_correction(cls, n_microstates: int, temperature: float,) -> float:
+    def symmetry_correction(
+        cls,
+        n_microstates: int,
+        temperature: float,
+    ) -> float:
         """Computes the free energy corrections to apply to symmetrical guest
         when the guest is restrained to just one of several possible symmetrical
         configurations (e.g. butane restrained in a cyclic host).

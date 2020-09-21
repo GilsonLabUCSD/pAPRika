@@ -6,29 +6,32 @@ Advanced toolkit for binding free energy calculations
 # Safe to remove with Python 3-only code
 from __future__ import absolute_import
 
+import logging
+
+from paprika.analyze import Analyze
+
 # Handle versioneer
 from ._version import get_versions
 
 # Add imports here
 versions = get_versions()
-__version__ = versions['version']
-__git_revision__ = versions['full-revisionid']
+__version__ = versions["version"]
+__git_revision__ = versions["full-revisionid"]
 del get_versions, versions
 
-import logging
+
 logger = logging.getLogger(__name__)
 
 try:
-    from simtk import openmm
     from paprika.setup import Setup
 
     setup = Setup
-except ImportError as e:
+except ImportError:
     logging.info("OpenMM not found.")
     logging.info("`paprika.setup()` requires OpenMM.")
     setup = None
 
-from paprika.analyze import Analyze
+
 analyze = Analyze
 
 if setup is None:

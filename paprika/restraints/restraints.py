@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import parmed as pmd
 import pytraj as pt
+
 from paprika import utils
 
 logger = logging.getLogger(__name__)
