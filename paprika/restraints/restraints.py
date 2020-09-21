@@ -218,7 +218,7 @@ class DAT_restraint(object):
         self._amber_index = value
 
     instances = []
-    
+
     def __init__(self):
 
         self._topology = None
