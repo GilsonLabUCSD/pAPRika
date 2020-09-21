@@ -1,11 +1,11 @@
-
-
-from parmed.structure import Structure as ParmedStructureClass
-import numpy as np
-from paprika.dummy import extract_dummy_atoms
-import os
-from paprika.restraints.utils import get_bias_potential_type, parse_window
 import logging
+import os
+
+import numpy as np
+from parmed.structure import Structure as ParmedStructureClass
+
+from paprika.dummy import extract_dummy_atoms
+from paprika.restraints.utils import get_bias_potential_type, parse_window
 from paprika.utils import get_key, return_parmed_structure
 
 logger = logging.getLogger(__name__)
@@ -173,7 +173,10 @@ class Plumed:
                 # Example: wall restraints only used during the attach phase.
                 try:
                     target = restraint.phase[phase]["targets"][window]
-                    force_constant = (restraint.phase[phase]["force_constants"][window] * self.k_factor)
+                    force_constant = (
+                        restraint.phase[phase]["force_constants"][window]
+                        * self.k_factor
+                    )
                 except TypeError:
                     continue
 
@@ -200,12 +203,18 @@ class Plumed:
                     cv_key = f"c{cv_index}"
                     cv_dict[cv_key] = atom_string
 
-                    cv_lines.append(f"{cv_key}: {colvar_type.upper()} ATOMS={atom_string} NOPBC\n")
-                    bias_lines.append(f"{bias_type.upper()} ARG={cv_key} AT={target:.4f} KAPPA={force_constant:.2f}\n")
+                    cv_lines.append(
+                        f"{cv_key}: {colvar_type.upper()} ATOMS={atom_string} NOPBC\n"
+                    )
+                    bias_lines.append(
+                        f"{bias_type.upper()} ARG={cv_key} AT={target:.4f} KAPPA={force_constant:.2f}\n"
+                    )
                 else:
                     cv_key = get_key(cv_dict, atom_string)[0]
 
-                    bias_lines.append(f"{bias_type.upper()} ARG={cv_key} AT={target:.4f} KAPPA={force_constant:.2f}\n")
+                    bias_lines.append(
+                        f"{bias_type.upper()} ARG={cv_key} AT={target:.4f} KAPPA={force_constant:.2f}\n"
+                    )
 
                 # Increment cv index
                 cv_index += 1
