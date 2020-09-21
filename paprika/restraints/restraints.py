@@ -16,10 +16,9 @@ class DAT_restraint(object):
 
     @property
     def instances(self):
-        """list: A list of :class:`paprika.restraints.DAT_restraint` that have been initialized.
+        """A list of ``DAT_restraints`` that have been initialized.
 
         .. note ::
-
         This should never be called directly and ought to be private.
         """
         return self._instances
@@ -218,6 +217,8 @@ class DAT_restraint(object):
     def amber_index(self, value):
         self._amber_index = value
 
+    instances = []
+    
     def __init__(self):
 
         self._topology = None
@@ -241,7 +242,6 @@ class DAT_restraint(object):
 
         self._auto_apr = False
         self._continuous_apr = True
-        self._instances = None
         self._amber_index = False
 
         self._attach = {
