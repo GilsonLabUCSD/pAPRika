@@ -16,6 +16,11 @@ dependencies:
   - ambertools >=20.0
   - pyyaml
   - plumed
+
+  # devtools
+  - isort
+  - black
+  - flake8
   
   # Documentation
   - sphinx
