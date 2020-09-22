@@ -44,22 +44,22 @@ release = ""
 # ones.
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.autosectionlabel',
-    'sphinx.ext.doctest',
-    'sphinx.ext.todo',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.intersphinx',
-    'nbsphinx',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.autosectionlabel",
+    "sphinx.ext.doctest",
+    "sphinx.ext.todo",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
+    "nbsphinx",
 ]
 
 # Autodoc settings
 autosummary_generate = True
-autodoc_default_flags = ['members', 'inherited-members']
-autodoc_member_order = 'bysource' # preserve ordering in source
+autodoc_default_flags = ["members", "inherited-members"]
+autodoc_member_order = "bysource"  # preserve ordering in source
 
 autodoc_mock_imports = ["pytraj"]
 
@@ -68,7 +68,7 @@ autosectionlabel_maxdepth = 3
 autosectionlabel_prefix_document = True
 
 suppress_warnings = [
-    'autosectionlabel.releasehistory',
+    "autosectionlabel.releasehistory",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -157,8 +157,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'paprika.tex', 'pAPRika Documentation',
-     'paprika', 'manual'),
+    (master_doc, "paprika.tex", "pAPRika Documentation", "paprika", "manual"),
 ]
 
 
@@ -193,6 +192,9 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/", None),
     "numpy": ("http://docs.scipy.org/doc/numpy/", None),
     "mdtraj": ("http://mdtraj.org/latest/", None),
-    'openforcefield': ('https://open-forcefield-toolkit.readthedocs.io/en/latest/', None),
+    "openforcefield": (
+        "https://open-forcefield-toolkit.readthedocs.io/en/latest/",
+        None,
+    ),
     "parmed": ("http://parmed.github.io/ParmEd/html/", None),
 }

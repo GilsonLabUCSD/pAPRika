@@ -64,6 +64,7 @@ In this example, we will use GAFF parameters for both the host and guest. For th
 
 ```python
 from paprika import tleap
+
 ```
 
 
@@ -105,6 +106,7 @@ These same atoms will be used later for the restraints, so I will name them `G1`
 
 ```python
 import parmed as pmd
+
 ```
 
 
@@ -117,6 +119,7 @@ structure = pmd.load_file("complex/vac.prmtop",
 
 ```python
 from paprika import align
+
 ```
 
 
@@ -573,6 +576,7 @@ I'm using the `logging` module to keep track of time.
 ```python
 import logging
 from importlib import reload
+
 reload(logging)
 
 logger = logging.getLogger()
@@ -773,6 +777,7 @@ After running `compute_free_energy()`, a dictionary called `results` will be pop
 
 ```python
 from paprika import analysis
+
 ```
 
 
