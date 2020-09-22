@@ -160,51 +160,89 @@ def get_bias_potential_type(restraint, phase, window_number):
     return bias_type
 
 
-def parse_restraints(static=None, host=None, guest=None, wall=None, symmetry=None, list_type='tuple'):
+def extract_guest_restraints(structure, guest_resname, restraints):
     """
-    Utility function to parse restraints that is used when writing the
-    restraints to file. If list_type='tuple' (default) the function simply
-    returns a list of all the restraints, which is required for writing
-    amber NMR restraint file (paprika.restraints.amber.amber_restraint_line).
-    The option list_type='dict' is useful for parsing pAPRika restraints
-    into a PLUMED-based restraint file.
+    Utility function to extract the guest restraints from a list of restraints
+    and return individual restraints in the form:
+        [r, theta, phi, alpha, beta, gamma]
+
+    If there is no restraint applied to a particular reaction coordinate
+    a `None` will be inserted.
+
+    This function is useful for parsing guest restraints in analysis when
+    computing `ref_state_work`.
 
     Parameters
     ----------
-    static : list
-        List of host static DAT_restraint()
-    guest : list
-        List of DAT_restraint() for guest
-    host : list
-        List of DAT_restraint() for host-conformation
-    wall : list
-        List of DAT_restraint() for guest-wall
-    symmetry : list
-        List of DAT_restraint() for guest-symmetry
-    list_type : str
-        Type of list to return (tuple or dict)
+    structure : parmed.Structure
+        parmed structure of the system.
+    guest_resname : str
+        Residue name of the guest molecule.
+    restraints : list
+        list of restraints.
 
     Returns
     -------
-    restraints_list : tuple/dict
-        The list of restraints returned as a tuple or dictionary
+    list
+        list of guest-specific DAT_restraint().
+
+    Examples
+    --------
+
+        >>> free_energy = analysis.fe_calc()
+        >>> free_energy.restraint_list = restraints
+            ...
+        >>> free_energy.compute_ref_state_work(extract_guest_restraints(structure, "BEN", restraints))
+        >>> print(free_energy["ref_state_work"])
 
     """
+    guest_resname = guest_resname.upper()
 
-    if list_type is 'tuple':
-        restraints_list = []
-    elif list_type is 'dict':
-        restraints_list = {}
+    r = None
+    theta = None
+    phi = None
+    alpha = None
+    beta = None
+    gamma = None
 
-    for restraint in ["static", "host", "guest", "wall", "symmetry"]:
-        if eval(restraint) is not None:
-            if len(eval(restraint)) != 0:
-                if list_type is 'tuple':
-                    restraints_list += eval(restraint)
-                elif list_type is 'dict':
-                    restraints_list[restraint] = eval(restraint)
+    for restraint in restraints:
 
-    return restraints_list
+        mask2_residue_name = structure[restraint.mask2].residues[0].name
+
+        # Distance
+        if "DM1" in restraint.mask1 and guest_resname in mask2_residue_name and not restraint.mask3 and not \
+                restraint.mask4:
+            r = restraint
+
+        # Angle
+        if restraint.mask3 and not restraint.mask4:
+            mask3_residue_name = structure[restraint.mask3].residues[0].name
+
+            if "DM2" in restraint.mask1 and "DM1" in restraint.mask2 and guest_resname in mask3_residue_name:
+                theta = restraint
+
+            if "DM1" in restraint.mask1 and guest_resname in mask2_residue_name and guest_resname in \
+                    mask3_residue_name:
+                beta = restraint
+
+        # Dihedral
+        if restraint.mask4:
+            mask3_residue_name = structure[restraint.mask3].residues[0].name
+            mask4_residue_name = structure[restraint.mask4].residues[0].name
+
+            if "DM3" in restraint.mask1 and "DM2" in restraint.mask2 and "DM1" in restraint.mask3 and guest_resname \
+                    in mask4_residue_name:
+                phi = restraint
+
+            if "DM2" in restraint.mask1 and "DM1" in restraint.mask2 and guest_resname in mask3_residue_name \
+                    and guest_resname in mask4_residue_name:
+                alpha = restraint
+
+            if "DM1" in restraint.mask1 and guest_resname in mask2_residue_name and guest_resname in \
+                    mask3_residue_name and guest_resname in mask4_residue_name:
+                gamma = restraint
+
+    return [r, theta, phi, alpha, beta, gamma]
 
 
 def restraints_from_ascii(filename):
