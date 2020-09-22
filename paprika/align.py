@@ -196,41 +196,42 @@ def offset_structure(structure, offset):
     return structure
 
 
-def translate_to_origin(structure, weight="mass", atom_mask=None, dim_mask=None):
-    """Translate a structure to the origin based on the center of 
-       mass of the whole system or of a particular choice of atom(s).
+def translate_to_origin(structure, weight="mass", atom_mask=None, dimension_mask=None):
+    """Translate a structure to the origin based on the centroid of the whole system or of a subset of atom(s).
 
     Parameters
     ----------
-    structure : str or parmed.Structure
+    structure : str or :class:`parmed.Structure`
         Molecular structure containing coordinates.
-    weight : str
-        Calculate the center based on atomic masses ('mass' default) or geometric center ('geo')?
-    atom_mask : str
-        Selection of atom(s) if a particular subset is preferred to estimate the center.
-    dim_mask : list
-        A mask that will filter the dimensions to which the translation will be applied (default is [1,1,1]).
+    weight : str, optional, default="mass"
+        Calculate the centroid based on either atomic masses (``mass`` default) or geometric center (``geo``).
+    atom_mask : str, optional, default=None
+        Selection of atom(s) if a particular subset is preferred to estimate the centroid.
+    dimension_mask : list, optional, default=None
+        A mask that will filter the dimensions to which the translation will be applied (by default the system will
+        be translated in all dimensions). For example, ``dimension_mask=[0,0,1]`` will translate the system to the
+        origin only in the z-axis.
 
     Returns
     -------
-    structure : parmed.Structure
+    structure : :class:`parmed.Structure`
         A molecular structure with the coordinates translated to the origin.
 
     """
     # Check if weight variable is properly chosen
     if weight not in ["mass", "geo"]:
-        raise SystemExit('Error: "weight" must either be "mass" or "geo"')
+        raise Exception('Error: "weight" must either be "mass" or "geo".')
 
     # Dimension mask
-    if dim_mask is None:
+    if dimension_mask is None:
         dim_mask = [1, 1, 1]
-    elif len(dim_mask) != 3:
-        raise SystemExit(
-            'Error: "dim_mask" must be a list with 3 elements, e.g. [1,1,1]'
+    elif len(dimension_mask) != 3:
+        raise Exception(
+            'Error: "dimension_mask" must be a list with 3 elements, e.g. [1,1,1].'
         )
-    dim_mask = np.array(dim_mask)
+    dimension_mask = np.array(dimension_mask)
 
-    # Atom coordinates and masses
+    # Atomic coordinates and masses
     if atom_mask is None:
         coordinates = structure.coordinates
         masses = np.asarray([atom.mass for atom in structure.atoms])
@@ -238,17 +239,17 @@ def translate_to_origin(structure, weight="mass", atom_mask=None, dim_mask=None)
         coordinates = structure[atom_mask].coordinates
         masses = np.asarray([atom.mass for atom in structure[atom_mask].atoms])
 
-    # Convert weight if geometric center
+    # Equal weights if geometric center is preferred
     if weight == "geo":
         masses[:] = 1.0
 
-    # Center of mass/geometry
+    # Centroid coordinates
     centroid = pmd.geometry.center_of_mass(coordinates, masses)
 
     # Translate coordinates
     aligned_coords = np.empty_like(structure.coordinates)
     for atom in range(len(structure.atoms)):
-        aligned_coords[atom] = structure.coordinates[atom] - centroid * dim_mask
+        aligned_coords[atom] = structure.coordinates[atom] - centroid * dimension_mask
     structure.coordinates = aligned_coords
 
     return structure
