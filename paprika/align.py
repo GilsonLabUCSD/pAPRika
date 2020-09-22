@@ -7,24 +7,24 @@ logger = logging.getLogger(__name__)
 
 
 def zalign(structure, mask1, mask2, save=False, filename=None):
-    """Align the mask1 -- mask2 vector to the z axis.
+    """Aligns the vector formed by atom mask1--mask2 to the z axis.
 
     Parameters
     ----------
-    structure : parmed.Structure
-        Molecular structure containing coordinates
+    structure : :class:`parmed.Structure`
+        Molecular structure containing coordinates.
     mask1 : str
-        Selection of first set of atoms
+        Selection of first set of atoms.
     mask2 : str
-        Selection of second set of atoms
+        Selection of second set of atoms.
     save : bool, optional
-        Whether to save the coordinates (the default is False, which does nothing)
+        Whether to save the coordinates (the default is False, which does nothing).
     filename : str, optional
-        The filename for the saved coordinates (the default is None, which does nothing)
+        The filename for the saved coordinates (the default is None, which does nothing).
 
     Returns
     -------
-    parmed.Structure
+    structure : :class:`parmed.Structure`
         A molecular structure with the coordinates aligned as specified.
     """
 
@@ -100,22 +100,22 @@ def zalign(structure, mask1, mask2, save=False, filename=None):
 
 
 def get_theta(structure, mask1, mask2, axis):
-    """Get the angle (theta) between the vector formed by two masks and an axis.
-    
+    """Get the angle (theta) between the vector formed by atom mask1--mask2 and a Cartesian axis.
+
     Parameters
     ----------
-    structure : parmed.Structure
-        Molecular structure containing coordinates
+    structure : :class:`parmed.Structure`
+        Molecular structure containing coordinates.
     mask1 : str
-        Selection of first set of atoms
+        Selection of first set of atoms.
     mask2 : str
-        Selection of second set of atoms
+        Selection of second set of atoms.
     axis : str
-        Axis: x, y, or z
-    
+        Axis: x, y, or z.
+
     Returns
     -------
-    float
+    theta : float
         The angle between the masks and the axis.
     """
 
@@ -148,18 +148,19 @@ def get_theta(structure, mask1, mask2, axis):
 
 def check_coordinates(structure, mask):
     """Return the coordinates of an atom selection.
-    
+
     Parameters
     ----------
-    structure : parmed.Structure
-        Molecular structure containing coordinates
+    structure : :class:`parmed.Structure`
+        Molecular structure containing coordinates.
     mask : str
-        Atom selection
-    
+        Amber-style atom selection.
+
     Returns
     -------
-    np.array
-        Coordinates of the selection center of mass
+    mask_com : :class:`np.array`
+        Coordinates of the selection center of mass.
+
     """
 
     mask_coordinates = structure[mask].coordinates
@@ -172,18 +173,19 @@ def check_coordinates(structure, mask):
 
 def offset_structure(structure, offset):
     """Return a structure whose coordinates have been offset.
-    
+
     Parameters
     ----------
-    structure : parmed.Structure
-        Molecular structure containing coordinates
+    structure : :class:`parmed.Structure`
+        Molecular structure containing coordinates.
     offset : float
-        The offset that will be added to *every* atom in the structure
-    
+        The offset that will be added to *every* atom in the structure.
+
     Returns
     -------
-    :py:class:`parmed.Structure`
+    structure : :class:`parmed.Structure`
         Coordinates of the structure offset by the given amount.
+
     """
 
     offset_coords = np.empty_like(structure.coordinates)

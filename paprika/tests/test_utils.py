@@ -2,7 +2,9 @@
 Test utility functions
 """
 
-from paprika.utils import *
+import os
+
+from paprika.utils import make_window_dirs, strip_prmtop
 
 
 def test_mkdirs():

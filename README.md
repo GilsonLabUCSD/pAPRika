@@ -3,7 +3,7 @@ pAPRika is a toolkit for setting up, running, and analyzing free energy molecula
 
 # Badges
 [![Build Status](https://travis-ci.org/slochower/pAPRika.svg?branch=master)](https://travis-ci.org/slochower/pAPRika)
-[![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=latest)](https://paprika.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=stable)](https://paprika.readthedocs.io/en/stable/?badge=stable)
 [![Anaconda-Server Badge](https://anaconda.org/conda-forge/paprika/badges/installer/conda.svg)](https://conda.anaconda.org/conda-forge)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/slochower/pAPRika.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/slochower/pAPRika/context:python)
 [![codecov](https://codecov.io/gh/slochower/pAPRika/branch/master/graph/badge.svg)](https://codecov.io/gh/slochower/pAPRika)
@@ -64,6 +64,7 @@ In this example, we will use GAFF parameters for both the host and guest. For th
 
 ```python
 from paprika import tleap
+
 ```
 
 
@@ -105,6 +106,7 @@ These same atoms will be used later for the restraints, so I will name them `G1`
 
 ```python
 import parmed as pmd
+
 ```
 
 
@@ -117,6 +119,7 @@ structure = pmd.load_file("complex/vac.prmtop",
 
 ```python
 from paprika import align
+
 ```
 
 
@@ -223,7 +226,7 @@ Now we have AMBER coordinates and parameters for the `cb6-but` system with dummy
 
 Before we add the restraints, it is helpful to set the λ fractions that control the strength of the force constants during attach and release, and to define the distances for the pulling phase.
 
-The attach fractions go from 0 to 1 and we place more points at the bottom of the range to sample the curvature of ∂U/∂λ. Next, we generally apply a distance restraint until the guest is about 18 Å away from the host, in increments of 0.4 Å. This distance should be at least twice the Lennard-Jones cutoff in the system. These values have worked well for us, but this is one aspect that should be carefully checked for new systems.
+The attach fractions go from 0 to 1 and we place more points at the bottom of the range to sample the curvature of ∂U/∂λ. Next, we generally apply a distance restraint until the guest is about 18 Å away from the host, in increments of 0.4 Å. This distance should be at least twice the Lennard-Jones cutoff in the system. These values have worked well for us, but this is one aspect that should be carefully checked for new systems.
 
 
 ```python
@@ -478,8 +481,9 @@ We use the guest restraints to create a list of windows with the appropriate nam
 
 ```python
 import os
+from paprika.restraints.restraints import create_window_list
 
-window_list = restraints.create_window_list(guest_restraints)
+window_list = create_window_list(guest_restraints)
 for window in window_list:
     os.makedirs(f"windows/{window}")
 ```
@@ -492,11 +496,13 @@ The functional form of the restraints is specified in section 25.1 of the AMBER1
 
 
 ```python
+from paprika.restraints.amber import amber_restraint_line
+
 host_guest_restraints = static_restraints + guest_restraints
 for window in window_list:
     with open(f"windows/{window}/disang.rest", "a") as file:
         for restraint in host_guest_restraints:
-            string = restraints.amber_restraint_line(restraint, window)
+            string = amber_restraint_line(restraint, window)
             if string is not None:
                 file.write(string)
 ```
@@ -570,6 +576,7 @@ I'm using the `logging` module to keep track of time.
 ```python
 import logging
 from importlib import reload
+
 reload(logging)
 
 logger = logging.getLogger()
@@ -770,6 +777,7 @@ After running `compute_free_energy()`, a dictionary called `results` will be pop
 
 ```python
 from paprika import analysis
+
 ```
 
 

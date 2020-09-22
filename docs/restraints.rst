@@ -9,6 +9,13 @@ Restraints API
    :members:
    :undoc-members:
 
+.. automodule:: paprika.restraints.openmm
+   :members:
+   :undoc-members:
+
+.. automodule:: paprika.restraints.plumed
+   :members:
+   :undoc-members:
 
 .. automodule:: paprika.restraints.read_yaml
    :members:

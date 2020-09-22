@@ -1,86 +1,174 @@
 """
-This class contains a simulation analysis wrapper for use with the Property Estimator.
+This class contains a simulation analysis wrapper for use with the OpenFF Evaluator.
 """
 
 import logging
-from pathlib import Path
-import parmed as pmd
+from typing import Any, Dict, List
 
 import numpy as np
+
 from paprika.analysis import fe_calc
-from paprika.io import load_restraints
+from paprika.restraints import DAT_restraint
 
 logger = logging.getLogger(__name__)
 
 
-class Analyze(object):
+class Analyze:
     """
     The Analyze class provides a wrapper function around the analysis of simulations.
     """
 
-    def __init__(self, host, guest=None, guest_orientation=None, restraint_file="restraints.json",
-                 topology_file='coordinates.pdb', trajectory_mask='*.dcd', directory_path="benchmarks",
-                 symmetry_correction=None, guest_residue_name=None):
+    @classmethod
+    def compute_phase_free_energy(
+        cls,
+        phase: str,
+        restraints: List[DAT_restraint],
+        windows_directory: str,
+        topology_name: str,
+        trajectory_mask: str = "*.dcd",
+        bootstrap_cycles: int = 1000,
+        analysis_method: str = "ti-block",
+    ) -> Dict[str, Any]:
+        """Computes the free energy of a specified phase of an APR calculation.
 
-        self.host = host
-        self.guest = guest if guest is not None else "release"
-        self.guest_residue_name = self.guest if not guest_residue_name else guest_residue_name
+        Parameters
+        ----------
+        phase
+            The phase to analyze. This should be one of ``'attach'``, ``'pull'`` or
+            ``'release'``.
+        restraints
+            A list of the restraints which were used as part of the phase being
+            analysed.
+        windows_directory
+            The directory which contains the final trajectories and topologies
+            from the simulated phase.
+        topology_name
+            The expected file name (not path) of the coordinate file which contains
+            topological information about the system.
+        trajectory_mask
+            The pattern to use when searching for the simulated trajectories.
+        bootstrap_cycles
+            The number of bootstrap iterations to perform.
+        analysis_method
+            The analysis method to use.
 
-        self.directory = Path(directory_path).joinpath(self.host).joinpath(f"{self.guest}-{guest_orientation}" if
-                                                                           guest_orientation is not None else
-                                                                           f"{self.guest}")
+        Returns
+        -------
+            The computed free energies (and their uncertainties) in units of kcal / mol
+        """
+        analysis = fe_calc()
 
-        self.restraints = load_restraints(self.directory.joinpath(restraint_file))
-        self.results = self.analyze(topology_file, trajectory_mask).results
+        analysis.prmtop = topology_name
+        analysis.trajectory = trajectory_mask
+        analysis.path = windows_directory
 
-        if symmetry_correction:
-            if symmetry_correction["microstates"] == 1:
-                logger.info("No microstates specified for the symmetry correction. Assuming separate calculations.")
-            elif symmetry_correction["microstates"] > 1:
-                self.results["symmetry_correction"] = -0.593 * np.log(symmetry_correction["microstates"])
-            else:
-                logger.warning("Symmetry correction defined in YAML but unable to determine microstates.")
+        analysis.restraint_list = restraints
 
-    def analyze(self, topology_file, trajectory_mask):
+        analysis.methods = [analysis_method]
+        analysis.bootcycles = bootstrap_cycles
+
+        analysis.collect_data(single_prmtop=False)
+        analysis.compute_free_energy(phases=[phase])
+
+        return analysis.results
+
+    @classmethod
+    def compute_ref_state_work(
+        cls,
+        temperature: float,
+        guest_restraints: List[DAT_restraint],
+    ) -> float:
+        """Computes the reference state work of the attach phase.
+
+        Parameters
+        ----------
+        temperature
+            The temperature at which the calculation was performed in units of kelvin.
+        guest_restraints
+            The guest restraints which were applied during the pull phase.
+
+        Returns
+        -------
+            The reference state work in units of kcal / mol.
+        """
 
         analysis = fe_calc()
-        analysis.prmtop = topology_file
-        analysis.trajectory = trajectory_mask
-        analysis.path = self.directory.joinpath('windows')
-        analysis.restraint_list = self.restraints
-        analysis.methods = ["ti-block"]
-        analysis.bootcycles = 1000
-        analysis.collect_data(single_prmtop=False)
-        if self.guest != "release":
-            analysis.compute_free_energy(phases=["attach", "pull"])
+        analysis.temperature = temperature
 
-            structure = pmd.load_file(str(analysis.path.joinpath("a000").joinpath(analysis.prmtop)))
-            r_restraint = None
-            beta_restraint = None
-            theta_restraint = None
+        distance_restraint = next(
+            (
+                restraint
+                for restraint in guest_restraints
+                if "DM" in restraint.mask1
+                and restraint.mask2 is not None
+                and restraint.mask3 is None
+                and restraint.mask4 is None
+            ),
+            None,
+        )
 
-            for restraint in self.restraints:
+        theta_restraint = next(
+            (
+                restraint
+                for restraint in guest_restraints
+                if "DM" in restraint.mask1
+                and "DM" in restraint.mask2
+                and restraint.mask3 is not None
+                and restraint.mask4 is None
+            ),
+            None,
+        )
+        beta_restraint = next(
+            (
+                restraint
+                for restraint in guest_restraints
+                if "DM" in restraint.mask1
+                and "DM" not in restraint.mask2
+                and restraint.mask3 is not None
+                and restraint.mask4 is None
+            ),
+            None,
+        )
 
-                mask2_residue_name = structure[restraint.mask2].residues[0].name
+        if not distance_restraint or not theta_restraint or not beta_restraint:
 
-                if "DM" in restraint.mask1 and self.guest_residue_name.upper() in mask2_residue_name and not restraint.mask3 and \
-                        not restraint.mask4:
-                    r_restraint = restraint
-                if restraint.mask3 and not restraint.mask4:
-                    mask3_residue_name = structure[restraint.mask3].residues[0].name
-                    if "DM" in restraint.mask1 and "DM" in restraint.mask2 and self.guest_residue_name.upper() in mask3_residue_name:
-                        theta_restraint = restraint
-                    if "DM" in restraint.mask1 and self.guest_residue_name.upper() in mask2_residue_name and self.guest_residue_name.upper() in \
-                            mask3_residue_name:
-                        beta_restraint = restraint
-            if r_restraint and theta_restraint and beta_restraint:
-                analysis.compute_ref_state_work(
-                    [r_restraint, theta_restraint, None, None, beta_restraint, None]
-                )
-            else:
-                logging.warning("Could not determine the r, θ, or β restraint for computing the analytic release step.")
+            raise RuntimeError(
+                "Could not determine the r, θ, or β restraint for computing the "
+                "analytic release step."
+            )
 
-        else:
-            analysis.compute_free_energy(phases=["release"])
+        analysis.compute_ref_state_work(
+            [distance_restraint, theta_restraint, None, None, beta_restraint, None]
+        )
 
-        return analysis
+        return analysis.results["ref_state_work"]
+
+    @classmethod
+    def symmetry_correction(
+        cls,
+        n_microstates: int,
+        temperature: float,
+    ) -> float:
+        """Computes the free energy corrections to apply to symmetrical guest
+        when the guest is restrained to just one of several possible symmetrical
+        configurations (e.g. butane restrained in a cyclic host).
+
+        Parameters
+        ----------
+        temperature
+            The temperature at which the calculation was performed in units of kelvin.
+        n_microstates
+            The number of different symmetrical microstates that the guest can exist
+            in (e.g. for butane this is two).
+
+        Returns
+        -------
+            The symmetry correction to apply in units of kcal / mol.
+        """
+
+        assert n_microstates > 0
+
+        if n_microstates == 1:
+            return 0.0
+
+        return -temperature * 0.001987204258640832 * np.log(n_microstates)

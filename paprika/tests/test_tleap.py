@@ -1,15 +1,21 @@
 """
 Tests tleap tools.
 """
-
+import logging
+import os
 import random as random
 import shutil
+import subprocess as sp
 
+import numpy as np
+import parmed as pmd
 import pytest
 
-from paprika.align import *
-from paprika.dummy import *
-from paprika.tleap import *
+from paprika.align import zalign
+from paprika.dummy import add_dummy, write_dummy_frcmod, write_dummy_mol2
+from paprika.tleap import ANGSTROM_CUBED_TO_LITERS, System
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -27,7 +33,7 @@ def clean_files(directory=os.path.join(os.path.dirname(__file__), "tmp")):
 def test_solvation_simple(clean_files):
     """ Test that we can solvate CB6-BUT using default settings. """
     waters = np.random.randint(100, 10000)
-    log.debug("Trying {} waters with default settings...".format(waters))
+    logger.debug("Trying {} waters with default settings...".format(waters))
     sys = System()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
@@ -46,7 +52,7 @@ def test_solvation_simple(clean_files):
 def test_solvation_shapes(shape, clean_files):
     """ Test that we can solvate CB6-BUT with a truncated octahedron. """
     waters = np.random.randint(1000, 10000)
-    log.debug("Trying {} waters in a truncated octahedron...".format(waters))
+    logger.debug("Trying {} waters in a truncated octahedron...".format(waters))
     sys = System()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
@@ -70,7 +76,7 @@ def test_solvation_spatial_size(clean_files):
     """ Test that we can solvate CB6-BUT with an buffer size in Angstroms. """
     random_int = np.random.randint(10, 20)
     random_size = random_int * np.random.random_sample(1) + random_int
-    log.debug("Trying buffer size of {} A...".format(random_size[0]))
+    logger.debug("Trying buffer size of {} A...".format(random_size[0]))
     sys = System()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
@@ -93,7 +99,7 @@ def test_solvation_spatial_size(clean_files):
 def test_solvation_potassium_control(clean_files):
     """ Test there is no potassium by default. A negative control. """
     waters = np.random.randint(1000, 10000)
-    log.debug("Trying {} waters with potassium...".format(waters))
+    logger.debug("Trying {} waters with potassium...".format(waters))
     sys = System()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
@@ -122,7 +128,7 @@ def test_solvation_with_additional_ions(clean_files):
     n_anions = np.random.randint(1, 10)
     random_cation = random.choice(cations)
     random_anion = random.choice(anions)
-    log.debug("Trying {} waters with additional ions...".format(waters))
+    logger.debug("Trying {} waters with additional ions...".format(waters))
     sys = System()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
@@ -151,19 +157,19 @@ def test_solvation_with_additional_ions(clean_files):
         ],
         shell=True,
     )
-    log.debug("Expecting...")
-    log.debug("cation = {}\tn_cations={}".format(random_cation, n_cations))
-    log.debug("anion  = {}\t n_anions={}".format(random_anion, n_anions))
-    log.debug("Found...")
-    log.debug("             n_cations={}".format(cation_number))
-    log.debug("              n_anions={}".format(anion_number))
+    logger.debug("Expecting...")
+    logger.debug("cation = {}\tn_cations={}".format(random_cation, n_cations))
+    logger.debug("anion  = {}\t n_anions={}".format(random_anion, n_anions))
+    logger.debug("Found...")
+    logger.debug("             n_cations={}".format(cation_number))
+    logger.debug("              n_anions={}".format(anion_number))
 
     assert int(cation_number) == n_cations and int(anion_number) == n_anions
 
 
 def test_solvation_by_M_and_m(clean_files):
     """ Test that we can solvate CB6-BUT through molarity and molality. """
-    log.debug("Trying 10 A buffer with 150 mM NaCl...")
+    logger.debug("Trying 10 A buffer with 150 mM NaCl...")
     sys = System()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
@@ -231,7 +237,7 @@ def test_alignment_workflow(clean_files):
     sys.target_waters = waters
     sys.output_prefix = "solvate"
     sys.build()
-    log.debug("Trying {} waters after alignment...".format(waters))
+    logger.debug("Trying {} waters after alignment...".format(waters))
     grepped_waters = sp.check_output(
         ["grep -oh 'WAT' ./tmp/solvate.prmtop | wc -w"], shell=True
     )
@@ -296,8 +302,8 @@ def test_add_dummy(clean_files):
     sys.neutralize = False
     sys.build()
     with open(
-            os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"),
-            "r",
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"),
+        "r",
     ) as f:
         contents = f.read()
         reference = [float(i) for i in contents.split()[2:]]
@@ -331,9 +337,13 @@ def test_hydrogen_mass_repartitioning(clean_files):
     sys.neutralize = False
     sys.build()
 
-    but = pmd.load_file(os.path.join(temporary_directory, sys.output_prefix + ".prmtop"))
+    but = pmd.load_file(
+        os.path.join(temporary_directory, sys.output_prefix + ".prmtop")
+    )
     assert np.allclose(but["@H="].atoms[0].mass, 1.008)
 
     sys.repartition_hydrogen_mass()
-    but = pmd.load_file(os.path.join(temporary_directory, sys.output_prefix + ".prmtop"))
+    but = pmd.load_file(
+        os.path.join(temporary_directory, sys.output_prefix + ".prmtop")
+    )
     assert np.allclose(but["@H="].atoms[0].mass, 3.024)

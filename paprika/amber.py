@@ -2,13 +2,14 @@ import logging
 import os
 import subprocess as sp
 from collections import OrderedDict
+from sys import platform
 
 logger = logging.getLogger(__name__)
 
 
 class Simulation(object):
     """
-    A wrapper that can be used to set AMBER simulation parameters .
+    A wrapper that can be used to set AMBER simulation parameters.
     """
 
     @property
@@ -22,8 +23,7 @@ class Simulation(object):
 
     @property
     def executable(self):
-        """The AMBER executable that will be used.
-
+        """str: The AMBER executable that will be used.
         .. note ::
             This could be made safer by making an ``ENUM`` of ``sander``, ``pmemd`` and ``pmemd.cuda``.
         """
@@ -34,18 +34,17 @@ class Simulation(object):
         self._executable = value
 
     @property
-    def CUDA_VISIBLE_DEVICES(self):
-        """A wrapper around the environmental variable ``CUDA_VISIBLE_DEVICES``."""
-        return self._CUDA_VISIBLE_DEVICES
+    def gpu_devices(self):
+        """int or str: A wrapper around the environmental variable ``CUDA_VISIBLE_DEVICES``."""
+        return self._gpu_devices
 
-    @CUDA_VISIBLE_DEVICES.setter
-    def CUDA_VISIBLE_DEVICES(self, value):
-        self._CUDA_VISIBLE_DEVICES = value
+    @gpu_devices.setter
+    def gpu_devices(self, value):
+        self._gpu_devices = value
 
     @property
     def phase(self):
         """str: Which phase of the calculation to simulate.
-
         .. note ::
             This could probably be combined with the ``window`` attribute for simplicity.
         """
@@ -75,7 +74,11 @@ class Simulation(object):
 
     @property
     def restraint_file(self):
-        """os.PathLike: The file containing NMR-style restraints for AMBER."""
+        """os.PathLike: The file containing NMR-style restraints for AMBER.
+        .. note ::
+            When running AMBER simulations, you can only use either an AMBER NMR-style
+            restraints or a Plumed-style restraints and not both.
+        """
         return self._restraint_file
 
     @restraint_file.setter
@@ -83,9 +86,33 @@ class Simulation(object):
         self._restraint_file = value
 
     @property
+    def plumed_file(self) -> str:
+        """os.PathLike: The name of the Plumed-style restraints file for AMBER.
+        .. note ::
+            When running AMBER simulations, you can only use either an AMBER NMR-style
+            restraints or a Plumed-style restraints and not both.
+        """
+        return self._plumed_file
+
+    @plumed_file.setter
+    def plumed_file(self, value: str):
+        self._plumed_file = value
+
+    @property
+    def plumed_kernel_library(self) -> str:
+        """os.PathLike: The file path of the Plumed kernel library if it is different from the default. The default
+        name is ``libplumedKernel`` with its extension determined automatically depending on the operating system and is
+        located in ``os.environ['CONDA_PREFIX']/lib``. This variable is useful for users who did not install or want to
+        use Plumed from the conda repository."""
+        return self._plumed_kernel_library
+
+    @plumed_kernel_library.setter
+    def plumed_kernel_library(self, value: str):
+        self._plumed_kernel_library = value
+
+    @property
     def converged(self) -> bool:
         """bool: Whether the simulation is converged.
-
         .. warning ::
             This is just a placeholder and is not implemented yet.
         """
@@ -98,7 +125,7 @@ class Simulation(object):
     @property
     def prefix(self):
         """
-        The prefix for file names generated from this simulation.
+        str: The prefix for file names generated from this simulation.
         """
         return self._prefix
 
@@ -117,23 +144,18 @@ class Simulation(object):
     @property
     def cntrl(self):
         """
-        An ordered dictionary of simulation "control" namelist parameters. The main puprose of this class attribute is
+        dict: An ordered dictionary of simulation "control" namelist parameters. The main puprose of this class
+        attribute is
         to make it easy to override certain simulation parameters, such as positional restraints on dummy atoms, and
         the inclusion of exclusion of the NMR-style APR restraints.
-
         As of AMBER18, these are described, in part, in chapter 18 on ``pmemd``.
-
         .. note ::
             I can't recall why we wanted an ``OrderedDict`` here.
-
         .. note ::
             **This is fragile** and this could be hardened by making these ``ENUM``s and doing much more type-checking.
-
             These must be valid AMBER keywords or else the simulation will crash. The default keywords that are set when
             this class is initialized are partially overridden by the specific "config" functions detailed below.
-
         The default dictionary keys and values are as follows:
-
             - ``imin``       : 0
             - ``ntx``        : 1
             - ``irest``      : 0
@@ -163,7 +185,6 @@ class Simulation(object):
             - ``restraintmask`` : ``None``
             - ``nmropt``     : 1
             - ``pencut``     : -1
-
         """
         return self._cntrl
 
@@ -173,7 +194,7 @@ class Simulation(object):
 
     @property
     def ewald(self):
-        """Additional Ewald summation settings."""
+        """dict: Additional Ewald summation settings."""
         return self._ewald
 
     @ewald.setter
@@ -182,7 +203,8 @@ class Simulation(object):
 
     @property
     def wt(self):
-        """ "Weight" assigned to various simulation parameters. Written to the "&wt" line in the input file."""
+        """dict: **Weights** assigned to various simulation parameters. Written to the ``&wt`` line in the input
+        file."""
         return self._wt
 
     @wt.setter
@@ -191,8 +213,7 @@ class Simulation(object):
 
     @property
     def group(self):
-        """Group specification for restraints applied to multiple atoms.
-
+        """dict: Group specification for restraints applied to multiple atoms.
         .. note::
             I don't recall ever having to this option and this seems distinct from applying restraints to a collection
             of atoms.
@@ -208,12 +229,13 @@ class Simulation(object):
         # I/O
         self._path = "."
         self._executable = "sander"
-        self._CUDA_VISIBLE_DEVICES = None
+        self._gpu_devices = None
         self._phase = None
         self._window = None
         self._topology = "prmtop"
-        self._restraint_file = "restraints.in"
-        self._colvars = {'input': [], 'output': [], 'freq': [], 'type': []}
+        self._restraint_file = None
+        self._plumed_file = None
+        self._plumed_kernel_library = None
         self.title = "PBC MD Simulation"
         self.converged = False
 
@@ -259,7 +281,6 @@ class Simulation(object):
         self._cntrl["restraintmask"] = None
         self._cntrl["nmropt"] = 1
         self._cntrl["pencut"] = -1
-        self._cntrl["infe"] = 0
 
         # Other input file sections
         self._ewald = None
@@ -269,7 +290,6 @@ class Simulation(object):
     def _config_min(self):
         """
         Configure input settings for minimization (without periodic boundary conditions).
-
         """
         self.cntrl["imin"] = 1
         self.cntrl["ntx"] = 1
@@ -360,43 +380,15 @@ class Simulation(object):
         self.cntrl["ntp"] = 1
         self.cntrl["barostat"] = 2
 
-    def add_nfe(self, cv_input, cv_output, cv_freq, nfe_type="pmd"):
-        """
-        Add NFE colvars to the input script. This is used to specify
-        umbrella sampling (pmd) or streered MD (smd) simulations using
-        the NFE module of Amber.
-
-        Parameters
-        ----------
-        cv_input : str
-            Name of colvar file (may contain multiple colvar definitions in this file)
-        cv_output : str
-            Name of output file to print colvars
-        cv_freq : int
-            Frequency of output
-        nfe_type : str
-            Type of NFE module run (pmd or smd)
-
-        """
-        if nfe_type not in ["pmd", "smd"]:
-            raise NotImplementedError
-
-        self._colvars['input'].append(cv_input)
-        self._colvars['output'].append(cv_output)
-        self._colvars['freq'].append(cv_freq)
-        self._colvars['type'].append(nfe_type)
-
     def _write_dict_to_mdin(self, f, dictionary):
         """
         Write dictionary to file, following AMBER format.
-
         Parameters
         ----------
         f : os.PathLike
             File where the dictionary should be written
         dictionary : dict
             Dictionary of values
-
         """
 
         for key, val in dictionary.items():
@@ -404,23 +396,17 @@ class Simulation(object):
                 f.write("  {:15s} {:s},\n".format(key + " =", str(val)))
 
         # Write PLUMED option if preferred over Amber NMR restraints
-        if self.restraint_file is not None and self.restraint_file == 'plumed.dat':
+        if self.plumed_file:
             f.write("  {:15s} {:s},\n".format("plumed = ", str(1)))
-            f.write("  {:15s} {:s},\n".format("plumedfile =", "'plumed.dat'"))
+            f.write("  {:15s} {:s},\n".format("plumedfile =", f"'{self.plumed_file}'"))
 
         f.write(" /\n")
 
     def _amber_write_input_file(self):
         """
         Write the input file specification to file.
-
         """
         logger.debug("Writing {}".format(self.input))
-
-        # Turn on NFE module if colvars is specified
-        if len(self._colvars['input']) != 0:
-            self.cntrl["infe"] = 1
-
         with open(os.path.join(self.path, self.input), "w") as f:
             f.write("{}\n".format(self.title))
             f.write(" &cntrl\n")
@@ -430,28 +416,16 @@ class Simulation(object):
                 f.write(" &ewald\n")
                 self._write_dict_to_mdin(f, self.ewald)
 
-            # Write Amber NMR restraint options
             if self.cntrl["nmropt"] == 1:
                 if self.wt is not None:
                     for line in self.wt:
                         f.write(" " + line + "\n")
                 f.write(" &wt type = 'END', /\n")
 
-                # Write "disang.rest" if specified (if Plumed is used this will be skipped)
-                if self.restraint_file is not None and self.restraint_file == 'disang.rest':
+                # Specify Amber NMR file
+                if self.restraint_file is not None:
                     f.write("DISANG = {}\n".format(self.restraint_file))
                     f.write("LISTOUT = POUT\n\n")
-
-            # Write NFE options
-            if self.cntrl["infe"] == 1:
-                for nfe_type, cv_input, cv_output, cv_freq in zip(
-                        self._colvars["type"], self._colvars["input"], self._colvars["output"], self._colvars["freq"],
-                ):
-                    f.write("&{}\n".format(nfe_type))
-                    f.write("  cv_file = \'{}\',\n".format(cv_input))
-                    f.write("  output_file = \'{}\',\n".format(cv_output))
-                    f.write("  output_freq = {},\n".format(cv_freq))
-                    f.write("/\n")
 
             if self.group is not None:
                 f.write("{:s}".format(self.group))
@@ -459,14 +433,13 @@ class Simulation(object):
     def run(self, soft_minimize=False, overwrite=False, fail_ok=False):
         """
         Run minimization.
-
         Parameters
         ----------
-        soft_minimize: bool
+        soft_minimize: bool, optional
             Whether to slowly turn on non-bonded interactions so that restraints get enforced first.
-        overwrite: bool
+        overwrite: bool, optional
             Whether to overwrite simulation files.
-        fail_ok: bool
+        fail_ok: bool, optional
             Whether a failing simulation should stop execution of ``pAPRika``.
         """
 
@@ -494,6 +467,12 @@ class Simulation(object):
                         burn_in, end_soft
                     ),
                 ]
+
+            # Check restraints file
+            if self.restraint_file and self.plumed_file:
+                raise Exception(
+                    "Cannot use both NMR-style and Plumed-style restraints at the same time."
+                )
 
             # _amber_write_input_file(self.path+'/'+self.input, self.min, title='GB Minimization.')
             self._amber_write_input_file()
@@ -526,28 +505,58 @@ class Simulation(object):
 
             logger.debug("Exec line: " + " ".join(exec_list))
 
-            # Execute
-            if self.CUDA_VISIBLE_DEVICES:
-                amber_output = sp.Popen(
-                    exec_list,
-                    cwd=self.path,
-                    stdout=sp.PIPE,
-                    stderr=sp.PIPE,
-                    env=dict(
-                        os.environ, CUDA_VISIBLE_DEVICES=str(self.CUDA_VISIBLE_DEVICES)
-                    ),
-                )
-            else:
-                amber_output = sp.Popen(
-                    exec_list, cwd=self.path, stdout=sp.PIPE, stderr=sp.PIPE
+            # Add CUDA_VISIBLE_DEVICES variable to env dict
+            if self.gpu_devices is not None:
+                os.environ = dict(
+                    os.environ, CUDA_VISIBLE_DEVICES=str(self.gpu_devices)
                 )
 
-            amber_output = amber_output.stdout.read().splitlines()
+            # Set the Plumed kernel library path
+            if self.plumed_kernel_library is None:
+                # using "startswith" as recommended from https://docs.python.org/3/library/sys.html#sys.platform
+                if platform.startswith("linux"):
+                    self.plumed_kernel_library = os.path.join(
+                        os.environ["CONDA_PREFIX"], "lib", "libplumedKernel.so"
+                    )
+                elif platform.startswith("darwin"):
+                    self.plumed_kernel_library = os.path.join(
+                        os.environ["CONDA_PREFIX"], "lib", "libplumedKernel.dylib"
+                    )
+                else:
+                    logger.warning(
+                        f"Plumed is not supported with the '{platform}' platform."
+                    )
+
+            # Add Plumed kernel library to env dict
+            if os.path.isfile(self.plumed_kernel_library):
+                os.environ = dict(os.environ, PLUMED_KERNEL=self.plumed_kernel_library)
+            else:
+                logger.warning(
+                    f"Plumed kernel library {self.plumed_kernel_library} does not exist, "
+                    "PLUMED_KERNEL environment variable is not set."
+                )
+
+            # Execute
+            amber_output = sp.Popen(
+                exec_list,
+                cwd=self.path,
+                stdout=sp.PIPE,
+                stderr=sp.PIPE,
+                env=os.environ,
+            )
+
+            amber_stdout = amber_output.stdout.read().splitlines()
+            amber_stderr = amber_output.stderr.read().splitlines()
 
             # Report any stdout/stderr which are output from execution
-            if amber_output:
-                logger.info("STDOUT/STDERR received from AMBER execution")
-                for line in amber_output:
+            if amber_stdout:
+                logger.info("STDOUT received from AMBER execution")
+                for line in amber_stdout:
+                    logger.info(line)
+
+            if amber_stderr:
+                logger.info("STDERR received from AMBER execution")
+                for line in amber_stderr:
                     logger.info(line)
 
             # Check completion status
@@ -574,17 +583,14 @@ class Simulation(object):
         """
         Check for the string "TIMINGS" in ``self.output`` file. If "TIMINGS" is found, then the simulation completed
         successfully, as of AMBER18.
-
         Parameters
         ----------
-        alternate_file : os.PathLike
+        alternate_file : os.PathLike, optional
             If present, check for "TIMINGS" in this file rather than ``self.output``. Default: None
-
         Returns
         -------
         timings : bool
             True if "TIMINGS" is found in file. False, otherwise.
-
         """
 
         # Assume not completed

@@ -5,6 +5,7 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
+
 def read_yaml(file):
     """
     Read `Taproom <https://github.com/slochower/host-guest-benchmarks>`_ -style YAML-formatted instructions for
@@ -12,7 +13,7 @@ def read_yaml(file):
 
     Parameters
     ----------
-    file: Path-like
+    file: os.PathLike
         A YAML-formatted file.
     Returns
     -------
@@ -40,7 +41,7 @@ def multiple_replace(dict, text):
     regex = re.compile("(%s)" % "|".join(map(re.escape, dict.keys())))
 
     # For each match, look-up corresponding value in dictionary
-    return regex.sub(lambda mo: dict[mo.string[mo.start():mo.end()]], text)
+    return regex.sub(lambda mo: dict[mo.string[mo.start() : mo.end()]], text)
 
 
 def de_alias(yaml_data):

@@ -11,6 +11,31 @@ from parmed.structure import Structure as ParmedStructureClass
 logger = logging.getLogger(__name__)
 
 
+def get_key(dct, value):
+    """
+    Get dictionary key given the value.
+
+    NOTE: this function will return a list of keys if there are more than one key with the same value
+          in the order they are found.
+    """
+    key = [key for key in dct if (dct[key] == value)]
+
+    if len(key) > 1:
+        logger.warning(
+            "There more than one key with the same value. Please check if this is the desired output."
+        )
+
+    return key
+
+
+def override_dict(dct, custom):
+    """Overrides dictionary values from that of a custom dictionary."""
+    for key, value in custom.items():
+        if value is not None:
+            logger.debug("Overriding {} = {}".format(key, value))
+            dct[key] = value
+
+
 def return_parmed_structure(filename):
     """
     Return a structure object from a filename.
@@ -33,6 +58,7 @@ def return_parmed_structure(filename):
     except IOError:
         logger.error("Unable to load file: {}".format(filename))
     return structure
+
 
 @lru_cache(maxsize=32)
 def index_from_mask(structure, mask, amber_index=False):
@@ -91,10 +117,6 @@ def make_window_dirs(
         Root path for the directories
     window_dir_name :
         Name for the top level directory
-
-    Returns
-    -------
-
     """
 
     win_dir = os.path.join(path, window_dir_name)
@@ -114,14 +136,14 @@ def make_window_dirs(
 def strip_prmtop(prmtop, mask=":WAT,:Na+,:Cl-"):
     """Strip residues from a structure and write a new parameter file. This could probably also be done with ParmEd.
 
-    Parameters:
+    Parameters
     ----------
     prmtop : {str}
         Existing parameter file
     mask : {str}, optional
         The list of atom masks to strip (the default is [':WAT,:Na+,:Cl-'])
 
-    Returns:
+    Returns
     -------
     stripped.topology
         The stripped topology that can be used to read stripped trajectories with `pytraj`
@@ -149,7 +171,6 @@ def parse_mden(file):
     -------
     energies : dict
         A dictionary containing VDW, electrostatic, bond, angle, dihedral, V14, E14, and total energy.
-
     """
 
     vdw, ele, bnd, ang, dih, v14, e14 = [], [], [], [], [], [], []
@@ -180,6 +201,7 @@ def parse_mden(file):
     }
 
     return energies
+
 
 def parse_mdout(file):
     """

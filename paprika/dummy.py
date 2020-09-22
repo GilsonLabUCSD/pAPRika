@@ -1,8 +1,9 @@
 import os as os
 
 import parmed as pmd
-from paprika import utils
 from parmed.structure import Structure as ParmedStructureClass
+
+from paprika import utils
 
 
 def add_dummy(
@@ -17,33 +18,30 @@ def add_dummy(
 ):
     """Add a dummy atom at the specified coordinates to the end of a structure.
 
-    Parameters:
+    Parameters
     ----------
-    structure : str or pmd.Structure
+    structure : str or :class:`parmed.Structure`
         The structure to be modified
-    atom_name : {str}, optional
-        The name of the dummy atom (the default is 'DUM')
-    residue_name : {str}, optional
-        The residue name of the dummy atom (the default is 'DUM')
-    mass : {float}, optional
-        The mass of the dummy atom (the default is 208.00)
-    atomic_number : {int}, optional
-        The element of the dummy atom (the default is 82)
-    x : {float}, optional
-        The x coordinate of the dummy atom (the default is 0.000)
-    y : {float}, optional
-        The y coordinate of the dummy atom (the default is 0.000)
-    z : {float}, optional
-        The z coordinate of the dummy atom (the default is 0.000)
-    mol2 : bool
-        Whether to write a `mol2` file for the dummy atom
-    frcmod : bool
-        Whether to write a `frcmod` file for the dummy atom
+    atom_name : str, optional, default='DUM'
+        The name of the dummy atom.
+    residue_name : str, optional, default='DUM'
+        The residue name of the dummy atom.
+    mass : float, optional, default=208.0
+        The mass of the dummy atom.
+    atomic_number : int, optional, default=82
+        The element of the dummy atom.
+    x : float, optional, default=0.0
+        The x coordinate of the dummy atom.
+    y : float, optional, default=0.0
+        The y coordinate of the dummy atom.
+    z : float, optional, default=0.0
+        The z coordinate of the dummy atom.
 
-    Returns:
+    Returns
     -------
-    structure : pmd.Structure
-        The modified structure
+    structure : :class:`parmed.Structure`
+        The modified structure with dummy atoms added.
+
     """
 
     if isinstance(structure, str):
@@ -93,21 +91,20 @@ def add_dummy(
 def write_dummy_frcmod(
     atom_type="Du", mass="208.00", path="./", filename="dummy.frcmod", filepath=None
 ):
-    """Write a `frcmod` file for dummy atoms.
+    """Write a ``frcmod`` file for dummy atoms.
 
-    Parameters:
+    Parameters
     ----------
-    atom_type : {str}, optional
-        The atom type of the dummy atom (the default is 'Du')
-    mass : {str}, optional
-        The mass of the dummy atom (the default is '208.00')
-    path : {str}, optional
-        The directory of the output file, if `filepath` is not specified (the default is './')
-    filename : {str}, optional
-        The name of the output file, if `filepath` is not specified (the default is 'dummy.frcmod')
-    filepath : {str}, optional
-        The full path (directory and file) of the output (the default is None, which means `path` and
-        `filename` will be used)
+    atom_type : str, optional, default='Du'
+        The atom type of the dummy atom.
+    mass : str, optional, default=208.00
+        The mass of the dummy atom.
+    path : str, optional, default='./
+        The directory of the output file, if `filepath` is not specified.
+    filename : str, optional, default='dummy.frcmod`
+        The name of the output file, if `filepath` is not specified.
+    filepath : str, optional, default=None
+        The full path (directory and file) of the output.
 
     """
 
@@ -145,23 +142,22 @@ def write_dummy_mol2(
     filename="dummy.mol2",
     filepath=None,
 ):
-    """Write a `mol2` file for dummy atoms.
+    """Write a ``mol2`` file for dummy atoms.
 
-    Parameters:
+    Parameters
     ----------
-    atom_name : {str}, optional
-        The atom name of the dummy atoms (the default is 'DUM')
-    atom_type : {str}, optional
-        The atom type of the dummy atoms (the default is 'Du')
-    residue_name : {str}, optional
-        The residue name of the dummy atoms (the default is 'DUM')
-    path : {str}, optional
-        The directory of the output file, if `filepath` is not specified (the default is './')
-    filename : {str}, optional
-        The name of the output file, if `filepath` is not specified (the default is 'dummy.mol2')
-    filepath : {str}, optional
-        The full path (directory and file) of the output (the default is None, which means
-        `path` and `filename` will be used)
+    atom_name : str, optional, default='DUM'
+        The atom name of the dummy atoms.
+    atom_type : str, optional, default='Du'
+        The atom type of the dummy atoms.
+    residue_name : str, optional, default='DUM'
+        The residue name of the dummy atoms.
+    path : str, optional, default='./'
+        The directory of the output file, if `filepath` is not specified.
+    filename : str, optional, default='dummy.mol2'
+        The name of the output file, if `filepath` is not specified.
+    filepath : str, optional, default=None
+        The full path (directory and file) of the output.
 
     """
 
@@ -186,3 +182,42 @@ USER_CHARGES
                 residue_name[0:3], atom_name, atom_type[0:2]
             )
         )
+
+
+def extract_dummy_atoms(structure, resname=None, serial=True):
+    """
+    Extract information about dummy atoms from a parmed structure and
+    returns the information as a dictionary.
+
+    Parameters
+    ----------
+    structure : :class:`parmed.Structure`
+        The parmed structure object we want to extract from
+    resname : list
+        List of residue name for the dummy atoms (default: ["DM1", "DM2", "DM3"])
+    serial : bool
+        get indices in serial (starts from 1) or index (starts from 0)
+
+    Returns
+    -------
+    dummy_atoms : dict
+        A dictionary containing positions (``pos``), index (``idx``) and mass (``mass``) of dummy atoms.
+    """
+
+    if resname is None:
+        resname = ["DM1", "DM2", "DM3"]
+
+    dummy_atoms = {name: {} for name in resname}
+
+    for dummy_atom in resname:
+        residue = f":{dummy_atom}"
+        dummy_atoms[dummy_atom]["pos"] = structure[residue].coordinates[0]
+        dummy_atoms[dummy_atom]["mass"] = [
+            atom.mass for atom in structure[residue].atoms
+        ][0]
+        dummy_atoms[dummy_atom]["idx"] = utils.index_from_mask(
+            structure, residue, amber_index=serial
+        )[0]
+        dummy_atoms[dummy_atom]["idx_type"] = "serial" if serial else "index"
+
+    return dummy_atoms

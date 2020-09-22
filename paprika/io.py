@@ -1,13 +1,16 @@
-import logging as log
-import os
 import base64
 import json
+import logging as log
+import os
+
 import numpy as np
 from paprika.restraints import DAT_restraint
 from paprika.utils import index_from_mask
 from parmed.amber import AmberParm
 from parmed import Structure
+from parmed.amber import AmberParm
 
+from paprika.restraints import DAT_restraint
 
 # https://stackoverflow.com/questions/27909658/json-encoder-and-decoder-for-complex-numpy-arrays
 # https://stackoverflow.com/a/24375113/901925
@@ -104,8 +107,21 @@ def load_restraints(filepath="restraints.json"):
         tmp = DAT_restraint()
         tmp.__dict__ = loaded
 
-        properties = ["mask1", "mask2", "mask3", "mask4", "topology", "instances", "custom_restraint_values",
-                      "auto_apr", "continuous_apr", "attach", "pull", "release", "amber_index"]
+        properties = [
+            "mask1",
+            "mask2",
+            "mask3",
+            "mask4",
+            "topology",
+            "instances",
+            "custom_restraint_values",
+            "auto_apr",
+            "continuous_apr",
+            "attach",
+            "pull",
+            "release",
+            "amber_index",
+        ]
         for class_property in properties:
             if f"_{class_property}" in tmp.__dict__.keys():
                 tmp.__dict__[class_property] = tmp.__dict__[f"_{class_property}"]

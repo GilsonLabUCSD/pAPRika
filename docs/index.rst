@@ -7,7 +7,7 @@
 pAPRika
 ==================
 
-pAPRika is a toolkit for setting up, running, and analyzing free energy molecular dynamics simulations.
+pAPRika is a python toolkit for setting up, running, and analyzing free-energy molecular dynamics simulations.
 
 ========
 
@@ -31,6 +31,7 @@ Index
 * :doc:`align`
 * :doc:`analysis`
 * :doc:`amber`
+* :doc:`dummy`
 * :doc:`restraints`
 * :doc:`tleap`
 
@@ -43,8 +44,9 @@ Index
   align
   analysis
   amber
+  dummy
   restraints
   tleap
 
 
-**Write about convenience functions**
+.. **Write about convenience functions**
