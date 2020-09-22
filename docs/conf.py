@@ -47,6 +47,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
+    'sphinx.ext.autosectionlabel',
     'sphinx.ext.doctest',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
@@ -57,18 +58,18 @@ extensions = [
 
 # Autodoc settings
 autosummary_generate = True
-
-autodoc_default_options = {
-    "members": True,
-    "inherited-members": True,
-    "member-order": "bysource",
-}
+autodoc_default_flags = ['members', 'inherited-members']
+autodoc_member_order = 'bysource' # preserve ordering in source
 
 autodoc_mock_imports = ["pytraj"]
 
 # Autolabel settings
 autosectionlabel_maxdepth = 3
 autosectionlabel_prefix_document = True
+
+suppress_warnings = [
+    'autosectionlabel.releasehistory',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -118,12 +119,6 @@ html_theme_options = {"prev_next_buttons_location": None, "sticky_navigation": F
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
-html_context = {
-    "css_files": [
-        "_static/css/theme_overrides.css",  # override wide tables in RTD theme
-    ],
-}
-
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
 #
@@ -162,7 +157,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "paprika.tex", "pAPRika Documentation", "paprika", "manual"),
+    (master_doc, 'paprika.tex', 'pAPRika Documentation',
+     'paprika', 'manual'),
 ]
 
 
@@ -197,5 +193,6 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/", None),
     "numpy": ("http://docs.scipy.org/doc/numpy/", None),
     "mdtraj": ("http://mdtraj.org/latest/", None),
+    'openforcefield': ('https://open-forcefield-toolkit.readthedocs.io/en/latest/', None),
     "parmed": ("http://parmed.github.io/ParmEd/html/", None),
 }
