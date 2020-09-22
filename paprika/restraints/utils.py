@@ -54,8 +54,8 @@ def get_restraint_values(restraint, phase, window_number):
     window_number: int
         Current window number.
 
-    Return
-    ------
+    Returns
+    -------
     restraint_values: dict
         Dictionary containing the Amber NMR-style values
 
@@ -92,7 +92,7 @@ def get_bias_potential_type(restraint, phase, window_number):
     Parameters
     ----------
     restraint: :class:`paprika.restraints.DAT_restraint`
-        restraints to extract information from
+        The restraint to extract information from
     phase: str
         Current phase of the window
     window_number: int
@@ -160,43 +160,48 @@ def get_bias_potential_type(restraint, phase, window_number):
     return bias_type
 
 
-def extract_guest_restraints(structure, guest_resname, restraints):
+def extract_guest_restraints(structure, restraints, resname, dummy_prefix="DM"):
     """
     Utility function to extract the guest restraints from a list of restraints
-    and return individual restraints in the form:
-        [r, theta, phi, alpha, beta, gamma]
+    and return individual restraints in the form ``[r, theta, phi, alpha, beta, gamma]``.
 
-    If there is no restraint applied to a particular reaction coordinate
-    a `None` will be inserted.
+    If there is no restraint applied to a particular reaction coordinate a
+    ``None`` will be inserted.
 
-    This function is useful for parsing guest restraints in analysis when
-    computing `ref_state_work`.
+    This function is useful for parsing guest restraints during analysis when
+    computing ``ref_state_work``.
 
     Parameters
     ----------
-    structure : parmed.Structure
-        parmed structure of the system.
-    guest_resname : str
-        Residue name of the guest molecule.
+    structure : :class:`parmed.Structure`
+        The molecular structure of the system.
     restraints : list
-        list of restraints.
+        List of :class:`paprika.restraints.DAT_restraint` restraints.
+    resname : str
+        Residue name of the guest molecule.
+    dummy_prefix : str, optional, default="DM"
+        The prefix for the dummy atoms residue name.
 
     Returns
     -------
-    list
-        list of guest-specific DAT_restraint().
+    guest_restraints : list
+        list of guest-specific :class:`paprika.restraints.DAT_restraint` restraints.
 
     Examples
     --------
 
+        >>> guest_restraints = extract_guest_restraints(structure, restraints, "BEN")
+        >>>
         >>> free_energy = analysis.fe_calc()
-        >>> free_energy.restraint_list = restraints
-            ...
-        >>> free_energy.compute_ref_state_work(extract_guest_restraints(structure, "BEN", restraints))
+        >>> free_energy.compute_ref_state_work(guest_restraints)
         >>> print(free_energy["ref_state_work"])
 
     """
-    guest_resname = guest_resname.upper()
+    guest_resname = resname.upper()
+
+    DM1 = f"{dummy_prefix}1"
+    DM2 = f"{dummy_prefix}2"
+    DM3 = f"{dummy_prefix}3"
 
     r = None
     theta = None
@@ -210,19 +215,30 @@ def extract_guest_restraints(structure, guest_resname, restraints):
         mask2_residue_name = structure[restraint.mask2].residues[0].name
 
         # Distance
-        if "DM1" in restraint.mask1 and guest_resname in mask2_residue_name and not restraint.mask3 and not \
-                restraint.mask4:
+        if (
+            DM1 in restraint.mask1
+            and guest_resname in mask2_residue_name
+            and not restraint.mask3
+            and not restraint.mask4
+        ):
             r = restraint
 
         # Angle
         if restraint.mask3 and not restraint.mask4:
             mask3_residue_name = structure[restraint.mask3].residues[0].name
 
-            if "DM2" in restraint.mask1 and "DM1" in restraint.mask2 and guest_resname in mask3_residue_name:
+            if (
+                DM2 in restraint.mask1
+                and DM1 in restraint.mask2
+                and guest_resname in mask3_residue_name
+            ):
                 theta = restraint
 
-            if "DM1" in restraint.mask1 and guest_resname in mask2_residue_name and guest_resname in \
-                    mask3_residue_name:
+            if (
+                DM1 in restraint.mask1
+                and guest_resname in mask2_residue_name
+                and guest_resname in mask3_residue_name
+            ):
                 beta = restraint
 
         # Dihedral
@@ -230,31 +246,81 @@ def extract_guest_restraints(structure, guest_resname, restraints):
             mask3_residue_name = structure[restraint.mask3].residues[0].name
             mask4_residue_name = structure[restraint.mask4].residues[0].name
 
-            if "DM3" in restraint.mask1 and "DM2" in restraint.mask2 and "DM1" in restraint.mask3 and guest_resname \
-                    in mask4_residue_name:
+            if (
+                DM3 in restraint.mask1
+                and DM2 in restraint.mask2
+                and DM1 in restraint.mask3
+                and guest_resname in mask4_residue_name
+            ):
                 phi = restraint
 
-            if "DM2" in restraint.mask1 and "DM1" in restraint.mask2 and guest_resname in mask3_residue_name \
-                    and guest_resname in mask4_residue_name:
+            if (
+                DM2 in restraint.mask1
+                and DM1 in restraint.mask2
+                and guest_resname in mask3_residue_name
+                and guest_resname in mask4_residue_name
+            ):
                 alpha = restraint
 
-            if "DM1" in restraint.mask1 and guest_resname in mask2_residue_name and guest_resname in \
-                    mask3_residue_name and guest_resname in mask4_residue_name:
+            if (
+                DM1 in restraint.mask1
+                and guest_resname in mask2_residue_name
+                and guest_resname in mask3_residue_name
+                and guest_resname in mask4_residue_name
+            ):
                 gamma = restraint
 
-    return [r, theta, phi, alpha, beta, gamma]
+    guest_restraints = [r, theta, phi, alpha, beta, gamma]
+
+    return guest_restraints
 
 
 def restraints_from_ascii(filename):
     """
     Utility function to read in restraints from a simple ASCII file. This is
-    useful when parsing restraints definition from VMD (you can mouse click
-    bond, angle and dihedral restraints and write a TCL script to print these
-    to a file).
+    useful when parsing restraints definition from VMD. Since you can mouse-click
+    bonds, angles and dihedrals in VMD it can be faster to define these restraints.
+    The TCL script below is an example of extracting bonds selected in VMD to a file
+    with a comma-separated format.
+
+    .. code-block:: tcl
+
+        set kbond 10.0
+        set f [open "bond.dat" w]
+
+        foreach bond [label list Bonds] {
+            # Bond atom indices
+            set i1 [lindex [split [lindex $bond 0]] 1]
+            set i2 [lindex [split [lindex $bond 1]] 1]
+
+            # Bond atom names
+            set a1 [[atomselect top "index $i1"] get name]
+            set a2 [[atomselect top "index $i2"] get name]
+
+            # Bond atom resid
+            set r1 [[atomselect top "index $i1"] get resname]
+            set r2 [[atomselect top "index $i2"] get resname]
+
+            # Bond value
+            set dr [lindex [split [lindex $bond 2]] 1]
+
+            # Print atom names
+            puts $f ":${r1}@${a1},:${r2}@${a2},$dr,$kbond"
+        }
+        close $f
+
+    Below is an example output for a bond, angle and dihedral generated with the TCL
+    script above.
+
+    .. code-block::
+
+        :1@C12,:2@C4,12.5,5.0
+        :1@O11,:1@C2,:1@C3,90.0,50.0
+        :1@C12,:1@O13,:1@C14,1@C15,-121.16,6.0
 
     Parameters
     ----------
-    filename : str
+    filename : os.PathLike
         file name of template file.
 
     Returns
@@ -262,41 +328,35 @@ def restraints_from_ascii(filename):
     restraints : dict
         dictionary of restraints containing information of the atoms, target and spring constant.
 
-    Examples
-    --------
-    ASCII file should contain the atoms (2, 3 or 4), the equilibrium target and spring constant.
-
-        :1@C12 :2@C4  12.5 5.0
-        :1@O11 :1@C2 :1@C3  90.0 50.0
-        :1@C12 :1@O13 :1@C14 :1@C15 -121.16 6.0
-
     """
-    restraints = {'atoms': [], 'target': [], 'k': [], 'type': []}
+    restraints = {"atoms": [], "target": [], "k": [], "type": []}
 
-    with open(filename, 'r') as file:
+    with open(filename, "r") as file:
         for line in file:
             if not line.startswith("#"):
-                line = line.split()
+                line = line.split(",")
 
                 if len(line) == 4:
-                    restraints['atoms'].append([line[0], line[1]])
-                    restraints['target'].append(float(line[2]))
-                    restraints['k'].append(float(line[3]))
-                    restraints['type'].append('bond')
+                    restraints["atoms"].append([line[0], line[1]])
+                    restraints["target"].append(float(line[2]))
+                    restraints["k"].append(float(line[3]))
+                    restraints["type"].append("bond")
 
                 elif len(line) == 5:
-                    restraints['atoms'].append([line[0], line[1], line[2]])
-                    restraints['target'].append(float(line[3]))
-                    restraints['k'].append(float(line[4]))
-                    restraints['type'].append('angle')
+                    restraints["atoms"].append([line[0], line[1], line[2]])
+                    restraints["target"].append(float(line[3]))
+                    restraints["k"].append(float(line[4]))
+                    restraints["type"].append("angle")
 
                 elif len(line) == 6:
-                    restraints['atoms'].append([line[0], line[1], line[2], line[3]])
-                    restraints['target'].append(float(line[4]))
-                    restraints['k'].append(float(line[5]))
-                    restraints['type'].append('dihedral')
+                    restraints["atoms"].append([line[0], line[1], line[2], line[3]])
+                    restraints["target"].append(float(line[4]))
+                    restraints["k"].append(float(line[5]))
+                    restraints["type"].append("dihedral")
 
                 else:
-                    print("Restraint given is not a bond, angle or dihedral... skipping line.")
+                    logger.info(
+                        "Restraint given is not a bond, angle or dihedral... skipping line."
+                    )
 
     return restraints
