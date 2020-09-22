@@ -309,8 +309,8 @@ def restraints_from_ascii(filename):
         }
         close $f
 
-    Below is an example output for a bond, angle and dihedral generated with the TCL
-    script above.
+    Below is an example output for a bond, angle and dihedral generated with a TCL
+    script in ran on VMD.
 
     .. code-block::
 

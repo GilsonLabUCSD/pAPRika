@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 def zalign(structure, mask1, mask2, save=False, filename=None):
-    """Aligns the vector formed by atom mask1--mask2 to the z axis.
+    """Aligns the vector formed by atom mask1--mask2 to the z-axis.
 
     Parameters
     ----------
@@ -224,7 +224,7 @@ def translate_to_origin(structure, weight="mass", atom_mask=None, dimension_mask
 
     # Dimension mask
     if dimension_mask is None:
-        dim_mask = [1, 1, 1]
+        dimension_mask = [1, 1, 1]
     elif len(dimension_mask) != 3:
         raise Exception(
             'Error: "dimension_mask" must be a list with 3 elements, e.g. [1,1,1].'
@@ -255,27 +255,27 @@ def translate_to_origin(structure, weight="mass", atom_mask=None, dimension_mask
     return structure
 
 
-def align_principal_axes(structure, atom_mask=None, princ_axis=None, v_axis=None):
-    """Aligns the a chosen principal axis of a system to a specified axis. 
-       This function is based on the method given in the link:
+def align_principal_axes(structure, atom_mask=None, principal_axis=1, v_axis=None):
+    """Aligns the a chosen principal axis of a system to a specified axis. This function is based on the method given in the link:
 
         * https://www.ks.uiuc.edu/Research/vmd/script_library/scripts/orient/
 
     Parameters
     ----------
-    structure : parmed.Structure
+    structure : :class:`parmed.Structure`
         Molecular structure containing coordinates.
-    atom_mask : str
+    atom_mask : str, optional, default=None
         A mask that filter specific atoms for calculating the moment of inertia.
-    princ_axis : int
-        Which principal axis to align? (choice: 1, 2 or 3, default: 1).
-    v_axis: list
-        The axis vector to align the system to (default: [0, 0, 1]).
+    principal_axis : int, optional, default=1
+        The particular principal axis to align to (The choices are ``1``, ``2`` or ``3`` with ``1`` being the principal axis with the largest eigenvalue and ``3`` the lowest.).
+    v_axis: list, optional, default=None
+        The axis vector to align the system to (by default the function aligns the principal axes with the largest
+        eigenvalue to the z-axis).
 
     Returns
     -------
-    structure : parmed.Structure
-        A molecular structure with a principal axis aligned to a vector.
+    structure : :class:`parmed.Structure`
+        A molecular structure with it's principal axis aligned to a vector.
 
     Examples
     --------
@@ -285,19 +285,19 @@ def align_principal_axes(structure, atom_mask=None, princ_axis=None, v_axis=None
         >>> structure = align_principal_axes(structure, princ_axis=1, v_axis=[0,1,0])
 
     """
-    # Check princ_axis
-    if princ_axis is None:
-        princ_axis = 1
-    elif princ_axis not in [0, 1, 2]:
-        raise SystemExit(
-            'Error: "princ_axis" can only be an integer value of 0, 1 or 2.'
+    # Check principal_axis
+    if principal_axis is None:
+        principal_axis = 1
+    elif principal_axis not in [0, 1, 2]:
+        raise Exception(
+            'Error: "principal_axis" can only be an integer value of 1, 2 or 3.'
         )
 
     # Axis vector for alignment
     if v_axis is None:
         v_axis = [0, 0, 1]
     elif len(v_axis) != 3:
-        raise SystemExit('Error: "v_axis" must be a list with 3 elements, e.g. [0,0,1]')
+        raise Exception('Error: "v_axis" must be a list with 3 elements, e.g. [0,0,1]')
     v_axis = np.array(v_axis)
 
     # Get coordinates and masses
@@ -326,7 +326,7 @@ def align_principal_axes(structure, atom_mask=None, princ_axis=None, v_axis=None
     # Principal axis
     evals, evecs = np.linalg.eig(inertia)
     evecs = evecs[:, evals.argsort()]  # <-- Numpy does not sort the vectors properly
-    p_axis = evecs[:, princ_axis]
+    p_axis = evecs[:, principal_axis]
 
     # Calculate Rotation matrix
     x = np.cross(p_axis, v_axis) / np.linalg.norm(np.cross(p_axis, v_axis))
