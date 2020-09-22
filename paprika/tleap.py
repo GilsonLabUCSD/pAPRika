@@ -12,83 +12,103 @@ ANGSTROM_CUBED_TO_LITERS = 1 * 10 ** -27
 
 class System(object):
     """
-    Class for building AMBER prmtop/rst7 files with tleap.
+    Class for building AMBER prmtop/rst7 files with ``tleap``.
 
     Parameters
     ----------
-    template_file : str
+    template_file : str, default=None
         Name of template file to read boilerplate `tleap` input (e.g., `source leaprc`... lines). Any
         frcmod/mol2/pdb files which are loaded by the template must be present in output_path.
-        Default: None
-    template_lines : lst
-        The list of tleap commands which are needed to build the system. Either the template_file or
+    template_lines : list, default=None
+        The list of ``tleap`` commands which are needed to build the system. Either the template_file or
         the template_lines needs to be set prior to running build(). Files called for loading should
-        be present in output_path (see above). Default: None
-    loadpdb_file : str
-        If specified, this PDB file will be loaded via loadpdb instead of whatever file is specified
+        be present in output_path (see above).
+    loadpdb_file : str, default=None
+        If specified, this PDB file will be loaded via ``loadpdb`` instead of whatever file is specified
         in the template. This file should be present in output_path, or if you specify it with a path,
-        the path must be relative to output_path. Default: None
-    pbc_type : str
-        Type of solvation (cubic, rectangular, octahedral, or None). Default: cubic
-    buffer_value : float
+        the path must be relative to output_path.
+    pbc_type : str, default='cubic'
+        Type of solvation (`cubic`, `rectangular`, `octahedral`, or `None`).
+    buffer_value : float, default=12.0
         The desired solvation buffer value. This will add a layer of water around your solute with the
-        minimum distance to the periodic box edge defined by buffer_value. If target_waters is set, it
-        will override this value. Default: 12.0
-    target_waters : int
+        minimum distance to the periodic box edge defined by buffer_value. If ``target_waters`` is set, it
+        will override this value.
+    target_waters : int, default=None
         The desired number of waters to solvate your system with. If specified, this will override any
-        buffer_value settings. Default: None
-    water_box : str
-        The type of water box, e.g., TIP3PBOX (see AMBER manual for acceptable values). Default: TIP3PBOX
-    neutralize : bool
-        Whether to neutralize the system with counterions. Default: True
-    counter_cation : str
-        If neutralize=True, this positive ion will be used. Default: Na+
-    counter_anion : str
-        If neuralize=True, this negative ion will be used. Default: Cl-
-    add_ions : list
+        buffer_value settings.
+    water_box : str, default='TIP3PBOX'
+        The type of water box, e.g., ``TIP3PBOX`` (see AMBER manual for acceptable values).
+    neutralize : bool, default=True
+        Whether to neutralize the system with counterions.
+    counter_cation : str, default='Na+'
+        If ``neutralize=True``, this positive ion will be used.
+    counter_anion : str, default='Cl-'
+        If ``neutralize=True``, this negative ion will be used.
+    add_ions : list, default=None
         A list of additional ions to be added to the system, specified by the residue name and
-        an indication of the amount: an integer number, the molarity (M), or the molality (m).
-        For example, the following list shows valid examples:
-        add_ions = ['MG', 2, 'Cl-', 4, 'K', '0.150M', 'BR', '0.150M', 'NA', '0.050m', 'F', '0.050m']
-        Default: None
-    output_path : str
-        Directory path where tleap input files will be written and executed. Associated input
-        files (frcmod, mol2, pdb, etc) need to present in that path.
-    output_prefix : str
-        Append a prefix to files created by this module. Default: 'build'
-    unit : str
-        The tleap unit name. Default: 'model'
-    exponent : int
-        The initial value used for dynamically adjusting the buffer value. Default: 1
-    min_exponent_limit : int
+        an indication of the amount: an **integer number**, the **molarity** (M), or the **molality** (m).
+        For example, the following list shows valid examples: add_ions = ['MG', 2, 'Cl-', 4, 'K', '0.150M', 'BR',
+        '0.150M', 'NA', '0.050m', 'F', '0.050m'].
+    output_path : str, default='./'
+        Directory path where ``tleap`` input files will be written and executed. Associated input
+        files (``frcmod``, ``mol2``, ``pdb``, etc) need to present in that path.
+    output_prefix : str, default='build'
+        Append a prefix to files created by this module.
+    unit : str, default='model'
+        The ``tleap`` unit name.
+    exponent : int, default=`
+        The initial value used for dynamically adjusting the buffer value.
+    min_exponent_limit : int, default=-5
         The minimum limit that we let exponent get to. If it gets too small, it has no effect on
-        the number of waters added. Default: -5
-    cyc_since_last_exp_change : int
+        the number of waters added.
+    cyc_since_last_exp_change : int, default=0
         A count of the number of buffer_value adjustments since the last exponent change. Should
-        always start at 0. Default: 0
-    max_cycles : int
-        The maximum number of buffer_value adjustment cycles.  Default: 50
-    manual_switch_thresh : int
+        always start at 0.
+    max_cycles : int, default=50
+        The maximum number of ``buffer_value`` adjustment cycles.
+    manual_switch_thresh : int, default=``target_waters``**(1./3.)
         The threshold difference between waters actually added and target_waters for which we can
         safely switch to manual removal of waters. If too large, then there will be big air pockets
         in our box. If too small, it will take forever to converge. If the user does not set this
-        value, it will set proportionately to the target_waters. Default: (target_waters)**(1./3.)
-    waters_to_remove : list
-        A list of the water residues to be manually removed after solvation. Default: None
-    add_ion_residues : list
-        A property formated list of ions to add to the system.  The format is the same as add_ions
-        except that only integer amounts are allowed.  This is set by set_additional_ions. Default: None
-    kg_per_mol_solvent : float
-        kg/mol for the solvent. Used for equation computing molality. Default for water: 0.018
-    buffer_val_history : list
-        The history of buffer_value adjustments stored in a list. Default: [0]
-    wat_added_history : list
-        The history of number of waters added which correlate to the values in buffer_val_history.
-        Default: [0]
-    write_save_lines : bool
-        Whether or not to do saveamberparm and savepdb when tleap is executed. During optimization
-        loops it speeds up the process to set as False, but it must be returned to True for the final
-        execution. Default: True
+        value, it will set proportionately to the target_waters.
+    waters_to_remove : list, default=None
+        A list of the water residues to be manually removed after solvation.
+    add_ion_residues : list, default=None
+        A property formatted list of ions to add to the system.  The format is the same as add_ions
+        except that only integer amounts are allowed.  This is set by ``set_additional_ions``.
+    kg_per_mol_solvent : float, default=0.018 (for water)
+        `kg/mol` for the solvent. Used for equation computing molality.
+    buffer_val_history : list, default=[0]
+        The history of buffer_value adjustments stored in a list.
+    wat_added_history : list, default=[0]
+        The history of number of waters added which correlate to the values in ``buffer_val_history``.
+    write_save_lines : bool, default=True
+        Whether or not to do ``saveamberparm`` and ``savepdb`` when ``tleap`` is executed. During optimization
+        loops it speeds up the process to set as ``False``, but it must be returned to ``True`` for the final
+        execution.
+
+    Example
+    -------
+        >>> system = tleap.System()
+        >>> system.output_path = "windows"
+        >>> system.output_prefix = "host-guest-sol"
+        >>> system.target_waters = 2000
+        >>> system.pbc_type = "rectangular"
+        >>> system.neutralize = True
+        >>> system.template_lines = [
+        >>>     "source leaprc.gaff",
+        >>>     "source leaprc.water.tip3p",
+        >>>     "loadamberparams host.frcmod",
+        >>>     "loadamberparams guest.frcmod",
+        >>>     "loadamberparams dummy.frcmod",
+        >>>     "GST = loadmol2 guest.mol2",
+        >>>     "HST = loadmol2 host.mol2",
+        >>>     "DM1 = loadmol2 dm1.mol2",
+        >>>     "DM2 = loadmol2 dm2.mol2",
+        >>>     "DM3 = loadmol2 dm3.mol2",
+        >>>     "complex = loadpdb host-guest.pdb",
+        >>> ]
+        >>> system.build()
 
     """
 
@@ -125,8 +145,7 @@ class System(object):
 
     def build(self):
         """
-        Build the tleap.System
-
+        Build the ``tleap.System``.
         """
 
         log.debug("Running tleap.build() in {}".format(self.output_path))
@@ -158,7 +177,6 @@ class System(object):
     def filter_template(self):
         """
         Filter out any template_lines that may interfere with solvation.
-
         """
 
         filtered_lines = []
@@ -189,7 +207,6 @@ class System(object):
     def write_input(self):
         """
         Write a tleap input file based on template_lines and other things we have set.
-
         """
 
         file_path = os.path.join(self.output_path, self.output_prefix + ".tleap.in")
@@ -269,7 +286,6 @@ class System(object):
         -------
         output : list
             The tleap stdout returned as a list.
-
         """
 
         self.check_for_leap_log()
@@ -289,7 +305,6 @@ class System(object):
     def grep_leap_log(self):
         """
         Check for a few keywords in the `tleap` output.
-
         """
         try:
             with open(self.output_path + "leap.log", "r") as file:
@@ -309,9 +324,8 @@ class System(object):
 
         Parameters
         ----------
-        log_file : str
+        log_file : str, optional
             Name of the tleap logfile. Default: leap.log
-
         """
         log_file_path = os.path.join(self.output_path, log_file)
         try:
@@ -323,7 +337,6 @@ class System(object):
     def solvate(self):
         """
         Solvate a structure with an exact number of waters or buffer size.
-
         """
 
         # If buffer_value is set but not target_waters, figure out what
@@ -425,8 +438,7 @@ class System(object):
 
     def final_solvation_run(self):
         """
-        Run the solvation with write_save_lines = True.
-
+        Run the solvation with ``write_save_lines=True``.
         """
 
         self.write_save_lines = True
@@ -453,7 +465,7 @@ class System(object):
         Returns
         -------
         waters : int
-
+            Number of water molecules.
         """
         waters = self.count_residues()["WAT"]
         return waters
@@ -462,11 +474,15 @@ class System(object):
         """
         Run and parse `tleap` output and return a dictionary of residues in the structure.
 
+        Parameters
+        ----------
+        print_results: bool, optional
+            Whether to print residues to log file.
+
         Returns
         -------
         residues : dict
             Dictionary of added residues and their number
-
         """
         for attempt in range(10):
             self.write_input()
@@ -505,10 +521,10 @@ class System(object):
         """
         Determine whether additional ions (instead of or in addition to neutralization) are requested...
 
-        Sets
-        -------
-        self.add_ion_residues : list
-            A processed list of ions and their amounts that can be passed to `tleap`
+        **Sets:**
+
+        ``self.add_ion_residues`` : list
+            A processed list of ions and their amounts that can be passed to `tleap`.
 
         """
         if not self.add_ions:
@@ -555,12 +571,12 @@ class System(object):
 
     def get_volume(self):
         """
-        Run and parse `tleap` output and return the volume of the structure.
+        Run and parse ``tleap`` output and return the volume of the structure.
 
         Returns
         -------
         volume : float
-            The volume of the structure in cubic angstroms
+            The volume of the structure in cubic angstroms.
 
         """
         output = self.run()
@@ -576,8 +592,7 @@ class System(object):
 
     def remove_waters_manually(self):
         """
-        Remove a few water molecules manually with `tleap` to exactly match a desired number of waters.
-
+        Remove a few water molecules manually with ``tleap`` to exactly match a desired number of waters.
         """
 
         cycle = 0
@@ -619,12 +634,12 @@ class System(object):
 
     def list_waters(self):
         """
-        Run and parse `tleap` output and return the a list of water residues.
+        Run and parse ``tleap`` output and return the a list of water residues.
 
         Returns
         -------
         water_residues : list
-            A list of the water residues in the structure
+            A list of the water residues in the structure.
 
         """
         output = self.run()
@@ -642,13 +657,13 @@ class System(object):
         """
         Determine whether to increase or decrease the buffer thickness to match a desired number of waters.
 
-        Sets
-        -------
-        self.buffer_value : float
-            A new buffer size to try
-        self.exponent : int
-            Adjusts the order of magnitue of buffer value changes
-        self.cyc_since_last_exp_change : int
+        **Sets:**
+
+        ``self.buffer_value`` : float
+            A new buffer size to try.
+        ``self.exponent`` : int
+            Adjusts the order of magnitude of buffer value changes.
+        ``self.cyc_since_last_exp_change`` : int
             Resets this value to 0 when exponent value is changed to help with the logic gates.
 
         """
@@ -729,13 +744,13 @@ class System(object):
     def repartition_hydrogen_mass(self, options=None):
         """
         Repartitions the masses of Hydrogen atoms in the system by a factor 3 and
-        overwrites the prmtop file: "self.output_path/self.output_prefix.prmtop"
+        overwrites the `.prmtop` file: `output_path/output_prefix.prmtop`
 
         Parameters
         ----------
-        options : str
+        options : str, optional
             Optional keyword(s) for the repartitioning and following the
-            parmed.tools.actions documentation the usage is '[<mass>] [dowater]'.
+            :class:`parmed.tools.actions` documentation the usage is '[<mass>] [dowater]'.
 
         """
 

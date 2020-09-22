@@ -13,7 +13,7 @@ def read_yaml(file):
 
     Parameters
     ----------
-    file: Path-like
+    file: os.PathLike
         A YAML-formatted file.
     Returns
     -------

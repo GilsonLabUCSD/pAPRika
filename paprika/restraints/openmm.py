@@ -19,9 +19,9 @@ def apply_positional_restraints(coordinate_path: str, system, force_group: int =
         The path to the coordinate file which the restraints will be applied to.
         This should contain either the host or the complex, the dummy atoms and
         and solvent.
-    system : openmm.System
+    system : :class:`openmm.System`
         The system object to add the positional restraints to.
-    force_group : int
+    force_group : int, optional
         The force group to add the positional restraints to.
     """
 
@@ -64,7 +64,7 @@ def apply_dat_restraint(
 
     Parameters
     ----------
-    system : openmm.System
+    system : :class:`openmm.System`
         The system object to add the positional restraints to.
     restraint : list
         List of pAPRika defined restraints
@@ -72,9 +72,9 @@ def apply_dat_restraint(
         Phase of calculation ("attach", "pull" or "release")
     window_number : int
         The corresponding window number of the current phase
-    flat_bottom : bool
+    flat_bottom : bool, optional
         Specify whether the restraint is a flat bottom potential
-    force_group : int
+    force_group : int, optional
         The force group to add the positional restraints to.
 
     """

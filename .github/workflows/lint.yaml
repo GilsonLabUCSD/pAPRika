@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'paprika/**.py'
+      - 'docs/**.py'
       - 'setup.cfg'
 
 jobs:
