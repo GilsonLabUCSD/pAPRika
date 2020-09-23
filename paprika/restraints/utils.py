@@ -160,7 +160,7 @@ def get_bias_potential_type(restraint, phase, window_number):
     return bias_type
 
 
-def extract_guest_restraints(structure, restraints, resname, dummy_prefix="DM"):
+def extract_guest_restraints(structure, restraints, guest_resname, dummy_prefix="DM"):
     """
     Utility function to extract the guest restraints from a list of restraints
     and return individual restraints in the form ``[r, theta, phi, alpha, beta, gamma]``.
@@ -177,7 +177,7 @@ def extract_guest_restraints(structure, restraints, resname, dummy_prefix="DM"):
         The molecular structure of the system.
     restraints : list
         List of :class:`paprika.restraints.DAT_restraint` restraints.
-    resname : str
+    guest_resname : str
         Residue name of the guest molecule.
     dummy_prefix : str, optional, default="DM"
         The prefix for the dummy atoms residue name.
@@ -189,6 +189,7 @@ def extract_guest_restraints(structure, restraints, resname, dummy_prefix="DM"):
 
     Examples
     --------
+        Extract guest restraints from a list of restraints and compute the work for reference state
 
         >>> guest_restraints = extract_guest_restraints(structure, restraints, "BEN")
         >>>
@@ -197,7 +198,7 @@ def extract_guest_restraints(structure, restraints, resname, dummy_prefix="DM"):
         >>> print(free_energy["ref_state_work"])
 
     """
-    guest_resname = resname.upper()
+    guest_resname = guest_resname.upper()
 
     DM1 = f"{dummy_prefix}1"
     DM2 = f"{dummy_prefix}2"
@@ -280,6 +281,9 @@ def restraints_from_ascii(filename):
     Utility function to read in restraints from a simple ASCII file. This is
     useful when parsing restraints definition from VMD. Since you can mouse-click
     bonds, angles and dihedrals in VMD it can be faster to define these restraints.
+    One scenario for this is when you want to apply conformational restraints on a
+    host molecule based on a number of distance, angle and torsional restraints.
+
     The TCL script below is an example of extracting bonds selected in VMD to a file
     with a comma-separated format.
 
@@ -309,8 +313,7 @@ def restraints_from_ascii(filename):
         }
         close $f
 
-    Below is an example output for a bond, angle and dihedral generated with a TCL
-    script in ran on VMD.
+    The output from the TCL script sourced in VMD may look like
 
     .. code-block::
 

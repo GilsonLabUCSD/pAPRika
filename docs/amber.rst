@@ -1,4 +1,4 @@
-Simulation Wrapper API
+Amber Simulation Wrapper API
 ----------------------------
 
 .. automodule:: paprika.amber
