@@ -15,8 +15,23 @@ def get_key(dct, value):
     """
     Get dictionary key given the value.
 
-    NOTE: this function will return a list of keys if there are more than one key with the same value
-          in the order they are found.
+    .. note ::
+        This function will return a list of keys if there are more than one key with the same value in the order they
+        are found.
+
+    Parameters
+    ----------
+    dct: dict
+        Python dictionary to get the key from.
+    value: str
+        The value to match to the dictionary.
+
+    Returns
+    -------
+    key: str
+        The dictionary key that matched the value.
+
+
     """
     key = [key for key in dct if (dct[key] == value)]
 
@@ -29,7 +44,16 @@ def get_key(dct, value):
 
 
 def override_dict(dct, custom):
-    """Overrides dictionary values from that of a custom dictionary."""
+    """Overrides dictionary values from that of a custom dictionary.
+
+    Parameters
+    ----------
+    dct: dict
+        Python dictionary to override.
+    custom: dict
+        A custom dictionary which will overwrite the original dictionary.
+
+    """
     for key, value in custom.items():
         if value is not None:
             logger.debug("Overriding {} = {}".format(key, value))
@@ -42,8 +66,8 @@ def return_parmed_structure(filename):
 
     Parameters
     ----------
-    filename : str
-        The name of the file to load
+    filename : os.PathLike
+        The name of the file to load.
 
     Returns
     -------
@@ -67,17 +91,17 @@ def index_from_mask(structure, mask, amber_index=False):
 
     Parameters
     ----------
-    structure : `class`:`parmed.structure.Structure`
+    structure : :class:`parmed.structure.Structure`
         The structure that contains the atoms
     mask : str
-        The atom mask
-    amber_index : bool
-        If true, 1 will be added to the returned indices
+        The atom mask.
+    amber_index : bool, optional, default=False
+        If true, 1 will be added to the returned indices.
 
     Returns
     -------
     indices : int
-        Atom index or indices corresponding to the mask
+        Atom index or indices corresponding to the mask.
 
     """
     if amber_index:
@@ -111,12 +135,12 @@ def make_window_dirs(
     ----------
     window_list : list
         List of simulation windows. The names in this list will be used for the folders.
-    stash_existing : bool
-        Whether to move an existing windows directory to a backup with the current time
-    path :
-        Root path for the directories
-    window_dir_name :
-        Name for the top level directory
+    stash_existing : bool, optional, default=False
+        Whether to move an existing windows directory to a backup with the current time.
+    path : os.PathLike, optional, default='./'
+        Root path for the directories.
+    window_dir_name : os.PathLike, optional, default='windows'
+        Name for the top level directory.
     """
 
     win_dir = os.path.join(path, window_dir_name)
@@ -138,15 +162,15 @@ def strip_prmtop(prmtop, mask=":WAT,:Na+,:Cl-"):
 
     Parameters
     ----------
-    prmtop : {str}
-        Existing parameter file
-    mask : {str}, optional
-        The list of atom masks to strip (the default is [':WAT,:Na+,:Cl-'])
+    prmtop : os.PathLike
+        Existing Amber parameter file.
+    mask : str, optional, default=':WAT,:Na+,:Cl-'
+        The list of atom masks to strip.
 
     Returns
     -------
-    stripped.topology
-        The stripped topology that can be used to read stripped trajectories with `pytraj`
+    stripped: :class:`pytraj.topology`
+        The stripped topology that can be used to read stripped trajectories with :class:`pytraj`.
 
     """
 
@@ -164,8 +188,8 @@ def parse_mden(file):
 
     Parameters
     ----------
-    file : str
-        Name of output file
+    file : os.PathLike
+        Name of the Amber output file.
 
     Returns
     -------
@@ -205,12 +229,12 @@ def parse_mden(file):
 
 def parse_mdout(file):
     """
-    Return energies from an AMBER `mdout` file.
+    Return energies from an AMBER ``mdout` file.
 
     Parameters
     ----------
-    file : str
-        Name of output file
+    file : os.PathLike
+        Name of Amber output file
 
     Returns
     -------

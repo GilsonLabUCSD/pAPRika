@@ -32,10 +32,12 @@ class Setup:
         an APR calculation.
         This currently involves aligning the cavity of the host along the z-axis, and
         positioning the host so that its center of geometry at (0, 0, 0).
+
         Notes
         -----
         The hosts cavity axis is for now determined as the vector orthogonal to the
         two largest principal components of the host.
+
         Parameters
         ----------
         coordinate_path
@@ -44,6 +46,7 @@ class Setup:
             The (0-based) indices of the host atoms in the coordinate file if the
             file. This may be used if the coordinate file contains more than a single
             molecule.
+
         Returns
         -------
             A ParmEd structure which contains only the aligned and centered host.
@@ -116,10 +119,12 @@ class Setup:
     ) -> pmd.Structure:
         """Prepares the coordinates of a host molecule ready for the pull (+ attach)
         phase of an APR calculation.
+
         This currently involves aligning the complex so that the guest molecule (or
         rather, the guest atoms specified by ``guest_orientation_mask``) is aligned
         with the z-axis, and the first atom specified by ``guest_orientation_mask`` is
         positioned at (0, 0, 0).
+
         Parameters
         ----------
         coordinate_path
@@ -145,6 +150,7 @@ class Setup:
         n_pull_windows
             The total number of pull windows being used in the calculation. This
             will determine the distance to move the guest at each window.
+
         Returns
         -------
             A ParmEd structure which contains the aligned and positioned host and
@@ -183,6 +189,7 @@ class Setup:
     ):
         """A convenience method to add a number of dummy atoms to an existing
         ParmEd structure, and to position those atoms at a specified set of positions.
+
         Parameters
         ----------
         structure
@@ -225,13 +232,17 @@ class Setup:
     ) -> List[DAT_restraint]:
         """A method to convert a set of static restraints defined by their 'schemas'
         into corresponding ``DAT_restraint``objects.
+
         Each 'schema' should be a dictionary with:
+
             * an ``atoms`` entry with a value of the atom selection make which specifies
               which atoms the restraint will apply to
             * a ``force_constant`` entry which specifies the force constant of the
               restraint.
+
         These 'schemas` map directly to the 'restraints -> static -> restraint'
         dictionaries specified in the `taproom` host YAML files.
+
         Parameters
         ----------
         coordinate_path
@@ -250,6 +261,7 @@ class Setup:
         use_amber_indices
             Whether to use amber based (i.e. starting from 1) restraint indices or
             OpenMM based (i.e. starting from 0) indices.
+
         Returns
         -------
             The constructed static restraint objects.
@@ -288,14 +300,18 @@ class Setup:
     ) -> List[DAT_restraint]:
         """A method to convert a set of conformational restraints defined by their
         'schemas' into corresponding ``DAT_restraint``objects.
+
         Each 'schema' should be a dictionary with:
+
             * an ``atoms`` entry with a value of the atom selection make which specifies
               which atoms the restraint will apply to
             * a ``force_constant`` entry which specifies the force constant of the
               restraint.
             * a ``target`` entry which specifies the target value of the restraint.
+
         These 'schemas` map directly to the 'restraints -> conformational -> restraint'
         dictionaries specified in the ``taproom`` host YAML files.
+
         Parameters
         ----------
         coordinate_path
@@ -316,6 +332,7 @@ class Setup:
         use_amber_indices
             Whether to use amber based (i.e. starting from 1) restraint indices or
             OpenMM based (i.e. starting from 0) indices.
+
         Returns
         -------
             The constructed conformational restraint objects.
@@ -373,13 +390,17 @@ class Setup:
     ) -> List[DAT_restraint]:
         """A method to convert a set of symmetry restraints defined by their 'schemas'
         into corresponding ``DAT_restraint``objects.
+
         Each 'schema' should be a dictionary with:
+
             * an ``atoms`` entry with a value of the atom selection make which specifies
               which atoms the restraint will apply to
             * a ``force_constant`` entry which specifies the force constant of the
               restraint.
+
         These 'schemas` map directly to the 'restraints -> symmetry_correction
         -> restraint' dictionaries specified in the `taproom` guest YAML files.
+
         Parameters
         ----------
         coordinate_path
@@ -394,6 +415,7 @@ class Setup:
         use_amber_indices
             Whether to use amber based (i.e. starting from 1) restraint indices or
             OpenMM based (i.e. starting from 0) indices.
+
         Returns
         -------
             The constructed symmetry restraint objects.
@@ -438,14 +460,18 @@ class Setup:
     ) -> List[DAT_restraint]:
         """A method to convert a set of wall restraints defined by their 'schemas'
         into corresponding ``DAT_restraint``objects.
+
         Each 'schema' should be a dictionary with:
+
             * an ``atoms`` entry with a value of the atom selection make which specifies
               which atoms the restraint will apply to
             * a ``force_constant`` entry which specifies the force constant of the
               restraint.
             * a ``target`` entry which specifies the target value of the restraint.
+
         These 'schemas` map directly to the 'restraints -> wall_restraints -> restraint'
         dictionaries specified in the `taproom` guest YAML files.
+
         Parameters
         ----------
         coordinate_path
@@ -460,6 +486,7 @@ class Setup:
         use_amber_indices
             Whether to use amber based (i.e. starting from 1) restraint indices or
             OpenMM based (i.e. starting from 0) indices.
+
         Returns
         -------
             The constructed wall restraint objects.
@@ -510,15 +537,20 @@ class Setup:
     ) -> List[DAT_restraint]:
         """A method to convert a set of guest restraints defined by their 'schemas'
         into corresponding ``DAT_restraint``objects.
+
         Each 'schema' should be a dictionary with:
             * an ``atoms`` entry with a value of the atom selection make which specifies
               which atoms the restraint will apply to
+
         and additionally a nested ``attach`` and ``pull`` dictionary with
+
             * a ``force_constant`` entry which specifies the force constant of the
               restraint.
             * a ``target`` entry which specifies the target value of the restraint.
+
         These 'schemas` map directly to the 'restraints -> guest -> restraint'
         dictionaries specified in the `taproom` guest YAML files.
+
         Parameters
         ----------
         coordinate_path
@@ -536,6 +568,7 @@ class Setup:
         use_amber_indices
             Whether to use amber based (i.e. starting from 1) restraint indices or
             OpenMM based (i.e. starting from 0) indices.
+
         Returns
         -------
             The constructed wall restraint objects.

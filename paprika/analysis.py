@@ -26,8 +26,8 @@ class fe_calc(object):
         It would be great to add unit support here from ``pint``.
 
     .. warning ::
-        This class really ought to be split into a few smaller classes that sublcass a ``BaseAnalysis`` class. THere could
-        be separate ``MBARAnalysis`` and ``TIAnalysis`` classes, for example. This would make it much more modular
+        This class really ought to be split into a few smaller classes that sublcass a ``BaseAnalysis`` class. There
+        could be separate ``MBARAnalysis`` and ``TIAnalysis`` classes, for example. This would make it much more modular
         and easy to test where TI and MBAR disagree. This could also be used to benchmark autocorrelation-based and
         blocking-analysis-based methods for evaluating the statistical inefficiency.
 
@@ -1475,7 +1475,7 @@ def ref_state_work(
           \        [a1]                [a2]
            H2-------H1-------<d1>-------G1-------G2
               {t1}           {t2}           {t3}   \
-                                                    G3
+                                                   G3
 
         Degrees of Freedom
         -----------------------------------------------------------------
@@ -1612,16 +1612,14 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix="full"):
     ys: :class:`np.array`
         Two dimensional array in which the first dimension is bootcycles and the second
         dimension contains the arrays of y values which correspond to the x values and will
-        be used for integration.
-
-        The shape of this is (bootcycles, len(x)).
-    x_intp: :class:`np.array`
+        be used for integration. The shape of this is :code:`(bootcycles, len(x))`.
+    x_intp: :class:`np.array`, optional, default=None
         An array which finely interpolates the x values. If not provided, it will be generated
         by adding 100 evenly spaced points between each x value. Default: None.
-    matrix: str
-        If "full", the mean and SEM integration is computed between x values. If "diagonal",
+    matrix: str, optional, default='full`
+        If ``full``, the mean and SEM integration is computed between x values. If ``diagonal``,
         the mean and SEM integration is computed between the first value and all other values,
-        as well as the neighboring values to each value. If "endpoints", the integration
+        as well as the neighboring values to each value. If ``endpoints``, the integration
         is computed between only the first and last x value.
 
     Returns

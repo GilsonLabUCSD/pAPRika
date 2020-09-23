@@ -197,7 +197,7 @@ def offset_structure(structure, offset):
 
 
 def translate_to_origin(structure, weight="mass", atom_mask=None, dimension_mask=None):
-    """Translate a structure to the origin based on the centroid of the whole system or of a subset of atom(s).
+    """Translate a structure to the origin based on the centroid of the whole system or a subset of atom(s).
 
     Parameters
     ----------
@@ -256,9 +256,8 @@ def translate_to_origin(structure, weight="mass", atom_mask=None, dimension_mask
 
 
 def align_principal_axes(structure, atom_mask=None, principal_axis=1, v_axis=None):
-    """Aligns the a chosen principal axis of a system to a specified axis. This function is based on the method given in the link:
-
-        * https://www.ks.uiuc.edu/Research/vmd/script_library/scripts/orient/
+    """Aligns the a chosen principal axis of a system to a specified axis. This function is based on the method given
+    in the link: https://www.ks.uiuc.edu/Research/vmd/script_library/scripts/orient/
 
     Parameters
     ----------
@@ -267,10 +266,11 @@ def align_principal_axes(structure, atom_mask=None, principal_axis=1, v_axis=Non
     atom_mask : str, optional, default=None
         A mask that filter specific atoms for calculating the moment of inertia.
     principal_axis : int, optional, default=1
-        The particular principal axis to align to (The choices are ``1``, ``2`` or ``3`` with ``1`` being the principal axis with the largest eigenvalue and ``3`` the lowest.).
+        The particular principal axis to align to (The choices are `1`, `2` or `3` with `1` being the
+        principal axis with the largest eigenvalue and `3` the lowest.).
     v_axis: list, optional, default=None
-        The axis vector to align the system to (by default the function aligns the principal axes with the largest
-        eigenvalue to the z-axis).
+        The axis vector to align the system to (by default the function aligns the principal axes with the
+        largest eigenvalue to the z-axis).
 
     Returns
     -------
@@ -279,7 +279,7 @@ def align_principal_axes(structure, atom_mask=None, principal_axis=1, v_axis=Non
 
     Examples
     --------
-    The commands below mimics the example given in the link above for VMD.
+    The commands below mimics the example given in the link above in VMD.
 
         >>> structure = align_principal_axes(structure, princ_axis=0, v_axis=[0,0,1])
         >>> structure = align_principal_axes(structure, princ_axis=1, v_axis=[0,1,0])

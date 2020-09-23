@@ -18,8 +18,8 @@ class DAT_restraint(object):
     def instances(self):
         """A list of ``DAT_restraints`` that have been initialized.
 
-        .. note ::
-        This should never be called directly and ought to be private.
+        .. note::
+            This should never be called directly and ought to be private.
         """
         return self._instances
 
@@ -323,6 +323,8 @@ class DAT_restraint(object):
         """
         This helper function figures out which values in the restraint dictionary need to be set.
 
+        Parameters
+        ----------
         phase: str
             The restraint phase.
         restraint_dictionary: dict
@@ -335,7 +337,7 @@ class DAT_restraint(object):
 
             This appears to be a ``str`` but should be an ``int``.
 
-        .. note ::
+        .. note::
             This could do with some serious sprucing up.
 
         """
@@ -888,7 +890,7 @@ def check_restraints(restraint_list, create_window_list=False):
     ----------
     restraint_list: list
         A list of restraints.
-    create_window_list: bool, optional
+    create_window_list: bool, optional, default=False
         Whether to use the restraints to create windows for the calculation.
 
     """

@@ -9,23 +9,24 @@ def config_root_logger(verbose, log_file_path=None):
     """
     Setup the the root logger's configuration.
     The log messages are printed in the terminal and saved in the file specified
-    by log_file_path (if not None) and printed. Note that logging use sys.stdout
-    to print logging.INFO messages, and stderr for the others. The root logger's
-    configuration is inherited by the loggers created by logging.getLogger(name).
+    by log_file_path (if not `None`) and printed. Note that logging use sys.stdout
+    to print ``logging.INFO`` messages, and stderr for the others. The root logger's
+    configuration is inherited by the loggers created by ``logging.getLogger(name)``.
     Different formats are used to display messages on the terminal and on the log
     file. For example, in the log file every entry has a timestamp which does not
     appear in the terminal. Moreover, the log file always shows the module that
     generate the message, while in the terminal this happens only for messages
-    of level WARNING and higher.
+    of level `WARNING` and higher.
+
     Parameters
     ----------
     verbose : bool
         Control the verbosity of the messages printed in the terminal. The logger
-        displays messages of level logging.INFO and higher when verbose=False.
-        Otherwise those of level logging.DEBUG and higher are printed.
+        displays messages of level ``logging.INFO`` and higher when ``verbose=False``.
+        Otherwise those of level ``logging.DEBUG`` and higher are printed.
     log_file_path : str, optional, default = None
-        If not None, this is the path where all the logger's messages of level
-        logging.DEBUG or higher are saved.
+        If not `None`, this is the path where all the logger's messages of level
+        ``logging.DEBUG`` or higher are saved.
     """
 
     class TerminalFormatter(logging.Formatter):
