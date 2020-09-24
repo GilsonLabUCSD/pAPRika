@@ -402,7 +402,7 @@ def translate_to_origin(structure, weight="mass", atom_mask=None, dimension=None
 
     # Equal weights if geometric center is preferred
     if weight == "geo":
-        masses[:] = 1.0
+        masses = np.ones(len(coordinates))
 
     # Centroid coordinates
     centroid = pmd.geometry.center_of_mass(coordinates, masses)
