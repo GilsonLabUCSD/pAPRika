@@ -761,3 +761,48 @@ class System(object):
         pmd.tools.actions.HMassRepartition(structure, arg_list=options).execute()
 
         structure.save(prmtop, overwrite=True)
+
+    def convert_to_gromacs(self, overwrite=False, output_path=None, output_prefix=None):
+        """
+        Convert Amber topology and coordinate files to Gromacs format.
+
+        Parameters
+        ----------
+        overwrite: bool, optional, default=False
+            Option to overwrite Gromacs ``.top`` and ``.gro`` files if they already
+            exists in the folder.
+        output_path: str, optional, default=None
+            Alternate directory path where the Amber files are located. Default is the
+            path parsed to the System object.
+        output_prefix: str, optional, default=None
+            Alternate file name prefix for the Amber files. Default is the path parsed
+            to the System object.
+        """
+
+        if output_path is None:
+            output_path = self.output_path
+
+        if output_prefix is None:
+            output_prefix = self.output_prefix
+
+        file_name = os.path.join(output_path, output_prefix)
+        prmtop = file_name + ".prmtop"
+        inpcrd = file_name + ".rst7"
+
+        # Check if files exist
+        if not os.path.isfile(prmtop):
+            raise FileNotFoundError(f"Cannot find topology file.")
+
+        if not os.path.isfile(inpcrd):
+            # Check if pdb exist instead
+            inpcrd.replace("rst7", "pdb")
+
+            if not os.path.isfile(inpcrd):
+                raise FileNotFoundError(f"Cannot find coordinates file.")
+
+        # Load Amber structure
+        structure = pmd.load_file(prmtop, inpcrd, structure=True)
+
+        # Save to Gromacs *.top and *.gro file
+        structure.save(file_name + ".top", overwrite=overwrite)
+        structure.save(file_name + ".gro", overwrite=overwrite)
