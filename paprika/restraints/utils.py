@@ -324,12 +324,12 @@ def restraints_from_ascii(filename):
     Parameters
     ----------
     filename : os.PathLike
-        file name of template file.
+        File name of template file.
 
     Returns
     -------
     restraints : dict
-        dictionary of restraints containing information of the atoms, target and spring constant.
+        A dictionary of restraints containing information of the atoms, target and spring constant.
 
     """
     restraints = {"atoms": [], "target": [], "k": [], "type": []}
@@ -339,18 +339,21 @@ def restraints_from_ascii(filename):
             if not line.startswith("#"):
                 line = line.split(",")
 
+                # Distance
                 if len(line) == 4:
                     restraints["atoms"].append([line[0], line[1]])
                     restraints["target"].append(float(line[2]))
                     restraints["k"].append(float(line[3]))
                     restraints["type"].append("bond")
 
+                # Angle
                 elif len(line) == 5:
                     restraints["atoms"].append([line[0], line[1], line[2]])
                     restraints["target"].append(float(line[3]))
                     restraints["k"].append(float(line[4]))
                     restraints["type"].append("angle")
 
+                # Torsion
                 elif len(line) == 6:
                     restraints["atoms"].append([line[0], line[1], line[2], line[3]])
                     restraints["target"].append(float(line[4]))

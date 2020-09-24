@@ -133,8 +133,8 @@ def align_principal_axes(structure, atom_mask=None, principal_axis=1, axis="z"):
     # Check principal_axis
     if principal_axis is None:
         principal_axis = 1
-    elif principal_axis not in [0, 1, 2]:
-        raise Exception(
+    elif principal_axis not in [1, 2, 3]:
+        raise ValueError(
             'Error: "principal_axis" can only be an integer value of 1, 2 or 3.'
         )
 
@@ -384,7 +384,7 @@ def translate_to_origin(structure, weight="mass", atom_mask=None, dimension=None
     """
     # Check if weight variable is properly chosen
     if weight not in ["mass", "geo"]:
-        raise Exception('Error: "weight" must either be "mass" or "geo".')
+        raise ValueError('"weight" must either be "mass" or "geo".')
 
     # Dimension mask
     if dimension is None:
@@ -432,18 +432,18 @@ def _return_array(var):
         elif "z" in var.lower():
             array = np.array([0.0, 0.0, 1.0])
         else:
-            raise Exception(f"Cannot understand the variable: {var}.")
+            raise KeyError(f"Cannot understand the variable: {var}.")
 
     elif isinstance(var, list):
         if len(var) != 3:
-            raise Exception('Error: "var" must be a list with 3 elements.')
+            raise ValueError('"var" must be a list with 3 elements.')
         array = np.array(var)
 
     elif isinstance(var, np.ndarray):
         if len(var) != 3:
-            raise Exception('Error: "var" must be a numpy array with 3 elements.')
+            raise ValueError('"var" must be a numpy array with 3 elements.')
 
     else:
-        raise Exception(f"Variable type {type(var)} not supported.")
+        raise TypeError(f"Variable type {type(var)} is not supported.")
 
     return array
