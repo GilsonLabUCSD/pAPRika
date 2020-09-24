@@ -6,10 +6,15 @@ import logging
 import os
 
 import numpy as np
+import parmed as pmd
 import pytest
 
 from paprika.restraints.restraints import DAT_restraint, create_window_list
-from paprika.restraints.utils import get_bias_potential_type, get_restraint_values
+from paprika.restraints.utils import (
+    extract_guest_restraints,
+    get_bias_potential_type,
+    get_restraint_values,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -782,3 +787,206 @@ def test_get_bias_potential_type():
 
     assert get_bias_potential_type(lower, "attach", 0) == "lower_walls"
     assert get_bias_potential_type(lower, "attach", 1) == "lower_walls"
+
+
+def test_extract_guest_restraints():
+    """Test extract_guest_restraints to make sure it is extracting the correct restraints."""
+    restraints = []
+
+    # Guest - r
+    r = DAT_restraint()
+    r.amber_index = True
+    r.continuous_apr = True
+    r.auto_apr = True
+    r.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r.mask1 = ":DM1"
+    r.mask2 = ":BUT@C3"
+    r.attach["target"] = 6.0
+    r.attach["num_windows"] = 4
+    r.attach["fc_initial"] = 0.0
+    r.attach["fc_final"] = 5.0
+    r.pull["fc"] = r.attach["fc_final"]
+    r.pull["num_windows"] = 46
+    r.pull["target_initial"] = r.attach["target"]
+    r.pull["target_final"] = 24.0
+    r.release["target"] = r.pull["target_final"]
+    r.release["num_windows"] = r.attach["num_windows"]
+    r.release["fc_initial"] = r.attach["fc_initial"]
+    r.release["fc_final"] = r.attach["fc_final"]
+    r.initialize()
+    restraints.append(r)
+
+    # Guest - theta
+    r = DAT_restraint()
+    r.amber_index = True
+    r.continuous_apr = True
+    r.auto_apr = True
+    r.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r.mask1 = ":DM1"
+    r.mask2 = ":BUT@C3"
+    r.mask3 = ":BUT@C"
+    r.attach["target"] = 180.0
+    r.attach["num_windows"] = 15
+    r.attach["fc_initial"] = 0.0
+    r.attach["fc_final"] = 100.0
+    r.pull["fc"] = r.attach["fc_final"]
+    r.pull["num_windows"] = 46
+    r.pull["target_initial"] = r.attach["target"]
+    r.pull["target_final"] = 180.0
+    r.release["target"] = r.pull["target_final"]
+    r.release["num_windows"] = r.attach["num_windows"]
+    r.release["fc_initial"] = r.attach["fc_initial"]
+    r.release["fc_final"] = r.attach["fc_final"]
+    r.initialize()
+    restraints.append(r)
+
+    # Guest - beta
+    r = DAT_restraint()
+    r.amber_index = True
+    r.continuous_apr = True
+    r.auto_apr = True
+    r.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r.mask1 = ":DM2"
+    r.mask2 = ":DM1"
+    r.mask3 = ":BUT@C3"
+    r.attach["target"] = 180.0
+    r.attach["num_windows"] = 15
+    r.attach["fc_initial"] = 0.0
+    r.attach["fc_final"] = 100.0
+    r.pull["fc"] = r.attach["fc_final"]
+    r.pull["num_windows"] = 46
+    r.pull["target_initial"] = r.attach["target"]
+    r.pull["target_final"] = 180.0
+    r.release["target"] = r.pull["target_final"]
+    r.release["num_windows"] = r.attach["num_windows"]
+    r.release["fc_initial"] = r.attach["fc_initial"]
+    r.release["fc_final"] = r.attach["fc_final"]
+    r.initialize()
+    restraints.append(r)
+
+    structure = pmd.load_file(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
+        structure=True,
+    )
+    guest_restraints = extract_guest_restraints(structure, restraints, "BUT")
+
+    assert guest_restraints[0] is not None
+    assert guest_restraints[1] is not None
+    assert guest_restraints[2] is None
+    assert guest_restraints[3] is None
+    assert guest_restraints[4] is not None
+    assert guest_restraints[5] is None
+
+    # Guest - phi
+    r = DAT_restraint()
+    r.amber_index = True
+    r.continuous_apr = True
+    r.auto_apr = True
+    r.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r.mask1 = ":DM3"
+    r.mask2 = ":DM2"
+    r.mask3 = ":DM1"
+    r.mask4 = ":BUT@C3"
+    r.attach["target"] = 120.0
+    r.attach["num_windows"] = 15
+    r.attach["fc_initial"] = 0.0
+    r.attach["fc_final"] = 100.0
+    r.pull["fc"] = r.attach["fc_final"]
+    r.pull["num_windows"] = 46
+    r.pull["target_initial"] = r.attach["target"]
+    r.pull["target_final"] = 120.0
+    r.release["target"] = r.pull["target_final"]
+    r.release["num_windows"] = r.attach["num_windows"]
+    r.release["fc_initial"] = r.attach["fc_initial"]
+    r.release["fc_final"] = r.attach["fc_final"]
+    r.initialize()
+    restraints.append(r)
+
+    guest_restraints = extract_guest_restraints(structure, restraints, "BUT")
+
+    assert guest_restraints[0] is not None
+    assert guest_restraints[1] is not None
+    assert guest_restraints[2] is not None
+    assert guest_restraints[3] is None
+    assert guest_restraints[4] is not None
+    assert guest_restraints[5] is None
+
+    # Guest - alpha
+    r = DAT_restraint()
+    r.amber_index = True
+    r.continuous_apr = True
+    r.auto_apr = True
+    r.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r.mask1 = ":DM2"
+    r.mask2 = ":DM1"
+    r.mask3 = ":BUT@C3"
+    r.mask4 = ":BUT@C"
+    r.attach["target"] = 50.0
+    r.attach["num_windows"] = 15
+    r.attach["fc_initial"] = 0.0
+    r.attach["fc_final"] = 100.0
+    r.pull["fc"] = r.attach["fc_final"]
+    r.pull["num_windows"] = 46
+    r.pull["target_initial"] = r.attach["target"]
+    r.pull["target_final"] = 50.0
+    r.release["target"] = r.pull["target_final"]
+    r.release["num_windows"] = r.attach["num_windows"]
+    r.release["fc_initial"] = r.attach["fc_initial"]
+    r.release["fc_final"] = r.attach["fc_final"]
+    r.initialize()
+    restraints.append(r)
+
+    guest_restraints = extract_guest_restraints(structure, restraints, "BUT")
+
+    assert guest_restraints[0] is not None
+    assert guest_restraints[1] is not None
+    assert guest_restraints[2] is not None
+    assert guest_restraints[3] is not None
+    assert guest_restraints[4] is not None
+    assert guest_restraints[5] is None
+
+    # Guest - gamma
+    r = DAT_restraint()
+    r.amber_index = True
+    r.continuous_apr = True
+    r.auto_apr = True
+    r.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r.mask1 = ":DM1"
+    r.mask2 = ":BUT@C3"
+    r.mask3 = ":BUT@C"
+    r.mask4 = ":BUT@C2"
+    r.attach["target"] = 50.0
+    r.attach["num_windows"] = 15
+    r.attach["fc_initial"] = 0.0
+    r.attach["fc_final"] = 100.0
+    r.pull["fc"] = r.attach["fc_final"]
+    r.pull["num_windows"] = 46
+    r.pull["target_initial"] = r.attach["target"]
+    r.pull["target_final"] = 50.0
+    r.release["target"] = r.pull["target_final"]
+    r.release["num_windows"] = r.attach["num_windows"]
+    r.release["fc_initial"] = r.attach["fc_initial"]
+    r.release["fc_final"] = r.attach["fc_final"]
+    r.initialize()
+    restraints.append(r)
+
+    guest_restraints = extract_guest_restraints(structure, restraints, "BUT")
+
+    assert guest_restraints[0] is not None
+    assert guest_restraints[1] is not None
+    assert guest_restraints[2] is not None
+    assert guest_restraints[3] is not None
+    assert guest_restraints[4] is not None
+    assert guest_restraints[5] is not None

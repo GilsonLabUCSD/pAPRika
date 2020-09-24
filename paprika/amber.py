@@ -25,7 +25,7 @@ class Simulation(object):
     def executable(self):
         """str: The AMBER executable that will be used.
 
-        .. note ::
+        .. note::
             This could be made safer by making an ``ENUM`` of ``sander``, ``pmemd`` and ``pmemd.cuda``.
         """
         return self._executable
@@ -47,7 +47,7 @@ class Simulation(object):
     def phase(self):
         """str: Which phase of the calculation to simulate.
 
-        .. note ::
+        .. note::
             This could probably be combined with the ``window`` attribute for simplicity.
         """
         return self._phase
@@ -78,7 +78,7 @@ class Simulation(object):
     def restraint_file(self):
         """os.PathLike: The file containing NMR-style restraints for AMBER.
 
-        .. note ::
+        .. note::
             When running AMBER simulations, you can only use either an AMBER NMR-style
             restraints or a Plumed-style restraints and not both.
         """
@@ -92,7 +92,7 @@ class Simulation(object):
     def plumed_file(self) -> str:
         """os.PathLike: The name of the Plumed-style restraints file for AMBER.
 
-        .. note ::
+        .. note::
             When running AMBER simulations, you can only use either an AMBER NMR-style
             restraints or a Plumed-style restraints and not both.
         """
@@ -118,7 +118,7 @@ class Simulation(object):
     def converged(self) -> bool:
         """bool: Whether the simulation is converged.
 
-        .. warning ::
+        .. warning::
             This is just a placeholder and is not implemented yet.
         """
         return self._converged
@@ -153,20 +153,17 @@ class Simulation(object):
         attribute is
         to make it easy to override certain simulation parameters, such as positional restraints on dummy atoms, and
         the inclusion of exclusion of the NMR-style APR restraints.
-
         As of AMBER18, these are described, in part, in chapter 18 on ``pmemd``.
 
-        .. note ::
+        .. note::
             I can't recall why we wanted an ``OrderedDict`` here.
 
-        .. note ::
+        .. note::
             **This is fragile** and this could be hardened by making these ``ENUM``s and doing much more type-checking.
-
             These must be valid AMBER keywords or else the simulation will crash. The default keywords that are set when
             this class is initialized are partially overridden by the specific "config" functions detailed below.
 
         The default dictionary keys and values are as follows:
-
             - ``imin``       : 0
             - ``ntx``        : 1
             - ``irest``      : 0
@@ -196,7 +193,6 @@ class Simulation(object):
             - ``restraintmask`` : ``None``
             - ``nmropt``     : 1
             - ``pencut``     : -1
-
         """
         return self._cntrl
 
@@ -303,7 +299,6 @@ class Simulation(object):
     def _config_min(self):
         """
         Configure input settings for minimization (without periodic boundary conditions).
-
         """
         self.cntrl["imin"] = 1
         self.cntrl["ntx"] = 1
@@ -403,8 +398,7 @@ class Simulation(object):
         f : os.PathLike
             File where the dictionary should be written
         dictionary : dict
-            Dictionary of values
-
+            Dictionary of values.
         """
 
         for key, val in dictionary.items():
@@ -421,7 +415,6 @@ class Simulation(object):
     def _amber_write_input_file(self):
         """
         Write the input file specification to file.
-
         """
         logger.debug("Writing {}".format(self.input))
         with open(os.path.join(self.path, self.input), "w") as f:
@@ -453,12 +446,13 @@ class Simulation(object):
 
         Parameters
         ----------
-        soft_minimize: bool, optional
+        soft_minimize: bool, optional, default=False
             Whether to slowly turn on non-bonded interactions so that restraints get enforced first.
-        overwrite: bool, optional
+        overwrite: bool, optional, default=False
             Whether to overwrite simulation files.
-        fail_ok: bool, optional
+        fail_ok: bool, optional, default=False
             Whether a failing simulation should stop execution of ``pAPRika``.
+
         """
 
         if overwrite or not self.has_timings():
@@ -604,14 +598,13 @@ class Simulation(object):
 
         Parameters
         ----------
-        alternate_file : os.PathLike, optional
-            If present, check for "TIMINGS" in this file rather than ``self.output``. Default: None
+        alternate_file : os.PathLike, optional, default=None
+            If present, check for "TIMINGS" in this file rather than ``self.output``.
 
         Returns
         -------
         timings : bool
             True if "TIMINGS" is found in file. False, otherwise.
-
         """
 
         # Assume not completed

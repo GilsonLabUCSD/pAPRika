@@ -15,6 +15,7 @@ def read_yaml(file):
     ----------
     file: os.PathLike
         A YAML-formatted file.
+
     Returns
     -------
     yaml_data: dict

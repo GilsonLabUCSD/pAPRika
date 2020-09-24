@@ -22,12 +22,10 @@ def amber_restraint_line(restraint, window):
 
     Examples
     --------
-
     .. code-block::
 
         &rst iat= 3,109, r1= 0.0000, r2= 6.9665, r3= 6.9665, r4= 999.0000,
              rk2= 5.0000000, rk3= 5.0000000, &end
-
     Or:
 
     .. code-block::
@@ -36,7 +34,6 @@ def amber_restraint_line(restraint, window):
         80,93,94,97,98, igr2=109,113,115,119,
         r1=     0.0000, r2=     5.9665, r3=     5.9665, r4=   999.0000,
         rk2=   5.0000000, rk3=   5.0000000, &end
-
     """
 
     window, phase = parse_window(window)
@@ -107,4 +104,5 @@ def amber_restraint_line(restraint, window):
             string += " igr4= {}".format(igr4)
 
     string += "  &end\n"
+
     return string

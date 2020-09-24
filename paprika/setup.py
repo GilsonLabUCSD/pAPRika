@@ -30,7 +30,6 @@ class Setup:
     ) -> pmd.Structure:
         """Prepares the coordinates of a host molecule ready for the release phase of
         an APR calculation.
-
         This currently involves aligning the cavity of the host along the z-axis, and
         positioning the host so that its center of geometry at (0, 0, 0).
 
@@ -540,7 +539,6 @@ class Setup:
         into corresponding ``DAT_restraint``objects.
 
         Each 'schema' should be a dictionary with:
-
             * an ``atoms`` entry with a value of the atom selection make which specifies
               which atoms the restraint will apply to
 

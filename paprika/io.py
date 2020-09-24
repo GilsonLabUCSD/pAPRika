@@ -15,11 +15,21 @@ from paprika.restraints import DAT_restraint
 
 
 class NumpyEncoder(json.JSONEncoder):
-    """Save DAT_restraints as JSON by re-encoding `numpy` arrays."""
+    """Save :class:`DAT_restraint` as JSON by re-encoding :class:`numpy` arrays."""
 
     def default(self, obj):
         """If input object is an ndarray it will be converted into a dict
         holding dtype, shape and the data, base64 encoded.
+
+        Parameters
+        ----------
+        obj: str or :class:`parmed.amber.AmberParm`
+            Input object to encode.
+
+        Returns
+        -------
+        json.JSONEncoder
+            Encoded object.
         """
         if isinstance(obj, AmberParm):
             log.info("Encountered AmberParm, returning name.")
@@ -70,10 +80,17 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 def json_numpy_obj_hook(dct):
-    """Decodes a previously encoded numpy ndarray with proper shape and dtype.
+    """Decodes a previously encoded :class:`numpy.ndarray` with proper shape and `dtype`.
 
-    :param dct: (dict) json encoded ndarray
-    :return: (ndarray) if input was an encoded ndarray
+    Parameters
+    ----------
+    dct: dict
+        json encoded ndarray.
+
+    Returns
+    -------
+    dct: :class:`numpy.ndarray`
+        if input was an encoded ndarray.
     """
     if isinstance(dct, dict) and "__ndarray__" in dct:
         data = base64.b64decode(dct["__ndarray__"])
@@ -83,6 +100,15 @@ def json_numpy_obj_hook(dct):
 
 
 def save_restraints(restraint_list, filepath="restraints.json"):
+    """Save a list of :class:`paprika.restraints.DAT_restraint` to a JSON file.
+
+    Parameters
+    ----------
+    restraint_list: list
+        List of :class:`paprika.restraints.DAT_restraint`.
+    filepath: os.PathLike
+        The name of the JSON file to write to.
+    """
     log.debug("Saving restraint information as JSON.")
     with open(os.path.join(filepath), "w") as f:
         for restraint in restraint_list:
@@ -92,6 +118,18 @@ def save_restraints(restraint_list, filepath="restraints.json"):
 
 
 def load_restraints(filepath="restraints.json"):
+    """Load restraints from a JSON file.
+
+    Parameters
+    ----------
+    filepath: os.PathLike
+        The name of the JSON file to load.
+
+    Returns
+    -------
+    restraints: list
+        List of :class:`paprika.restraints.DAT_restraint`.
+    """
     log.debug("Loading restraint information from JSON.")
     with open(os.path.join(filepath), "r") as f:
         json_data = f.read()
@@ -123,4 +161,5 @@ def load_restraints(filepath="restraints.json"):
             if f"_{class_property}" in tmp.__dict__.keys():
                 tmp.__dict__[class_property] = tmp.__dict__[f"_{class_property}"]
         restraints.append(tmp)
+
     return restraints
