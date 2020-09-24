@@ -30,9 +30,9 @@ Index
 
 * :doc:`align`
 * :doc:`analysis`
-* :doc:`amber`
 * :doc:`dummy`
 * :doc:`restraints`
+* :doc:`simulation`
 * :doc:`tleap`
 
 
@@ -43,9 +43,9 @@ Index
 
   align
   analysis
-  amber
   dummy
   restraints
+  simulation
   tleap
 
 
