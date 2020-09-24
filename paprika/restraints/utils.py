@@ -278,11 +278,11 @@ def extract_guest_restraints(structure, restraints, guest_resname, dummy_prefix=
 
 def restraints_from_ascii(filename):
     """
-    Utility function to read in restraints from a simple ASCII file. This is
-    useful when parsing restraints definition from VMD. Since you can mouse-click
-    bonds, angles and dihedrals in VMD it can be faster to define these restraints.
-    One scenario for this is when you want to apply conformational restraints on a
-    host molecule based on a number of distance, angle and torsional restraints.
+    Utility function to read in restraints from a simple ASCII file. This is useful
+    for using VMD to define restraints. Since you can mouse-click bonds, angles and
+    dihedrals in VMD it can be faster to define these restraints. One scenario for
+    this is when you want to apply conformational restraints on a host molecule based
+    on a number of distance, angle and torsional restraints.
 
     The TCL script below is an example of extracting bonds selected in VMD to a file
     with a comma-separated format.
