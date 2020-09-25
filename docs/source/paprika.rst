@@ -12,14 +12,6 @@ paprika.align module
     :undoc-members:
     :show-inheritance:
 
-paprika.amber module
---------------------
-
-.. automodule:: paprika.amber
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 paprika.analysis module
 -----------------------
 
@@ -40,6 +32,14 @@ paprika.restraints module
 -------------------------
 
 .. automodule:: paprika.restraints
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+paprika.simulate module
+-------------------------
+
+.. automodule:: paprika.simulate
     :members:
     :undoc-members:
     :show-inheritance:

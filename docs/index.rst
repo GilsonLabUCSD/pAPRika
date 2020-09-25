@@ -47,6 +47,3 @@ Index
   restraints
   simulation
   tleap
-
-
-.. **Write about convenience functions**
