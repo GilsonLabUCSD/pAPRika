@@ -24,7 +24,7 @@ class BaseSimulation(object):
 
     @property
     def executable(self):
-        """str: The AMBER executable that will be used.
+        """str: The Molecular Dynamics executable that will be used.
 
         .. note::
             This could be made safer by making an ``ENUM`` of ``sander``, ``pmemd`` and ``pmemd.cuda``.
