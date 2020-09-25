@@ -791,14 +791,14 @@ class System(object):
 
         # Check if files exist
         if not os.path.isfile(prmtop):
-            raise FileNotFoundError(f"Cannot find topology file.")
+            raise FileNotFoundError("Cannot find topology file.")
 
         if not os.path.isfile(inpcrd):
             # Check if pdb exist instead
             inpcrd.replace("rst7", "pdb")
 
             if not os.path.isfile(inpcrd):
-                raise FileNotFoundError(f"Cannot find coordinates file.")
+                raise FileNotFoundError("Cannot find coordinates file.")
 
         # Load Amber structure
         structure = pmd.load_file(prmtop, inpcrd, structure=True)
