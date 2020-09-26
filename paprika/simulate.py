@@ -232,10 +232,10 @@ class Amber(BaseSimulation, abc.ABC):
 
     @property
     def restraint_file(self) -> str:
-        """os.PathLike: The file containing NMR-style restraints for AMBER.
+        """os.PathLike: The file containing NMR-style restraints for `AMBER`.
 
         .. note ::
-            When running AMBER simulations, you can only use either an AMBER NMR-style
+            When running `AMBER` simulations, you can only use either an `AMBER` NMR-style
             restraints or a Plumed-style restraints and not both. If both are specified,
             an ``Exception`` will be thrown.
         """
@@ -252,7 +252,7 @@ class Amber(BaseSimulation, abc.ABC):
         to make it easy to override certain simulation parameters, such as positional restraints on dummy atoms, and
         the inclusion of exclusion of the NMR-style APR restraints.
 
-        As of AMBER20, these are described, in part, in chapter 20 on ``pmemd``.
+        As of `AMBER20`, these are described, in part, in chapter 20 on ``pmemd``.
 
         .. note ::
             I can't recall why we wanted an ``OrderedDict`` here.
@@ -552,7 +552,7 @@ class Amber(BaseSimulation, abc.ABC):
 
     def run(self, soft_minimize=False, overwrite=False, fail_ok=False):
         """
-        Method to run Molecular Dynamics simulation with AMBER.
+        Method to run Molecular Dynamics simulation with `AMBER`.
 
         Parameters
         ----------
@@ -683,7 +683,7 @@ class Amber(BaseSimulation, abc.ABC):
     def check_complete(self, alternate_file=None):
         """
         Check for the string "TIMINGS" in ``self.output`` file. If "TIMINGS" is found, then the simulation completed
-        successfully, as of AMBER20.
+        successfully, as of `AMBER20`.
 
         Parameters
         ----------
@@ -694,6 +694,7 @@ class Amber(BaseSimulation, abc.ABC):
         -------
         timings : bool
             True if "TIMINGS" is found in file. False, otherwise.
+
         """
 
         # Assume not completed
@@ -719,16 +720,16 @@ class Amber(BaseSimulation, abc.ABC):
 
 class Gromacs(BaseSimulation, abc.ABC):
     """
-    A wrapper that can be used to set GROMACS simulation parameters.
+    A wrapper that can be used to set `GROMACS` simulation parameters.
 
     .. todo ::
-        possibly modify this module to use the official python wrapper of GROMACS.
+        possibly modify this module to use the official python wrapper of `GROMACS`.
 
     """
 
     @property
     def index_file(self) -> str:
-        """os.PathLike: GROMACS index file that specifies ``groups`` in the system. This is optional for a GROMACS
+        """os.PathLike: `GROMACS` index file that specifies ``groups`` in the system. This is optional for a `GROMACS`
         simulation."""
         return self._index_file
 
@@ -738,7 +739,7 @@ class Gromacs(BaseSimulation, abc.ABC):
 
     @property
     def checkpoint(self) -> str:
-        """os.PathLike: GROMACS checkpoint file (extension is .cpt) that is parsed to ``GROMACS``."""
+        """os.PathLike: Checkpoint file (extension is .cpt) for starting a simulation from a previous state."""
         return self._checkpoint
 
     @checkpoint.setter
@@ -836,9 +837,9 @@ class Gromacs(BaseSimulation, abc.ABC):
 
         .. code::
 
-            gmx mdrun -deffnm ``prefix`` -nt ``nthreads`` -gpu_id ``gpu_devices`` -plumed ``plumed.dat``
+            gmx mdrun -deffnm ``prefix`` -nt ``n_threads`` -gpu_id ``gpu_devices`` -plumed ``plumed.dat``
 
-        This is useful depending on how GROMACS was compiled, e.g. if GROMACS is compiled with the MPI library the
+        This is useful depending on how `GROMACS` was compiled, e.g. if `GROMACS` is compiled with the MPI library the
         you will need to use the command below:
 
         .. code::
@@ -850,6 +851,15 @@ class Gromacs(BaseSimulation, abc.ABC):
     @custom_mdrun_command.setter
     def custom_mdrun_command(self, value: str):
         self._custom_mdrun_command = value
+
+    @property
+    def grompp_maxwarn(self) -> int:
+        """"int: Maximum number of warnings for `GROMPP` to ignore. default=1."""
+        return self._grompp_maxwarn
+
+    @grompp_maxwarn.setter
+    def grompp_maxwarn(self, value: int):
+        self._grompp_maxwarn = value
 
     def __init__(self):
 
@@ -863,6 +873,7 @@ class Gromacs(BaseSimulation, abc.ABC):
         self._tc_groups = None
         self._temperature = 298.15
         self._pressure = 1.01325
+        self._grompp_maxwarn = 1
 
         # File names
         self.input = self._prefix + ".mdp"
@@ -888,7 +899,7 @@ class Gromacs(BaseSimulation, abc.ABC):
         self._nb_method = OrderedDict()
         self._nb_method["cutoff-scheme"] = "Verlet"
         self._nb_method["ns_type"] = "grid"
-        self._nb_method["nstlist"] = 20
+        self._nb_method["nstlist"] = 10
         self._nb_method["rlist"] = 0.9
         self._nb_method["rcoulomb"] = 0.9
         self._nb_method["rvdw"] = 0.9
@@ -928,12 +939,12 @@ class Gromacs(BaseSimulation, abc.ABC):
 
         self.thermostat["tcoupl"] = "v-rescale"
         self.thermostat["tc-grps"] = "System"
-        self.thermostat["ref_t"] = (
-            self.temperature if self.temperature is not None else 298.15
-        )
+        self.thermostat["ref_t"] = self.temperature
         self.thermostat["tau_t"] = 0.1
         if self.tc_groups:
             self.thermostat["tc-grps"] = self.tc_groups
+            self.thermostat["tau_t"] = [0.1 for i in range(len(self.tc_groups))]
+            self.thermostat["ref_t"] = [self.temperature for i in range(len(self.tc_groups))]
 
     def config_pbc_md(self, ensemble="npt"):
         """
@@ -943,6 +954,7 @@ class Gromacs(BaseSimulation, abc.ABC):
         ----------
         ensemble: str, optional, default='npt'
             Configure MD setting to use ``nvt`` or ``npt``.
+
         """
         if ensemble.lower() not in ["nvt", "npt"]:
             raise Exception(f"Thermodynamic ensemble {ensemble} is not supported.")
@@ -951,8 +963,9 @@ class Gromacs(BaseSimulation, abc.ABC):
         self.title = f"{ensemble.upper()} MD Simulation"
 
         if ensemble.lower() == "nvt":
+            self.barostat["pcoupl"] = "no"
             self.thermostat["gen_vel"] = "yes"
-            self.thermostat["gen_temp"] = self.thermostat["ref_t"]
+            self.thermostat["gen_temp"] = self.temperature
             self.thermostat["gen_seed"] = -1
 
         elif ensemble.lower() == "npt":
@@ -1010,16 +1023,19 @@ class Gromacs(BaseSimulation, abc.ABC):
                 mdp.write("; Pressure coupling\n")
                 self._write_dict_to_mdp(mdp, self.barostat)
 
-    def run(self, overwrite=False, fail_ok=False):
+    def run(self, run_grompp=True, overwrite=False, fail_ok=False):
         """
-        Method to run Molecular Dynamics simulation with GROMACS.
+        Method to run Molecular Dynamics simulation with `GROMACS`.
 
         Parameters
         ----------
+        run_grompp: bool, optional, default=True
+            Run `GROMPP` to generate ``.tpr`` file before running `MDRUN`
         overwrite: bool, optional, default=False
             Whether to overwrite simulation files.
         fail_ok: bool, optional, default=False
             Whether a failing simulation should stop execution of ``pAPRika``.
+
         """
         if overwrite or not self.check_complete():
             # Write MDF input file
@@ -1044,47 +1060,50 @@ class Gromacs(BaseSimulation, abc.ABC):
 
             # create executable list for GROMPP
             # gmx grompp -f npt.mdp -c nvt.gro -p bcd-hep.top -t nvt.cpt -o npt.tpr -n index.ndx
-            grompp_list = [self.executable, "grompp"]
+            if run_grompp:
+                grompp_list = [self.executable, "grompp"]
 
-            grompp_list += [
-                "-f",
-                self.input,
-                "-p",
-                self.topology,
-                "-c",
-                self.coordinates,
-                "-o",
-                self.tpr,
-                "-po",
-                self.output,
-            ]
-            if self.checkpoint:
-                grompp_list += ["-t", self.checkpoint]
+                grompp_list += [
+                    "-f",
+                    self.input,
+                    "-p",
+                    self.topology,
+                    "-c",
+                    self.coordinates,
+                    "-o",
+                    self.tpr,
+                    "-po",
+                    self.output,
+                    "-maxwarn",
+                    str(self.grompp_maxwarn),
+                ]
+                if self.checkpoint:
+                    grompp_list += ["-t", self.checkpoint]
 
-            if self.index_file:
-                grompp_list += ["-n", self.index_file]
+                if self.index_file:
+                    grompp_list += ["-n", self.index_file]
 
-            # Run GROMPP
-            grompp_output = sp.Popen(
-                grompp_list,
-                cwd=self.path,
-                stdout=sp.PIPE,
-                stderr=sp.PIPE,
-                env=os.environ,
-            )
-            grompp_stdout = grompp_output.stdout.read().splitlines()
-            grompp_stderr = grompp_output.stderr.read().splitlines()
+                # Run GROMPP
+                grompp_output = sp.Popen(
+                    grompp_list,
+                    cwd=self.path,
+                    stdout=sp.PIPE,
+                    stderr=sp.PIPE,
+                    env=os.environ,
+                )
+                grompp_stdout = grompp_output.stdout.read().splitlines()
+                grompp_stderr = grompp_output.stderr.read().splitlines()
 
-            # Report any stdout/stderr which are output from execution
-            if grompp_stdout:
-                logger.debug("STDOUT received from GROMACS execution")
-                for line in grompp_stdout:
-                    logger.debug(line)
+                # Report any stdout/stderr which are output from execution
+                if grompp_stdout:
+                    logger.debug("STDOUT received from GROMACS execution")
+                    for line in grompp_stdout:
+                        logger.info(line)
 
-            if grompp_stderr:
-                logger.debug("STDERR received from GROMACS execution")
-                for line in grompp_stderr:
-                    logger.debug(line)
+                if grompp_stderr:
+                    logger.debug("STDERR received from GROMACS execution")
+                    for line in grompp_stderr:
+                        logger.info(line)
 
             # create executable list for MDRUN
             # gmx_mpi mdrun -v -deffnm nvt -nt 6 -gpu_id 0 -plumed plumed.dat
@@ -1111,7 +1130,10 @@ class Gromacs(BaseSimulation, abc.ABC):
                         for cpu in ["-nt", "-ntomp", "-ntmpi", "-ntomp_pme"]
                     ]
                 ):
-                    mdrun_list += ["-nt", f"{self.nthreads}"]
+                    mdrun_list += [
+                        "-ntomp" if "mpi" in self.executable else "-nt", 
+                        f"{self.n_threads}",
+                    ]
 
                 # Add gpu id if not already specified in custom
                 if (
@@ -1128,7 +1150,10 @@ class Gromacs(BaseSimulation, abc.ABC):
                 mdrun_list += [self.executable, "mdrun", "-deffnm", self.prefix]
 
                 # Add number of threads
-                mdrun_list += ["-nt", f"{self.nthreads}"]
+                mdrun_list += [
+                    "-ntomp" if "mpi" in self.executable else "-nt", 
+                    f"{self.n_threads}",
+                ]
 
                 # Add gpu id
                 if self.gpu_devices is not None:
@@ -1153,12 +1178,12 @@ class Gromacs(BaseSimulation, abc.ABC):
             if mdrun_out:
                 logger.debug("STDOUT received from MDRUN execution")
                 for line in mdrun_out:
-                    logger.debug(line)
+                    logger.info(line)
 
             if mdrun_err:
                 logger.debug("STDERR received from MDRUN execution")
                 for line in mdrun_err:
-                    logger.debug(line)
+                    logger.info(line)
 
             # Check completion status
             if (
@@ -1198,6 +1223,7 @@ class Gromacs(BaseSimulation, abc.ABC):
         -------
         complete : bool
             True if "step N" is found in file. False, otherwise.
+
         """
         # Assume not completed
         complete = False
@@ -1222,3 +1248,4 @@ class Gromacs(BaseSimulation, abc.ABC):
             logger.debug("{} does not have TIMINGS".format(output_file))
 
         return complete
+
