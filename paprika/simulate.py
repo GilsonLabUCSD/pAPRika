@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class BaseSimulation(object):
     """
-    A base class for a Molecular Dynamics simulation wrapper.
+    Base class for a Molecular Dynamics simulation wrapper.
     """
 
     @property
@@ -1098,12 +1098,12 @@ class Gromacs(BaseSimulation, abc.ABC):
 
                 # Report any stdout/stderr which are output from execution
                 if grompp_stdout:
-                    logger.debug("STDOUT received from GROMACS execution")
+                    logger.info("STDOUT received from GROMACS execution")
                     for line in grompp_stdout:
                         logger.info(line)
 
                 if grompp_stderr:
-                    logger.debug("STDERR received from GROMACS execution")
+                    logger.info("STDERR received from GROMACS execution")
                     for line in grompp_stderr:
                         logger.info(line)
 
@@ -1178,12 +1178,12 @@ class Gromacs(BaseSimulation, abc.ABC):
 
             # Report any stdout/stderr which are output from execution
             if mdrun_out:
-                logger.debug("STDOUT received from MDRUN execution")
+                logger.info("STDOUT received from MDRUN execution")
                 for line in mdrun_out:
                     logger.info(line)
 
             if mdrun_err:
-                logger.debug("STDERR received from MDRUN execution")
+                logger.info("STDERR received from MDRUN execution")
                 for line in mdrun_err:
                     logger.info(line)
 
