@@ -806,9 +806,9 @@ class System(object):
         # Save to Gromacs *.top and *.gro file
         top_file = file_name + ".top"
         gro_file = file_name + ".gro"
-        
+
         if overwrite:
-            structure.save(top_file, format='gromacs', overwrite=True)
+            structure.save(top_file, format="gromacs", overwrite=True)
             structure.save(gro_file, overwrite=True)
         else:
             if not os.path.isfile(top_file):
@@ -820,4 +820,3 @@ class System(object):
                 structure.save(gro_file)
             else:
                 log.info(f"Coordinates file {gro_file} exists, skipping writing file.")
-

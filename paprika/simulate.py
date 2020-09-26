@@ -944,7 +944,9 @@ class Gromacs(BaseSimulation, abc.ABC):
         if self.tc_groups:
             self.thermostat["tc-grps"] = self.tc_groups
             self.thermostat["tau_t"] = [0.1 for i in range(len(self.tc_groups))]
-            self.thermostat["ref_t"] = [self.temperature for i in range(len(self.tc_groups))]
+            self.thermostat["ref_t"] = [
+                self.temperature for i in range(len(self.tc_groups))
+            ]
 
     def config_pbc_md(self, ensemble="npt"):
         """
@@ -1131,7 +1133,7 @@ class Gromacs(BaseSimulation, abc.ABC):
                     ]
                 ):
                     mdrun_list += [
-                        "-ntomp" if "mpi" in self.executable else "-nt", 
+                        "-ntomp" if "mpi" in self.executable else "-nt",
                         f"{self.n_threads}",
                     ]
 
@@ -1151,7 +1153,7 @@ class Gromacs(BaseSimulation, abc.ABC):
 
                 # Add number of threads
                 mdrun_list += [
-                    "-ntomp" if "mpi" in self.executable else "-nt", 
+                    "-ntomp" if "mpi" in self.executable else "-nt",
                     f"{self.n_threads}",
                 ]
 
@@ -1248,4 +1250,3 @@ class Gromacs(BaseSimulation, abc.ABC):
             logger.debug("{} does not have TIMINGS".format(output_file))
 
         return complete
-
