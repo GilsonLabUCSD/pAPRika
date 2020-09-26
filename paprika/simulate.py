@@ -1065,7 +1065,7 @@ class Gromacs(BaseSimulation, abc.ABC):
             if run_grompp:
 
                 # Clean previously generated files
-                for file in glob.glob(os.path.join(self.path, f"{self.prefix}.*")):
+                for file in glob.glob(os.path.join(self.path, f"{self.prefix}*")):
                     os.remove(file)
 
                 # Write MDF input file
