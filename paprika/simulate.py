@@ -1065,7 +1065,7 @@ class Gromacs(BaseSimulation, abc.ABC):
             if run_grompp:
 
                 # Clean previously generated files
-                for file in glob.glob(f"{self.prefix}.*"):
+                for file in glob.glob(os.path.join(self.path, f"{self.prefix}.*")):
                     os.remove(file)
 
                 # Write MDF input file
@@ -1114,7 +1114,7 @@ class Gromacs(BaseSimulation, abc.ABC):
                 # Not sure how to do this more efficiently/elegantly, "subprocess" seems to treat everything
                 # Gromacs spits out from "grompp" as an error.
                 if grompp_stderr and any(
-                    ["Error" in line.decode("ASCII") for line in grompp_stderr]
+                    ["Error" in line.decode("utf-8").strip() for line in grompp_stderr]
                 ):
                     logger.info("STDERR received from GROMACS execution")
                     for line in grompp_stderr:
@@ -1197,7 +1197,7 @@ class Gromacs(BaseSimulation, abc.ABC):
 
             # Same reasoning as before for "grompp".
             if mdrun_err and any(
-                ["Error" in line.decode("ASCII") for line in mdrun_err]
+                ["Error" in line.decode("utf-8").strip() for line in mdrun_err]
             ):
                 logger.info("STDERR received from MDRUN execution")
                 for line in mdrun_err:
