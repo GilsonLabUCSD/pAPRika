@@ -789,7 +789,7 @@ class System(object):
         prmtop = file_name + ".prmtop"
         inpcrd = file_name + ".rst7"
 
-        # Check if files exist
+        # Check if Amber files exist
         if not os.path.isfile(prmtop):
             raise FileNotFoundError("Cannot find topology file.")
 
@@ -804,5 +804,20 @@ class System(object):
         structure = pmd.load_file(prmtop, inpcrd, structure=True)
 
         # Save to Gromacs *.top and *.gro file
-        structure.save(file_name + ".top", overwrite=overwrite)
-        structure.save(file_name + ".gro", overwrite=overwrite)
+        top_file = file_name + ".top"
+        gro_file = file_name + ".gro"
+        
+        if overwrite:
+            structure.save(top_file, format='gromacs', overwrite=True)
+            structure.save(gro_file, overwrite=True)
+        else:
+            if not os.path.isfile(top_file):
+                structure.save(top_file)
+            else:
+                log.info(f"Topology file {top_file} exists, skipping writing file.")
+
+            if not os.path.isfile(gro_file):
+                structure.save(gro_file)
+            else:
+                log.info(f"Coordinates file {gro_file} exists, skipping writing file.")
+
