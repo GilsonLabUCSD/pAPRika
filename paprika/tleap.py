@@ -764,19 +764,19 @@ class System(object):
 
     def convert_to_gromacs(self, overwrite=False, output_path=None, output_prefix=None):
         """
-        Convert Amber topology and coordinate files to Gromacs format.
+        Convert `AMBER` topology and coordinate files to `GROMACS` format.
 
         Parameters
         ----------
         overwrite: bool, optional, default=False
-            Option to overwrite Gromacs ``.top`` and ``.gro`` files if they already
+            Option to overwrite `GROMACS` ``.top`` and ``.gro`` files if they already
             exists in the folder.
         output_path: str, optional, default=None
-            Alternate directory path where the Amber files are located. Default is the
-            path parsed to the System object.
+            Alternate directory path where the `AMBER` files are located. Default is the
+            `path` parsed to the :class:`paprika.tleap.System` object.
         output_prefix: str, optional, default=None
-            Alternate file name prefix for the Amber files. Default is the path parsed
-            to the System object.
+            Alternate file name prefix for the Amber files. Default is the `prefix` parsed
+            to the :class:`paprika.tleap.System` object.
         """
 
         if output_path is None:
@@ -786,26 +786,26 @@ class System(object):
             output_prefix = self.output_prefix
 
         file_name = os.path.join(output_path, output_prefix)
-        prmtop = file_name + ".prmtop"
-        inpcrd = file_name + ".rst7"
+        prmtop = f"{file_name}.prmtop"
 
         # Check if Amber files exist
         if not os.path.isfile(prmtop):
             raise FileNotFoundError("Cannot find topology file.")
 
-        if not os.path.isfile(inpcrd):
-            # Check if pdb exist instead
-            inpcrd.replace("rst7", "pdb")
+        coordinates = [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "pdb"]]
+        check_coordinates = [os.path.isfile(file) for file in coordinates]
+        if not any(check_coordinates):
+            raise FileNotFoundError("Cannot find any coordinates file.")
 
-            if not os.path.isfile(inpcrd):
-                raise FileNotFoundError("Cannot find coordinates file.")
+        # Get the first coordinates in the list the exists
+        inpcrd = coordinates[check_coordinates is True][0]
 
         # Load Amber structure
         structure = pmd.load_file(prmtop, inpcrd, structure=True)
 
         # Save to Gromacs *.top and *.gro file
-        top_file = file_name + ".top"
-        gro_file = file_name + ".gro"
+        top_file = f"{file_name}.top"
+        gro_file = f"{file_name}.gro"
 
         if overwrite:
             structure.save(top_file, format="gromacs", overwrite=True)
