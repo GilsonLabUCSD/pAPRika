@@ -319,7 +319,7 @@ class Plumed:
 
         return atom_index
 
-    def add_dummy_atoms_to_file(self, structure, window, path=None):
+    def add_dummy_atom_restraints(self, structure, window, path=None):
         """
         Add positional restraints on dummy atoms to the Plumed restraint files.
 
@@ -330,7 +330,7 @@ class Plumed:
         window: str
             APR window where the structure is stored for extracting the dummy atom positions.
         path: os.PathLike, optional, default=None
-            Path of the plumed.dat file. If set to ``None`` (default) self.path will be used.
+            Path of the ``plumed.dat`` file. If set to ``None`` (default) self.path will be used.
 
         """
         # Load structure file
