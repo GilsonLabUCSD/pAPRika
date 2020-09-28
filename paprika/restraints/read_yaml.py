@@ -34,21 +34,23 @@ def read_yaml(file):
     return yaml_data
 
 
-def multiple_replace(dict, text):
+def multiple_replace(dct, text):
     """
     Create a regular expression to do multiple find and replace.
     """
-    # Create a regular expression  from the dictionary keys
-    regex = re.compile("(%s)" % "|".join(map(re.escape, dict.keys())))
+
+    # Create a regular expression from the dictionary keys
+    regex = re.compile("(%s)" % "|".join(map(re.escape, dct.keys())))
 
     # For each match, look-up corresponding value in dictionary
-    return regex.sub(lambda mo: dict[mo.string[mo.start() : mo.end()]], text)
+    return regex.sub(lambda mo: dct[mo.string[mo.start() : mo.end()]], text)
 
 
 def de_alias(yaml_data):
     """
     Replace aliased atoms in a ``taproom`` recipe.
     """
+
     mapping_list = yaml_data["aliases"]
     mapping_dictionary = {}
 
