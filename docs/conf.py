@@ -61,7 +61,12 @@ autosummary_generate = True
 autodoc_default_flags = ["members", "inherited-members"]
 autodoc_member_order = "bysource"  # preserve ordering in source
 
-autodoc_mock_imports = ["pytraj"]
+autodoc_mock_imports = [
+    "pydantic",
+    "pytraj",
+    "scipy",
+    "typing_extensions",
+]
 
 # Autolabel settings
 autosectionlabel_maxdepth = 3
@@ -118,6 +123,12 @@ html_theme_options = {"prev_next_buttons_location": None, "sticky_navigation": F
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+html_context = {
+    'css_files': [
+        '_static/css/theme_overrides.css',  # override wide tables in RTD theme
+    ],
+}
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
