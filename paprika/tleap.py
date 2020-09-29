@@ -812,7 +812,7 @@ class System(object):
             structure.save(gro_file, overwrite=True)
         else:
             if not os.path.isfile(top_file):
-                structure.save(top_file)
+                structure.save(top_file, format="gromacs")
             else:
                 log.info(f"Topology file {top_file} exists, skipping writing file.")
 

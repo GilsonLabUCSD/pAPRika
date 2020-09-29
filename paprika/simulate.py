@@ -1,4 +1,5 @@
 import abc
+import glob
 import logging
 import os
 import subprocess as sp
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class BaseSimulation(object):
     """
-    A base class for a Molecular Dynamics simulation wrapper.
+    Base class for a Molecular Dynamics simulation wrapper.
     """
 
     @property
@@ -729,7 +730,7 @@ class Gromacs(BaseSimulation, abc.ABC):
 
     @property
     def index_file(self) -> str:
-        """os.PathLike: `GROMACS` index file that specifies ``groups`` in the system. This is optional for a `GROMACS`
+        """os.PathLike: `GROMACS` index file that specifies ``groups`` in the system. This is optional in a `GROMACS`
         simulation."""
         return self._index_file
 
@@ -1039,10 +1040,9 @@ class Gromacs(BaseSimulation, abc.ABC):
             Whether a failing simulation should stop execution of ``pAPRika``.
 
         """
-        if overwrite or not self.check_complete():
-            # Write MDF input file
-            self._write_input_file()
 
+        if overwrite or not self.check_complete():
+            # Check the type of simulation: Minimization, NVT or NPT
             if self.control["integrator"] in ["steep", "cg", "l-bfgs"]:
                 logger.info("Running Minimization at {}".format(self.path))
             elif self.control["integrator"] in [
@@ -1061,8 +1061,17 @@ class Gromacs(BaseSimulation, abc.ABC):
             self._set_plumed_kernel()
 
             # create executable list for GROMPP
-            # gmx grompp -f npt.mdp -c nvt.gro -p bcd-hep.top -t nvt.cpt -o npt.tpr -n index.ndx
+            # gmx grompp -f npt.mdp -c coordinates.gro -p topology.top -t checkpoint.cpt -o npt.tpr -n index.ndx
             if run_grompp:
+
+                # Clean previously generated files
+                for file in glob.glob(os.path.join(self.path, f"{self.prefix}*")):
+                    os.remove(file)
+
+                # Write MDF input file
+                self._write_input_file()
+
+                # GROMPP list
                 grompp_list = [self.executable, "grompp"]
 
                 grompp_list += [
@@ -1098,17 +1107,21 @@ class Gromacs(BaseSimulation, abc.ABC):
 
                 # Report any stdout/stderr which are output from execution
                 if grompp_stdout:
-                    logger.debug("STDOUT received from GROMACS execution")
+                    logger.info("STDOUT received from GROMACS execution")
                     for line in grompp_stdout:
                         logger.info(line)
 
-                if grompp_stderr:
-                    logger.debug("STDERR received from GROMACS execution")
+                # Not sure how to do this more efficiently/elegantly, "subprocess" seems to treat everything
+                # Gromacs spits out from "grompp" as an error.
+                if grompp_stderr and any(
+                    ["Error" in line.decode("utf-8").strip() for line in grompp_stderr]
+                ):
+                    logger.info("STDERR received from GROMACS execution")
                     for line in grompp_stderr:
-                        logger.info(line)
+                        logger.error(line)
 
             # create executable list for MDRUN
-            # gmx_mpi mdrun -v -deffnm nvt -nt 6 -gpu_id 0 -plumed plumed.dat
+            # gmx_mpi mdrun -v -deffnm npt -nt 6 -gpu_id 0 -plumed plumed.dat
             mdrun_list = []
 
             # Add any user specified command
@@ -1134,7 +1147,7 @@ class Gromacs(BaseSimulation, abc.ABC):
                 ):
                     mdrun_list += [
                         "-ntomp" if "mpi" in self.executable else "-nt",
-                        f"{self.n_threads}",
+                        str(self.n_threads),
                     ]
 
                 # Add gpu id if not already specified in custom
@@ -1142,7 +1155,7 @@ class Gromacs(BaseSimulation, abc.ABC):
                     self.gpu_devices is not None
                     and "-gpu_id" not in self.custom_mdrun_command
                 ):
-                    mdrun_list += ["-gpu_id", f"{self.gpu_devices}"]
+                    mdrun_list += ["-gpu_id", str(self.gpu_devices)]
 
                 # Add plumed file if not already specified in custom
                 if self.plumed_file and "-plumed" not in self.custom_mdrun_command:
@@ -1154,12 +1167,12 @@ class Gromacs(BaseSimulation, abc.ABC):
                 # Add number of threads
                 mdrun_list += [
                     "-ntomp" if "mpi" in self.executable else "-nt",
-                    f"{self.n_threads}",
+                    str(self.n_threads),
                 ]
 
                 # Add gpu id
                 if self.gpu_devices is not None:
-                    mdrun_list += ["-gpu_id", f"{self.gpu_devices}"]
+                    mdrun_list += ["-gpu_id", str(self.gpu_devices)]
 
                 # Add plumed file
                 if self.plumed_file is not None:
@@ -1178,14 +1191,17 @@ class Gromacs(BaseSimulation, abc.ABC):
 
             # Report any stdout/stderr which are output from execution
             if mdrun_out:
-                logger.debug("STDOUT received from MDRUN execution")
+                logger.info("STDOUT received from MDRUN execution")
                 for line in mdrun_out:
                     logger.info(line)
 
-            if mdrun_err:
-                logger.debug("STDERR received from MDRUN execution")
+            # Same reasoning as before for "grompp".
+            if mdrun_err and any(
+                ["Error" in line.decode("utf-8").strip() for line in mdrun_err]
+            ):
+                logger.info("STDERR received from MDRUN execution")
                 for line in mdrun_err:
-                    logger.info(line)
+                    logger.error(line)
 
             # Check completion status
             if (
