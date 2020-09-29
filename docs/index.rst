@@ -46,7 +46,7 @@ todo: explain APR theory (add images/diagram and equations)
 .. math ::
 
    \begin{eqnarray}
-      \Delta G^{\circ}_{b} = -(W_{attach} + W_{pull} + W_{release-conf} + W_{release-std})
+      \Delta G^\circ_\text{bind} = -(W_\text{attach} + W_\text{pull} + W_\text{release-conf} + W_\text{release-std})
    \end{eqnarray}
 
 .. image :: _static/images/pmf.png
@@ -57,9 +57,9 @@ todo: explain APR theory (add images/diagram and equations)
 .. math ::
 
    \begin{eqnarray}
-      W_{release-std} & = & RT\,\text{ln}\left( \frac{C^{\circ}}{8\pi^2} \right) \\
-                      & + & RT\,\text{ln}\left(\int^{\infty}_{0}\int^{\pi}_{0}\int^{2\pi}_{0} e^{-\beta U(r,\theta,\phi)} r^2 \text{sin}(\theta) \, d\phi d\theta dr \right) \\
-                      & + & RT\,\text{ln}\left(\int^{2\pi}_{0}\int^{\pi}_{0}\int^{2\pi}_{0} e^{-\beta U(\alpha,\beta,\gamma)} \text{sin}(\theta) \, d\alpha d\beta d\gamma \right)
+      W_\text{release-std} & = & RT\,\text{ln}\left( \frac{C^{\circ}}{8\pi^2} \right) \\
+                           & + & RT\,\text{ln}\left(\int^{\infty}_{0}\int^{\pi}_{0}\int^{2\pi}_{0} e^{-\beta U(r,\theta,\phi)} r^2 \text{sin}(\theta) \, d\phi d\theta dr \right) \\
+                           & + & RT\,\text{ln}\left(\int^{2\pi}_{0}\int^{\pi}_{0}\int^{2\pi}_{0} e^{-\beta U(\alpha,\beta,\gamma)} \text{sin}(\theta) \, d\alpha d\beta d\gamma \right)
    \end{eqnarray}
 
 
@@ -71,7 +71,7 @@ todo: Write about how to calculate binding enthalpy
 .. math ::
 
    \begin{eqnarray}
-   \Delta H_{bind} = \left<U_{bound} \right> - \left<U_{unbound} \right>
+   \Delta H_\text{bind} = \left<U_\text{bound} \right> - \left<U_\text{unbound} \right>
    \end{eqnarray}
 
 
@@ -133,8 +133,7 @@ References
 **********
 1. Velez-Vega, C. & Gilson, M. K. Overcoming Dissipation in the Calculation of Standard Binding Free Energies by Ligand Extraction. J. Comput. Chem. 34, 2360–2371 (2013).
 2. Fenley, A. T., Henriksen, N. M., Muddana, H. S. & Gilson, M. K. Bridging calorimetry and simulation through precise calculations of cucurbituril-guest binding enthalpies. J. Chem. Theory Comput. 10, 4069–4078 (2014).
-3. Henriksen, N. M., Fenley, A. T. & Gilson, M. K. Computational Calorimetry: High-Precision Calculation of Host−Guest Binding Thermodynamics. J. Comput. Theory Nanosci. 11, 4377–4394 (2015).
-
+3. Henriksen, N. M., Fenley, A. T. & Gilson, M. K. Computational Calorimetry: High-Precision Calculation of Host−Guest Binding Thermodynamics. J. Chem. Theory Comput. 11, 4377–4394 (2015).
 
 
 
