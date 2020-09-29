@@ -7,6 +7,8 @@ Analysis
 .. automodule:: paprika.analyze
    :members:
    :undoc-members:
+   :noindex:
+   :show-inheritance:
 
 
 Setup
@@ -14,3 +16,4 @@ Setup
 .. automodule:: paprika.setup
    :members:
    :undoc-members:
+   :show-inheritance:

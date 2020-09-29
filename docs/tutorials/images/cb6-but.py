@@ -1,11 +1,13 @@
-import cPickle, base64
+import base64
+
+import cPickle
 
 try:
     from SimpleSession.versions.v65 import (
         beginRestore,
+        checkVersion,
         registerAfterModelsCB,
         reportRestoreError,
-        checkVersion,
     )
 except ImportError:
     from chimera import UserError
@@ -25,13 +27,13 @@ beginRestore()
 def restoreCoreModels():
     from SimpleSession.versions.v65 import (
         init,
-        restoreViewer,
-        restoreMolecules,
         restoreColors,
-        restoreSurfaces,
-        restoreVRML,
-        restorePseudoBondGroups,
         restoreModelAssociations,
+        restoreMolecules,
+        restorePseudoBondGroups,
+        restoreSurfaces,
+        restoreViewer,
+        restoreVRML,
     )
 
     molInfo = cPickle.loads(
@@ -393,8 +395,8 @@ except:
 
 
 def restoreSession_RibbonStyleEditor():
-    import SimpleSession
     import RibbonStyleEditor
+    import SimpleSession
 
     userScalings = []
     userXSections = []
@@ -430,9 +432,7 @@ def restoreAnimation():
     # The unpickle process is left to the restore* functions, it's
     # important that it doesn't happen prior to calling those functions.
     import SimpleSession
-    from Animate.Session import restoreTransitions
-    from Animate.Session import restoreScenes
-    from Animate.Session import restoreKeyframes
+    from Animate.Session import restoreKeyframes, restoreScenes, restoreTransitions
 
     SimpleSession.registerAfterModelsCB(restoreTransitions, trPickle)
     SimpleSession.registerAfterModelsCB(restoreScenes, scPickle)
@@ -482,13 +482,13 @@ except:
 
 def restoreRemainder():
     from SimpleSession.versions.v65 import (
-        restoreWindowSize,
+        restoreFontInfo,
+        restoreModelClip,
+        restoreOpenModelsAttrs,
         restoreOpenStates,
         restoreSelections,
-        restoreFontInfo,
-        restoreOpenModelsAttrs,
-        restoreModelClip,
         restoreSilhouettes,
+        restoreWindowSize,
     )
 
     curSelIds = []

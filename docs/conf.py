@@ -125,8 +125,8 @@ html_theme_options = {"prev_next_buttons_location": None, "sticky_navigation": F
 html_static_path = ["_static"]
 
 html_context = {
-    'css_files': [
-        '_static/css/theme_overrides.css',  # override wide tables in RTD theme
+    "css_files": [
+        "_static/css/theme_overrides.css",  # override wide tables in RTD theme
     ],
 }
 

@@ -61,7 +61,7 @@ paprika.utils module
     :show-inheritance:
 
 paprika._version module
-----------------------
+-----------------------
 
 .. automodule:: paprika._version
     :members:

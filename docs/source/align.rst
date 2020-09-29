@@ -7,4 +7,4 @@ preparation.
 .. automodule:: paprika.align
    :members:
    :undoc-members:
-
+   :show-inheritance:
