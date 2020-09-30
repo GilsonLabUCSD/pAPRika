@@ -22,10 +22,10 @@ sys.path.insert(0, os.path.abspath("."))
 
 project = "pAPRika"
 copyright = (
-    "2020, Niel M. Henriksen, David R. Slochower, Simon Boothroyd, Jeff Setiadi, and Willa Wang. "
+    "2020, Niel M. Henriksen, David R. Slochower, Simon Boothroyd, Jeffry Setiadi, and Willa Wang. "
     "Project structure based on the Computational Molecular Science Python Cookiecutter version 1.0"
 )
-author = "Niel M. Henriksen, David R. Slochower, Simon Boothroyd, Jeff Setiadi, and Willa Wang"
+author = "Niel M. Henriksen, David R. Slochower, Simon Boothroyd, Jeffry Setiadi, and Willa Wang"
 
 # The short X.Y version
 version = ""

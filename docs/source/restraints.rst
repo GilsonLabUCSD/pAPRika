@@ -1,9 +1,9 @@
 Restraints API
 ==============
 
-DAT Restraint Class
--------------------
-.. automodule:: paprika.restraints
+DAT Restraints
+--------------
+.. automodule:: paprika.restraints.restraints
    :members:
    :undoc-members:
    :show-inheritance:

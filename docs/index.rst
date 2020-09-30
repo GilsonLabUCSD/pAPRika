@@ -86,7 +86,7 @@ Supported Molecular Dynamics Engine
 Currently, `pAPRika` can be used to setup and analyze APR simulations with `AMBER <https://ambermd.org/>`_,
 `OpenMM <http://openmm.org/>`_ and `GROMACS <http://www.gromacs.org/>`_. These MD engines provides their own interface
 (e.g., AMBER uses NMR-style restraints). `pAPRika` also provides modules to generate `Plumed <https://www.plumed.org/>`_-based
-restraints restraints, which is supported in a number of MD engines.
+restraints, which is supported in a number of MD engines.
 
 Future releases of `pAPRika` will include support for other MD engines like ,
 `NAMD <https://www.ks.uiuc.edu/Research/namd/>`_ and `LAMMPS <https://lammps.sandia.gov/>`_. Plumed is supported by all
@@ -119,14 +119,15 @@ of these but for NAMD only NPT simulations can be performed. Hence, a module con
 
 ===================
 
-****************
-pAPRika Workflow
-****************
-todo: workflow-diagram (explain the caveats when using different MD engines).
+
+
+*******
+License
+*******
+*pAPRika* is licensed under the BSD 3-Clause license.
 
 
 ===================
-
 
 **********
 References
@@ -144,6 +145,7 @@ References
 
    Overview <self>
    install
+   workflow
 
 
 .. toctree::
@@ -161,16 +163,10 @@ References
 ..   08 - LAMMPS Simulation <tutorials/07-tutorial-cb6-but-lammps.ipynb>
 
 .. toctree::
-  :maxdepth: 10
-  :hidden:
-  :caption: Developer Documentation
+   :maxdepth: 10
+   :hidden:
+   :caption: Developer Documentation
 
-  source/align
-  source/analysis
-  source/dummy
-  source/evaluator
-  source/restraints
-  source/simulation
-  source/tleap
-  source/utils
-  releasehistory
+   build_docs
+   api
+   releasehistory
