@@ -7,7 +7,7 @@ import pytest
 from paprika import restraints
 from paprika.restraints import amber
 from paprika.restraints.restraints import create_window_list
-from paprika.simulate import Amber
+from paprika.simulate import AMBER
 from paprika.tests import addons
 from paprika.utils import parse_mden, parse_mdout
 
@@ -99,7 +99,7 @@ def test_amber_single_window_gbmin(clean_files):
                 os.path.join(windows_directory, window, "k-cl.pdb"), overwrite=True
             )
 
-    gbsim = Amber()
+    gbsim = AMBER()
     gbsim.path = os.path.join("tmp", "k-cl", "windows", "a003")
     gbsim.executable = "sander"
     gbsim.topology = "k-cl.prmtop"
@@ -133,7 +133,7 @@ def test_amber_single_window_gbmin(clean_files):
 
 
 def test_amber_minimization(clean_files):
-    simulation = Amber()
+    simulation = AMBER()
     simulation.path = os.path.join("tmp")
 
     shutil.copy(

@@ -15,7 +15,7 @@ _PI_ = np.pi
 
 class Plumed:
     """
-    This class converts restraints generated in pAPRika :class:`paprika.restraints.DAT_restraint` into `Plumed
+    This class converts restraints generated in `pAPRika` :class:`paprika.restraints.DAT_restraint` into `Plumed
     <https://www.plumed.org/>`_ restraints.
 
     .. todo::

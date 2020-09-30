@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 def amber_restraint_line(restraint, window):
-    """Writes an AMBER NMR-style restraint line for a specific window.
+    """Writes an `AMBER` NMR-style restraint line for a specific window.
 
     Parameters
     ----------
