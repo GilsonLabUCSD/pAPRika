@@ -21,9 +21,11 @@ You can install ``OpenMM`` from the ``omnia`` channel if you want to run APR sim
 
     conda install -c omnia openmm
 
-If you want to run simulations with `Plumed <https://www.plumed.org/>`_-based restraints (needed for running APR in `GROMACS`) you can compile Plumed from source or install through conda::
+If you want to run simulations with `Plumed <https://www.plumed.org/>`_-based restraints (needed for running APR in ``GROMACS``) you can compile Plumed from source or install through conda::
 
     conda install -c conda-forge plumed
+
+Although ``GROMACS`` is available in conda, a version that is patched with Plumed is currently not available. Therefore, if you want to run ``GROMACS`` simulations in *pAPRika* you will need to compile from source manually (patched with Plumed).
 
 Installing a stable version from source
 ---------------------------------------

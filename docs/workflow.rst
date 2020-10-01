@@ -1,18 +1,23 @@
-*****
-Usage
-*****
+********
+Workflow
+********
 
-Basic Workflow
---------------
+This page provides a brief explanation of the workflow to perform APR calculations with `pAPRika`. For more detail users
+are recommended to go through the tutorials, which details further on how to setup and run APR simulations from start to
+finish.
 
-todo: workflow-diagram (explain the caveats when using different MD engines).
+.. figure :: _static/images/flowchart.png
+   :figwidth: 500px
+   :width: 170px
+   :align: center
 
+   Flowchart of the *pAPRika* workflow for a typical APR simulation.
 
 Structure Preparation
 ---------------------
-The starting structure for APR calculations can be configured with *pAPRika*. The *Align* module provides functions to
-shift and orient a structure. For example, we can translate a structure to the origin and the system to the :math:`z`-axis
-by running
+The starting structure for the APR simulation can be configured with *pAPRika*. The ``Align`` module provides functions
+to shift and orient a structure. For example, we can translate a structure to the origin and then orient the system to
+the :math:`z`-axis by running
 
 .. code ::
 
@@ -21,8 +26,8 @@ by running
     translated_structure = translate_to_origin(structure)
     aligned_structure = zalign(translated_structure, ":GST@C1", ":GST@C2")
 
-Dummy atoms are needed in APR calculations as anchor atoms that defines restraints (see the section below). *pAPRika*
-provides utility functions to add dummy atoms to a structure.
+We use dummy atoms to define the a reaction coordinate for to pull the guest molecule. We can add dummy atoms to a
+structure using the ``Dummy Atoms`` module in *pAPRika*.
 
 .. code ::
 
@@ -33,7 +38,7 @@ provides utility functions to add dummy atoms to a structure.
     structure = dummy.add_dummy(structure, residue_name="DM3", z=-11.2, y=2.2)
     structure.save("aligned_with_dummy.pdb", overwrite=True)
 
-*pAPRika* provides a wrapper to the ``tleap`` program from AmberTools and we can use this to generate the topology files.
+We can use the ``tleap`` wrapper to combine all of these components to generate `AMBER` topology and coordinate files.
 
 .. code ::
 
@@ -59,19 +64,23 @@ provides utility functions to add dummy atoms to a structure.
 Defining Restraints
 -------------------
 
+.. figure :: _static/images/restraints.png
+   :figwidth: 550px
+   :align: center
+
 In APR calculations we apply restraints on the host (or protein) and the guest molecules. The restraints can be grouped
-into three different categories: (1) *static restraints*, (2) *changing restraints* and (3) *wall restraints*.
+into four categories: (1) *static restraints*, (2) *varying restraints*, (3) *wall restraints* and (4) *positional
+restraints*.
 
 **(1) Static Restraints**
 
 Static restraints do not change during the whole APR process and do not affect the free-energy. We apply static
-restraints on the host (or protein) molecule to define a path for the guest molecule. The static restraints are a made
-up of a combination of *distance*, *angle* and *torsional* (DAT) restraints based on the choice of anchor atoms. For
-host-guest systems we need to define three anchor atoms ``[H1, H2, H3]`` and combined with three dummy atoms
-``[D1, D2, D3]`` we apply a total of six static restraints on the host molecule (three for the translation and three
-for orientation).
+restraints on the host (or protein) molecule to define a guest molecule path. The static restraints are composed of
+distance, angle, and torsional (DAT) restraints based on the choice of anchor atoms. For host-guest systems, we need to
+define three anchor atoms ``[H1,H2,H3]`` and combined with three dummy atoms ``[D1,D2,D3]``, we apply a total of six
+static restraints on the host molecule (three for the translation and three for orientation).
 
-To generate a static restraint we use the function ``static_DAT_restraints``. As an example, to apply a distance restraints
+To generate static restraints we use the function ``static_DAT_restraints``. As an example, to apply a distance restraint
 on ``D1`` and ``H1`` with a force constant of 5 kcal/mol/:math:`Å^2` we call
 
 .. code :: python
@@ -85,15 +94,13 @@ on ``D1`` and ``H1`` with a force constant of 5 kcal/mol/:math:`Å^2` we call
         force_constant = 5.0,
     )
 
+**(2) Varying Restraints**
 
-**(2) Changing Restraints**
-
-As the name suggests, these restraints change during the APR process and can pull the guest molecule out of the host.
-However, you can also use these to restraint conformations on the host and/or guest molecule. Unlike static restraints,
-these restraints do affect the free-energy.
-
-To generate changing restraints, we use the ``DAT_restraint`` class. The code below shows a changing restraints ``r``
-that starts from 6.0 Å to 24 Å in the *pull* phase and stays restrained at 24 Å during the *release* phase.
+As the name suggests, these restraints change during the APR process. During the attach and release phases, the force
+constants of these restraints changes. In the pull phase, `varying restraints` can have their equilibrium targets change,
+and this can be used as the restraint to pull the guest molecule out of the host molecule. To generate `varying restraints`,
+we use the ``DAT_restraint`` class. The code below shows a restraints `r` that starts from 6.0 Å to 24 Å in the *pull*
+phase and stays restrained at 24 Å during the *release* phase.
 
 .. code :: python
 
@@ -106,30 +113,34 @@ that starts from 6.0 Å to 24 Å in the *pull* phase and stays restrained at 24 
     r.auto_apr = True
     r.continuous_apr = True
 
-    r.attach["target"] = 6.0                     # Angstroms
-    r.attach["fraction_list"] = attach_lambda    # Lambda values
-    r.attach["fc_final"] = 5.0                   # kcal/mol/Angstroms**2
+    r.attach["target"] = 6.0
+    r.attach["fraction_list"] = attach_lambda
+    r.attach["fc_final"] = 5.0
 
-    r.pull["target_final"] = 24.0                # Angstroms
-    r.pull["num_windows"] = len(pull_windows)    # Number of pull windows
+    r.pull["target_final"] = 24.0
+    r.pull["num_windows"] = len(pull_windows)
 
-    r.release["target"] = 24.0                   # Angstroms
+    r.release["target"] = 24.0
     r.release["fraction_list"] = [1.0] * len(release_lambda)
-    r.release["fc_final"] = 5.0                  # kcal/mol/Angstroms**2
+    r.release["fc_final"] = 5.0
 
     r.initialize()
 
 
-
 **(3) Wall Restraints**
 
-Wall restraints are half-harmonic potentials that is useful for preventing guest molecules from leaving the binding site
-(for weak binding) or preventing the guest molecule from flipping during the attach phase. We still use the ``DAT_restraint``
-class to generate wall restraints but we need to use the method ``custom_restraint_values`` to override build the half-harmonic
-potential. Note: ``custom_restraint_values`` follows the *AMBER* NMR-restraint format (see the *AMBER* manual for more details).
+Wall restraints are half-harmonic potentials that is useful for preventing guest molecules from leaving the binding
+site (for weak binding) or preventing the guest molecule from flipping during the attach phase. We still use the
+``DAT_restraint`` class to generate the restraints but will use the ``custom_restraint_values`` method to generate
+the half-harmonic potential.
 
-Below is an example of generating a `"lower wall"` restraint that prevents the angle of ``[D1, G1, G2]`` from decreasing
-below 91 degrees.
+.. note ::
+
+   ``custom_restraint_values`` follows the *AMBER* NMR-restraint format, see Chapter 27 in the AMBER20 manual
+   for more details.
+
+Below is an example for generating a `"lower wall"` restraint that prevents the angle of ``[D1,G1,G2]`` from
+decreasing below 91 degrees.
 
 .. code :: python
 
@@ -141,44 +152,68 @@ below 91 degrees.
     wall_orient.auto_apr = True
     wall_orient.continuous_apr = True
 
+    wall_orient.attach["num_windows"] = attach_fractions
+    wall_orient.attach["fc_initial"] = 200.0
+    wall_orient.attach["fc_final"] = 200.0
+
     wall_orient.custom_restraint_values["r1"] = 91.0
     wall_orient.custom_restraint_values["r2"] = 0.0
-    wall_orient.custom_restraint_values["rk2"] = kwall
+    wall_orient.custom_restraint_values["rk2"] = 200.0
     wall_orient.custom_restraint_values["rk3"] = 0.0
+
+    wall_orient.initialize()
+
+
+**(4) Positional Restraints**
+
+*Positional restraints* in APR simulations are applied to the dummy atoms. Together with *static restraints*, this
+provides a laboratory frame of reference for the host-guest complex. Different MD programs handles `positional restraints`
+differently. For example, in ``AMBER`` you can define positional restraints in the input configuration file using the
+``ntr`` keyword (Chapter 19 in the AMBER20 manual). For other programs like ``GROMACS`` and ``NAMD`` that uses ``Plumed``,
+*positional restraints* can be applied using the method ``add_dummy_atom_restraints()``.
+
+.. note ::
+
+   ``tleap`` may shift the coordinates of the system when it solvates the structure. Applying the *positional restraints*
+   before the solvating the structure may lead to undesired errors during simulations. Therefore, special care needs to
+   be taken when applying *positional restraints*. Take a look at tutorials `5 <tutorials/05-tutorial-cb6-but-plumed.ipynb>`_
+   and `6 <tutorials/06-tutorial-cb6-but-gromacs.ipynb>`_ to see this distinction.
 
 
 Running a Simulation
 --------------------
 
-*pAPRika* provides wrappers for a few Molecular Dynamics (MD) engines and we can run the APR calculations in python
+*pAPRika* provides wrappers with the ``Simulate`` module for a number of MD engines enabling us to run the simulations
+in python.
 
 .. code :: python
 
-    from paprika.simulate import Amber
+   from paprika.simulate import AMBER
 
-    for window in window_list:
-        simulation = Amber()
-        simulation.executable = "pmemd"
+   simulation = AMBER()
+   simulation.executable = "pmemd.cuda"
+   simulation.path = "simulation"
+   simulation.prefix = "equilibration"
+   simulation.inpcrd = "minimize.rst7"
+   simulation.ref = "host-guest-dum.rst7"
+   simulation.topology = "host-guest-dum.prmtop"
+   simulation.restraint_file = "disang.rest"
 
-        simulation.path = f"windows/{window}/"
-        simulation.prefix = "production"
+   simulation.config_pbc_md()
 
-        simulation.inpcrd = "minimize.rst7"
-        simulation.ref = "host-guest-dum.rst7"
-        simulation.topology = "host-guest-dum.prmtop"
-        simulation.restraint_file = "disang.rest"
+   # Positional restraints on dummy atoms
+   simulation.cntrl["ntr"] = 1
+   simulation.cntrl["restraint_wt"] = 50.0
+   simulation.cntrl["restraintmask"] = "'@DUM'"
 
-        simulation.config_pbc_md()
-        simulation.cntrl["ntr"] = 1
-        simulation.cntrl["restraint_wt"] = 50.0
-        simulation.cntrl["restraintmask"] = "'@DUM'"
-
-        logging.info(f"Running production in window {window}...")
-        simulation.run(overwrite=True)
+   print(f"Running equilibration in window {window}...")
+   simulation.run()
 
 Analysis
 --------
 
+Once the simulation is complete, the free-energy can be obtained using the ``Analysis`` module, which will also
+estimate the uncertainties.
 
 .. code :: python
 

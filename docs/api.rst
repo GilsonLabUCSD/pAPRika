@@ -1,6 +1,6 @@
 API
 ===
-This page provides the documentation for classes and modules available in *pAPRika*.
+This page provides links to the documentation for classes and modules available in *pAPRika*.
 
 * :doc:`source/align`
 * :doc:`source/analysis`

@@ -66,3 +66,11 @@ ul.spaced-list li {
     font-weight: normal;
     color: #9B59B6;
 }
+
+/* override math equation align */
+.math {
+    text-align: left;
+}
+.eqno {
+    float: right;
+}
