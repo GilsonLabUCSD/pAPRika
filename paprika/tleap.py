@@ -792,13 +792,15 @@ class System(object):
         if not os.path.isfile(prmtop):
             raise FileNotFoundError("Cannot find topology file.")
 
-        coordinates = [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "pdb"]]
+        coordinates = np.array(
+            [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "pdb"]]
+        )
         check_coordinates = [os.path.isfile(file) for file in coordinates]
         if not any(check_coordinates):
             raise FileNotFoundError("Cannot find any coordinates file.")
 
         # Get the first coordinates in the list the exists
-        inpcrd = coordinates[check_coordinates is True][0]
+        inpcrd = coordinates[check_coordinates][0]
 
         # Load Amber structure
         structure = pmd.load_file(prmtop, inpcrd, structure=True)
