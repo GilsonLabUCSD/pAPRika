@@ -49,7 +49,7 @@ class GROMACS(BaseSimulation, abc.ABC):
 
     @property
     def nb_method(self):
-        """dict: Dictionary for the nonbonded method options."""
+        """dict: Dictionary for the non-bonded method options."""
         return self._nb_method
 
     @nb_method.setter
@@ -235,10 +235,8 @@ class GROMACS(BaseSimulation, abc.ABC):
         self.thermostat["tau_t"] = 0.1
         if self.tc_groups:
             self.thermostat["tc-grps"] = self.tc_groups
-            self.thermostat["tau_t"] = [0.1 for i in range(len(self.tc_groups))]
-            self.thermostat["ref_t"] = [
-                self.temperature for i in range(len(self.tc_groups))
-            ]
+            self.thermostat["tau_t"] = [0.1] * len(self.tc_groups)
+            self.thermostat["ref_t"] = [self.temperature] * len(self.tc_groups)
 
     def config_pbc_md(self, ensemble="npt"):
         """
@@ -266,14 +264,14 @@ class GROMACS(BaseSimulation, abc.ABC):
             self.thermostat["gen_vel"] = "no"
             self.barostat["pcoupl"] = "Berendsen"
             self.barostat["pcoupltype"] = "isotropic"
-            self.barostat["tau_p"] = 5.0
+            self.barostat["tau_p"] = 2.0
             self.barostat["ref_p"] = self.pressure
             self.barostat["compressibility"] = 4.5e-5
 
     @staticmethod
     def _write_dict_to_mdp(f, dictionary):
         """
-        Write dictionary to file, following GROMACS format.
+        Write dictionary to file, following `GROMACS` format.
 
         Parameters
         ----------
