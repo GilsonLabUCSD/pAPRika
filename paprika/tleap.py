@@ -788,18 +788,19 @@ class System(object):
         file_name = os.path.join(output_path, output_prefix)
         prmtop = f"{file_name}.prmtop"
 
-        # Check if Amber files exist
+        # Check if Amber Topology file exist
         if not os.path.isfile(prmtop):
-            raise FileNotFoundError("Cannot find topology file.")
+            raise FileNotFoundError("Cannot find any AMBER topology file.")
 
+        # Check if Amber Coordinate file(s) exist
         coordinates = np.array(
             [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "pdb"]]
         )
         check_coordinates = [os.path.isfile(file) for file in coordinates]
         if not any(check_coordinates):
-            raise FileNotFoundError("Cannot find any coordinates file.")
+            raise FileNotFoundError("Cannot find any AMBER coordinates file.")
 
-        # Get the first coordinates in the list the exists
+        # Get the first coordinate file in the list of file(s) that exists
         inpcrd = coordinates[check_coordinates][0]
 
         # Load Amber structure
