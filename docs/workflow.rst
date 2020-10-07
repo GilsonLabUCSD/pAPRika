@@ -11,13 +11,14 @@ finish.
    :width: 170px
    :align: center
 
-   Flowchart of the *pAPRika* workflow for a typical APR simulation.
+   Flowchart of the `paprika` workflow for a typical APR simulation.
 
 Structure Preparation
 ---------------------
-The starting structure for the APR simulation can be configured with *pAPRika*. The ``Align`` module provides functions
-to shift and orient a structure. For example, we can translate a structure to the origin and then orient the system to
-the :math:`z`-axis by running
+The starting structure for the APR simulation can be configured with `paprika`. The APR calculation is most efficient in
+a rectangular box with the long axis parallel to the pulling axis (reduces the number of water molecules in the system).
+To make this easy to set up, the ``Align`` module provides functions to shift and orient a structure. For example, we can
+translate a structure to the origin and then orient the system to the :math:`z`-axis by running
 
 .. code ::
 
@@ -26,8 +27,8 @@ the :math:`z`-axis by running
     translated_structure = translate_to_origin(structure)
     aligned_structure = zalign(translated_structure, ":GST@C1", ":GST@C2")
 
-We use dummy atoms to define the a reaction coordinate for to pull the guest molecule. We can add dummy atoms to a
-structure using the ``Dummy Atoms`` module in *pAPRika*.
+To provide something to pull "against," we add dummy atoms that are fixed in place with strong positional restraints.
+These dummy atoms can be added to a the host-guest structure using the ``Dummy Atoms`` module in `paprika`.
 
 .. code ::
 
@@ -38,7 +39,16 @@ structure using the ``Dummy Atoms`` module in *pAPRika*.
     structure = dummy.add_dummy(structure, residue_name="DM3", z=-11.2, y=2.2)
     structure.save("aligned_with_dummy.pdb", overwrite=True)
 
-We can use the ``tleap`` wrapper to combine all of these components to generate `AMBER` topology and coordinate files.
+We will need the ``mol2`` and ``frcmod`` files for the dummy atoms, which we will need to generate the `AMBER` topology
+
+.. code ::
+
+   dummy.write_dummy_frcmod(filepath="complex/dummy.frcmod")
+   dummy.write_dummy_mol2(residue_name="DM1", filepath="complex/dm1.mol2")
+   dummy.write_dummy_mol2(residue_name="DM2", filepath="complex/dm2.mol2")
+   dummy.write_dummy_mol2(residue_name="DM3", filepath="complex/dm3.mol2")
+
+Finally, we can use the ``tleap`` wrapper to combine all of these components to generate the topology and coordinate files.
 
 .. code ::
 
@@ -74,8 +84,8 @@ restraints*.
 
 **(1) Static Restraints**
 
-Static restraints do not change during the whole APR process and do not affect the free-energy. We apply static
-restraints on the host (or protein) molecule to define a guest molecule path. The static restraints are composed of
+Static restraints do not change during the whole APR process and do not affect the free energy. We apply static restraints
+on the host (or protein) molecule to orient the host/protein degrees of freedom. The static restraints are composed of
 distance, angle, and torsional (DAT) restraints based on the choice of anchor atoms. For host-guest systems, we need to
 define three anchor atoms ``[H1,H2,H3]`` and combined with three dummy atoms ``[D1,D2,D3]``, we apply a total of six
 static restraints on the host molecule (three for the translation and three for orientation).
@@ -96,11 +106,12 @@ on ``D1`` and ``H1`` with a force constant of 5 kcal/mol/:math:`Å^2` we call
 
 **(2) Varying Restraints**
 
-As the name suggests, these restraints change during the APR process. During the attach and release phases, the force
-constants of these restraints changes. In the pull phase, `varying restraints` can have their equilibrium targets change,
-and this can be used as the restraint to pull the guest molecule out of the host molecule. To generate `varying restraints`,
-we use the ``DAT_restraint`` class. The code below shows a restraints `r` that starts from 6.0 Å to 24 Å in the *pull*
-phase and stays restrained at 24 Å during the *release* phase.
+As the name suggests, these restraints change during the APR process. During the `attach` and `release` phases, the force
+constants of these restraints changes. In the `pull` phase, `varying restraints` can have their equilibrium position
+change, and this can be used as the restraint to pull the guest molecule out of the host molecule.
+
+To generate `varying restraints`, we use the ``DAT_restraint`` class. The code below shows a restraints `r` that starts
+from 6.0 Å to 24 Å in the `pull` phase and stays restrained at 24 Å during the *release* phase.
 
 .. code :: python
 
@@ -126,8 +137,13 @@ phase and stays restrained at 24 Å during the *release* phase.
 
     r.initialize()
 
+.. note ::
 
-**(3) Wall Restraints**
+   The ``DAT_restraint`` class can also be used to apply conformational restraints on the host and/or guest molecule.
+   For example, distance "jack" and dihedral restraints can be applied to cucurbiturils and cyclodextrins host molecules,
+   respectively, to make the binding site more accessible.
+
+**(3) Wall Restraints (optional)**
 
 Wall restraints are half-harmonic potentials that is useful for preventing guest molecules from leaving the binding
 site (for weak binding) or preventing the guest molecule from flipping during the attach phase. We still use the
@@ -183,7 +199,7 @@ differently. For example, in ``AMBER`` you can define positional restraints in t
 Running a Simulation
 --------------------
 
-*pAPRika* provides wrappers with the ``Simulate`` module for a number of MD engines enabling us to run the simulations
+`paprika` provides wrappers with the ``Simulate`` module for a number of MD engines enabling us to run the simulations
 in python.
 
 .. code :: python
@@ -212,7 +228,7 @@ in python.
 Analysis
 --------
 
-Once the simulation is complete, the free-energy can be obtained using the ``Analysis`` module, which will also
+Once the simulation is complete, the free energy can be obtained using the ``Analysis`` module, which will also
 estimate the uncertainties.
 
 .. code :: python

@@ -29,7 +29,7 @@
 |
 |
 
-*pAPRika is a python toolkit for setting up, running, and analyzing free-energy molecular dynamics simulations.*
+*pAPRika is a python toolkit for setting up, running, and analyzing free energy molecular dynamics simulations.*
 
 
 ===================
@@ -39,11 +39,11 @@ Theory
 ******
 
 
-Binding free-energy
+Binding free energy
 ===================
 
-In the attach-pull-release (APR) method, a guest molecule is physically pulled out of the host molecule in a defined
-path by applying harmonic restraints. The binding free-energy is then computed in terms of the sum of the work required
+In the attach-pull-release (APR) method, a guest molecule is physically pulled out of the host molecule along a defined
+path by applying harmonic restraints. The binding free energy is then computed in terms of the sum of the work required
 for (1) `attaching` restraints to the bound complex, (2) `pulling` the guest molecule out of the host molecule and (3)
 `releasing` the restraints of the unbound complex:
 
@@ -67,40 +67,41 @@ analytically:
 .. math ::
    \begin{eqnarray}
       W_\text{release-std} & = & RT\,\text{ln}\left( \frac{C^{\circ}}{8\pi^2} \right) \\
-         & + & RT\,\text{ln}\left(\int^{\infty}_{0}\int^{\pi}_{0}\int^{2\pi}_{0} e^{-\beta U(r,\theta,\phi)} r^2 \text{sin}(\theta) \, d\phi d\theta dr \right) \\
-         & + & RT\,\text{ln}\left(\int^{2\pi}_{0}\int^{\pi}_{0}\int^{2\pi}_{0} e^{-\beta U(\alpha,\beta,\gamma)} \text{sin}(\theta) \, d\alpha d\beta d\gamma \right)
+         & + & RT\,\text{ln}\left(\int^{\infty}_{0}\int^{\pi}_{0}\int^{2\pi}_{0} e^{-\beta U(r,\theta,\phi)} r^2 \text{sin}(\theta) \, d\phi \, d\theta \, dr \right) \\
+         & + & RT\,\text{ln}\left(\int^{2\pi}_{0}\int^{\pi}_{0}\int^{2\pi}_{0} e^{-\beta U(\alpha,\beta,\gamma)} \text{sin}(\theta) \, d\alpha \, d\beta \, d\gamma \right)
    \end{eqnarray}
    :label: eq:release
 
-For other terms in equation :eq:`eq:bind`, the calculation is broken up into a series of independent windows. In the
-attach and release phase, the windows represents increasing and decreasing force constant, respectively. In the pull
-phase, the windows represents the discretization of the guest path from bound to unbound. The work for each phase is
-obtained using `thermodynamic integration` (TI).
+For other terms in equation :eq:`eq:bind`, the calculation is broken up into a series of independent windows. During the
+attach and release phase, the force constant of the restraints increases and decreases, respectively. In the pull phase,
+the distance between the guest and host is discretized from point A (bound) to point B (unbound) by changing the
+equilibrium position of the distance restraint. The work for each phase can be estimated using either `thermodynamic integration`
+(TI) or the `multistate-Bennett-Acceptance-Ratio` (MBAR).
 
 .. math ::
    \begin{eqnarray}
-      W_\text{attach,release} & = & \int_{0}^{1} \left<F\right>_{\lambda} d\lambda \\
-      W_\text{pull} & = & \int_{A}^{B} \left<F\right>_{r} dr
+      W_\text{attach,release} & = & \int_{0}^{1} \left<F\right>_{\lambda} \, d\lambda \\
+      W_\text{pull} & = & \int_{A}^{B} \left<F\right>_{r} \, dr
    \end{eqnarray}
    :label: eq:TI
 
-*pAPRika* estimates the standard error of the mean (SEM) with block data analysis.
+`pAPRika` estimates the standard error of the mean (SEM) with either `block data` analysis or `autocorrelation`.
 
 Binding enthalpy
 ================
 
-The binding enthalpy is the difference the partial molar enthalpies of the bound complex and the separated molecules.
-This can be estimated in simulations much easier than the binding free-energy if we use the `direct` method. In the
-`direct` method, the binding enthalpy is obtained from the difference in the mean potential energy of the bound and
-unbound complex.
+The binding enthalpy is the difference in the partial molar enthalpies of the bound complex and the separated molecules.
+Setting up binding enthalpy calculations is more straightforward than the binding free energy if we use the `direct`
+method. In the `direct` method, the binding enthalpy is obtained from the difference in the mean potential energy of the
+bound and unbound complex.
 
 .. math ::
    \Delta H_\text{bind} = \left<U_\text{bound} \right> - \left<U_\text{unbound} \right>
    :label: eq:enthalpy
 
 In the context of APR simulations, the mean potential energy is estimated from the first and last window. These windows,
-however, will need to be run for much longer to get convergence. Another way to estimate the binding enthalpy is with the
-`van't Hoff` method:
+however, will need to be run for much longer until the fluctuation of the mean potential energy decreases below a desired
+value. Another way to estimate the binding enthalpy is with the `van't Hoff` method:
 
 .. math ::
    \text{ln}\, K_\text{eq} = -\frac{\Delta H}{RT} + \frac{\Delta S}{R}
@@ -124,8 +125,8 @@ restraints, which is supported in a number of MD engines.
 
 Future releases of `pAPRika` will include support for other MD engines like ,
 `NAMD <https://www.ks.uiuc.edu/Research/namd/>`_ and `LAMMPS <https://lammps.sandia.gov/>`_. Plumed is supported by all
-of these but for NAMD only NPT simulations can be performed. Hence, a module converting `pAPRika` restraints to a
-`Colvars <https://github.com/Colvars/colvars>`_ module, which is supported in NAMD and LAMMPS, is also in the works.
+of these but for `NAMD` only NPT simulations can be performed. Hence, a module converting `pAPRika` restraints to a
+`Colvars <https://github.com/Colvars/colvars>`_ module, which is supported in `NAMD` and `LAMMPS`, is also in the works.
 
 .. table:: MD engines that are supported in `pAPRika` (or planned) and the respective restraint modules it supports.
    :widths: auto
@@ -158,7 +159,7 @@ of these but for NAMD only NPT simulations can be performed. Hence, a module con
 
 License
 *******
-*pAPRika* is licensed under the BSD 3-Clause license.
+`pAPRika` is licensed under the BSD 3-Clause license.
 
 
 ===================

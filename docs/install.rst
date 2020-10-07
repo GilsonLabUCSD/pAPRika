@@ -7,11 +7,11 @@ We recommend installing *pAPRika* in a fresh ``conda`` environment if possible. 
 Installing from Conda
 ---------------------
 
-To install the latest release of *pAPRika* from conda, run::
+To install the latest release of `paprika` from conda, run::
 
     conda install -c conda-forge paprika
 
-In order to use all features of *pAPRika*, you must either have ``AmberTools`` (http://ambermd.org/AmberTools.php) in your `$PATH` or separately install ``AmberTools`` with::
+In order to use all features of `paprika`, you must either have ``AmberTools`` (http://ambermd.org/AmberTools.php) in your `$PATH` or separately install ``AmberTools`` with::
 
     conda install -c conda-forge ambertools=20
 
@@ -25,12 +25,12 @@ If you want to run simulations with `Plumed <https://www.plumed.org/>`_-based re
 
     conda install -c conda-forge plumed
 
-Although ``GROMACS`` is available in conda, a version that is patched with Plumed is currently not available. Therefore, if you want to run ``GROMACS`` simulations in *pAPRika* you will need to compile from source manually (patched with Plumed).
+Although ``GROMACS`` is available in conda, a version that is patched with Plumed is currently not available. Therefore, if you want to run ``GROMACS`` simulations in `paprika` you will need to compile from source manually (patched with Plumed).
 
 Installing a stable version from source
 ---------------------------------------
 
-To install the a stable version of *pAPRika* download the source code from `Github <https://github.com/slochower/pAPRika/releases>`_.
+To install the a stable version of `paprika` download the source code from `Github <https://github.com/slochower/pAPRika/releases>`_.
 Then, unzip the files and change to the ``paprika`` directory::
 
     tar -xvzf paprika-version.tgz
@@ -44,7 +44,7 @@ Activate the environment::
 
     conda activate paprika
 
-and install *pAPRika* in the environment::
+and install `paprika` in the environment::
 
     pip install .
 
@@ -53,7 +53,7 @@ and install *pAPRika* in the environment::
 Installing latest from source
 -----------------------------
 
-To install *pAPRika* with the latest features, clone the repository from the ``master`` branch on `Github <https://github.com/slochower/pAPRika>`_::
+To install `paprika` with the latest features, clone the repository from the ``master`` branch on `Github <https://github.com/slochower/pAPRika>`_::
 
     git clone https://github.com/slochower/pAPRika.git
 
@@ -65,7 +65,7 @@ Activate the environment::
 
     conda activate paprika
 
-and install *pAPRika* in the environment::
+and install `paprika` in the environment::
 
     pip install .
 
