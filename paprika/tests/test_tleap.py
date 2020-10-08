@@ -347,3 +347,48 @@ def test_hydrogen_mass_repartitioning(clean_files):
         os.path.join(temporary_directory, sys.output_prefix + ".prmtop")
     )
     assert np.allclose(but["@H="].atoms[0].mass, 3.024)
+
+
+def test_multiple_pdb_files(clean_files):
+    """
+    Test that multiple `loadpdb` lines are carried through.
+    Reference: https://github.com/slochower/pAPRika/issues/141
+    """
+    temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
+    sys = System()
+    cb6_frcmod = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.frcmod")
+    )
+    cb6_mol2 = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.mol2")
+    )
+    but_frcmod = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.frcmod")
+    )
+    but_mol2 = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.mol2")
+    )
+
+    sys.template_lines = [
+        "source leaprc.gaff",
+        f"loadamberparams {cb6_frcmod}",
+        f"CB6 = loadmol2 {cb6_mol2}",
+        f"loadamberparams {but_frcmod}",
+        f"BUT = loadmol2 {but_mol2}",
+        "a = loadpdb cb6-but-notcentered.pdb",
+        "b = loadpdb cb6-but-minimized.pdb",
+        "model = combine { a b }"
+    ]
+    sys.output_path = temporary_directory
+    sys.output_prefix = "multi"
+    sys.pbc_type = None
+    sys.neutralize = False
+    sys.build()
+
+    with open(f"{temporary_directory}/multi.tleap.in", "r") as f:
+        lines = f.read()
+
+    assert "a = loadpdb cb6-but-notcentered.pdb" in lines
+    assert "b = loadpdb cb6-but-minimized.pdb" in lines
+    assert "combine" in lines
+    assert "savepdb model multi.pdb" in lines
