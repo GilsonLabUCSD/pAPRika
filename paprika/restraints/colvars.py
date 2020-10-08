@@ -405,7 +405,7 @@ class Colvars(Plumed):
         bias_template_lines = [
             "harmonic {",
             "  colvars dummyAtoms",
-            f"  centers ( {dummy_position_string} )",
+            f"  centers ( {dummy_position_string:.4f} )",
             f"  forceConstant {kpos:.2f}",
             "}",
         ]
