@@ -377,7 +377,7 @@ def test_multiple_pdb_files(clean_files):
         f"BUT = loadmol2 {but_mol2}",
         "a = loadpdb cb6-but-notcentered.pdb",
         "b = loadpdb cb6-but-minimized.pdb",
-        "model = combine { a b }"
+        "model = combine { a b }",
     ]
     sys.output_path = temporary_directory
     sys.output_prefix = "multi"

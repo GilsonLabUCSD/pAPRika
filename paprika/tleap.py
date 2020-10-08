@@ -186,12 +186,16 @@ class System(object):
                 words = line.rstrip().replace("=", " ").split()
                 self.unit = words[0]
                 filtered_lines.append(
-                    "{} = loadpdb {}\n".format(self.unit, self.loadpdb_file if self.loadpdb_file else words[2])
+                    "{} = loadpdb {}\n".format(
+                        self.unit, self.loadpdb_file if self.loadpdb_file else words[2]
+                    )
                 )
             elif re.search("combine", line):
                 words = line.rstrip().replace("=", " ").split()
                 self.unit = words[0]
-                log.debug(f"Found `combine` keyword and reassigning `self.unit` to {self.unit}...")
+                log.debug(
+                    f"Found `combine` keyword and reassigning `self.unit` to {self.unit}..."
+                )
                 filtered_lines.append(line)
             # Remove any included solvation and ionization commands if pbc_type
             # is not None
