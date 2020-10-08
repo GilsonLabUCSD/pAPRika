@@ -21,3 +21,10 @@ GROMACS Simulation Wrapper
     :members:
     :undoc-members:
     :show-inheritance:
+
+NAMD Simulation Wrapper
+-----------------------
+.. automodule:: paprika.simulate.namd
+    :members:
+    :undoc-members:
+    :show-inheritance:
