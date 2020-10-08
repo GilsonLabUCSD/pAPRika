@@ -18,11 +18,18 @@ class Plumed:
     This class converts restraints generated in `pAPRika` :class:`paprika.restraints.DAT_restraint` into `Plumed
     <https://www.plumed.org/>`_ restraints.
 
+    .. note ::
+            The ``Plumed`` module is described in the reference below and the source code is available on Github
+            https://github.com/plumed/plumed2
+
+            `The PLUMED consortium. Promoting transparency and reproducibility in enhanced molecular simulations,
+            Nat. Methods 16, 670 (2019)`
+
     .. todo::
         possibly change this module to use the python wrapper of Plumed.
 
-    Example
-    -------
+    Examples
+    --------
         >>> plumed = Plumed()
         >>> plumed.file_name = 'plumed.dat'
         >>> plumed.path = './windows'
@@ -43,6 +50,28 @@ class Plumed:
         RESTRAINT   ARG=c7  AT=  6.000 KAPPA=  10.00
         RESTRAINT   ARG=c8  AT=  3.142 KAPPA= 200.00
         RESTRAINT   ARG=c9  AT=  3.142 KAPPA= 200.00
+
+    The positional restraints on dummy atoms, however, is not added automatically. This restraints on the dummy
+    atoms can be added to ``windows/*/plumed.dat`` using the code below.
+
+        >>> for window in window_list:
+        >>>     structure = pmd.load_file("topology.prmtop", "coordinates.rst7")
+        >>>     plumed.add_dummy_atoms_to_file(structure, window)
+
+    This appends the file with the following
+
+    .. code-block::
+
+        # Dummy Atoms
+        dm1: POSITION ATOM=123 NOPBC
+        dm2: POSITION ATOM=124 NOPBC
+        dm3: POSITION ATOM=125 NOPBC
+        RESTRAINT ...
+        ARG=dm1.x,dm1.y,dm1.z,dm2.x,dm2.y,dm2.z,dm3.x,dm3.y,dm3.z,
+        AT=18.600,19.020,27.950,18.600,19.020,24.950,18.600,21.220,22.750,
+        KAPPA=100.0,100.0,100.0,100.0,100.0,100.0,100.0,100.0,100.0,
+        LABEL=dummy
+        ... RESTRAINT
     """
 
     @property
@@ -81,7 +110,7 @@ class Plumed:
     @property
     def restraint_list(self):
         """
-        list: The list of restraints to be converted to Plumed.
+        list: The list of restraints to convert.
         """
         return self._restraint_list
 
@@ -96,9 +125,9 @@ class Plumed:
         legacy force constant.
 
         .. note ::
-            Amber-style force constants have their value multiplied by a factor of 1/2 whereas
-            Gromacs/NAMD-style do not. Plumed follows the Gromacs/NAMD-style convention for the
-            force constant and the equations below demonstrates this point.
+            `AMBER`-style force constants have their value multiplied by a factor of 1/2 whereas
+            `GROMACS`/`NAMD`-style do not. Plumed follows the `GROMACS`/`NAMD`-style convention
+            for the force constant and the equations below demonstrates this point.
 
             .. math::
                :nowrap:
@@ -163,7 +192,7 @@ class Plumed:
 
     def dump_to_file(self):
         """
-        Write the Plumed-style restraints to file.
+        Write the `Plumed`-style restraints to file.
         """
 
         self._initialize()
@@ -321,7 +350,7 @@ class Plumed:
 
     def add_dummy_atom_restraints(self, structure, window, path=None):
         """
-        Add positional restraints on dummy atoms to the Plumed restraint files.
+        Add positional restraints on dummy atoms to the restraint files.
 
         Parameters
         ----------
@@ -330,7 +359,7 @@ class Plumed:
         window: str
             APR window where the structure is stored for extracting the dummy atom positions.
         path: os.PathLike, optional, default=None
-            Path of the ``plumed.dat`` file. If set to ``None`` (default) self.path will be used.
+            Path of the restraint file. If set to ``None`` (default) self.path will be used.
 
         """
         # Load structure file
@@ -349,15 +378,81 @@ class Plumed:
 
         # Write dummy atom info to plumed file
         if path is not None:
-            plumed_file = os.path.join(path, window, self.file_name)
+            restraint_file = os.path.join(path, window, self.file_name)
         else:
-            plumed_file = os.path.join(self.path, window, self.file_name)
+            restraint_file = os.path.join(self.path, window, self.file_name)
 
-        if os.path.isfile(plumed_file):
-            with open(plumed_file, "a") as file:
-                _write_dummy_to_file(file, dummy_atoms)
+        if os.path.isfile(restraint_file):
+            with open(restraint_file, "a") as file:
+                self._write_dummy_to_file(file, dummy_atoms)
         else:
-            raise Exception(f"ERROR: '{plumed_file}' file does not exists!")
+            raise Exception(f"ERROR: '{restraint_file}' file does not exists!")
+
+    @staticmethod
+    def _write_dummy_to_file(file, dummy_atoms, kpos=100.0):
+        """
+        Append to the "plumed.dat" file the dummy atoms colvar definition and position restraints
+
+        Parameters
+        ----------
+        file : class '_io.TextIOWrapper'
+            The file object handle to save the plumed file.
+        dummy_atoms : dict
+            Dictionary containing information about the dummy atoms.
+        kpos : float
+            Spring constant used to restrain dummy atoms (kcal/mol/A^2).
+
+        Examples
+        --------
+        .. code-block::
+
+            dm1: POSITION ATOM = 170 NOPBC
+            dm2: POSITION ATOM = 171 NOPBC
+            dm3: POSITION ATOM = 172 NOPBC
+            RESTRAINT...
+            ARG = dm1.x, dm1.y, dm1.z, dm2.x, dm2.y, dm2.z, dm3.x, dm3.y, dm3.z
+            AT = 19.68, 20.3, 26.9, 19.68, 20.3, 23.9, 19.68, 22.5, 21.7
+            KAPPA = 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0
+            ...
+            RESTRAINT
+
+        """
+
+        file.write("# Dummy Atoms\n")
+        file.write(f"dm1: POSITION ATOM={dummy_atoms['DM1']['idx']} NOPBC\n")
+        file.write(f"dm2: POSITION ATOM={dummy_atoms['DM2']['idx']} NOPBC\n")
+        file.write(f"dm3: POSITION ATOM={dummy_atoms['DM3']['idx']} NOPBC\n")
+
+        arg = "dm1.x,dm1.y,dm1.z," "dm2.x,dm2.y,dm2.z," "dm3.x,dm3.y,dm3.z,"
+
+        at = (
+            f"{dummy_atoms['DM1']['pos'][0]:0.3f},"
+            f"{dummy_atoms['DM1']['pos'][1]:0.3f},"
+            f"{dummy_atoms['DM1']['pos'][2]:0.3f},"
+        )
+        at += (
+            f"{dummy_atoms['DM2']['pos'][0]:0.3f},"
+            f"{dummy_atoms['DM2']['pos'][1]:0.3f},"
+            f"{dummy_atoms['DM2']['pos'][2]:0.3f},"
+        )
+        at += (
+            f"{dummy_atoms['DM3']['pos'][0]:0.3f},"
+            f"{dummy_atoms['DM3']['pos'][1]:0.3f},"
+            f"{dummy_atoms['DM3']['pos'][2]:0.3f},"
+        )
+
+        kappa = (
+            f"{kpos:0.1f},{kpos:0.1f},{kpos:0.1f},"
+            f"{kpos:0.1f},{kpos:0.1f},{kpos:0.1f},"
+            f"{kpos:0.1f},{kpos:0.1f},{kpos:0.1f},"
+        )
+
+        file.write("RESTRAINT ...\n")
+        file.write(f"ARG={arg}\n")
+        file.write(f"AT={at}\n")
+        file.write(f"KAPPA={kappa}\n")
+        file.write("LABEL=dummy\n")
+        file.write("... RESTRAINT\n")
 
 
 def _check_plumed_units(units):
@@ -376,67 +471,3 @@ def _check_plumed_units(units):
 
     if units["time"] not in ["ps", "fs", "ns"]:
         raise Exception(f"Specified unit for time ({units['time']}) is not supported.")
-
-
-def _write_dummy_to_file(file, dummy_atoms, kpos=100.0):
-    """
-    Append to the "plumed.dat" file the dummy atoms colvar definition and position restraints
-
-    Parameters
-    ----------
-    file : class '_io.TextIOWrapper'
-        The file object handle to save the plumed file.
-    dummy_atoms : dict
-        Dictionary containing information about the dummy atoms.
-    kpos : float
-        Spring constant used to restrain dummy atoms (kcal/mol/A^2).
-
-    Output
-    ------
-    dm1: POSITION ATOM = 170 NOPBC
-    dm2: POSITION ATOM = 171 NOPBC
-    dm3: POSITION ATOM = 172 NOPBC
-    RESTRAINT...
-    ARG = dm1.x, dm1.y, dm1.z, dm2.x, dm2.y, dm2.z, dm3.x, dm3.y, dm3.z
-    AT = 19.68, 20.3, 26.9, 19.68, 20.3, 23.9, 19.68, 22.5, 21.7
-    KAPPA = 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0
-    ...
-    RESTRAINT
-
-    """
-
-    file.write("# Dummy Atoms\n")
-    file.write(f"dm1: POSITION ATOM={dummy_atoms['DM1']['idx']} NOPBC\n")
-    file.write(f"dm2: POSITION ATOM={dummy_atoms['DM2']['idx']} NOPBC\n")
-    file.write(f"dm3: POSITION ATOM={dummy_atoms['DM3']['idx']} NOPBC\n")
-
-    arg = "dm1.x,dm1.y,dm1.z," "dm2.x,dm2.y,dm2.z," "dm3.x,dm3.y,dm3.z,"
-
-    at = (
-        f"{dummy_atoms['DM1']['pos'][0]:0.3f},"
-        f"{dummy_atoms['DM1']['pos'][1]:0.3f},"
-        f"{dummy_atoms['DM1']['pos'][2]:0.3f},"
-    )
-    at += (
-        f"{dummy_atoms['DM2']['pos'][0]:0.3f},"
-        f"{dummy_atoms['DM2']['pos'][1]:0.3f},"
-        f"{dummy_atoms['DM2']['pos'][2]:0.3f},"
-    )
-    at += (
-        f"{dummy_atoms['DM3']['pos'][0]:0.3f},"
-        f"{dummy_atoms['DM3']['pos'][1]:0.3f},"
-        f"{dummy_atoms['DM3']['pos'][2]:0.3f},"
-    )
-
-    kappa = (
-        f"{kpos:0.1f},{kpos:0.1f},{kpos:0.1f},"
-        f"{kpos:0.1f},{kpos:0.1f},{kpos:0.1f},"
-        f"{kpos:0.1f},{kpos:0.1f},{kpos:0.1f},"
-    )
-
-    file.write("RESTRAINT ...\n")
-    file.write(f"ARG={arg}\n")
-    file.write(f"AT={at}\n")
-    file.write(f"KAPPA={kappa}\n")
-    file.write("LABEL=dummy\n")
-    file.write("... RESTRAINT\n")
