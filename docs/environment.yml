@@ -11,9 +11,11 @@ dependencies:
 
   # Sphinx specific
   - numpydoc
+  - pandoc
   - sphinx
   - nbsphinx
   - sphinx_rtd_theme
+  - sphinxcontrib-bibtex
 
   # Standard dependencies
   - pip

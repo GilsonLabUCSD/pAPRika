@@ -761,3 +761,65 @@ class System(object):
         pmd.tools.actions.HMassRepartition(structure, arg_list=options).execute()
 
         structure.save(prmtop, overwrite=True)
+
+    def convert_to_gromacs(self, overwrite=False, output_path=None, output_prefix=None):
+        """
+        Convert `AMBER` topology and coordinate files to `GROMACS` format.
+
+        Parameters
+        ----------
+        overwrite: bool, optional, default=False
+            Option to overwrite `GROMACS` ``.top`` and ``.gro`` files if they already
+            exists in the folder.
+        output_path: str, optional, default=None
+            Alternate directory path where the `AMBER` files are located. Default is the
+            `path` parsed to the :class:`paprika.tleap.System` object.
+        output_prefix: str, optional, default=None
+            Alternate file name prefix for the Amber files. Default is the `prefix` parsed
+            to the :class:`paprika.tleap.System` object.
+        """
+
+        if output_path is None:
+            output_path = self.output_path
+
+        if output_prefix is None:
+            output_prefix = self.output_prefix
+
+        file_name = os.path.join(output_path, output_prefix)
+        prmtop = f"{file_name}.prmtop"
+
+        # Check if Amber Topology file exist
+        if not os.path.isfile(prmtop):
+            raise FileNotFoundError("Cannot find any AMBER topology file.")
+
+        # Check if Amber Coordinate file(s) exist
+        coordinates = np.array(
+            [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "pdb"]]
+        )
+        check_coordinates = [os.path.isfile(file) for file in coordinates]
+        if not any(check_coordinates):
+            raise FileNotFoundError("Cannot find any AMBER coordinates file.")
+
+        # Get the first coordinate file in the list of file(s) that exists
+        inpcrd = coordinates[check_coordinates][0]
+
+        # Load Amber structure
+        structure = pmd.load_file(prmtop, inpcrd, structure=True)
+
+        # Save to Gromacs *.top and *.gro file
+        top_file = f"{file_name}.top"
+        gro_file = f"{file_name}.gro"
+
+        if overwrite:
+            structure.save(top_file, format="gromacs", overwrite=True)
+            structure.save(gro_file, overwrite=True)
+        else:
+            if not os.path.isfile(top_file):
+                structure.save(top_file, format="gromacs")
+            else:
+                log.info(f"Topology file {top_file} exists, skipping writing file.")
+
+            if not os.path.isfile(gro_file):
+                structure.save(gro_file)
+            else:
+                log.info(f"Coordinates file {gro_file} exists, skipping writing file.")

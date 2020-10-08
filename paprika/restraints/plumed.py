@@ -15,7 +15,7 @@ _PI_ = np.pi
 
 class Plumed:
     """
-    This class converts restraints generated in pAPRika :class:`paprika.restraints.DAT_restraint` into `Plumed
+    This class converts restraints generated in `pAPRika` :class:`paprika.restraints.DAT_restraint` into `Plumed
     <https://www.plumed.org/>`_ restraints.
 
     .. todo::
@@ -319,7 +319,7 @@ class Plumed:
 
         return atom_index
 
-    def add_dummy_atoms_to_file(self, structure):
+    def add_dummy_atom_restraints(self, structure, window, path=None):
         """
         Add positional restraints on dummy atoms to the Plumed restraint files.
 
@@ -327,29 +327,37 @@ class Plumed:
         ----------
         structure: os.PathLike or :class:`parmed.Structure`
             The reference structure that is used to determine the absolute coordinate of the dummy atoms.
+        window: str
+            APR window where the structure is stored for extracting the dummy atom positions.
+        path: os.PathLike, optional, default=None
+            Path of the ``plumed.dat`` file. If set to ``None`` (default) self.path will be used.
 
         """
+        # Load structure file
+        if isinstance(structure, str):
+            structure = return_parmed_structure(structure)
+        elif isinstance(structure, ParmedStructureClass):
+            pass
+        else:
+            raise Exception(
+                "add_dummy_atoms_to_file does not support the type associated with structure: "
+                + type(structure)
+            )
+
         # Extract dummy atoms
-        for windows in self.window_list:
-            if isinstance(structure, str):
-                structure = return_parmed_structure(structure)
-            elif isinstance(structure, ParmedStructureClass):
-                pass
-            else:
-                raise Exception(
-                    "add_dummy_atoms_to_file does not support the type associated with structure: "
-                    + type(structure)
-                )
+        dummy_atoms = extract_dummy_atoms(structure, serial=True)
 
-            dummy_atoms = extract_dummy_atoms(structure, serial=True)
+        # Write dummy atom info to plumed file
+        if path is not None:
+            plumed_file = os.path.join(path, window, self.file_name)
+        else:
+            plumed_file = os.path.join(self.path, window, self.file_name)
 
-            # Write dummy atom info to plumed file
-            plumed_file = os.path.join(self.path, windows, self.file_name)
-            if os.path.isfile(plumed_file):
-                with open(plumed_file, "a") as file:
-                    _write_dummy_to_file(file, dummy_atoms)
-            else:
-                raise Exception(f"ERROR: '{plumed_file}' file does not exists!")
+        if os.path.isfile(plumed_file):
+            with open(plumed_file, "a") as file:
+                _write_dummy_to_file(file, dummy_atoms)
+        else:
+            raise Exception(f"ERROR: '{plumed_file}' file does not exists!")
 
 
 def _check_plumed_units(units):

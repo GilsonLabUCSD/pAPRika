@@ -1,2 +1,0 @@
-class Simulate(object):
-    pass
