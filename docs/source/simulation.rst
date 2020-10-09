@@ -2,7 +2,7 @@ Simulation Wrappers API
 =======================
 
 Base Simulation Class
-------------------------
+---------------------
 .. automodule:: paprika.simulate.base_class
     :members:
     :undoc-members:
@@ -16,7 +16,7 @@ AMBER Simulation Wrapper
     :show-inheritance:
 
 GROMACS Simulation Wrapper
-------------------------
+--------------------------
 .. automodule:: paprika.simulate.gromacs
     :members:
     :undoc-members:
