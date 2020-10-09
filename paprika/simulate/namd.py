@@ -16,17 +16,31 @@ logger = logging.getLogger(__name__)
 
 class NAMD(BaseSimulation, abc.ABC):
     """
-    A wrapper that can be used to set `NAMD` simulation parameters.
+    A wrapper that can be used to set NAMD simulation parameters.
+
+    .. todo ::
+        Add wrapper support for ``Drude`` polarizable FF, steered-MD and alchemical calculations (perhaps as nested
+        class).
     """
 
     @property
-    def colvars_file(self) -> str:
+    def colvars_file(self):
         """os.PathLike: The name of the `Colvars`-style restraints file."""
         return self._colvars_file
 
     @colvars_file.setter
-    def colvars_file(self, value: str):
+    def colvars_file(self, value):
         self._colvars_file = value
+
+    @property
+    def tcl_forces(self):
+        """os.PathLike: The name of a TclForces scripts for applying a user defined force
+        (e.g., can use this to generate a funnel potential)."""
+        return self._tcl_forces
+
+    @tcl_forces.setter
+    def tcl_forces(self, value):
+        self._tcl_forces = value
 
     @property
     def control(self):
@@ -102,7 +116,7 @@ class NAMD(BaseSimulation, abc.ABC):
 
     @property
     def charmm_parameters(self) -> list:
-        """list: A list os.PathLike CHARMM parameters if running simulations with the CHARMM Force Field."""
+        """list: A list os.PathLike CHARMM parameters if running simulations with the CHARMM force field."""
         return self._charmm_parameters
 
     @charmm_parameters.setter
@@ -138,8 +152,8 @@ class NAMD(BaseSimulation, abc.ABC):
     def previous(self) -> str:
         """
         str: Specify the prefix file name for the previous simulation. This is needed to
-        get the coordinates, velocities and box information. Unlike `AMBER` and `GROMACS`,
-        `NAMD` requires the restart files specified inside the configuration file instead
+        get the coordinates, velocities and box information. Unlike AMBER and GROMACS,
+        NAMD requires the restart files specified inside the configuration file instead
         of the command-line argument and the information is stored in different files.
         """
         return self._previous
@@ -151,10 +165,11 @@ class NAMD(BaseSimulation, abc.ABC):
     @property
     def custom_run_commands(self):
         """
-        list: A list of `NAMD`-supported tcl commands if a custom run is preferred. One
+        list: A list of NAMD-supported tcl commands if a custom run is preferred. One
         example of this usage is for a slow-heating MD run.
 
         .. code-block :: python
+
             simulation.custom_run_commands = [
                 "for {set temp 0} {$temp <= 300} {incr temp 50} {",
                 "langevinTemp $temp",
@@ -183,11 +198,12 @@ class NAMD(BaseSimulation, abc.ABC):
         self.logfile = self._prefix + ".log"
         self._previous = None
         self._custom_run_commands = None
+        self._tcl_forces = None
         self._charmm_parameters = []
 
         self._constraints = OrderedDict()
         self._constraints["rigidBonds"] = "all"
-        self._constraints["stepspercycle"] = 20
+        self._constraints["usesettle"] = "on"
 
         self._nb_method = OrderedDict()
         self._nb_method["exclude"] = "scaled1-4"
@@ -212,13 +228,26 @@ class NAMD(BaseSimulation, abc.ABC):
         """
         self.control["outputname"] = self.prefix
         self.control["minimize"] = 5000
-        self.control["readexclusions"] = "yes"
-        self.control["scnb"] = 2.0
+
+        if ".prmtop" in self.topology:
+            self.control["readexclusions"] = "yes"
+            self.control["scnb"] = 2.0
+        elif ".psf" in self.topology:
+            self.nb_method["1-4scaling"] = 1.0
+            self.nb_method["cutoff"] = 12.0
+            self.nb_method["switching"] = "on"
+            self.nb_method["switchdist"] = 10.0
+            self.nb_method["exclude"] = "scaled1-4"
+            self.nb_method["LJCorrection"] = "off"
+
         self.control["restartFreq"] = 5000
         self.control["dcdFreq"] = 500
         self.control["xstFreq"] = 500
         self.control["outputEnergies"] = 500
         self.control["outputPressure"] = 500
+
+        if "namd3" in self.executable:
+            self.nb_method["CUDASOAintegrate"] = "off"
 
     def _config_md(self):
         """
@@ -226,8 +255,17 @@ class NAMD(BaseSimulation, abc.ABC):
         """
         self.constraints["timestep"] = 2.0
 
-        self.control["readexclusions"] = "yes"
-        self.control["scnb"] = 2.0
+        if ".prmtop" in self.topology:
+            self.control["readexclusions"] = "yes"
+            self.control["scnb"] = 2.0
+        elif ".psf" in self.topology:
+            self.nb_method["1-4scaling"] = 1.0
+            self.nb_method["cutoff"] = 12.0
+            self.nb_method["switching"] = "on"
+            self.nb_method["switchdist"] = 10.0
+            self.nb_method["exclude"] = "scaled1-4"
+            self.nb_method["LJCorrection"] = "no"
+
         self.control["outputname"] = self.prefix
         self.control["restartFreq"] = 5000
         self.control["dcdFreq"] = 500
@@ -235,6 +273,12 @@ class NAMD(BaseSimulation, abc.ABC):
         self.control["outputEnergies"] = 500
         self.control["outputPressure"] = 500
         self.control["run"] = 5000
+
+        if "namd3" in self.executable:
+            self.nb_method["CUDASOAintegrate"] = "on"
+        else:
+            self.nb_method["margin"] = 1.0
+            self.constraints["stepspercycle"] = 20
 
         self.thermostat["langevin"] = "on"
         self.thermostat["langevinDamping"] = 1.0
@@ -253,10 +297,14 @@ class NAMD(BaseSimulation, abc.ABC):
         self.implicit["solventDielectric"] = 78.5
         self.implicit["ionConcentration"] = 0.0
 
-        self._nb_method["cutoff"] = 999.0
-        self._nb_method["LJCorrection"] = "no"
-        self._nb_method["nonbondedFreq"] = 2
-        self._nb_method["fullElectFrequency"] = 4
+        self.nb_method["cutoff"] = 999.0
+        self.nb_method["LJCorrection"] = "no"
+        self.nb_method["nonbondedFreq"] = 2
+        self.nb_method["fullElectFrequency"] = 4
+
+        if ".psf" in self.topology:
+            self.nb_method["switching"] = "off"
+            del self.nb_method["switchdist"]
 
     def config_gb_md(self):
         """
@@ -272,10 +320,14 @@ class NAMD(BaseSimulation, abc.ABC):
 
         self.constraints["timestep"] = 1.0
 
-        self._nb_method["cutoff"] = 999.0
-        self._nb_method["LJCorrection"] = "no"
-        self._nb_method["nonbondedFreq"] = 2
-        self._nb_method["fullElectFrequency"] = 4
+        self.nb_method["cutoff"] = 999.0
+        self.nb_method["LJCorrection"] = "no"
+        self.nb_method["nonbondedFreq"] = 2
+        self.nb_method["fullElectFrequency"] = 4
+
+        if ".psf" in self.topology:
+            self.nb_method["switching"] = "off"
+            del self.nb_method["switchdist"]
 
     def config_pbc_min(self, calculate_cell_vectors=True):
         """
@@ -285,7 +337,7 @@ class NAMD(BaseSimulation, abc.ABC):
         ----------
         calculate_cell_vectors: bool, optional, default=True
             Calculate cell basis vectors based on `self.coordinates`. This is usually needed at the start of a
-            simulation. When continuing a simulation `NAMD` reads in the ``*.xst`` file to get the basis vectors.
+            simulation. When continuing a simulation NAMD reads in the ``*.xst`` file to get the basis vectors.
 
         """
         self.title = "PBC Minimization"
@@ -294,7 +346,6 @@ class NAMD(BaseSimulation, abc.ABC):
 
         self.nb_method["PME"] = "yes"
         self.nb_method["PMEGridSpacing"] = 1.0
-        self.nb_method["margin"] = 1.0
 
         if calculate_cell_vectors:
             self._get_cell_basis_vectors()
@@ -310,17 +361,20 @@ class NAMD(BaseSimulation, abc.ABC):
         ensemble: str, optional, default='npt'
             Configure MD setting to use ``nvt`` or ``npt``.
         barostat: str, optional, default='langevin'
-            Option to choose one of two barostat implemented in `NAMD`: (1) Langevin piston or (2) Berendsen.
+            Option to choose one of two barostat implemented in NAMD: (1) `Langevin piston` or (2) `Berendsen`.
         calculate_cell_vectors: bool, optional, default=False
             Calculate cell basis vectors based on `self.coordinates`. This is usually needed at the start of a
-            simulation. When continuing a simulation `NAMD` reads in the ``*.xst`` file to get the basis vectors.
+            simulation. When continuing a simulation NAMD reads in the ``*.xsc`` file to get the cell basis vectors.
 
         """
         if ensemble.lower() not in ["nvt", "npt"]:
             raise Exception(f"Thermodynamic ensemble {ensemble} is not supported.")
 
-        self._config_md()
         self.title = f"{ensemble.upper()} MD Simulation"
+
+        self._config_md()
+        self.nb_method["PME"] = "yes"
+        self.nb_method["PMEGridSpacing"] = 1.0
 
         if ensemble.lower() == "npt":
             self.barostat["useGroupPressure"] = "yes"
@@ -393,7 +447,7 @@ class NAMD(BaseSimulation, abc.ABC):
     @staticmethod
     def _write_dict_to_conf(f, dictionary):
         """
-        Write dictionary to file, following `NAMD` format.
+        Write dictionary to file, following NAMD format.
 
         Parameters
         ----------
@@ -417,16 +471,18 @@ class NAMD(BaseSimulation, abc.ABC):
         Write the MD configuration to file.
         """
 
-        logger.debug("Writing {}".format(self.input))
+        logger.debug("Writing input file: {}".format(self.input))
+
         with open(os.path.join(self.path, self.input), "w") as conf:
             conf.write("## {:s}\n".format(self.title))
 
-            # NAMD can read CHARMM PSF/PDB, AMBER prmtop/rst7 and GROMACS top/gro files
-            # TODO: Implement CHARMM input
+            # Topology and Coordinates files
+            # AMBER PRMTOP/RST7
             if ".prmtop" in self.topology:
                 conf.write("# AMBER files\n")
                 conf.write("{:30s} {:s}\n".format("amber", "yes"))
                 conf.write("{:30s} {:s}\n".format("parmfile", self.topology))
+
                 if any([ext in self.coordinates for ext in [".rst7", ".inpcrd"]]):
                     conf.write("{:30s} {:s}\n".format("ambercoor", self.coordinates))
                 elif ".pdb" in self.coordinates:
@@ -435,6 +491,7 @@ class NAMD(BaseSimulation, abc.ABC):
                     raise FileExistsError(
                         f"Coordinates file {self.coordinates} not does not exist."
                     )
+
                 conf.write(
                     "{:30s} {:s}\n".format(
                         "readexclusions", self.control["readexclusions"]
@@ -442,10 +499,12 @@ class NAMD(BaseSimulation, abc.ABC):
                 )
                 conf.write("{:30s} {:s}\n".format("scnb", str(self.control["scnb"])))
 
+            # GROMACS TOP/GRO
             elif ".top" in self.topology:
                 conf.write("# GROMACS files\n")
                 conf.write("{:30s} {:s}\n".format("gromacs", "on"))
                 conf.write("{:30s} {:s}\n".format("grotopfile", self.topology))
+
                 if ".gro" in self.coordinates:
                     conf.write("{:30s} {:s}\n".format("grocoorfile", self.coordinates))
                 elif ".pdb" in self.coordinates:
@@ -454,20 +513,26 @@ class NAMD(BaseSimulation, abc.ABC):
                     raise FileExistsError(
                         f"Coordinates file {self.coordinates} not does not exist."
                     )
+
+            # CHARMM PSF/PDB
             elif ".psf" in self.topology:
                 conf.write("# CHARMM files\n")
+                conf.write("{:30s} {:s}\n".format("paraTypeXplor", "on"))
                 conf.write("{:30s} {:s}\n".format("structure", self.topology))
+
                 if ".pdb" in self.coordinates:
                     conf.write("{:30s} {:s}\n".format("coordinates", self.coordinates))
                 else:
                     raise FileExistsError(
                         f"Coordinates file {self.coordinates} not does not exist."
                     )
+
                 if not self.charmm_parameters:
                     raise FileExistsError(
                         "CHARMM parameter file(s) not specified, please specify the parameters "
-                        "with the variable namd.charmm_parameters."
+                        "with the variable 'namd.charmm_parameters'."
                     )
+
                 conf.write("{:30s} {:s}\n".format("paraTypeCharmm ", "on"))
                 for parameter in self.charmm_parameters:
                     conf.write("{:30s} {:s}\n".format("parameters", parameter))
@@ -475,22 +540,30 @@ class NAMD(BaseSimulation, abc.ABC):
             conf.write("# File I/O and run control\n")
             conf.write("{:30s} {:s}\n".format("outputname", self.control["outputname"]))
 
+            # Load in previous files (.coor, .vel and/or .xsc)
             if self.previous is not None:
-                conf.write(
-                    "{:30s} {:s}\n".format(
-                        "bincoordinates", self.previous + ".restart.coor"
-                    )
-                )
-                conf.write(
-                    "{:30s} {:s}\n".format(
-                        "binvelocities", self.previous + ".restart.vel"
-                    )
-                )
-                conf.write(
-                    "{:30s} {:s}\n".format(
-                        "extendedSystem", self.previous + ".restart.xsc"
-                    )
-                )
+                # Coordinates
+                bincoordinates = self.previous + ".restart.coor"
+                if not os.path.isfile(os.path.join(self.path, bincoordinates)):
+                    bincoordinates = self.previous + ".coor"
+
+                conf.write("{:30s} {:s}\n".format("bincoordinates", bincoordinates))
+
+                # Velocities
+                binvelocities = self.previous + ".restart.vel"
+                if not os.path.isfile(os.path.join(self.path, binvelocities)):
+                    binvelocities = self.previous + ".vel"
+
+                conf.write("{:30s} {:s}\n".format("binvelocities", binvelocities))
+
+                # PBC box information
+                if not self.implicit:
+                    extendedsystem = self.previous + ".restart.xsc"
+                    if not os.path.isfile(os.path.join(self.path, extendedsystem)):
+                        extendedsystem = self.previous + ".xsc"
+
+                    conf.write("{:30s} {:s}\n".format("extendedSystem", extendedsystem))
+
             else:
                 conf.write("{:30s} {:s}\n".format("temperature", str(self.temperature)))
 
@@ -546,6 +619,11 @@ class NAMD(BaseSimulation, abc.ABC):
                 conf.write("{:30s} {:s}\n".format("plumed", "on"))
                 conf.write("{:30s} {:s}\n".format("plumedfile", self.plumed_file))
 
+            if self.tcl_forces:
+                conf.write("# TclForces\n")
+                conf.write("{:30s} {:s}\n".format("tclForces", "on"))
+                conf.write("{:30s} {:s}\n".format("tclForcesScript", self.tcl_forces))
+
             if not self.custom_run_commands:
                 if "minimize" in self.control:
                     conf.write("# Minimization\n")
@@ -564,7 +642,7 @@ class NAMD(BaseSimulation, abc.ABC):
 
     def run(self, overwrite=True, fail_ok=False):
         """
-        Method to run Molecular Dynamics simulation with `NAMD`.
+        Method to run Molecular Dynamics simulation with NAMD.
 
         Parameters
         ----------
@@ -648,19 +726,19 @@ class NAMD(BaseSimulation, abc.ABC):
 
     def check_complete(self, alternate_file=None):
         """
-        Check for the string "step N" in ``self.output`` file. If "step N" is found, then
+        Check for the string "WallClock" in ``self.output`` file. If "WallClock" is found, then
         the simulation completed.
 
         Parameters
         ----------
         alternate_file : os.PathLike, optional, default=None
-            If present, check for "step N" in this file rather than ``self.output``.
+            If present, check for "WallClock" in this file rather than ``self.output``.
             Default: None
 
         Returns
         -------
         complete : bool
-            True if "step N" is found in file. False, otherwise.
+            True if "WallClock" is found in file. False, otherwise.
         """
         # Assume not completed
         complete = False
