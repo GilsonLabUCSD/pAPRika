@@ -180,6 +180,8 @@ class System(object):
         """
 
         filtered_lines = []
+
+        number_of_pdb_files = len(re.findall("loadpdb", "".join(self.template_lines)))
         for line in self.template_lines:
             # Find loadpdb line, replace pdb file if necessary, set unit name
             if re.search("loadpdb", line):
@@ -187,7 +189,10 @@ class System(object):
                 self.unit = words[0]
                 filtered_lines.append(
                     "{} = loadpdb {}\n".format(
-                        self.unit, self.loadpdb_file if self.loadpdb_file else words[2]
+                        self.unit,
+                        self.loadpdb_file
+                        if self.loadpdb_file and number_of_pdb_files == 1
+                        else words[2],
                     )
                 )
             elif re.search("combine", line):
