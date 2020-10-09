@@ -92,6 +92,24 @@ class NAMD(BaseSimulation, abc.ABC):
         self._pressure = value
 
     @property
+    def implicit(self) -> dict:
+        """dict: Dictionary for implicit solvent options."""
+        return self._implicit
+
+    @implicit.setter
+    def implicit(self, value: dict):
+        self._implicit = value
+
+    @property
+    def charmm_parameters(self) -> list:
+        """list: A list os.PathLike CHARMM parameters if running simulations with the CHARMM Force Field."""
+        return self._charmm_parameters
+
+    @charmm_parameters.setter
+    def charmm_parameters(self, value: list):
+        self._charmm_parameters = value
+
+    @property
     def prefix(self):
         """
         str: The prefix for file names generated from this simulation.
@@ -165,6 +183,7 @@ class NAMD(BaseSimulation, abc.ABC):
         self.logfile = self._prefix + ".log"
         self._previous = None
         self._custom_run_commands = None
+        self._charmm_parameters = []
 
         self._constraints = OrderedDict()
         self._constraints["rigidBonds"] = "all"
@@ -176,12 +195,13 @@ class NAMD(BaseSimulation, abc.ABC):
         self._nb_method["cutoff"] = 9.0
         self._nb_method["LJCorrection"] = "yes"
         self._nb_method["nonbondedFreq"] = 1
-        self._nb_method["fullElectFrequency"] = 1
+        self._nb_method["fullElectFrequency"] = 2
         self._nb_method["switching"] = "off"
         self._nb_method["wrapAll"] = "on"
 
         # Placeholder dict
         self._control = OrderedDict()
+        self._implicit = OrderedDict()
         self._thermostat = OrderedDict()
         self._barostat = OrderedDict()
         self._cell_basis_vectors = OrderedDict()
@@ -190,14 +210,25 @@ class NAMD(BaseSimulation, abc.ABC):
         """
         Configure input settings for minimization.
         """
+        self.control["outputname"] = self.prefix
         self.control["minimize"] = 5000
+        self.control["readexclusions"] = "yes"
+        self.control["scnb"] = 2.0
+        self.control["restartFreq"] = 5000
+        self.control["dcdFreq"] = 500
+        self.control["xstFreq"] = 500
+        self.control["outputEnergies"] = 500
+        self.control["outputPressure"] = 500
 
     def _config_md(self):
         """
         Configure input settings for MD.
         """
         self.constraints["timestep"] = 2.0
-        self.control["outputName"] = self.prefix
+
+        self.control["readexclusions"] = "yes"
+        self.control["scnb"] = 2.0
+        self.control["outputname"] = self.prefix
         self.control["restartFreq"] = 5000
         self.control["dcdFreq"] = 500
         self.control["xstFreq"] = 500
@@ -214,13 +245,37 @@ class NAMD(BaseSimulation, abc.ABC):
         """
         Configure input settings for minimization with implicit solvent.
         """
+        self.title = "Implicit solvent Minimization"
+
         self._config_min()
+
+        self.implicit["GBIS"] = "on"
+        self.implicit["solventDielectric"] = 78.5
+        self.implicit["ionConcentration"] = 0.0
+
+        self._nb_method["cutoff"] = 999.0
+        self._nb_method["LJCorrection"] = "no"
+        self._nb_method["nonbondedFreq"] = 2
+        self._nb_method["fullElectFrequency"] = 4
 
     def config_gb_md(self):
         """
         Configure input settings for MD with implicit solvent.
         """
+        self.title = "Implicit solvent MD Simulation"
+
         self._config_md()
+
+        self.implicit["GBIS"] = "on"
+        self.implicit["solventDielectric"] = 78.5
+        self.implicit["ionConcentration"] = 0.0
+
+        self.constraints["timestep"] = 1.0
+
+        self._nb_method["cutoff"] = 999.0
+        self._nb_method["LJCorrection"] = "no"
+        self._nb_method["nonbondedFreq"] = 2
+        self._nb_method["fullElectFrequency"] = 4
 
     def config_pbc_min(self, calculate_cell_vectors=True):
         """
@@ -233,7 +288,10 @@ class NAMD(BaseSimulation, abc.ABC):
             simulation. When continuing a simulation `NAMD` reads in the ``*.xst`` file to get the basis vectors.
 
         """
+        self.title = "PBC Minimization"
+
         self._config_min()
+
         self.nb_method["PME"] = "yes"
         self.nb_method["PMEGridSpacing"] = 1.0
         self.nb_method["margin"] = 1.0
@@ -364,7 +422,7 @@ class NAMD(BaseSimulation, abc.ABC):
             conf.write("## {:s}\n".format(self.title))
 
             # NAMD can read CHARMM PSF/PDB, AMBER prmtop/rst7 and GROMACS top/gro files
-            # For now I will only implement writing Amber files
+            # TODO: Implement CHARMM input
             if ".prmtop" in self.topology:
                 conf.write("# AMBER files\n")
                 conf.write("{:30s} {:s}\n".format("amber", "yes"))
@@ -377,11 +435,45 @@ class NAMD(BaseSimulation, abc.ABC):
                     raise FileExistsError(
                         f"Coordinates file {self.coordinates} not does not exist."
                     )
-                conf.write("{:30s} {:s}\n".format("readexclusions", "yes"))
-                conf.write("{:30s} {:s}\n".format("scnb", "2.0"))
+                conf.write(
+                    "{:30s} {:s}\n".format(
+                        "readexclusions", self.control["readexclusions"]
+                    )
+                )
+                conf.write("{:30s} {:s}\n".format("scnb", str(self.control["scnb"])))
+
+            elif ".top" in self.topology:
+                conf.write("# GROMACS files\n")
+                conf.write("{:30s} {:s}\n".format("gromacs", "on"))
+                conf.write("{:30s} {:s}\n".format("grotopfile", self.topology))
+                if ".gro" in self.coordinates:
+                    conf.write("{:30s} {:s}\n".format("grocoorfile", self.coordinates))
+                elif ".pdb" in self.coordinates:
+                    conf.write("{:30s} {:s}\n".format("coordinates", self.coordinates))
+                else:
+                    raise FileExistsError(
+                        f"Coordinates file {self.coordinates} not does not exist."
+                    )
+            elif ".psf" in self.topology:
+                conf.write("# CHARMM files\n")
+                conf.write("{:30s} {:s}\n".format("structure", self.topology))
+                if ".pdb" in self.coordinates:
+                    conf.write("{:30s} {:s}\n".format("coordinates", self.coordinates))
+                else:
+                    raise FileExistsError(
+                        f"Coordinates file {self.coordinates} not does not exist."
+                    )
+                if not self.charmm_parameters:
+                    raise FileExistsError(
+                        "CHARMM parameter file(s) not specified, please specify the parameters "
+                        "with the variable namd.charmm_parameters."
+                    )
+                conf.write("{:30s} {:s}\n".format("paraTypeCharmm ", "on"))
+                for parameter in self.charmm_parameters:
+                    conf.write("{:30s} {:s}\n".format("parameters", parameter))
 
             conf.write("# File I/O and run control\n")
-            conf.write("{:30s} {:s}\n".format("outputName", self.control["outputName"]))
+            conf.write("{:30s} {:s}\n".format("outputname", self.control["outputname"]))
 
             if self.previous is not None:
                 conf.write(
@@ -405,8 +497,19 @@ class NAMD(BaseSimulation, abc.ABC):
             conf.write("# Output frequency\n")
             self._write_dict_to_conf(
                 conf,
-                get_dict_without_keys(self.control, "minimize", "run", "outputName"),
+                get_dict_without_keys(
+                    self.control,
+                    "minimize",
+                    "run",
+                    "outputname",
+                    "readexclusions",
+                    "scnb",
+                ),
             )
+
+            if self.implicit:
+                conf.write("# Generalized Born Implicit Solvent\n")
+                self._write_dict_to_conf(conf, self.implicit)
 
             if self.cell_basis_vectors:
                 conf.write("# Cell basis vectors\n")
@@ -418,8 +521,15 @@ class NAMD(BaseSimulation, abc.ABC):
             conf.write("# constraints\n")
             self._write_dict_to_conf(conf, self.constraints)
 
-            if self.thermostat:
-                conf.write("# Temperature coupling\n")
+            conf.write("# Temperature coupling\n")
+            if self.custom_run_commands:
+                if any(["langevinTemp" in line for line in self.custom_run_commands]):
+                    self._write_dict_to_conf(
+                        conf, get_dict_without_keys(self.thermostat, "langevinTemp")
+                    )
+                else:
+                    self._write_dict_to_conf(conf, self.thermostat)
+            else:
                 self._write_dict_to_conf(conf, self.thermostat)
 
             if self.barostat:
@@ -430,6 +540,11 @@ class NAMD(BaseSimulation, abc.ABC):
                 conf.write("# Collective variables\n")
                 conf.write("{:30s} {:s}\n".format("colvars", "on"))
                 conf.write("{:30s} {:s}\n".format("colvarsConfig", self.colvars_file))
+
+            if self.plumed_file:
+                conf.write("# Plumed Restraints\n")
+                conf.write("{:30s} {:s}\n".format("plumed", "on"))
+                conf.write("{:30s} {:s}\n".format("plumedfile", self.plumed_file))
 
             if not self.custom_run_commands:
                 if "minimize" in self.control:
@@ -443,7 +558,7 @@ class NAMD(BaseSimulation, abc.ABC):
                     conf.write("# Molecular dynamics\n")
                     conf.write("{:30s} {:s}\n".format("run", str(self.control["run"])))
             else:
-                conf.write("# Custom Run")
+                conf.write("# Custom Run\n")
                 for line in self.custom_run_commands:
                     conf.write(line + "\n")
 
@@ -461,8 +576,75 @@ class NAMD(BaseSimulation, abc.ABC):
         """
 
         if overwrite or not self.check_complete():
-            if self.control["minimize"]:
-                pass
+            if "Minimization" in self.title:
+                logger.info("Running Minimization at {}".format(self.path))
+            elif "MD Simulation" in self.title:
+                if self.thermostat and self.barostat:
+                    logger.info("Running NPT MD at {}".format(self.path))
+                elif not self.barostat:
+                    logger.info("Running NVT MD at {}".format(self.path))
+
+            # Check restraints file
+            if self.colvars_file and self.plumed_file:
+                raise Exception(
+                    "Cannot use both Colvars-style and Plumed-style restraints at the same time."
+                )
+
+            # Set Plumed kernel library to path
+            if self.plumed_file:
+                self._set_plumed_kernel()
+
+            # Write input file
+            self._write_input_file()
+
+            # Create executable list
+            exec_list = self.executable.split()
+
+            if "+p" not in self.executable:
+                exec_list += ["+p", str(self.n_threads)]
+
+            if "+devices" not in self.executable and self.gpu_devices is not None:
+                exec_list += ["+devices", str(self.gpu_devices)]
+
+            exec_list += [self.input]
+
+            logger.debug("Exec line: " + " ".join(exec_list))
+
+            # Execute
+            namd_output = sp.Popen(
+                exec_list,
+                cwd=self.path,
+                stdout=open(os.path.join(self.path, self.logfile), "w"),
+                stderr=sp.PIPE,
+                env=os.environ,
+            )
+            namd_stderr = namd_output.stderr.read().splitlines()
+
+            if namd_stderr and any(
+                ["ERROR:" in line.decode("utf-8").strip() for line in namd_stderr]
+            ):
+                logger.info("STDERR received from NAMD execution")
+                for line in namd_stderr:
+                    logger.error(line)
+
+            # Check completion status
+            if "minimize" in self.control and self.check_complete():
+                logger.info("Minimization completed...")
+            elif self.check_complete():
+                logger.info("MD completed ...")
+            else:
+                logger.info(
+                    "Simulation did not complete when executing the following ...."
+                )
+                logger.info(" ".join(exec_list))
+                if not fail_ok:
+                    raise Exception(
+                        "Exiting due to failed simulation! Check logging info."
+                    )
+        else:
+            logger.info(
+                "Completed output detected ... Skipping. Use: run(overwrite=True) to overwrite"
+            )
 
     def check_complete(self, alternate_file=None):
         """
@@ -491,10 +673,7 @@ class NAMD(BaseSimulation, abc.ABC):
         if os.path.isfile(output_file):
             with open(output_file, "r") as f:
                 strings = f.read()
-                if (
-                    f" step {self.control['nsteps']} " in strings
-                    or "Finished mdrun" in strings
-                ):
+                if "WallClock:" in strings:
                     complete = True
 
         if complete:
