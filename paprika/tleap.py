@@ -180,16 +180,28 @@ class System(object):
         """
 
         filtered_lines = []
+
+        number_of_pdb_files = len(re.findall("loadpdb", "".join(self.template_lines)))
         for line in self.template_lines:
             # Find loadpdb line, replace pdb file if necessary, set unit name
             if re.search("loadpdb", line):
                 words = line.rstrip().replace("=", " ").split()
-                if self.loadpdb_file is None:
-                    self.loadpdb_file = words[2]
                 self.unit = words[0]
                 filtered_lines.append(
-                    "{} = loadpdb {}".format(self.unit, self.loadpdb_file)
+                    "{} = loadpdb {}\n".format(
+                        self.unit,
+                        self.loadpdb_file
+                        if self.loadpdb_file and number_of_pdb_files == 1
+                        else words[2],
+                    )
                 )
+            elif re.search("combine", line):
+                words = line.rstrip().replace("=", " ").split()
+                self.unit = words[0]
+                log.debug(
+                    f"Found `combine` keyword and reassigning `self.unit` to {self.unit}..."
+                )
+                filtered_lines.append(line)
             # Remove any included solvation and ionization commands if pbc_type
             # is not None
             elif self.pbc_type is not None:
