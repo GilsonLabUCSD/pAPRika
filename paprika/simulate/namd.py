@@ -3,6 +3,7 @@ import logging
 import os
 import subprocess as sp
 from collections import OrderedDict
+from enum import Enum
 
 import numpy as np
 import parmed as pmd
@@ -19,9 +20,36 @@ class NAMD(BaseSimulation, abc.ABC):
     A wrapper that can be used to set NAMD simulation parameters.
 
     .. todo ::
-        Add wrapper support for ``Drude`` polarizable FF, steered-MD and alchemical calculations (perhaps as nested
-        class).
+        Add wrapper support for Drude polarizable FF, steered-MD and alchemical calculations
     """
+
+    class Ensemble(Enum):
+        """
+        An enumeration of the different Ensemble in MD simulation.
+        """
+
+        NVE = "NVE"
+        NVT = "NVT"
+        NPT = "NPT"
+
+    class Thermostat(Enum):
+        """
+        An enumeration of the different themostat implemented in NAMD.
+        """
+
+        Langevin = "langevin"
+        tCouple = "tCouple"
+        tRescale = "tRescale"
+        tReassign = "tReassign"
+        LoweAnderson = "loweAndersen"
+
+    class Barostat(Enum):
+        """
+        An enumeration of the different barostat implemented in NAMD.
+        """
+
+        Berendsen = "berendsen"
+        Langevin = "langevin"
 
     @property
     def colvars_file(self):
@@ -214,6 +242,7 @@ class NAMD(BaseSimulation, abc.ABC):
         self._nb_method["fullElectFrequency"] = 2
         self._nb_method["switching"] = "off"
         self._nb_method["wrapAll"] = "on"
+        self._nb_method["margin"] = 5.0
 
         # Placeholder dict
         self._control = OrderedDict()
@@ -232,6 +261,7 @@ class NAMD(BaseSimulation, abc.ABC):
         if ".prmtop" in self.topology:
             self.control["readexclusions"] = "yes"
             self.control["scnb"] = 2.0
+
         elif ".psf" in self.topology:
             self.nb_method["1-4scaling"] = 1.0
             self.nb_method["cutoff"] = 12.0
@@ -249,15 +279,23 @@ class NAMD(BaseSimulation, abc.ABC):
         if "namd3" in self.executable:
             self.nb_method["CUDASOAintegrate"] = "off"
 
-    def _config_md(self):
+    def _config_md(self, thermostat):
         """
         Configure input settings for MD.
+
+        Parameters
+        ----------
+        thermostat: :class:`NAMD.Thermostat`, optional, default=Langevin
+            Option to choose one of five thermostat implemented in NAMD: (1) `Langevin`, (2) `tCouple`, (3) `tRescale`,
+            (4) `tReassign`, (5) `Lowe-Anderson`.
+
         """
         self.constraints["timestep"] = 2.0
 
         if ".prmtop" in self.topology:
             self.control["readexclusions"] = "yes"
             self.control["scnb"] = 2.0
+
         elif ".psf" in self.topology:
             self.nb_method["1-4scaling"] = 1.0
             self.nb_method["cutoff"] = 12.0
@@ -278,12 +316,32 @@ class NAMD(BaseSimulation, abc.ABC):
             self.nb_method["CUDASOAintegrate"] = "on"
         else:
             self.nb_method["margin"] = 1.0
-            self.constraints["stepspercycle"] = 20
+            self.constraints["stepspercycle"] = 10
 
-        self.thermostat["langevin"] = "on"
-        self.thermostat["langevinDamping"] = 1.0
-        self.thermostat["langevinTemp"] = self.temperature
-        self.thermostat["langevinHydrogen"] = "off"
+        # Select Thermotat for the simulation
+        if thermostat == self.Thermostat.Langevin:
+            self.thermostat["langevin"] = "on"
+            self.thermostat["langevinDamping"] = 1.0
+            self.thermostat["langevinTemp"] = self.temperature
+            self.thermostat["langevinHydrogen"] = "off"
+
+        elif thermostat == self.Thermostat.tCouple:
+            self.thermostat["tCouple"] = "on"
+            self.thermostat["tCoupleTemp"] = self.temperature
+
+        elif thermostat == self.Thermostat.tRescale:
+            self.thermostat["rescaleFreq"] = 50
+            self.thermostat["rescaleTemp"] = self.temperature
+
+        elif thermostat == self.Thermostat.tReassign:
+            self.thermostat["reassignFreq"] = 50
+            self.thermostat["reassignTemp"] = self.temperature
+
+        elif thermostat == self.Thermostat.LoweAnderson:
+            self.thermostat["loweAndersen"] = "on"
+            self.thermostat["loweAndersenCutoff"] = 2.7
+            self.thermostat["loweAndersenTemp"] = self.temperature
+            self.thermostat["loweAndersenRate"] = 50
 
     def config_gb_min(self):
         """
@@ -301,18 +359,19 @@ class NAMD(BaseSimulation, abc.ABC):
         self.nb_method["LJCorrection"] = "no"
         self.nb_method["nonbondedFreq"] = 2
         self.nb_method["fullElectFrequency"] = 4
+        self.nb_method["wrapAll"] = "off"
 
         if ".psf" in self.topology:
             self.nb_method["switching"] = "off"
             del self.nb_method["switchdist"]
 
-    def config_gb_md(self):
+    def config_gb_md(self, thermostat=Thermostat.Langevin):
         """
         Configure input settings for MD with implicit solvent.
         """
         self.title = "Implicit solvent MD Simulation"
 
-        self._config_md()
+        self._config_md(thermostat)
 
         self.implicit["GBIS"] = "on"
         self.implicit["solventDielectric"] = 78.5
@@ -324,6 +383,7 @@ class NAMD(BaseSimulation, abc.ABC):
         self.nb_method["LJCorrection"] = "no"
         self.nb_method["nonbondedFreq"] = 2
         self.nb_method["fullElectFrequency"] = 4
+        self.nb_method["wrapAll"] = "off"
 
         if ".psf" in self.topology:
             self.nb_method["switching"] = "off"
@@ -351,44 +411,54 @@ class NAMD(BaseSimulation, abc.ABC):
             self._get_cell_basis_vectors()
 
     def config_pbc_md(
-        self, ensemble="npt", barostat="langevin", calculate_cell_vectors=False
+        self,
+        ensemble=Ensemble.NPT,
+        thermostat=Thermostat.Langevin,
+        barostat=Barostat.Langevin,
+        calculate_cell_vectors=False,
     ):
         """
         Configure input setting for a MD run with periodic boundary conditions.
 
         Parameters
         ----------
-        ensemble: str, optional, default='npt'
+        ensemble: :class:`NAMD.Ensemble`, optional, default=NPT
             Configure MD setting to use ``nvt`` or ``npt``.
-        barostat: str, optional, default='langevin'
-            Option to choose one of two barostat implemented in NAMD: (1) `Langevin piston` or (2) `Berendsen`.
+        thermostat: :class:`NAMD.Thermostat`, optional, default=Langevin
+            Option to choose one of five thermostat implemented in NAMD: (1) `Langevin`, (2) `tCouple`, (3) `tRescale`,
+            (4) `tReassign`, (5) `Lowe-Anderson`.
+        barostat: :class:`NAMD.Barostat`, optional, default=Langevin
+            Option to choose one of two barostat implemented in NAMD: (1) `Langevin` piston or (2) `Berendsen`.
         calculate_cell_vectors: bool, optional, default=False
             Calculate cell basis vectors based on `self.coordinates`. This is usually needed at the start of a
             simulation. When continuing a simulation NAMD reads in the ``*.xsc`` file to get the cell basis vectors.
 
         """
-        if ensemble.lower() not in ["nvt", "npt"]:
-            raise Exception(f"Thermodynamic ensemble {ensemble} is not supported.")
+        self.title = f"{ensemble.value} MD Simulation"
 
-        self.title = f"{ensemble.upper()} MD Simulation"
+        if ensemble == self.Ensemble.NVE:
+            self._config_md(thermostat=None)
+            self.constraints["timestep"] = 1.0
+        else:
+            self._config_md(thermostat)
 
-        self._config_md()
         self.nb_method["PME"] = "yes"
         self.nb_method["PMEGridSpacing"] = 1.0
 
-        if ensemble.lower() == "npt":
+        # Select Barostat for the simulation
+        if ensemble == self.Ensemble.NPT:
             self.barostat["useGroupPressure"] = "yes"
             self.barostat["useFlexibleCell"] = "no"
             self.barostat["useConstantArea"] = "no"
 
-            if barostat.lower() == "langevin":
+            if barostat == self.Barostat.Langevin:
                 self.barostat["langevinPiston"] = "on"
                 self.barostat["langevinPistonTarget"] = self.pressure
                 self.barostat["langevinPistonPeriod"] = 200.0
                 self.barostat["langevinPistonDecay"] = 100.0
-                self.barostat["langevinPistonTemperature"] = self.temperature
+                self.barostat["langevinPistonTemp"] = self.temperature
 
-            elif barostat.lower() == "berendsen":
+            elif barostat == self.Barostat.Berendsen:
                 self.barostat["BerendsenPressure"] = "on"
                 self.barostat["BerendsenPressureTarget"] = self.pressure
                 self.barostat["BerendsenPressureCompressibility"] = 4.57e-5
