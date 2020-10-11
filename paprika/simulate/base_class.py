@@ -140,6 +140,42 @@ class BaseSimulation(object):
     def converged(self, value: bool):
         self._converged = value
 
+    @property
+    def temperature(self) -> float:
+        """float: Desired temperature of the system (Kelvin). Default is 298.15 K."""
+        return self._temperature
+
+    @temperature.setter
+    def temperature(self, value: float):
+        self._temperature = value
+
+    @property
+    def pressure(self) -> float:
+        """float: Desired pressure of the system (bar). Default is 1.01325 bar."""
+        return self._pressure
+
+    @pressure.setter
+    def pressure(self, value: float):
+        self._pressure = value
+
+    @property
+    def thermostat(self) -> dict:
+        """dict: Dictionary for the thermostat options."""
+        return self._thermostat
+
+    @thermostat.setter
+    def thermostat(self, value: dict):
+        self._thermostat = value
+
+    @property
+    def barostat(self) -> dict:
+        """dict: Dictionary for the barostat options."""
+        return self._barostat
+
+    @barostat.setter
+    def barostat(self, value: dict):
+        self._barostat = value
+
     def __init__(self):
         self.title = "PBC MD Simulation"
         self._path = "."
@@ -154,6 +190,11 @@ class BaseSimulation(object):
         self._phase = None
         self._window = None
         self.converged = False
+
+        self._temperature = 298.15
+        self._pressure = 1.01325
+        self._thermostat = {}
+        self._barostat = {}
 
     def _set_plumed_kernel(self):
         # Set the Plumed kernel library path

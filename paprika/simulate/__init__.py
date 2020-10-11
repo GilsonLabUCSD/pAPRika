@@ -3,7 +3,7 @@ from .gromacs import GROMACS
 from .namd import NAMD
 
 __all__ = [
-    AMBER,
-    GROMACS,
-    NAMD,
+    "AMBER",
+    "GROMACS",
+    "NAMD",
 ]

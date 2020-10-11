@@ -3,6 +3,7 @@ import logging
 import os
 import subprocess as sp
 from collections import OrderedDict
+from enum import Enum
 
 from .base_class import BaseSimulation
 
@@ -13,6 +14,71 @@ class AMBER(BaseSimulation, abc.ABC):
     """
     A wrapper for setting parameters and running MD with AMBER.
     """
+
+    class Thermostat(Enum):
+        """
+        An enumeration of the different thermostat implemented in AMBER (option for ``ntt``).
+        """
+
+        Off = 0
+        Berendsen = 1
+        Andersen = 2
+        Langevin = 3
+        OptIsoNoseHoover = 9
+        StochIsoNoseHoover = 10
+        Bussi = 11
+
+    class Barostat(Enum):
+        """
+        An enumeration of the different barostat implemented in AMBER (option for ``barostat``).
+        """
+
+        Off = 0
+        Berendsen = 1
+        MonteCarlo = 2
+
+    class GBModel(Enum):
+        """
+        An enumeration of the different Generalized Born Implicit Solvent model implemented in AMBER (option for
+        ``igb``).
+        """
+
+        Off = 0
+        HCT = 1
+        OBC1 = 2
+        OBC2 = 5
+        GBn = 7
+        GBn2 = 8
+        Vacuum = 6
+
+    class BoxScaling(Enum):
+        """
+        An enumeration of the different PBC scaling options when running constant pressure simulations in AMBER (
+        option for ``ntp``).
+        """
+
+        Off = 0
+        Isotropic = 1
+        Anisotropic = 2
+        Semiisotropic = 3
+
+    class Periodicity(Enum):
+        """
+        An enumeration of the different periodicity options in AMBER (option for ``ntb``).
+        """
+
+        Off = 0
+        ConstVolume = 1
+        ConstPressure = 1
+
+    class SHAKE(Enum):
+        """
+        An enumeration of the different bond constraint options in AMBER (option for ``ntc``).
+        """
+
+        Off = 1
+        HBonds = 2
+        AllBonds = 3
 
     @property
     def restraint_file(self) -> str:
@@ -168,16 +234,16 @@ class AMBER(BaseSimulation, abc.ABC):
         self._cntrl["ntxo"] = 1
         self._cntrl["ioutfm"] = 1
         self._cntrl["ntf"] = 2
-        self._cntrl["ntc"] = 2
+        self._cntrl["ntc"] = self.SHAKE.HBonds.value
         self._cntrl["cut"] = 8.0
-        self._cntrl["igb"] = 0
-        self._cntrl["tempi"] = 298.15
-        self._cntrl["temp0"] = 298.15
-        self._cntrl["ntt"] = 3
+        self._cntrl["igb"] = self.GBModel.Off.value
+        self._cntrl["tempi"] = self.temperature
+        self._cntrl["temp0"] = self.temperature
+        self._cntrl["ntt"] = self.Thermostat.Langevin.value
         self._cntrl["gamma_ln"] = 1.0
         self._cntrl["ig"] = -1
-        self._cntrl["ntp"] = 1
-        self._cntrl["barostat"] = 2
+        self._cntrl["ntp"] = self.BoxScaling.Isotropic.value
+        self._cntrl["barostat"] = self.Barostat.MonteCarlo.value
         self._cntrl["ntr"] = None
         self._cntrl["restraint_wt"] = None
         self._cntrl["restraintmask"] = None
@@ -206,16 +272,16 @@ class AMBER(BaseSimulation, abc.ABC):
         self.cntrl["ntwe"] = 0
         self.cntrl["ntxo"] = 1
         self.cntrl["ntf"] = 1
-        self.cntrl["ntc"] = 1
-        self.cntrl["ntt"] = 0
+        self.cntrl["ntc"] = self.SHAKE.Off.value
+        self.cntrl["ntt"] = self.Thermostat.Off.value
         self.cntrl["gamma_ln"] = 0.0
         self.cntrl["ig"] = 0
-        self.cntrl["ntp"] = 0
-        self.cntrl["barostat"] = 0
+        self.cntrl["ntp"] = self.BoxScaling.Off.value
+        self.cntrl["barostat"] = self.Barostat.Off.value
         self.mdcrd = None
         self.mden = None
 
-    def _config_md(self):
+    def _config_md(self, thermostat):
         """
         Configure input settings for MD.
         """
@@ -233,54 +299,99 @@ class AMBER(BaseSimulation, abc.ABC):
         self.cntrl["ntxo"] = 1
         self.cntrl["ioutfm"] = 1
         self.cntrl["ntf"] = 2
-        self.cntrl["ntc"] = 2
-        self.cntrl["ntt"] = 3
+        self.cntrl["ntc"] = self.SHAKE.HBonds.value
+        self.cntrl["ntt"] = thermostat.value
         self.cntrl["gamma_ln"] = 1.0
         self.cntrl["ig"] = -1
 
-    def config_gb_min(self):
+    def config_gb_min(self, gb_model=GBModel.HCT):
         """
-        Configure input settings for minimization in continuum solvent.
+        Configure a reasonable input setting for an energy minimization run with implicit solvent. `Users
+        can override the parameters set by this method.`
+
+        Parameters
+        ----------
+        gb_model: :class:`AMBER.GBModel`, default=HCT
+            Option to choose different implicit solvent model.
         """
 
         self._config_min()
         self.title = "GB Minimization"
         self.cntrl["cut"] = 999.0
-        self.cntrl["igb"] = 1
+        self.cntrl["igb"] = gb_model.value
 
     def config_pbc_min(self):
         """
-        Configure input settings for minimization in periodic boundary conditions.
+        Configure a reasonable input setting for an energy minimization run with periodic boundary conditions. `Users
+        can override the parameters set by this method.`
         """
         self._config_min()
         self.title = "PBC Minimization"
         self.cntrl["cut"] = 9.0
-        self.cntrl["igb"] = 0
+        self.cntrl["igb"] = self.GBModel.Off.value
 
-    def config_gb_md(self):
+    def config_gb_md(self, gb_model=GBModel.HCT, thermostat=Thermostat.Langevin):
         """
-        Configure input settings for MD in default GB.
+        Configure a reasonable input settings for MD with implicit solvent. `Users can override the parameters
+        set by this method.`
+
+        Parameters
+        ----------
+        gb_model: :class:`AMBER.GBModel`, default=HCT
+            Option to choose different implicit solvent model.
+        thermostat: :class:`AMBER.Thermostat`, default=Langevin
+            Option to choose one of six thermostat implemented in NAMD: (1) `Langevin`, (2) `tCouple`,
+            (3) `tRescale`, (4) `vRescale`, (5) `tReassign`, (6) `Lowe-Anderson`.
         """
 
-        self._config_md()
+        self._config_md(thermostat)
         self.title = "GB MD Simulation"
         self.cntrl["cut"] = 999.0
-        self.cntrl["igb"] = 1
-        self.cntrl["ntp"] = 0
-        self.cntrl["barostat"] = 0
+        self.cntrl["igb"] = gb_model.value
+        self.cntrl["ntp"] = self.BoxScaling.Off.value
+        self.cntrl["barostat"] = self.Barostat.Off.value
 
-    def config_pbc_md(self):
+    def config_pbc_md(
+        self,
+        ensemble="npt",
+        thermostat=Thermostat.Langevin,
+        barostat=Barostat.MonteCarlo,
+    ):
         """
-        Configure input settings for default NTP.
-        """
+        Configure a reasonable input setting for a MD run with periodic boundary conditions. `Users can override the
+        parameters set by this method.`
 
-        self._config_md()
+        Parameters
+        ----------
+        ensemble: str, default="npt"
+            Configure MD setting to use ``nvt`` or ``npt``.
+        thermostat: :class:`AMBER.Thermostat`, default='Langevin'
+            Option to choose one of six thermostats implemented in AMBER: (1) `Berendsen`, (2) `Andersen`,
+            (3) `Langevin`, (4) `Optimized Isokinetic Nose-Hoover`, (5) `Stochastic Isokinetic Nose-Hoover`,
+            (6) `Bussi`.
+        barostat: :class:`AMBER.Barostat`, default='MonteCarlo'
+            Option to choose one of two barostats implemented in AMBER: (1) `Berendsen` or (2) `Monte Carlo`.
+        """
+        if ensemble.lower() not in ["nve", "nvt", "npt"]:
+            raise Exception(f"Thermodynamic ensemble {ensemble} is not supported.")
+
+        self._config_md(thermostat)
         self.title = "PBC MD Simulation"
         self.cntrl["cut"] = 9.0
-        self.cntrl["igb"] = 0
+        self.cntrl["igb"] = self.GBModel.Off.value
         self.cntrl["iwrap"] = 1
-        self.cntrl["ntp"] = 1
-        self.cntrl["barostat"] = 2
+
+        if ensemble == "nve":
+            self.cntrl["ntt"] = self.Thermostat.Off.value
+            self.cntrl["ntb"] = self.Periodicity.ConstVolume.value
+
+        elif ensemble == "nvt":
+            self.cntrl["ntb"] = self.Periodicity.ConstVolume.value
+
+        elif ensemble == "npt":
+            self.cntrl["ntp"] = self.BoxScaling.Isotropic.value
+            self.cntrl["ntb"] = self.Periodicity.ConstPressure.value
+            self.cntrl["barostat"] = barostat.value
 
     def _write_dict_to_mdin(self, f, dictionary):
         """
