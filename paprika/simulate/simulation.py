@@ -1,14 +1,24 @@
 import logging
 import os
+from enum import Enum
 from sys import platform
 
 logger = logging.getLogger(__name__)
 
 
-class BaseSimulation(object):
+class Simulation(object):
     """
     Base class for a Molecular Dynamics simulation wrapper.
     """
+
+    class Ensemble(Enum):
+        """
+        An enumeration of the different thermodynamic ensembles.
+        """
+
+        NVE = "NVE"
+        NVT = "NVT"
+        NPT = "NPT"
 
     @property
     def path(self):

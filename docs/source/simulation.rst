@@ -3,7 +3,7 @@ Simulation Wrappers API
 
 Base Simulation Class
 ---------------------
-.. automodule:: paprika.simulate.base_class
+.. automodule:: paprika.simulate.simulation
     :members:
     :undoc-members:
     :show-inheritance:

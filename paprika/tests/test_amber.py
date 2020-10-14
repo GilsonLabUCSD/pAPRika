@@ -104,7 +104,7 @@ def test_amber_single_window_gbmin(clean_files):
     gbsim.executable = "sander"
     gbsim.topology = "k-cl.prmtop"
     gbsim.prefix = "minimize"
-    gbsim.inpcrd = "k-cl.rst7"
+    gbsim.coordinates = "k-cl.rst7"
     gbsim.config_gb_min()
     gbsim.cntrl["maxcyc"] = 1
     gbsim.cntrl["ncyc"] = 1
@@ -112,7 +112,7 @@ def test_amber_single_window_gbmin(clean_files):
 
     gbsim.config_gb_md()
     gbsim.prefix = "md"
-    gbsim.inpcrd = "minimize.rst7"
+    gbsim.coordinates = "minimize.rst7"
     gbsim.cntrl["nstlim"] = 1
     gbsim.cntrl["ntwe"] = 1
     gbsim.cntrl["ntpr"] = 1
@@ -148,7 +148,7 @@ def test_amber_minimization(clean_files):
 
     simulation.prefix = "minimize"
     simulation.topology = "k-cl.prmtop"
-    simulation.inpcrd = "k-cl.rst7"
+    simulation.coordinates = "k-cl.rst7"
 
     simulation.config_gb_min()
     # Turn off GB for now.
