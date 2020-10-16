@@ -1530,7 +1530,8 @@ def ref_state_work(
 
     R = 1.987204118e-3  # kcal/mol-K (Boltzman constant)
     RT = R * temperature
-
+    print(f"Temperature {temperature}")
+    print(f"Thermal energy {RT}")
     # Distance Integration Function
     def dist_int(RT, fc, targ):
         def potential(arange, RT, fc, targ):

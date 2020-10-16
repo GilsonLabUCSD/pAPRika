@@ -974,7 +974,7 @@ class System(object):
         output_prefix=None,
     ):
         """
-        Convert AMBER topology and coordinate files to CHARMM format.
+        Convert AMBER topology and coordinate files to LAMMPS format.
 
         Parameters
         ----------
