@@ -392,3 +392,76 @@ def test_multiple_pdb_files(clean_files):
     assert "b = loadpdb cb6-but-minimized.pdb" in lines
     assert "combine" in lines
     assert "savepdb model multi.pdb" in lines
+
+
+def test_conversions(clean_files):
+    """ Test that conversion methods work in Tleap module. """
+    temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
+
+    but_frcmod = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.frcmod")
+    )
+    but_mol2 = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.mol2")
+    )
+
+    sys = System()
+    sys.template_lines = [
+        "source leaprc.gaff",
+        f"loadamberparams {but_frcmod}",
+        f"BUT = loadmol2 {but_mol2}",
+        f"model = loadmol2 {but_mol2}",
+    ]
+    sys.output_path = temporary_directory
+    sys.output_prefix = "but"
+    sys.pbc_type = None
+    sys.neutralize = False
+    sys.build()
+
+    from paprika.utils import is_file_and_not_empty
+
+    # Gromacs ParmEd test
+    sys.convert_to_gromacs(overwrite=True)
+    top_file = os.path.join(sys.output_path, sys.output_prefix + ".top")
+    gro_file = os.path.join(sys.output_path, sys.output_prefix + ".gro")
+    assert is_file_and_not_empty(top_file) is True
+    assert is_file_and_not_empty(gro_file) is True
+
+    # Gromacs InterMol test
+    sys.convert_to_gromacs(toolkit=System.ConversionToolkit.InterMol)
+    assert is_file_and_not_empty(top_file) is True
+    assert is_file_and_not_empty(gro_file) is True
+    top_file = os.path.join(sys.output_path, sys.output_prefix + "_from_amber.top")
+    gro_file = os.path.join(sys.output_path, sys.output_prefix + "_from_amber.gro")
+    assert is_file_and_not_empty(top_file) is True
+    assert is_file_and_not_empty(gro_file) is True
+
+    # CHARMM ParmEd test
+    sys.convert_to_charmm()
+    psf_file = os.path.join(sys.output_path, sys.output_prefix + ".psf")
+    crd_file = os.path.join(sys.output_path, sys.output_prefix + ".crd")
+
+    assert is_file_and_not_empty(psf_file) is True
+    assert is_file_and_not_empty(crd_file) is True
+
+    # CHARMM Intermol test
+    sys.convert_to_charmm(toolkit=System.ConversionToolkit.InterMol)
+    rtf_file = os.path.join(sys.output_path, sys.output_prefix + ".rtf")
+    prm_file = os.path.join(sys.output_path, sys.output_prefix + ".prm")
+
+    assert is_file_and_not_empty(psf_file) is True
+    assert is_file_and_not_empty(crd_file) is True
+    assert is_file_and_not_empty(rtf_file) is True
+    assert is_file_and_not_empty(prm_file) is True
+
+    # LAMMPS test
+    sys.convert_to_lammps()
+    input_file = os.path.join(sys.output_path, sys.output_prefix + ".input")
+    lmp_file = os.path.join(sys.output_path, sys.output_prefix + ".lmp")
+    assert is_file_and_not_empty(input_file) is True
+    assert is_file_and_not_empty(lmp_file) is True
+
+    # DESMOND test
+    sys.convert_to_desmond()
+    cms_file = os.path.join(sys.output_path, sys.output_prefix + ".cms")
+    assert is_file_and_not_empty(cms_file) is True

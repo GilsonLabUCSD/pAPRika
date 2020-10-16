@@ -2,6 +2,7 @@ name: paprika-dev
 channels:
   - conda-forge
   - omnia
+  - mwt
 dependencies:
   
   # Base depends
@@ -16,6 +17,7 @@ dependencies:
   - ambertools >=20.0
   - pyyaml
   - plumed
+  - intermol
 
   # devtools
   - isort
