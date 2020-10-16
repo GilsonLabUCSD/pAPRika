@@ -4,7 +4,7 @@ Test utility functions
 
 import os
 
-from paprika.utils import make_window_dirs, strip_prmtop
+from paprika.utils import make_window_dirs, strip_prmtop, is_file_and_not_empty
 
 
 def test_mkdirs():
@@ -24,3 +24,32 @@ def test_strip_prmtop():
     residues = [r.name for r in cb6_only.residues]
     assert "CB6" in residues
     assert "BUT" not in residues
+
+
+def test_is_file_and_not_empty():
+    # Check for existing file
+    but_frcmod = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.frcmod")
+    )
+
+    assert os.path.isfile(but_frcmod)
+    assert os.path.getsize(but_frcmod) != 0
+    assert is_file_and_not_empty(but_frcmod)
+
+    # Check for emtpy
+    path = os.path.join(os.path.dirname(__file__), "test1")
+    with open(path, "w") as f:
+        pass
+
+    assert os.path.isfile(path)
+    assert os.path.getsize(path) == 0
+    assert not is_file_and_not_empty(path)
+
+    # Check file after writing
+    path = os.path.join(os.path.dirname(__file__), "test2")
+    with open(path, "w") as f:
+        f.write("Hello World\n")
+
+    assert os.path.isfile(path)
+    assert os.path.getsize(path) != 0
+    assert is_file_and_not_empty(path)
