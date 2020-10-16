@@ -1084,7 +1084,7 @@ class System(object):
         # Load Amber files
         system, prefix, prmtop_in, crd_in, amb_structure = _load_amber([prmtop, inpcrd])
 
-        # Save Lammps files
+        # Save Desmond files
         output_status = dict()
         _save_desmond(system, file_name, output_status)
 
