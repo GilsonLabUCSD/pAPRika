@@ -314,7 +314,7 @@ def get_rotation_matrix(vector, ref_vector):
 
 
 def get_principal_axis_vector(structure, principal_axis=1, atom_mask=None):
-    """
+    """Return the principal axis vector given a structure.
 
     Parameters
     ----------
