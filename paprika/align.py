@@ -169,7 +169,7 @@ def align_principal_axes(structure, atom_mask=None, principal_axis=1, axis="z"):
     evecs = evecs[
         :, evals.argsort()[::-1]
     ]  # <-- Numpy may not sort the eigenvalues properly
-    p_axis = evecs[:, principal_axis]
+    p_axis = evecs[:, principal_axis-1]
 
     # Calculate Rotation matrix
     rotation_matrix = get_rotation_matrix(p_axis, axis)
