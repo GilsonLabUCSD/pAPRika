@@ -3,9 +3,11 @@ Test utility functions
 """
 
 import os
-import pytest
 import shutil
-from paprika.utils import make_window_dirs, strip_prmtop, is_file_and_not_empty
+
+import pytest
+
+from paprika.utils import is_file_and_not_empty, make_window_dirs, strip_prmtop
 
 
 @pytest.fixture
