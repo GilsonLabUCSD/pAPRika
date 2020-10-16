@@ -979,9 +979,8 @@ class System(object):
         Parameters
         ----------
         pair_style: str, optional, default=None
-            LAMMPS option for ``pair_style``, if set to None (default) the setting will be for aperiodic Ewald
+            LAMMPS option for ``pair_style``, if set to ``None`` (default) the setting will be for a periodic Ewald
             simulation.
-            "pair_style lj/cut/coul/long 9.0 9.0\npair_modify tail yes\nkspace_style pppm 1e-8\n\n"
         output_path: str, optional, default=None
             Alternate directory path where the AMBER files are located. Default is the
             `path` parsed to the :class:`paprika.tleap.System` object.
