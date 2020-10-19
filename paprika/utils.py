@@ -43,6 +43,29 @@ def get_key(dct, value):
     return key
 
 
+def get_dict_without_keys(dct, *keys):
+    """
+    Returns a copy of a dictionary without specific keys.
+
+    Parameters
+    ----------
+    dct: dict
+        A python dictionary.
+    keys: int or str
+        The keys of the dictionary to negate.
+
+    Returns
+    -------
+    new_dict: dict
+        A new dictionary without *keys.
+
+    """
+    # https://stackoverflow.com/a/41422467
+    new_dict = dict(filter(lambda key_value: key_value[0] not in keys, dct.items()))
+
+    return new_dict
+
+
 def override_dict(dct, custom):
     """Overrides dictionary values from that of a custom dictionary.
 
