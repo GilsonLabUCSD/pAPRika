@@ -319,13 +319,13 @@ def test_namd_config(clean_files):
             assert float(line.split()[-1]) == 4.57e-5
 
         elif line.startswith("bincoordinates"):
-            assert line.split()[-1] == simulation.checkpoint+".coor"
+            assert line.split()[-1] == simulation.checkpoint + ".coor"
 
         elif line.startswith("binvelocities"):
-            assert line.split()[-1] == simulation.checkpoint+".vel"
+            assert line.split()[-1] == simulation.checkpoint + ".vel"
 
         elif line.startswith("extendedSystem"):
-            assert line.split()[-1] == simulation.checkpoint+".xsc"
+            assert line.split()[-1] == simulation.checkpoint + ".xsc"
 
     # Test vac
     simulation = NAMD()
