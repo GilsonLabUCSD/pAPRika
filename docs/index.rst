@@ -125,8 +125,8 @@ restraints, which is supported in a number of MD engines.
 
 Future releases of `pAPRika` will include support for other MD engines like ,
 `NAMD <https://www.ks.uiuc.edu/Research/namd/>`_ and `LAMMPS <https://lammps.sandia.gov/>`_. Plumed is supported by all
-of these but for `NAMD` only NPT simulations can be performed. Hence, a module converting `pAPRika` restraints to a
-`Colvars <https://github.com/Colvars/colvars>`_ module, which is supported in `NAMD` and `LAMMPS`, is also in the works.
+of these but for NAMD only NPT simulations can be performed. Hence, a module converting `pAPRika` restraints to a
+`Colvars <https://github.com/Colvars/colvars>`_ module, which is supported in NAMD and LAMMPS, is also in the works.
 
 .. table:: MD engines that are supported in `pAPRika` (or planned) and the respective restraint modules it supports.
    :widths: auto
@@ -136,7 +136,7 @@ of these but for `NAMD` only NPT simulations can be performed. Hence, a module c
    +-----------------+---------------------------------------------------------------------+
    ||                || Restraints Module                                                  |
    || MD Engine      +----------------+----------------+-----------------+-----------------+
-   ||                || NMR           || XML           || Plumed         || Colvars\ |ast| |
+   ||                || NMR           || XML           || Plumed         || Colvars        |
    +=================+================+================+=================+=================+
    || AMBER          || |tick|        || |cross|       || |tick|         || |cross|        |
    +-----------------+----------------+----------------+-----------------+-----------------+
@@ -144,7 +144,7 @@ of these but for `NAMD` only NPT simulations can be performed. Hence, a module c
    +-----------------+----------------+----------------+-----------------+-----------------+
    || GROMACS        || |cross|       || |cross|       || |tick|         || |cross|        |
    +-----------------+----------------+----------------+-----------------+-----------------+
-   || NAMD\ |ast|    || |cross|       || |cross|       || |tick|         || |tick|         |
+   || NAMD           || |cross|       || |cross|       || |tick|         || |tick|         |
    +-----------------+----------------+----------------+-----------------+-----------------+
    || LAMMPS\ |ast|  || |cross|       || |cross|       || |tick|         || |tick|         |
    +-----------------+----------------+----------------+-----------------+-----------------+
@@ -194,7 +194,7 @@ References
    04 - OpenMM with XML <tutorials/04-tutorial-cb6-but-openmm.ipynb>
    05 - AMBER with Plumed <tutorials/05-tutorial-cb6-but-plumed.ipynb>
    06 - GROMACS Simulation <tutorials/06-tutorial-cb6-but-gromacs.ipynb>
-..   07 - NAMD Simulation <tutorials/07-tutorial-cb6-but-namd.ipynb>
+   07 - NAMD Simulation <tutorials/07-tutorial-cb6-but-namd.ipynb>
 ..   08 - LAMMPS Simulation <tutorials/07-tutorial-cb6-but-lammps.ipynb>
 
 .. toctree::

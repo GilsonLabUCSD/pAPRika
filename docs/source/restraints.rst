@@ -8,23 +8,30 @@ DAT Restraints
    :undoc-members:
    :show-inheritance:
 
-Amber Restraint
----------------
+AMBER Restraints
+----------------
 .. automodule:: paprika.restraints.amber
    :members:
    :undoc-members:
    :show-inheritance:
 
-OpenMM Restraint
-----------------
+OpenMM Restraints
+-----------------
 .. automodule:: paprika.restraints.openmm
    :members:
    :undoc-members:
    :show-inheritance:
 
-Plumed Restraint
-----------------
+Plumed Module
+-------------
 .. automodule:: paprika.restraints.plumed
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Colvars Module
+--------------
+.. automodule:: paprika.restraints.colvars
    :members:
    :undoc-members:
    :show-inheritance:
