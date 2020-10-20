@@ -788,7 +788,7 @@ class System(object):
         overwrite=False,
         output_path=None,
         output_prefix=None,
-        toolkit=ConversionToolkit.ParmEd,
+        toolkit=ConversionToolkit.InterMol,
     ):
         """
         Convert AMBER topology and coordinate files to GROMACS format.
@@ -804,7 +804,7 @@ class System(object):
         output_prefix: str, optional, default=None
             Alternate file name prefix for the Amber files. Default is the `prefix` parsed
             to the :class:`paprika.tleap.System` object.
-        toolkit: :class:`ConversionToolkit`, default=ConversionToolkit.ParmEd
+        toolkit: :class:`ConversionToolkit`, default=ConversionToolkit.InterMol
             Option to choose the toolkit for converting the AMBER files, ParmEd or InterMol
         """
 
@@ -892,7 +892,7 @@ class System(object):
         overwrite=False,
         output_path=None,
         output_prefix=None,
-        toolkit=ConversionToolkit.ParmEd,
+        toolkit=ConversionToolkit.InterMol,
     ):
         """
         Convert AMBER topology and coordinate files to CHARMM format.
@@ -908,7 +908,7 @@ class System(object):
         output_prefix: str, optional, default=None
             Alternate file name prefix for the Amber files. Default is the `prefix` parsed
             to the :class:`paprika.tleap.System` object.
-        toolkit: :class:`ConversionToolkit`, default=ConversionToolkit.ParmEd
+        toolkit: :class:`ConversionToolkit`, default=ConversionToolkit.InterMol
             Option to choose the toolkit for converting the AMBER files, ParmEd or InterMol
         """
 
