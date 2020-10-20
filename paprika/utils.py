@@ -313,4 +313,5 @@ def is_file_and_not_empty(file_path):
     bool
         That a file both exists at the specified ``path`` and is not empty.
     """
+    # This function is copied from OpenFF-Evaluator
     return os.path.isfile(file_path) and (os.path.getsize(file_path) != 0)

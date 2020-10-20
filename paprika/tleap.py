@@ -815,16 +815,28 @@ class System(object):
             output_prefix = self.output_prefix
 
         file_name = os.path.join(output_path, output_prefix)
-        prmtop = f"{file_name}.prmtop"
 
-        # Check if Amber Topology file exist
-        if not os.path.isfile(prmtop):
+        # Check if Amber Topology file(s) exist
+        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        check_topology = [os.path.isfile(file) for file in topology]
+        if not any(check_topology):
             raise FileNotFoundError("Cannot find any AMBER topology file.")
 
+        # Get the first topology file in the list of file(s) that exists
+        prmtop = topology[check_topology][0]
+
         # Check if Amber Coordinate file(s) exist
-        coordinates = np.array(
-            [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "pdb"]]
-        )
+        if toolkit == self.ConversionToolkit.ParmEd:
+            coordinates = np.array(
+                [
+                    f"{file_name}.{ext}"
+                    for ext in ["rst7", "inpcrd", "rst", "crd", "pdb"]
+                ]
+            )
+        else:  # InterMol does not support PDB for loading Amber files
+            coordinates = np.array(
+                [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
+            )
         check_coordinates = [os.path.isfile(file) for file in coordinates]
         if not any(check_coordinates):
             raise FileNotFoundError("Cannot find any AMBER coordinates file.")
@@ -907,16 +919,28 @@ class System(object):
             output_prefix = self.output_prefix
 
         file_name = os.path.join(output_path, output_prefix)
-        prmtop = f"{file_name}.prmtop"
 
-        # Check if Amber Topology file exist
-        if not os.path.isfile(prmtop):
+        # Check if Amber Topology file(s) exist
+        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        check_topology = [os.path.isfile(file) for file in topology]
+        if not any(check_topology):
             raise FileNotFoundError("Cannot find any AMBER topology file.")
 
+        # Get the first topology file in the list of file(s) that exists
+        prmtop = topology[check_topology][0]
+
         # Check if Amber Coordinate file(s) exist
-        coordinates = np.array(
-            [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "pdb"]]
-        )
+        if toolkit == self.ConversionToolkit.ParmEd:
+            coordinates = np.array(
+                [
+                    f"{file_name}.{ext}"
+                    for ext in ["rst7", "inpcrd", "rst", "crd", "pdb"]
+                ]
+            )
+        else:  # InterMol does not support PDB for loading Amber files
+            coordinates = np.array(
+                [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
+            )
         check_coordinates = [os.path.isfile(file) for file in coordinates]
         if not any(check_coordinates):
             raise FileNotFoundError("Cannot find any AMBER coordinates file.")
@@ -995,15 +1019,19 @@ class System(object):
             output_prefix = self.output_prefix
 
         file_name = os.path.join(output_path, output_prefix)
-        prmtop = f"{file_name}.prmtop"
 
-        # Check if Amber Topology file exist
-        if not os.path.isfile(prmtop):
+        # Check if Amber Topology file(s) exist
+        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        check_topology = [os.path.isfile(file) for file in topology]
+        if not any(check_topology):
             raise FileNotFoundError("Cannot find any AMBER topology file.")
+
+        # Get the first topology file in the list of file(s) that exists
+        prmtop = topology[check_topology][0]
 
         # Check if Amber Coordinate file(s) exist
         coordinates = np.array(
-            [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "pdb"]]
+            [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
         )
         check_coordinates = [os.path.isfile(file) for file in coordinates]
         if not any(check_coordinates):
@@ -1060,15 +1088,19 @@ class System(object):
             output_prefix = self.output_prefix
 
         file_name = os.path.join(output_path, output_prefix)
-        prmtop = f"{file_name}.prmtop"
 
-        # Check if Amber Topology file exist
-        if not os.path.isfile(prmtop):
+        # Check if Amber Topology file(s) exist
+        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        check_topology = [os.path.isfile(file) for file in topology]
+        if not any(check_topology):
             raise FileNotFoundError("Cannot find any AMBER topology file.")
+
+        # Get the first topology file in the list of file(s) that exists
+        prmtop = topology[check_topology][0]
 
         # Check if Amber Coordinate file(s) exist
         coordinates = np.array(
-            [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "pdb"]]
+            [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
         )
         check_coordinates = [os.path.isfile(file) for file in coordinates]
         if not any(check_coordinates):
