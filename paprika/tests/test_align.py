@@ -131,6 +131,7 @@ def test_align_principal_axes():
 
 
 def test_rotate_around_axis():
+    # Cartesian axes
     cb6 = pmd.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         structure=True,
@@ -146,6 +147,19 @@ def test_rotate_around_axis():
     cb6_aligned = rotate_around_axis(cb6_aligned, axis="y", angle=90.0)
     angle = get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="y") * 180 / np.pi
     assert pytest.approx(angle, abs=1e-1) == 180.0
+
+    # Arbitrary axes
+    cb6 = pmd.load_file(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
+        structure=True,
+    )
+    cb6_axis = rotate_around_axis(cb6, axis=[0, 0, 1], angle=90.0)
+    angle = get_theta(cb6_axis, ":BUT@C", ":BUT@C3", axis=[0, 0, 1]) * 180 / np.pi
+    assert pytest.approx(angle, abs=1e-1) == 0.0
+
+    cb6_axis = rotate_around_axis(cb6, axis=[1, 1, 1], angle=90.0)
+    angle = get_theta(cb6_axis, ":BUT@C", ":BUT@C3", axis=[1, 1, 1]) * 180 / np.pi
+    assert pytest.approx(angle, abs=1e-1) == 54.7
 
 
 def test_check_coordinates():

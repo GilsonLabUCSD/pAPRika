@@ -18,8 +18,8 @@ def zalign(structure, mask1, mask2, axis="z", save=False, filename=None):
     mask2 : str
         Selection of second set of atoms.
     axis : str or list or :class:`numpy.ndarray`, optional, default='z'
-        Cartesian axis as a string: `x`, `y`, and `z`, or an arbitrary vector as a list. If an array is specified,
-        the axis vector need not be normalized.
+        Cartesian axis as a string: `x`, `y`, and `z`, or an arbitrary vector as a list. If an array is specified, the
+        axis-vector will be normalized automatically.
     save : bool, optional, default=False
         Whether to save the coordinates (the default is False, which does nothing).
     filename : str, optional, default=None
@@ -108,7 +108,7 @@ def align_principal_axes(structure, atom_mask=None, principal_axis=1, axis="z"):
         principal axis with the largest eigenvalue and `3` the lowest.).
     axis: str or list or :class:`numpy.ndarray`, optional, default='z'
         The axis vector to align the system to (by default the function aligns the principal axes with the
-        largest eigenvalue to the z-axis). If an array is specified, the axis vector need not be normalized.
+        largest eigenvalue to the z-axis). If an array is specified, the axis-vector will be normalized automatically.
 
     Returns
     -------
@@ -158,14 +158,15 @@ def align_principal_axes(structure, atom_mask=None, principal_axis=1, axis="z"):
 
 
 def rotate_around_axis(structure, axis, angle):
-    """Rotates a system around a Cartesian axes.
+    """Rotates a system around an axis. The axis can be Cartesian axes ('x', 'y', and 'z') or an arbitrary axis
+    (axis-angle).
 
     Parameters
     ----------
     structure : :class:`parmed.Structure`
         Molecular structure containing coordinates.
-    axis: str
-        The axis of rotation.
+    axis: str or list or :class:`numpy.ndarray`
+        The axis of rotation. If an array is specified, the axis-vector will be normalized automatically.
     angle: float
         The angle of rotation in degrees.
 
@@ -178,12 +179,18 @@ def rotate_around_axis(structure, axis, angle):
     --------
         >>> # Rotate a system around the z axis by 90 degrees
         >>> structure = rotate_around_axis(structure, axis='z', angle=90.0)
+        >>>
+        >>> # Rotate a system around the axis [1,1,1] by 30 degrees
+        >>> structure = rotate_around_axis(structure, axis=[1,1,1], angle=30.0)
     """
+
+    # Check axis
+    axis = _return_array(axis)
 
     # Convert angle to radians (temporary until Pint integration)
     angle *= np.pi / 180.0
 
-    if axis.lower() == "x":
+    if np.array_equal(axis, np.array([1.0, 0.0, 0.0])):
         rotation_matrix = np.array(
             [
                 [1, 0, 0],
@@ -191,7 +198,7 @@ def rotate_around_axis(structure, axis, angle):
                 [0, np.sin(angle), np.cos(angle)],
             ]
         )
-    elif axis.lower() == "y":
+    elif np.array_equal(axis, np.array([0.0, 1.0, 0.0])):
         rotation_matrix = np.array(
             [
                 [np.cos(angle), 0, np.sin(angle)],
@@ -199,7 +206,7 @@ def rotate_around_axis(structure, axis, angle):
                 [-np.sin(angle), 0, np.cos(angle)],
             ]
         )
-    elif axis.lower() == "z":
+    elif np.array_equal(axis, np.array([0.0, 0.0, 1.0])):
         rotation_matrix = np.array(
             [
                 [np.cos(angle), -np.sin(angle), 0],
@@ -208,7 +215,32 @@ def rotate_around_axis(structure, axis, angle):
             ]
         )
     else:
-        raise KeyError(f"Specified axis not supported: {axis}")
+        # Normalize axis vector
+        axis = axis / np.linalg.norm(axis)
+
+        u_x = axis[0]
+        u_y = axis[1]
+        u_z = axis[2]
+
+        rotation_matrix = np.array(
+            [
+                [
+                    np.cos(angle) + u_x ** 2 * (1 - np.cos(angle)),
+                    u_x * u_y * (1 - np.cos(angle)) - u_z * np.sin(angle),
+                    u_x * u_z * (1 - np.cos(angle)) + u_y * np.sin(angle),
+                ],
+                [
+                    u_y * u_x * (1 - np.cos(angle)) + u_z * np.sin(angle),
+                    np.cos(angle) + u_y ** 2 * (1 - np.cos(angle)),
+                    u_y * u_z * (1 - np.cos(angle)) - u_x * np.sin(angle),
+                ],
+                [
+                    u_z * u_x * (1 - np.cos(angle)) - u_y * np.sin(angle),
+                    u_z * u_y * (1 - np.cos(angle)) + u_x * np.sin(angle),
+                    np.cos(angle) + u_z ** 2 * (1 - np.cos(angle)),
+                ],
+            ]
+        )
 
     # Align the principal axis to specified axis
     aligned_coords = np.empty_like(structure.coordinates)
