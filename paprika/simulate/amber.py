@@ -3,23 +3,103 @@ import logging
 import os
 import subprocess as sp
 from collections import OrderedDict
+from enum import Enum
 
-from .base_class import BaseSimulation
+from .simulation import Simulation
 
 logger = logging.getLogger(__name__)
 
 
-class AMBER(BaseSimulation, abc.ABC):
+class AMBER(Simulation, abc.ABC):
     """
     A wrapper for setting parameters and running MD with AMBER.
     """
 
+    class Thermostat(Enum):
+        """
+        An enumeration of the different thermostat implemented in AMBER (option for ``ntt``).
+        """
+
+        Off = 0
+        Berendsen = 1
+        Andersen = 2
+        Langevin = 3
+        OptimizedIsoNoseHoover = 9
+        StochasticIsoNoseHoover = 10
+        Bussi = 11
+
+    class Barostat(Enum):
+        """
+        An enumeration of the different barostat implemented in AMBER (option for ``barostat``).
+        """
+
+        Off = 0
+        Berendsen = 1
+        MonteCarlo = 2
+
+    class GBModel(Enum):
+        """
+        An enumeration of the different Generalized Born Implicit Solvent model implemented in AMBER (option for
+        ``igb``).
+        """
+
+        Off = 0
+        HCT = 1
+        OBC1 = 2
+        OBC2 = 5
+        GBn = 7
+        GBn2 = 8
+        vacuum = 6
+
+    class BoxScaling(Enum):
+        """
+        An enumeration of the different PBC scaling options when running constant pressure simulations in AMBER (
+        option for ``ntp``).
+        """
+
+        Off = 0
+        Isotropic = 1
+        Anisotropic = 2
+        Semiisotropic = 3
+
+    class Periodicity(Enum):
+        """
+        An enumeration of the different periodicity options in AMBER (option for ``ntb``).
+        """
+
+        Off = 0
+        ConstantVolume = 1
+        ConstantPressure = 2
+
+    class Constraints(Enum):
+        """
+        An enumeration of the different bond constraint options in AMBER (option for ``ntc``).
+        """
+
+        Off = 1
+        HBonds = 2
+        AllBonds = 3
+
+    class ForceEvaluation(Enum):
+        """
+        An enumeration of the different force evaluation options in AMBER (option for ``ntf``).
+        """
+
+        All_On = 1
+        All_Off = 8
+        HBonds_Off = 2
+        AllBonds_Off = 3
+        AllBonds_HAngles_Off = 4
+        AllBonds_AllAngles_Off = 5
+        AllBonds_AllAngles_HDihedrals_Off = 6
+        AllBonds_AllAngles_AllDihedrals_Off = 7
+
     @property
     def restraint_file(self) -> str:
-        """os.PathLike: The file containing NMR-style restraints for `AMBER`.
+        """os.PathLike: The file containing NMR-style restraints for AMBER.
 
         .. note ::
-            When running `AMBER` simulations, you can only use either an `AMBER` NMR-style
+            When running AMBER simulations, you can only use either an AMBER NMR-style
             restraints or a Plumed-style restraints and not both. If both are specified,
             an ``Exception`` will be thrown.
         """
@@ -36,7 +116,7 @@ class AMBER(BaseSimulation, abc.ABC):
         to make it easy to override certain simulation parameters, such as positional restraints on dummy atoms, and
         the inclusion of exclusion of the NMR-style APR restraints.
 
-        As of `AMBER20`, these are described, in part, in chapter 20 on ``pmemd``.
+        As of AMBER20, these are described, in part, in chapter 20 on ``pmemd``.
 
         .. note ::
             I can't recall why we wanted an ``OrderedDict`` here.
@@ -48,35 +128,36 @@ class AMBER(BaseSimulation, abc.ABC):
 
         The default dictionary keys and values are as follows:
 
-            - ``imin``       : 0
-            - ``ntx``        : 1
-            - ``irest``      : 0
-            - ``maxcyc``     : 0
-            - ``ncyc``       : 0
-            - ``dt``         : 0.002
-            - ``nstlim``     : 5000
-            - ``ntpr``       : 500
-            - ``ntwe``       : 500
-            - ``ntwr``       : 5000
-            - ``ntwx``       : 500
-            - ``ntxo``       : 1
-            - ``ioutfm``     : 1
-            - ``ntf``        : 2
-            - ``ntc``        : 2
-            - ``cut``        : 8
-            - ``igb``        : 0
-            - ``tempi``      : 298.15
-            - ``tempo``      : 298.15
-            - ``ntt``        : 3
-            - ``gamma_ln``   : 1.0
-            - ``ig``         : -1
-            - ``ntp``        : 1
-            - ``barostat``   : 2
-            - ``ntr``        : ``None``
+            - ``imin``          : 0
+            - ``ntx``           : 1
+            - ``irest``         : 0
+            - ``maxcyc``        : 0
+            - ``ncyc``          : 0
+            - ``dt``            : 0.002
+            - ``nstlim``        : 5000
+            - ``ntpr``          : 500
+            - ``ntwe``          : 500
+            - ``ntwr``          : 5000
+            - ``ntwx``          : 500
+            - ``ntxo``          : 1
+            - ``ioutfm``        : 1
+            - ``ntf``           : 2
+            - ``ntc``           : 2
+            - ``cut``           : 8
+            - ``igb``           : 0
+            - ``tempi``         : 298.15
+            - ``tempo``         : 298.15
+            - ``pres0``         : 1.01325
+            - ``ntt``           : Thermostat.Langevin
+            - ``gamma_ln``      : 1.0
+            - ``ig``            : -1
+            - ``ntp``           : BoxScaling.Isotropic
+            - ``barostat``      : Barostat.MonteCarlo
+            - ``ntr``           : ``None``
             - ``restraint_wt``  : ``None``
             - ``restraintmask`` : ``None``
-            - ``nmropt``     : 1
-            - ``pencut``     : -1
+            - ``nmropt``        : 1
+            - ``pencut``        : -1
         """
         return self._cntrl
 
@@ -118,22 +199,42 @@ class AMBER(BaseSimulation, abc.ABC):
 
     @property
     def prefix(self) -> str:
-        """
-        str: The prefix for file names generated from this simulation.
-        """
+        """str: The prefix for file names generated from this simulation."""
         return self._prefix
 
     @prefix.setter
     def prefix(self, new_prefix: str):
         self._prefix = new_prefix
         self.input = new_prefix + ".in"
-        self.inpcrd = new_prefix + ".inpcrd"
         self.ref = new_prefix + ".inpcrd"
         self.output = new_prefix + ".out"
         self.restart = new_prefix + ".rst7"
         self.mdinfo = new_prefix + ".mdinfo"
         self.mdcrd = new_prefix + ".nc"
         self.mden = new_prefix + ".mden"
+
+    @property
+    def pmd(self):
+        """dict: Option to apply harmonic restraints on collective variables (umbrella sampling) based on the **NFE**
+        module of Amber. Users need to define the colvars file ``cv_file`` for this option to be written in the
+        AMBER input file. The default values for ``output_file`` and ``output_freq`` is "pmd.txt" and 500,
+        respectively."""
+        return self._pmd
+
+    @pmd.setter
+    def pmd(self, value):
+        self._pmd = value
+
+    @property
+    def smd(self):
+        """dict: Option to run a steered molecular dynamics (SMD) using the **NFE** module of Amber. Users need to
+        define the colvars file ``cv_file`` for this option to be written in the AMBER input file. The default values
+        for ``output_file`` and ``output_freq`` is "smd.txt" and 500, respectively."""
+        return self._smd
+
+    @smd.setter
+    def smd(self, value):
+        self._smd = value
 
     def __init__(self):
 
@@ -144,7 +245,6 @@ class AMBER(BaseSimulation, abc.ABC):
 
         # File names
         self.input = self._prefix + ".in"
-        self.inpcrd = self._prefix + ".inpcrd"
         self.ref = self._prefix + ".inpcrd"
         self.output = self._prefix + ".out"
         self.restart = self._prefix + ".rst7"
@@ -167,17 +267,18 @@ class AMBER(BaseSimulation, abc.ABC):
         self._cntrl["ntwx"] = 500
         self._cntrl["ntxo"] = 1
         self._cntrl["ioutfm"] = 1
-        self._cntrl["ntf"] = 2
-        self._cntrl["ntc"] = 2
+        self._cntrl["ntf"] = self.ForceEvaluation.HBonds_Off.value
+        self._cntrl["ntc"] = self.Constraints.HBonds.value
         self._cntrl["cut"] = 8.0
-        self._cntrl["igb"] = 0
-        self._cntrl["tempi"] = 298.15
-        self._cntrl["temp0"] = 298.15
-        self._cntrl["ntt"] = 3
+        self._cntrl["igb"] = self.GBModel.Off.value
+        self._cntrl["tempi"] = self.temperature
+        self._cntrl["temp0"] = self.temperature
+        self._cntrl["pres0"] = self.pressure
+        self._cntrl["ntt"] = self.Thermostat.Langevin.value
         self._cntrl["gamma_ln"] = 1.0
         self._cntrl["ig"] = -1
-        self._cntrl["ntp"] = 1
-        self._cntrl["barostat"] = 2
+        self._cntrl["ntp"] = self.BoxScaling.Isotropic.value
+        self._cntrl["barostat"] = self.Barostat.MonteCarlo.value
         self._cntrl["ntr"] = None
         self._cntrl["restraint_wt"] = None
         self._cntrl["restraintmask"] = None
@@ -188,6 +289,18 @@ class AMBER(BaseSimulation, abc.ABC):
         self._ewald = None
         self._wt = None  # or []
         self._group = None  # or []
+
+        # NFE module(s)
+        self._pmd = {
+            "cv_file": None,
+            "output_file": "pmd.txt",
+            "output_freq": 500,
+        }
+        self._smd = {
+            "cv_file": None,
+            "output_file": "smd.txt",
+            "output_freq": 500,
+        }
 
     def _config_min(self):
         """
@@ -205,17 +318,17 @@ class AMBER(BaseSimulation, abc.ABC):
         self.cntrl["ntwx"] = 0
         self.cntrl["ntwe"] = 0
         self.cntrl["ntxo"] = 1
-        self.cntrl["ntf"] = 1
-        self.cntrl["ntc"] = 1
-        self.cntrl["ntt"] = 0
+        self.cntrl["ntf"] = self.ForceEvaluation.All_On.value
+        self.cntrl["ntc"] = self.Constraints.Off.value
+        self.cntrl["ntt"] = self.Thermostat.Off.value
         self.cntrl["gamma_ln"] = 0.0
         self.cntrl["ig"] = 0
-        self.cntrl["ntp"] = 0
-        self.cntrl["barostat"] = 0
+        self.cntrl["ntp"] = self.BoxScaling.Off.value
+        self.cntrl["barostat"] = self.Barostat.Off.value
         self.mdcrd = None
         self.mden = None
 
-    def _config_md(self):
+    def _config_md(self, thermostat):
         """
         Configure input settings for MD.
         """
@@ -232,55 +345,139 @@ class AMBER(BaseSimulation, abc.ABC):
         self.cntrl["ntwx"] = 500
         self.cntrl["ntxo"] = 1
         self.cntrl["ioutfm"] = 1
-        self.cntrl["ntf"] = 2
-        self.cntrl["ntc"] = 2
-        self.cntrl["ntt"] = 3
+        self.cntrl["ntf"] = self.ForceEvaluation.HBonds_Off.value
+        self.cntrl["ntc"] = self.Constraints.HBonds.value
+        self.cntrl["ntt"] = thermostat.value
         self.cntrl["gamma_ln"] = 1.0
         self.cntrl["ig"] = -1
+        self.cntrl["cut"] = 9.0
 
-    def config_gb_min(self):
+    def config_vac_min(self):
         """
-        Configure input settings for minimization in continuum solvent.
+        Configure a reasonable input setting for an energy minimization run in vacuum. `Users can override the
+        parameters set by this method.`
+        """
+        self._config_min()
+        self.title = "Vacuum Minimization"
+        self.cntrl["cut"] = 999.0
+        self.cntrl["igb"] = self.GBModel.vacuum.value
+
+    def config_vac_md(self, thermostat=Thermostat.Langevin):
+        """
+        Configure a reasonable input settings for MD in vacuum. `Users can override the parameters set by this method.`
+
+        Parameters
+        ----------
+        thermostat: :class:`AMBER.Thermostat`, default=Thermostat.Langevin
+            Option to choose one of six thermostats implemented in AMBER, highlighted values in parenthesis are the
+            options set in the input file. **(1)** `Off` (``0``), **(2)** `Berendsen` (``1``), **(3)** `Andersen`
+            (``2``), **(4)** `Langevin` (``3``), **(5)** `OptimizedIsoNoseHoover` (``9``), **(6)**
+            `StochasticIsoNoseHoover` (``10``), and **(7)** `Bussi` (``11``).
+        """
+
+        self._config_md(thermostat)
+        self.title = "Vacuum MD Simulation"
+        self.cntrl["cut"] = 999.0
+        self.cntrl["igb"] = self.GBModel.vacuum.value
+        self.cntrl["ntp"] = self.BoxScaling.Off.value
+        self.cntrl["ntb"] = self.Periodicity.Off.value
+        self.cntrl["barostat"] = self.Barostat.Off.value
+
+    def config_gb_min(self, gb_model=GBModel.HCT):
+        """
+        Configure a reasonable input setting for an energy minimization run with implicit solvent. `Users can
+        override the parameters set by this method.`
+
+        Parameters
+        ----------
+        gb_model: :class:`AMBER.GBModel`, default=GBModel.HCT
+            Option to choose different implicit solvent model.
         """
 
         self._config_min()
         self.title = "GB Minimization"
         self.cntrl["cut"] = 999.0
-        self.cntrl["igb"] = 1
+        self.cntrl["igb"] = gb_model.value
+
+    def config_gb_md(self, gb_model=GBModel.HCT, thermostat=Thermostat.Langevin):
+        """
+        Configure a reasonable input settings for MD with implicit solvent. `Users can override the parameters
+        set by this method.`
+
+        Parameters
+        ----------
+        gb_model: :class:`AMBER.GBModel`, default=GBModel.HCT
+            Option to choose different implicit solvent model.
+        thermostat: :class:`AMBER.Thermostat`, default=Thermostat.Langevin
+            Option to choose one of six thermostats implemented in AMBER, highlighted values in parenthesis are the
+            options set in the input file. **(1)** `Off` (``0``), **(2)** `Berendsen` (``1``), **(3)** `Andersen`
+            (``2``), **(4)** `Langevin` (``3``), **(5)** `OptimizedIsoNoseHoover` (``9``), **(6)**
+            `StochasticIsoNoseHoover` (``10``), and **(7)** `Bussi` (``11``).
+        """
+
+        self._config_md(thermostat)
+        self.title = "GB MD Simulation"
+        self.cntrl["cut"] = 999.0
+        self.cntrl["igb"] = gb_model.value
+        self.cntrl["ntp"] = self.BoxScaling.Off.value
+        self.cntrl["ntb"] = self.Periodicity.Off.value
+        self.cntrl["barostat"] = self.Barostat.Off.value
 
     def config_pbc_min(self):
         """
-        Configure input settings for minimization in periodic boundary conditions.
+        Configure a reasonable input setting for an energy minimization run with periodic boundary conditions. `Users
+        can override the parameters set by this method.`
         """
         self._config_min()
         self.title = "PBC Minimization"
-        self.cntrl["cut"] = 9.0
-        self.cntrl["igb"] = 0
+        self.cntrl["igb"] = self.GBModel.Off.value
 
-    def config_gb_md(self):
+    def config_pbc_md(
+        self,
+        ensemble=Simulation.Ensemble.NPT,
+        thermostat=Thermostat.Langevin,
+        barostat=Barostat.MonteCarlo,
+    ):
         """
-        Configure input settings for MD in default GB.
-        """
+        Configure a reasonable input setting for a MD run with periodic boundary conditions. `Users can override the
+        parameters set by this method.`
 
-        self._config_md()
-        self.title = "GB MD Simulation"
-        self.cntrl["cut"] = 999.0
-        self.cntrl["igb"] = 1
-        self.cntrl["ntp"] = 0
-        self.cntrl["barostat"] = 0
-
-    def config_pbc_md(self):
+        Parameters
+        ----------
+        ensemble: :class:`Simulation.Ensemble`, default=Ensemble.NPT
+            Configure a MD simulation with NVE, NVT or NPT thermodynamic ensemble.
+        thermostat: :class:`AMBER.Thermostat`, default=Thermostat.Langevin
+            Option to choose one of six thermostats implemented in AMBER, highlighted values in parenthesis are the
+            options set in the input file. **(1)** `Off` (``0``), **(2)** `Berendsen` (``1``), **(3)** `Andersen`
+            (``2``), **(4)** `Langevin` (``3``), **(5)** `OptimizedIsoNoseHoover` (``9``), **(6)**
+            `StochasticIsoNoseHoover` (``10``), and **(7)** `Bussi` (``11``).
+        barostat: :class:`AMBER.Barostat`, default=Barostat.MonteCarlo
+            Option to choose one of two barostats implemented in AMBER,  highlighted values in parenthesis are the
+            options set in the input file. **(1)** `Off` (``0``), **(2)** `Berendsen` (``1``), and **(3)**
+            `Monte Carlo` (``2``).
         """
-        Configure input settings for default NTP.
-        """
-
-        self._config_md()
+        self._config_md(thermostat)
         self.title = "PBC MD Simulation"
-        self.cntrl["cut"] = 9.0
-        self.cntrl["igb"] = 0
+
+        self.cntrl["igb"] = self.GBModel.Off.value
         self.cntrl["iwrap"] = 1
-        self.cntrl["ntp"] = 1
-        self.cntrl["barostat"] = 2
+
+        if ensemble == self.Ensemble.NVE:
+            self.cntrl["ntt"] = self.Thermostat.Off.value
+            self.cntrl["ntb"] = self.Periodicity.ConstantVolume.value
+            self.cntrl["barostat"] = self.Barostat.Off.value
+
+        elif ensemble == self.Ensemble.NVT:
+            self.cntrl["ntt"] = thermostat.value
+            self.cntrl["ntb"] = self.Periodicity.ConstantVolume.value
+            self.cntrl["barostat"] = self.Barostat.Off.value
+
+        elif ensemble == self.Ensemble.NPT:
+            self.cntrl["ntt"] = thermostat.value
+            self.cntrl["pres0"] = self.pressure
+            self.cntrl["ntp"] = self.BoxScaling.Isotropic.value
+            self.cntrl["ntb"] = self.Periodicity.ConstantPressure.value
+            self.cntrl["barostat"] = barostat.value
 
     def _write_dict_to_mdin(self, f, dictionary):
         """
@@ -314,6 +511,8 @@ class AMBER(BaseSimulation, abc.ABC):
         with open(os.path.join(self.path, self.input), "w") as mdin:
             mdin.write("{}\n".format(self.title))
             mdin.write(" &cntrl\n")
+            if self.pmd["cv_file"] is not None or self.smd["cv_file"] is not None:
+                self.cntrl["infe"] = 1
             self._write_dict_to_mdin(mdin, self.cntrl)
 
             if self.ewald is not None:
@@ -334,9 +533,23 @@ class AMBER(BaseSimulation, abc.ABC):
             if self.group is not None:
                 mdin.write("{:s}".format(self.group))
 
+            if self.pmd["cv_file"] is not None:
+                mdin.write("&pmd \n")
+                mdin.write("  cv_file = '{}',\n".format(self.pmd["cv_file"]))
+                mdin.write("  output_file = '{}',\n".format(self.pmd["output_file"]))
+                mdin.write("  output_freq = {},\n".format(self.pmd["output_freq"]))
+                mdin.write("/\n")
+
+            if self.smd["cv_file"] is not None:
+                mdin.write("&smd \n")
+                mdin.write("  cv_file = '{}',\n".format(self.smd["cv_file"]))
+                mdin.write("  output_file = '{}',\n".format(self.smd["output_file"]))
+                mdin.write("  output_freq = {},\n".format(self.smd["output_freq"]))
+                mdin.write("/\n")
+
     def run(self, soft_minimize=False, overwrite=False, fail_ok=False):
         """
-        Method to run Molecular Dynamics simulation with `AMBER`.
+        Method to run Molecular Dynamics simulation with AMBER.
 
         Parameters
         ----------
@@ -404,7 +617,7 @@ class AMBER(BaseSimulation, abc.ABC):
                 exec_list += ["-ref", self.ref]
             exec_list += [
                 "-c",
-                self.inpcrd,
+                self.coordinates,
                 "-i",
                 self.input,
                 "-o",
@@ -467,7 +680,7 @@ class AMBER(BaseSimulation, abc.ABC):
     def check_complete(self, alternate_file=None):
         """
         Check for the string "TIMINGS" in ``self.output`` file. If "TIMINGS" is found, then the simulation completed
-        successfully, as of `AMBER20`.
+        successfully, as of AMBER20.
 
         Parameters
         ----------
