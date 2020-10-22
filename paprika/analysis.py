@@ -40,7 +40,8 @@ class fe_calc(object):
 
     @temperature.setter
     def temperature(self, new_temperature):
-        """Update β with new temperature."""
+        """Update temperature and β with a new temperature."""
+        self._temperature = new_temperature
         self.beta = 1 / (self.k_B * new_temperature)
 
     @property
