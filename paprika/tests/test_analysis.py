@@ -210,3 +210,77 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
 def test_reference_state_work(clean_files, setup_free_energy_calculation):
     results = setup_free_energy_calculation.results
     assert np.isclose(-4.34372240, results["ref_state_work"])
+
+
+def test_temperature(clean_files):
+    input_pdb = pmd.load_file(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb")
+    )
+
+    # Distance restraint
+    rest1 = restraints.DAT_restraint()
+    rest1.continuous_apr = True
+    rest1.amber_index = True
+    rest1.topology = input_pdb
+    rest1.mask1 = ":DM1"
+    rest1.mask2 = ":BUT@C"
+    rest1.attach["target"] = 6.0
+    rest1.attach["fraction_list"] = [0.00, 0.04, 0.181, 0.496, 1.000]
+    rest1.attach["fc_final"] = 5.0
+    rest1.pull["fc"] = rest1.attach["fc_final"]
+    rest1.pull["target_initial"] = rest1.attach["target"]
+    rest1.pull["target_final"] = 24.0
+    rest1.pull["num_windows"] = 19
+    rest1.initialize()
+
+    # theta restraint
+    rest2 = restraints.DAT_restraint()
+    rest2.continuous_apr = True
+    rest2.amber_index = True
+    rest2.topology = input_pdb
+    rest2.mask1 = ":DM2"
+    rest2.mask2 = ":DM1"
+    rest2.mask3 = ":BUT@C"
+    rest2.attach["target"] = 180.0
+    rest2.attach["fraction_list"] = [0.00, 0.04, 0.181, 0.496, 1.000]
+    rest2.attach["fc_final"] = 100.0
+    rest2.pull["fc"] = rest2.attach["fc_final"]
+    rest2.pull["target_initial"] = rest2.attach["target"]
+    rest2.pull["target_final"] = rest2.attach["target"]
+    rest2.pull["num_windows"] = 19
+    rest2.initialize()
+
+    # beta restraint
+    rest3 = restraints.DAT_restraint()
+    rest3.continuous_apr = True
+    rest3.amber_index = True
+    rest3.topology = input_pdb
+    rest3.mask1 = ":DM1"
+    rest3.mask2 = ":BUT@C"
+    rest3.mask3 = ":BUT@C3"
+    rest3.attach["target"] = 180.0
+    rest3.attach["fraction_list"] = [0.00, 0.04, 0.181, 0.496, 1.000]
+    rest3.attach["fc_final"] = 100.0
+    rest3.pull["fc"] = rest3.attach["fc_final"]
+    rest3.pull["target_initial"] = rest3.attach["target"]
+    rest3.pull["target_final"] = rest3.attach["target"]
+    rest3.pull["num_windows"] = 19
+    rest3.initialize()
+
+    fecalc = analysis.fe_calc()
+    fecalc.temperature = 298.15
+    assert pytest.approx(fecalc.beta, abs=1e-3) == 1.68780
+    fecalc.compute_ref_state_work([rest1, rest2, None, None, rest3, None])
+    assert pytest.approx(fecalc.results["ref_state_work"], abs=1e-3) == -7.14151
+
+    fecalc = analysis.fe_calc()
+    fecalc.temperature = 328.15
+    assert pytest.approx(fecalc.beta, abs=1e-3) == 1.53285
+    fecalc.compute_ref_state_work([rest1, rest2, None, None, rest3, None])
+    assert pytest.approx(fecalc.results["ref_state_work"], abs=1e-3) == -7.70392
+
+    fecalc = analysis.fe_calc()
+    fecalc.temperature = 278.15
+    assert pytest.approx(fecalc.beta, abs=1e-3) == 1.80839
+    fecalc.compute_ref_state_work([rest1, rest2, None, None, rest3, None])
+    assert pytest.approx(fecalc.results["ref_state_work"], abs=1e-3) == -6.75834
