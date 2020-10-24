@@ -418,6 +418,7 @@ def test_conversions(clean_files):
     sys.neutralize = False
     sys.build()
 
+    from paprika.tleap import ConversionToolkit
     from paprika.utils import is_file_and_not_empty
 
     # Gromacs ParmEd test
@@ -428,7 +429,7 @@ def test_conversions(clean_files):
     assert is_file_and_not_empty(gro_file) is True
 
     # Gromacs InterMol test
-    sys.convert_to_gromacs(toolkit=System.ConversionToolkit.InterMol)
+    sys.convert_to_gromacs(toolkit=ConversionToolkit.InterMol)
     assert is_file_and_not_empty(top_file) is True
     assert is_file_and_not_empty(gro_file) is True
     top_file = os.path.join(sys.output_path, sys.output_prefix + "_from_amber.top")
@@ -445,7 +446,7 @@ def test_conversions(clean_files):
     assert is_file_and_not_empty(crd_file) is True
 
     # CHARMM Intermol test
-    sys.convert_to_charmm(toolkit=System.ConversionToolkit.InterMol)
+    sys.convert_to_charmm(toolkit=ConversionToolkit.InterMol)
     rtf_file = os.path.join(sys.output_path, sys.output_prefix + ".rtf")
     prm_file = os.path.join(sys.output_path, sys.output_prefix + ".prm")
 
