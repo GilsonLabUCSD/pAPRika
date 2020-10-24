@@ -2,12 +2,24 @@ import logging as log
 import os as os
 import re as re
 import subprocess as sp
+from enum import Enum
 
 import numpy as np
 import parmed as pmd
 
 N_A = 6.0221409 * 10 ** 23
 ANGSTROM_CUBED_TO_LITERS = 1 * 10 ** -27
+
+
+# TODO: refactor System class, implement a build class for PSFGEN, PackMol and add TopoTools/VMD support for conversions
+class ConversionToolkit(Enum):
+    """
+    An enumeration of the different toolkits for converting MD files to other formats.
+    """
+
+    ParmEd = "parmed"
+    InterMol = "intermol"
+    # TopoTools = "topotools"
 
 
 class System(object):
@@ -89,12 +101,17 @@ class System(object):
 
     Example
     -------
-        >>> system = tleap.System()
+        >>> from paprika.tleap import System
+        >>>
+        >>> # Initialize System
+        >>> system = System()
         >>> system.output_path = "windows"
         >>> system.output_prefix = "host-guest-sol"
         >>> system.target_waters = 2000
         >>> system.pbc_type = "rectangular"
         >>> system.neutralize = True
+        >>>
+        >>> # template_lines lists all structure files etc.
         >>> system.template_lines = [
         >>>     "source leaprc.gaff",
         >>>     "source leaprc.water.tip3p",
@@ -106,9 +123,17 @@ class System(object):
         >>>     "DM1 = loadmol2 dm1.mol2",
         >>>     "DM2 = loadmol2 dm2.mol2",
         >>>     "DM3 = loadmol2 dm3.mol2",
-        >>>     "complex = loadpdb host-guest.pdb",
+        >>>     "model = loadpdb host-guest.pdb",
         >>> ]
+        >>>
+        >>> # Run TLeap
         >>> system.build()
+        >>>
+        >>> # Repartition masses of Hydrogen atoms
+        >>> system.repartition_hydrogen_mass()
+        >>>
+        >>> # Convert AMBER files to GROMACS
+        >>> system.convert_to_gromacs()
 
     """
 
@@ -218,7 +243,7 @@ class System(object):
 
     def write_input(self):
         """
-        Write a tleap input file based on template_lines and other things we have set.
+        Write a ``tleap`` input file based on template_lines and other things we have set.
         """
 
         file_path = os.path.join(self.output_path, self.output_prefix + ".tleap.in")
@@ -774,21 +799,29 @@ class System(object):
 
         structure.save(prmtop, overwrite=True)
 
-    def convert_to_gromacs(self, overwrite=False, output_path=None, output_prefix=None):
+    def convert_to_gromacs(
+        self,
+        overwrite=False,
+        output_path=None,
+        output_prefix=None,
+        toolkit=ConversionToolkit.InterMol,
+    ):
         """
-        Convert `AMBER` topology and coordinate files to `GROMACS` format.
+        Convert AMBER topology and coordinate files to GROMACS format.
 
         Parameters
         ----------
         overwrite: bool, optional, default=False
-            Option to overwrite `GROMACS` ``.top`` and ``.gro`` files if they already
+            Option to overwrite GROMACS ``.top`` and ``.gro`` files if they already
             exists in the folder.
         output_path: str, optional, default=None
-            Alternate directory path where the `AMBER` files are located. Default is the
+            Alternate directory path where the AMBER files are located. Default is the
             `path` parsed to the :class:`paprika.tleap.System` object.
         output_prefix: str, optional, default=None
             Alternate file name prefix for the Amber files. Default is the `prefix` parsed
             to the :class:`paprika.tleap.System` object.
+        toolkit: :class:`ConversionToolkit`, default=ConversionToolkit.InterMol
+            Option to choose the toolkit for converting the AMBER files, ParmEd or InterMol
         """
 
         if output_path is None:
@@ -798,15 +831,223 @@ class System(object):
             output_prefix = self.output_prefix
 
         file_name = os.path.join(output_path, output_prefix)
-        prmtop = f"{file_name}.prmtop"
 
-        # Check if Amber Topology file exist
-        if not os.path.isfile(prmtop):
+        # Check if Amber Topology file(s) exist
+        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        check_topology = [os.path.isfile(file) for file in topology]
+        if not any(check_topology):
             raise FileNotFoundError("Cannot find any AMBER topology file.")
+
+        # Get the first topology file in the list of file(s) that exists
+        prmtop = topology[check_topology][0]
+
+        # Check if Amber Coordinate file(s) exist
+        if toolkit == ConversionToolkit.ParmEd:
+            coordinates = np.array(
+                [
+                    f"{file_name}.{ext}"
+                    for ext in ["rst7", "inpcrd", "rst", "crd", "pdb"]
+                ]
+            )
+        else:  # InterMol does not support PDB for loading Amber files
+            coordinates = np.array(
+                [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
+            )
+        check_coordinates = [os.path.isfile(file) for file in coordinates]
+        if not any(check_coordinates):
+            raise FileNotFoundError("Cannot find any AMBER coordinates file.")
+
+        # Get the first coordinate file in the list of file(s) that exists
+        inpcrd = coordinates[check_coordinates][0]
+
+        # Gromacs file names
+        top_file = f"{file_name}.top"
+        gro_file = f"{file_name}.gro"
+
+        # Convert with ParmEd
+        if toolkit == ConversionToolkit.ParmEd:
+            # Load Amber files
+            structure = pmd.load_file(prmtop, inpcrd, structure=True)
+
+            if overwrite:
+                structure.save(top_file, format="gromacs", overwrite=True)
+                structure.save(gro_file, format="gro", overwrite=True)
+            else:
+                if not os.path.isfile(top_file):
+                    structure.save(top_file, format="gromacs")
+                else:
+                    log.info(f"Topology file {top_file} exists, skipping writing file.")
+
+                if not os.path.isfile(gro_file):
+                    structure.save(gro_file, format="gro")
+                else:
+                    log.info(
+                        f"Coordinates file {gro_file} exists, skipping writing file."
+                    )
+
+        # Convert with InterMol
+        elif toolkit == ConversionToolkit.InterMol:
+            from intermol.convert import _load_amber, _save_gromacs
+
+            # Load Amber files
+            system, prefix, prmtop_in, crd_in, amb_structure = _load_amber(
+                [prmtop, inpcrd]
+            )
+
+            # Save Gromacs files
+            output_status = dict()
+            _save_gromacs(system, file_name, output_status)
+
+            if output_status["gromacs"] != "Converted":
+                raise Exception(
+                    f"Converting AMBER to GROMACS with Intermol unsuccesful: {output_status['gromacs']}"
+                )
+
+    def convert_to_charmm(
+        self,
+        overwrite=False,
+        output_path=None,
+        output_prefix=None,
+        toolkit=ConversionToolkit.InterMol,
+    ):
+        """
+        Convert AMBER topology and coordinate files to CHARMM format.
+
+        Parameters
+        ----------
+        overwrite: bool, optional, default=False
+            Option to overwrite CHARMM ``.psf`` and ``.pdb`` files if they already
+            exists in the folder.
+        output_path: str, optional, default=None
+            Alternate directory path where the AMBER files are located. Default is the
+            `path` parsed to the :class:`paprika.tleap.System` object.
+        output_prefix: str, optional, default=None
+            Alternate file name prefix for the Amber files. Default is the `prefix` parsed
+            to the :class:`paprika.tleap.System` object.
+        toolkit: :class:`ConversionToolkit`, default=ConversionToolkit.InterMol
+            Option to choose the toolkit for converting the AMBER files, ParmEd or InterMol
+        """
+
+        if output_path is None:
+            output_path = self.output_path
+
+        if output_prefix is None:
+            output_prefix = self.output_prefix
+
+        file_name = os.path.join(output_path, output_prefix)
+
+        # Check if Amber Topology file(s) exist
+        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        check_topology = [os.path.isfile(file) for file in topology]
+        if not any(check_topology):
+            raise FileNotFoundError("Cannot find any AMBER topology file.")
+
+        # Get the first topology file in the list of file(s) that exists
+        prmtop = topology[check_topology][0]
+
+        # Check if Amber Coordinate file(s) exist
+        if toolkit == ConversionToolkit.ParmEd:
+            coordinates = np.array(
+                [
+                    f"{file_name}.{ext}"
+                    for ext in ["rst7", "inpcrd", "rst", "crd", "pdb"]
+                ]
+            )
+        else:  # InterMol does not support PDB for loading Amber files
+            coordinates = np.array(
+                [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
+            )
+        check_coordinates = [os.path.isfile(file) for file in coordinates]
+        if not any(check_coordinates):
+            raise FileNotFoundError("Cannot find any AMBER coordinates file.")
+
+        # Get the first coordinate file in the list of file(s) that exists
+        inpcrd = coordinates[check_coordinates][0]
+
+        # Charmm file names
+        psf_file = f"{file_name}.psf"
+        crd_file = f"{file_name}.crd"
+
+        # Convert with ParmEd
+        if toolkit == ConversionToolkit.ParmEd:
+            # Load Amber files
+            structure = pmd.load_file(prmtop, inpcrd, structure=True)
+
+            if overwrite:
+                structure.save(psf_file, format="psf", overwrite=True)
+                structure.save(crd_file, format="charmmcrd", overwrite=True)
+            else:
+                if not os.path.isfile(psf_file):
+                    structure.save(psf_file, format="psf")
+                else:
+                    log.info(f"Topology file {psf_file} exists, skipping writing file.")
+
+                if not os.path.isfile(crd_file):
+                    structure.save(crd_file)
+                else:
+                    log.info(
+                        f"Coordinates file {crd_file} exists, skipping writing file."
+                    )
+
+        # Convert with InterMol
+        elif toolkit == ConversionToolkit.InterMol:
+            from intermol.convert import _load_amber, _save_charmm
+
+            # Load Amber files
+            system, prefix, prmtop_in, crd_in, amb_structure = _load_amber(
+                [prmtop, inpcrd]
+            )
+
+            # Save Charmm files
+            output_status = dict()
+            _, _ = _save_charmm(amb_structure, file_name, output_status)
+
+            if output_status["charmm"] != "Converted":
+                raise Exception(
+                    f"Converting AMBER to CHARMM with Intermol unsuccesful: {output_status['charmm']}"
+                )
+
+    def convert_to_lammps(
+        self,
+        pair_style=None,
+        output_path=None,
+        output_prefix=None,
+    ):
+        """
+        Convert AMBER topology and coordinate files to LAMMPS format.
+
+        Parameters
+        ----------
+        pair_style: str, optional, default=None
+            LAMMPS option for ``pair_style``, if set to ``None`` (default) the setting will be for a periodic Ewald
+            simulation.
+        output_path: str, optional, default=None
+            Alternate directory path where the AMBER files are located. Default is the
+            `path` parsed to the :class:`paprika.tleap.System` object.
+        output_prefix: str, optional, default=None
+            Alternate file name prefix for the Amber files. Default is the `prefix` parsed
+            to the :class:`paprika.tleap.System` object.
+        """
+        if output_path is None:
+            output_path = self.output_path
+
+        if output_prefix is None:
+            output_prefix = self.output_prefix
+
+        file_name = os.path.join(output_path, output_prefix)
+
+        # Check if Amber Topology file(s) exist
+        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        check_topology = [os.path.isfile(file) for file in topology]
+        if not any(check_topology):
+            raise FileNotFoundError("Cannot find any AMBER topology file.")
+
+        # Get the first topology file in the list of file(s) that exists
+        prmtop = topology[check_topology][0]
 
         # Check if Amber Coordinate file(s) exist
         coordinates = np.array(
-            [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "pdb"]]
+            [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
         )
         check_coordinates = [os.path.isfile(file) for file in coordinates]
         if not any(check_coordinates):
@@ -815,23 +1056,86 @@ class System(object):
         # Get the first coordinate file in the list of file(s) that exists
         inpcrd = coordinates[check_coordinates][0]
 
-        # Load Amber structure
-        structure = pmd.load_file(prmtop, inpcrd, structure=True)
-
-        # Save to Gromacs *.top and *.gro file
-        top_file = f"{file_name}.top"
-        gro_file = f"{file_name}.gro"
-
-        if overwrite:
-            structure.save(top_file, format="gromacs", overwrite=True)
-            structure.save(gro_file, overwrite=True)
+        # Pair style settings
+        args = dict()
+        if pair_style is None:
+            args[
+                "lmp_settings"
+            ] = "pair_style lj/cut/coul/long 9.0 9.0\npair_modify tail yes\nkspace_style pppm 1e-8"
         else:
-            if not os.path.isfile(top_file):
-                structure.save(top_file, format="gromacs")
-            else:
-                log.info(f"Topology file {top_file} exists, skipping writing file.")
+            args["lmp_settings"] = pair_style
 
-            if not os.path.isfile(gro_file):
-                structure.save(gro_file)
-            else:
-                log.info(f"Coordinates file {gro_file} exists, skipping writing file.")
+        # Convert
+        from intermol.convert import _load_amber, _save_lammps
+
+        # Load Amber files
+        system, prefix, prmtop_in, crd_in, amb_structure = _load_amber([prmtop, inpcrd])
+
+        # Save Lammps files
+        output_status = dict()
+        _save_lammps(system, file_name, output_status, args)
+
+        if output_status["lammps"] != "Converted":
+            raise Exception(
+                f"Converting AMBER to LAMMPS with Intermol unsuccesful: {output_status['lammps']}"
+            )
+
+    def convert_to_desmond(
+        self,
+        output_path=None,
+        output_prefix=None,
+    ):
+        """
+        Convert AMBER topology and coordinate files to DESMOND format.
+
+        Parameters
+        ----------
+        output_path: str, optional, default=None
+            Alternate directory path where the AMBER files are located. Default is the
+            `path` parsed to the :class:`paprika.tleap.System` object.
+        output_prefix: str, optional, default=None
+            Alternate file name prefix for the Amber files. Default is the `prefix` parsed
+            to the :class:`paprika.tleap.System` object.
+        """
+        if output_path is None:
+            output_path = self.output_path
+
+        if output_prefix is None:
+            output_prefix = self.output_prefix
+
+        file_name = os.path.join(output_path, output_prefix)
+
+        # Check if Amber Topology file(s) exist
+        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        check_topology = [os.path.isfile(file) for file in topology]
+        if not any(check_topology):
+            raise FileNotFoundError("Cannot find any AMBER topology file.")
+
+        # Get the first topology file in the list of file(s) that exists
+        prmtop = topology[check_topology][0]
+
+        # Check if Amber Coordinate file(s) exist
+        coordinates = np.array(
+            [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
+        )
+        check_coordinates = [os.path.isfile(file) for file in coordinates]
+        if not any(check_coordinates):
+            raise FileNotFoundError("Cannot find any AMBER coordinates file.")
+
+        # Get the first coordinate file in the list of file(s) that exists
+        inpcrd = coordinates[check_coordinates][0]
+
+        # Convert
+        from intermol.convert import _load_amber, _save_desmond
+
+        # Load Amber files
+        system, prefix, prmtop_in, crd_in, amb_structure = _load_amber([prmtop, inpcrd])
+
+        # Save Desmond files
+        output_status = dict()
+        _save_desmond(system, file_name, output_status)
+
+        if output_status["desmond"] != "Converted":
+            raise Exception(
+                f"Converting AMBER to DESMOND with Intermol unsuccesful: {output_status['desmond']}"
+            )

@@ -298,3 +298,20 @@ def parse_mdout(file):
     }
 
     return energies
+
+
+def is_file_and_not_empty(file_path):
+    """Util function to check if a file both exists at the specified ``path`` and is not empty.
+
+    Parameters
+    ----------
+    file_path: os.PathLike
+        The file path to check.
+
+    Returns
+    -------
+    bool
+        That a file both exists at the specified ``path`` and is not empty.
+    """
+    # This function is copied from OpenFF-Evaluator
+    return os.path.isfile(file_path) and (os.path.getsize(file_path) != 0)
