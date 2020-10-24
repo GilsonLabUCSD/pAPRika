@@ -11,6 +11,17 @@ N_A = 6.0221409 * 10 ** 23
 ANGSTROM_CUBED_TO_LITERS = 1 * 10 ** -27
 
 
+# TODO: refactor System class, implement a build class for PSFGEN, PackMol and add TopoTools/VMD support for conversions
+class ConversionToolkit(Enum):
+    """
+    An enumeration of the different toolkits for converting MD files to other formats.
+    """
+
+    ParmEd = "parmed"
+    InterMol = "intermol"
+    # TopoTools = "topotools"
+
+
 class System(object):
     """
     Class for building AMBER prmtop/rst7 files with ``tleap``.
@@ -90,12 +101,17 @@ class System(object):
 
     Example
     -------
-        >>> system = tleap.System()
+        >>> from paprika.tleap import System
+        >>>
+        >>> # Initialize System
+        >>> system = System()
         >>> system.output_path = "windows"
         >>> system.output_prefix = "host-guest-sol"
         >>> system.target_waters = 2000
         >>> system.pbc_type = "rectangular"
         >>> system.neutralize = True
+        >>>
+        >>> # template_lines lists all structure files etc.
         >>> system.template_lines = [
         >>>     "source leaprc.gaff",
         >>>     "source leaprc.water.tip3p",
@@ -107,19 +123,19 @@ class System(object):
         >>>     "DM1 = loadmol2 dm1.mol2",
         >>>     "DM2 = loadmol2 dm2.mol2",
         >>>     "DM3 = loadmol2 dm3.mol2",
-        >>>     "complex = loadpdb host-guest.pdb",
+        >>>     "model = loadpdb host-guest.pdb",
         >>> ]
+        >>>
+        >>> # Run TLeap
         >>> system.build()
+        >>>
+        >>> # Repartition masses of Hydrogen atoms
+        >>> system.repartition_hydrogen_mass()
+        >>>
+        >>> # Convert AMBER files to GROMACS
+        >>> system.convert_to_gromacs()
 
     """
-
-    class ConversionToolkit(Enum):
-        """
-        An enumeration of the different toolkits for converting AMBER files to other MD formats.
-        """
-
-        ParmEd = "parmed"
-        InterMol = "intermol"
 
     def __init__(self):
 
@@ -826,7 +842,7 @@ class System(object):
         prmtop = topology[check_topology][0]
 
         # Check if Amber Coordinate file(s) exist
-        if toolkit == self.ConversionToolkit.ParmEd:
+        if toolkit == ConversionToolkit.ParmEd:
             coordinates = np.array(
                 [
                     f"{file_name}.{ext}"
@@ -849,7 +865,7 @@ class System(object):
         gro_file = f"{file_name}.gro"
 
         # Convert with ParmEd
-        if toolkit == self.ConversionToolkit.ParmEd:
+        if toolkit == ConversionToolkit.ParmEd:
             # Load Amber files
             structure = pmd.load_file(prmtop, inpcrd, structure=True)
 
@@ -870,7 +886,7 @@ class System(object):
                     )
 
         # Convert with InterMol
-        elif toolkit == self.ConversionToolkit.InterMol:
+        elif toolkit == ConversionToolkit.InterMol:
             from intermol.convert import _load_amber, _save_gromacs
 
             # Load Amber files
@@ -930,7 +946,7 @@ class System(object):
         prmtop = topology[check_topology][0]
 
         # Check if Amber Coordinate file(s) exist
-        if toolkit == self.ConversionToolkit.ParmEd:
+        if toolkit == ConversionToolkit.ParmEd:
             coordinates = np.array(
                 [
                     f"{file_name}.{ext}"
@@ -953,7 +969,7 @@ class System(object):
         crd_file = f"{file_name}.crd"
 
         # Convert with ParmEd
-        if toolkit == self.ConversionToolkit.ParmEd:
+        if toolkit == ConversionToolkit.ParmEd:
             # Load Amber files
             structure = pmd.load_file(prmtop, inpcrd, structure=True)
 
@@ -974,7 +990,7 @@ class System(object):
                     )
 
         # Convert with InterMol
-        elif toolkit == self.ConversionToolkit.InterMol:
+        elif toolkit == ConversionToolkit.InterMol:
             from intermol.convert import _load_amber, _save_charmm
 
             # Load Amber files
