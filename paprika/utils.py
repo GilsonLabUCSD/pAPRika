@@ -205,7 +205,7 @@ def strip_prmtop(prmtop, mask=":WAT,:Na+,:Cl-"):
     return stripped
 
 
-def parse_mden(file):
+def parse_mden(file, get_dvdl=False):
     """
     Return energies from an AMBER `mden` file.
 
@@ -213,6 +213,8 @@ def parse_mden(file):
     ----------
     file : os.PathLike
         Name of the Amber output file.
+    get_dvdl : bool
+        Extract the dV/dLambda values.
 
     Returns
     -------
@@ -220,7 +222,7 @@ def parse_mden(file):
         A dictionary containing VDW, electrostatic, bond, angle, dihedral, V14, E14, and total energy.
     """
 
-    vdw, ele, bnd, ang, dih, v14, e14 = [], [], [], [], [], [], []
+    vdw, ele, bnd, ang, dih, v14, e14, dvdl = [], [], [], [], [], [], [], []
 
     with open(file, "r") as f:
         for line in f.readlines()[10:]:
@@ -236,6 +238,9 @@ def parse_mden(file):
                 v14.append(float(words[1]))
                 e14.append(float(words[2]))
 
+            if get_dvdl and words[0] == "L9":
+                dvdl.append(float(words[5]))
+
     energies = {
         "Bond": bnd,
         "Angle": ang,
@@ -246,6 +251,9 @@ def parse_mden(file):
         "Ele": ele,
         "Total": [sum(x) for x in zip(bnd, ang, dih, v14, e14, vdw, ele)],
     }
+
+    if get_dvdl:
+        return energies, dvdl
 
     return energies
 
