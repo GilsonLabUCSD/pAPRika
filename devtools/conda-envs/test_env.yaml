@@ -2,7 +2,6 @@ name: paprika-dev
 channels:
   - conda-forge
   - omnia
-  - mwt
 dependencies:
   
   # Base depends
