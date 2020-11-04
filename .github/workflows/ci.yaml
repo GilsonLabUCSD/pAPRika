@@ -29,7 +29,7 @@ jobs:
     - uses: conda-incubator/setup-miniconda@v1
       with:
         python-version: ${{ matrix.python-version }}
-        activate-environment: test
+        activate-environment: paprika-dev
         channel-priority: true
         environment-file: devtools/conda-envs/test_env.yaml
         auto-activate-base: false
