@@ -2,7 +2,7 @@
 pAPRika is a toolkit for setting up, running, and analyzing free energy molecular dynamics simulations.
 
 # Badges
-[![Build Status](https://travis-ci.org/slochower/pAPRika.svg?branch=master)](https://travis-ci.org/slochower/pAPRika)
+[![Build Status](https://github.com/slochower/pAPRika/workflows/ci/badge.svg)](https://github.com/slochower/pAPRika/actions?query=branch%3Amaster+workflow%3Aci)
 [![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=stable)](https://paprika.readthedocs.io/en/stable/?badge=stable)
 [![Anaconda-Server Badge](https://anaconda.org/conda-forge/paprika/badges/installer/conda.svg)](https://conda.anaconda.org/conda-forge)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/slochower/pAPRika.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/slochower/pAPRika/context:python)
