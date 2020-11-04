@@ -55,7 +55,7 @@ jobs:
     - name: Run tests
       shell: bash -l {0}
       run: |
-        PYTEST_ARGS=" -v --cov=$PACKAGE --cov-report=xml
+        PYTEST_ARGS=" -v --cov=$PACKAGE --cov-report=xml "
         pytest $PYTEST_ARGS $PACKAGE
 
     - name: Codecov
