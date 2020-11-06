@@ -382,10 +382,11 @@ class System(object):
         if self.target_waters is None:
             self.target_waters = self.count_waters()
         # If target_waters is set, we assume that overrides buffer_value. We'll
-        # set buffer_value = 1.0 because that seems to lead to smooth convergence
-        # of the solvate() routine.
+        # set buffer_value = 2.0 because that seems to lead to smooth convergence
+        # of the solvate() routine. Setting this to 2.0 prevents issues when
+        # solvating a single ion.
         else:
-            self.buffer_value = 1.0
+            self.buffer_value = 2.0
 
         # If the user has not set manual_switch_thresh, we will set it proportionately
         # to the target_waters. This will control when we can start manually deleting
