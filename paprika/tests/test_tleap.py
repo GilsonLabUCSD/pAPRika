@@ -14,6 +14,7 @@ import pytest
 from paprika.align import zalign
 from paprika.dummy import add_dummy, write_dummy_frcmod, write_dummy_mol2
 from paprika.tleap import ANGSTROM_CUBED_TO_LITERS, System
+from paprika.utils import is_file_and_not_empty
 
 logger = logging.getLogger(__name__)
 
@@ -466,3 +467,70 @@ def test_conversions(clean_files):
     sys.convert_to_desmond()
     cms_file = os.path.join(sys.output_path, sys.output_prefix + ".cms")
     assert is_file_and_not_empty(cms_file) is True
+
+
+def test_ion_solvation(clean_files):
+    """ Test that tleap module is solvating an ion properly."""
+    temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
+
+    ions = ["Na+", "Cl-"]
+    for ion in ions:
+        # Write PDB file
+        with open(os.path.join(temporary_directory, "ion.pdb"), "w") as f:
+            f.writelines(
+                "CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1           1\n"
+            )
+            f.writelines(
+                f"ATOM      1 {ion:3s}  {ion:3s}     1       0.000   0.000   0.000  1.00  0.00\n"
+            )
+            f.writelines("END")
+
+        # Write MOL2 file
+        with open(os.path.join(temporary_directory, "ion.mol2"), "w") as f:
+            charge = 1.0 if "+" in ion else -1.0
+            gaff_type = ion.split("+" if "+" in ion else "-")[0].lower()
+            f.writelines("@<TRIPOS>MOLECULE\n")
+            f.writelines(f"{ion}\n")
+            f.writelines("1     0     1     0     0\n")
+            f.writelines("SMALL\n")
+            f.writelines("No Charge or Current Charge\n\n\n")
+            f.writelines("@<TRIPOS>ATOM\n")
+            f.writelines(
+                f"      1 {ion:3s}          0.0000     0.0000     0.0000 {gaff_type}         1 {ion}       {charge:.6f}\n"
+            )
+            f.writelines("@<TRIPOS>BOND\n")
+            f.writelines("@<TRIPOS>SUBSTRUCTURE\n")
+            f.writelines(
+                f"     1 {ion:3s}         1 TEMP              0 ****  ****    0 ROOT"
+            )
+
+        # Run tleap
+        ion_sys = System()
+        ion_sys.output_path = temporary_directory
+        ion_sys.target_waters = 1000
+        ion_sys.pbc_type = "cubic"
+        ion_sys.neutralize = False
+        ion_sys.template_lines = [
+            "source leaprc.gaff",
+            "source leaprc.water.tip3p",
+            f"{ion} = loadmol2 ion.mol2",
+            "model = loadpdb ion.pdb",
+        ]
+        ion_sys.build()
+
+        # Make sure Amber files are generated
+        assert (
+            is_file_and_not_empty(os.path.join(temporary_directory, "build.prmtop"))
+            is True
+        )
+        assert (
+            is_file_and_not_empty(os.path.join(temporary_directory, "build.rst7"))
+            is True
+        )
+
+        # Check number of atoms in files
+        structure = pmd.load_file(
+            os.path.join(temporary_directory, "build.prmtop"),
+            os.path.join(temporary_directory, "build.rst7"),
+        )
+        assert len(structure.atoms) == 3001
