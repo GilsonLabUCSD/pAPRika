@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class Analyze:
     """
-    The Analyze class provides a wrapper function around the analysis of simulations.
+    The ``Analyze`` class provides a wrapper function around the analysis of simulations.
     """
 
     @classmethod
