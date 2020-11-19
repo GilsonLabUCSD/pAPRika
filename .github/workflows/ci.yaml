@@ -20,14 +20,13 @@ jobs:
         os: [macOS-latest, ubuntu-latest]
         python-version: [3.7]
     env:
-      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       PYVER: ${{ matrix.python-version }}
       PACKAGE: paprika
 
     steps:
     - uses: actions/checkout@v2
 
-    - uses: conda-incubator/setup-miniconda@v1
+    - uses: conda-incubator/setup-miniconda@v2
       with:
         python-version: ${{ matrix.python-version }}
         activate-environment: paprika-dev
