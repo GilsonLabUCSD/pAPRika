@@ -11,9 +11,9 @@ import numpy as np
 import parmed as pmd
 import pytest
 
-from paprika.align import zalign
-from paprika.dummy import add_dummy, write_dummy_frcmod, write_dummy_mol2
-from paprika.tleap import ANGSTROM_CUBED_TO_LITERS, System
+from paprika.build.align import zalign
+from paprika.build.dummy import add_dummy, write_dummy_frcmod, write_dummy_mol2
+from paprika.build.tleap import ANGSTROM_CUBED_TO_LITERS, System
 from paprika.utils import is_file_and_not_empty
 
 logger = logging.getLogger(__name__)
@@ -419,7 +419,7 @@ def test_conversions(clean_files):
     sys.neutralize = False
     sys.build()
 
-    from paprika.tleap import ConversionToolkit
+    from paprika.build.tleap import ConversionToolkit
     from paprika.utils import is_file_and_not_empty
 
     # Gromacs ParmEd test

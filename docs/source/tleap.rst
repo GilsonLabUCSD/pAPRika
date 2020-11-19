@@ -1,7 +1,7 @@
-Tleap API
-------------
+TLeap API
+---------
 
-.. automodule:: paprika.tleap
+.. automodule:: paprika.build.tleap
    :members:
    :undoc-members:
    :show-inheritance:

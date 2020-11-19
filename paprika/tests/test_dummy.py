@@ -6,8 +6,8 @@ import os
 
 import parmed as pmd
 
-import paprika.dummy as dummy
-from paprika.align import zalign
+import paprika.build.dummy as dummy
+from paprika.build.align import zalign
 
 
 def test_extract_dummy():

@@ -101,7 +101,7 @@ class System(object):
 
     Example
     -------
-        >>> from paprika.tleap import System
+        >>> from paprika.build.tleap import System
         >>>
         >>> # Initialize System
         >>> system = System()
@@ -151,7 +151,7 @@ class System(object):
         self.counter_cation = "Na+"
         self.counter_anion = "Cl-"
         self.add_ions = None
-        self.output_path = "./"
+        self.output_path = "../"
         self.output_prefix = "build"
 
         # Advanced Settings: Defaults

@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import parmed as pmd
 
-from paprika import align
+from paprika.build import align
 from paprika.restraints import DAT_restraint, static_DAT_restraint
 
 logger = logging.getLogger(__name__)
