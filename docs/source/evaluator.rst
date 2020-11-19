@@ -4,7 +4,7 @@ Evaluator API
 Analysis
 --------
 
-.. automodule:: paprika.analyze
+.. automodule:: paprika.evaluator.analyze
    :members:
    :undoc-members:
    :noindex:
@@ -13,7 +13,21 @@ Analysis
 
 Setup
 -----
-.. automodule:: paprika.setup
+.. automodule:: paprika.evaluator.setup
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+GAFF
+----
+.. automodule:: paprika.evaluator.amber
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Utils
+-----
+.. automodule:: paprika.evaluator.utils
    :members:
    :undoc-members:
    :show-inheritance:
