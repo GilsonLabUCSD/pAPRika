@@ -27,7 +27,7 @@ def clean_files(directory=os.path.join(os.path.dirname(__file__), "tmp")):
     os.makedirs(directory)
     yield
     # This happens after the test function call
-    # shutil.rmtree(directory)
+    shutil.rmtree(directory)
 
 
 @pytest.mark.slow
