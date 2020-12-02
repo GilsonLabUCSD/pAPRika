@@ -88,11 +88,11 @@ def test_solvation_water_model(water_model, clean_files):
     sys.set_water_model(water_model)
     sys.template_lines = [
         "source leaprc.protein.ff14SB",
-        "loadamberparams ../../data/cb6-but/cb6.frcmod",
-        "CB6 = loadmol2 ../../data/cb6-but/cb6.mol2",
-        "loadamberparams ../../data/cb6-but/but.frcmod",
-        "BUT = loadmol2 ../../data/cb6-but/but.mol2",
-        "model = loadpdb ../../data/cb6-but/cb6-but.pdb",
+        "loadamberparams ../paprika/data/cb6-but/cb6.frcmod",
+        "CB6 = loadmol2 ../paprika/data/cb6-but/cb6.mol2",
+        "loadamberparams ../paprika/data/cb6-but/but.frcmod",
+        "BUT = loadmol2 ../paprika/data/cb6-but/but.mol2",
+        "model = loadpdb ../paprika/data/cb6-but/cb6-but.pdb",
     ]
     sys.build()
     grepped_waters = sp.check_output(
