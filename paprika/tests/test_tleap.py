@@ -27,7 +27,7 @@ def clean_files(directory=os.path.join(os.path.dirname(__file__), "tmp")):
     os.makedirs(directory)
     yield
     # This happens after the test function call
-    shutil.rmtree(directory)
+    # shutil.rmtree(directory)
 
 
 @pytest.mark.slow
@@ -88,6 +88,7 @@ def test_solvation_water_model(water_model, clean_files):
     sys.set_water_model(water_model)
     sys.template_lines = [
         "source leaprc.protein.ff14SB",
+        "source leaprc.gaff",
         "loadamberparams ../paprika/data/cb6-but/cb6.frcmod",
         "CB6 = loadmol2 ../paprika/data/cb6-but/cb6.mol2",
         "loadamberparams ../paprika/data/cb6-but/but.frcmod",
