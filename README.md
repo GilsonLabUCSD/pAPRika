@@ -64,11 +64,11 @@ In this example, we will use GAFF parameters for both the host and guest. For th
 
 ```python
 
-from paprika.build import tleap
+from paprika.build.system import TLeap
 ```
 
 ```python
-system = tleap.System()
+system = TLeap()
 system.output_path = "cb6-but"
 system.pbc_type = None
 system.neutralize = False
@@ -192,7 +192,7 @@ Now all the pieces are in place to build the system for an APR calculation.
 
 
 ```python
-system = tleap.System()
+system = TLeap()
 system.output_path = "cb6-but"
 system.pbc_type = None
 system.neutralize = False

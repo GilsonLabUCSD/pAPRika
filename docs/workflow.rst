@@ -52,9 +52,9 @@ Finally, we can use the ``tleap`` wrapper to combine all of these components to 
 
 .. code ::
 
-    from paprika.build.tleap import System
+    from paprika.build.system import TLeap
 
-    system = System()
+    system = TLeap()
     system.output_prefix = "host-guest-dum"
     system.pbc_type = None
     system.neutralize = False
