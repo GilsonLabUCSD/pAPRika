@@ -2,98 +2,92 @@ import logging as log
 import os as os
 import re as re
 import subprocess as sp
-from enum import Enum
 
 import numpy as np
 import parmed as pmd
 
-N_A = 6.0221409 * 10 ** 23
-ANGSTROM_CUBED_TO_LITERS = 1 * 10 ** -27
+from paprika.build.system.utils import (
+    ANGSTROM_CUBED_TO_LITERS,
+    N_A,
+    ConversionToolkit,
+    PBCBox,
+)
+
+# TODO: refactor TLeap class, implement a build class for PSFGEN, PackMol and add TopoTools/VMD support
 
 
-# TODO: refactor System class, implement a build class for PSFGEN, PackMol and add TopoTools/VMD support for conversions
-class ConversionToolkit(Enum):
+class TLeap(object):
     """
-    An enumeration of the different toolkits for converting MD files to other formats.
-    """
-
-    ParmEd = "parmed"
-    InterMol = "intermol"
-    # TopoTools = "topotools"
-
-
-class System(object):
-    """
-    Class for building AMBER prmtop/rst7 files with ``tleap``.
+    Class for building AMBER prmtop/rst7 files with ``TLeap``.
 
     Parameters
     ----------
-    template_file : str, default=None
-        Name of template file to read boilerplate `tleap` input (e.g., `source leaprc`... lines). Any
-        frcmod/mol2/pdb files which are loaded by the template must be present in output_path.
-    template_lines : list, default=None
-        The list of ``tleap`` commands which are needed to build the system. Either the template_file or
-        the template_lines needs to be set prior to running build(). Files called for loading should
-        be present in output_path (see above).
-    loadpdb_file : str, default=None
-        If specified, this PDB file will be loaded via ``loadpdb`` instead of whatever file is specified
-        in the template. This file should be present in output_path, or if you specify it with a path,
-        the path must be relative to output_path.
-    pbc_type : str, default='cubic'
-        Type of solvation (`cubic`, `rectangular`, `octahedral`, or `None`).
-    buffer_value : float, default=12.0
-        The desired solvation buffer value. This will add a layer of water around your solute with the
-        minimum distance to the periodic box edge defined by buffer_value. If ``target_waters`` is set, it
-        will override this value.
-    target_waters : int, default=None
-        The desired number of waters to solvate your system with. If specified, this will override any
-        buffer_value settings.
-    water_box : str, default='TIP3PBOX'
-        The type of water box, e.g., ``TIP3PBOX`` (see AMBER manual for acceptable values).
-    neutralize : bool, default=True
-        Whether to neutralize the system with counterions.
-    counter_cation : str, default='Na+'
-        If ``neutralize=True``, this positive ion will be used.
-    counter_anion : str, default='Cl-'
-        If ``neutralize=True``, this negative ion will be used.
     add_ions : list, default=None
         A list of additional ions to be added to the system, specified by the residue name and
         an indication of the amount: an **integer number**, the **molarity** (M), or the **molality** (m).
-        For example, the following list shows valid examples: add_ions = ['MG', 2, 'Cl-', 4, 'K', '0.150M', 'BR',
-        '0.150M', 'NA', '0.050m', 'F', '0.050m'].
-    output_path : str, default='./'
-        Directory path where ``tleap`` input files will be written and executed. Associated input
-        files (``frcmod``, ``mol2``, ``pdb``, etc) need to present in that path.
-    output_prefix : str, default='build'
-        Append a prefix to files created by this module.
-    unit : str, default='model'
-        The ``tleap`` unit name.
+        For example, the following list shows valid examples: add_ions = ['MG', 2, 'Cl-', 4, 'K', '0.150M',
+        'BR', '0.150M', 'NA', '0.050m', 'F', '0.050m'].
+    add_ion_residues : list, default=None
+        A property formatted list of ions to add to the system.  The format is the same as ``add_ions``
+        except that only integer amounts are allowed.  This is set by ``set_additional_ions``.
+    buffer_value : float, default=12.0
+        The desired solvation buffer value. This will add a layer of water around your solute with the
+        minimum distance to the periodic box edge defined by ``buffer_value``. If ``target_waters`` is set,
+        it will override this value.
+    buffer_value_history : list, default=[0]
+        The history of ``buffer_value`` adjustments stored in a list.
+    counter_cation : str, default='Na+'
+        If ``neutralize`` is set to ``True``, this cation will be used.
+    counter_anion : str, default='Cl-'
+        If ``neutralize`` is set to ``True``, this anion will be used.
+    cycles_since_last_exp_change : int, default=0
+        A count of the number of ``buffer_value`` adjustments since the last exponent change. Should
+        always start at 0.
     exponent : int, default=`
         The initial value used for dynamically adjusting the buffer value.
-    min_exponent_limit : int, default=-5
-        The minimum limit that we let exponent get to. If it gets too small, it has no effect on
-        the number of waters added.
-    cyc_since_last_exp_change : int, default=0
-        A count of the number of buffer_value adjustments since the last exponent change. Should
-        always start at 0.
-    max_cycles : int, default=50
-        The maximum number of ``buffer_value`` adjustment cycles.
+    loadpdb_file : str, default=None
+        If specified, this PDB file will be loaded via ``loadpdb`` instead of whatever file is specified
+        in the template. This file should be present in ``output_path``, or if you specify it with a path,
+        the path must be relative to ``output_path``.
     manual_switch_thresh : int, default=``target_waters``**(1./3.)
         The threshold difference between waters actually added and target_waters for which we can
         safely switch to manual removal of waters. If too large, then there will be big air pockets
         in our box. If too small, it will take forever to converge. If the user does not set this
         value, it will set proportionately to the target_waters.
+    max_cycles : int, default=50
+        The maximum number of ``buffer_value`` adjustment cycles.
+    min_exponent_limit : int, default=-5
+        The minimum limit that we let exponent get to. If it gets too small, it has no effect on
+        the number of waters added.
+    neutralize : bool, default=True
+        Whether to neutralize the system with counterions.
+    output_path : str, default='./'
+        Directory path where ``TLeap`` input files will be written and executed. Associated input
+        files (``frcmod``, ``mol2``, ``pdb``, etc) need to present in that path.
+    output_prefix : str, default='build'
+        Append a prefix to files created by this module.
+    pbc_type : :class:`PBCBox`, default=PBCBox.cubic
+        Type of solvation (`cubic`, `rectangular`, `octahedral`, or `None`).
+    solvent_molecular_mass : float, default=0.018 (for water)
+        `kg/mol` for the solvent. Used for computing the molality.
+    target_waters : int, default=None
+        The desired number of waters to solvate your system with. If specified, this will override any
+        ``buffer_value`` settings.
+    template_file : str, default=None
+        Name of template file to read boilerplate ``TLeap`` input (e.g., `source leaprc`... lines). Any
+        frcmod/mol2/pdb files which are loaded by the template must be present in ``output_path``.
+    template_lines : list, default=None
+        The list of ``TLeap`` commands which are needed to build the system. Either the ``template_file``
+        or the ``template_lines`` needs to be set prior to running ``build()``. Files called for loading
+        should be present in output_path (see above).
+    unit : str, default='model'
+        The ``TLeap`` unit name.
+    waters_added_history : list, default=[0]
+        The history of number of waters added which correlate to the values in ``buffer_value_history``.
+    model : dict, default={"library": "tip3p", "frcmod": "tip3p", "water_box": "TIP3PBOX"}
+        The type of water model to solvate the system. Use ``TLeap.getAmberWater()`` to specify the water model.
     waters_to_remove : list, default=None
         A list of the water residues to be manually removed after solvation.
-    add_ion_residues : list, default=None
-        A property formatted list of ions to add to the system.  The format is the same as add_ions
-        except that only integer amounts are allowed.  This is set by ``set_additional_ions``.
-    kg_per_mol_solvent : float, default=0.018 (for water)
-        `kg/mol` for the solvent. Used for equation computing molality.
-    buffer_val_history : list, default=[0]
-        The history of buffer_value adjustments stored in a list.
-    wat_added_history : list, default=[0]
-        The history of number of waters added which correlate to the values in ``buffer_val_history``.
     write_save_lines : bool, default=True
         Whether or not to do ``saveamberparm`` and ``savepdb`` when ``tleap`` is executed. During optimization
         loops it speeds up the process to set as ``False``, but it must be returned to ``True`` for the final
@@ -101,20 +95,21 @@ class System(object):
 
     Example
     -------
-        >>> from paprika.tleap import System
+        >>> from paprika.build.system import TLeap
+        >>> from paprika.build.system.utils import PBCBox
         >>>
-        >>> # Initialize System
-        >>> system = System()
+        >>> # Initialize TLeap object
+        >>> system = TLeap()
         >>> system.output_path = "windows"
         >>> system.output_prefix = "host-guest-sol"
         >>> system.target_waters = 2000
-        >>> system.pbc_type = "rectangular"
+        >>> system.pbc_type = PBCBox.cubic
+        >>> system.set_water_model("tip3p", model_type="force-balance")
         >>> system.neutralize = True
         >>>
         >>> # template_lines lists all structure files etc.
         >>> system.template_lines = [
         >>>     "source leaprc.gaff",
-        >>>     "source leaprc.water.tip3p",
         >>>     "loadamberparams host.frcmod",
         >>>     "loadamberparams guest.frcmod",
         >>>     "loadamberparams dummy.frcmod",
@@ -137,40 +132,272 @@ class System(object):
 
     """
 
+    @property
+    def add_ions(self):
+        """list: A list of ions to add to the system."""
+        return self._add_ions
+
+    @add_ions.setter
+    def add_ions(self, value):
+        self._add_ions = value
+
+    @property
+    def add_ion_residues(self):
+        """list: A property formatted list of ions to add to the system."""
+        return self._add_ion_residues
+
+    @add_ion_residues.setter
+    def add_ion_residues(self, value):
+        self._add_ion_residues = value
+
+    @property
+    def buffer_value(self):
+        """float: The desired solvation buffer value."""
+        return self._buffer_value
+
+    @buffer_value.setter
+    def buffer_value(self, value):
+        self._buffer_value = value
+
+    @property
+    def buffer_value_history(self):
+        """list: A list of the history of ``buffer_value`` adjustments."""
+        return self._buffer_value_history
+
+    @buffer_value_history.setter
+    def buffer_value_history(self, value):
+        self._buffer_value_history = value
+
+    @property
+    def counter_cation(self):
+        """str: AMBER-style residue name for the cation."""
+        return self._counter_cation
+
+    @counter_cation.setter
+    def counter_cation(self, value):
+        self._counter_cation = value
+
+    @property
+    def counter_anion(self):
+        """str: AMBER-style residue name for the anion."""
+        return self._counter_anion
+
+    @counter_anion.setter
+    def counter_anion(self, value):
+        self._counter_anion = value
+
+    @property
+    def cycles_since_last_exp_change(self):
+        """int: Number of ``buffer_value`` adjustments since the last exponent change."""
+        return self._cycles_since_last_exp_change
+
+    @cycles_since_last_exp_change.setter
+    def cycles_since_last_exp_change(self, value):
+        self._cycles_since_last_exp_change = value
+
+    @property
+    def exponent(self):
+        """int: The initial value used for adjusting the ``buffer_value``."""
+        return self._exponent
+
+    @exponent.setter
+    def exponent(self, value):
+        self._exponent = value
+
+    @property
+    def loadpdb_file(self):
+        """os.PathLike: The PDB file to load using the ``TLeap`` command ``loadpdb``."""
+        return self._loadpdb_file
+
+    @loadpdb_file.setter
+    def loadpdb_file(self, value):
+        self._loadpdb_file = value
+
+    @property
+    def manual_switch_thresh(self):
+        """int: The threshold difference between waters actually added and target_waters
+        for which we can safely switch to manual removal of waters."""
+        return self._manual_switch_thresh
+
+    @manual_switch_thresh.setter
+    def manual_switch_thresh(self, value):
+        self._manual_switch_thresh = value
+
+    @property
+    def max_cycles(self):
+        """int: The maximum number of ``buffer_value`` adjustment cycles."""
+        return self._max_cycles
+
+    @max_cycles.setter
+    def max_cycles(self, value):
+        self._max_cycles = value
+
+    @property
+    def min_exponent_limit(self):
+        """int: The minimum limit that we let exponent get to."""
+        return self._min_exponent_limit
+
+    @min_exponent_limit.setter
+    def min_exponent_limit(self, value):
+        self._min_exponent_limit = value
+
+    @property
+    def neutralize(self):
+        """str: AMBER-style residue name for the anion."""
+        return self._neutralize
+
+    @neutralize.setter
+    def neutralize(self, value):
+        self._neutralize = value
+
+    @property
+    def output_path(self):
+        """os.PathLike: Directory path where ``TLeap`` input files will be written and executed.
+        Associated input files (``frcmod``, ``mol2``, ``pdb``, etc) need to be present in that path.
+        """
+        return self._output_path
+
+    @output_path.setter
+    def output_path(self, value):
+        self._output_path = value
+
+    @property
+    def output_prefix(self):
+        """str: The name for the output files."""
+        return self._output_prefix
+
+    @output_prefix.setter
+    def output_prefix(self, value):
+        self._output_prefix = value
+
+    @property
+    def pbc_type(self):
+        """:class:`PBCBox`: The periodic box type for the solvated system."""
+        return self._pbc_type
+
+    @pbc_type.setter
+    def pbc_type(self, value):
+        self._pbc_type = value
+
+    @property
+    def solvent_molecular_mass(self):
+        """float: The molecular mass in kg/mol for the solvent molecule."""
+        return self._solvent_molecular_mass
+
+    @solvent_molecular_mass.setter
+    def solvent_molecular_mass(self, value):
+        self._solvent_molecular_mass = value
+
+    @property
+    def target_waters(self):
+        """int: Number of water molecules to add to the system."""
+        return self._target_waters
+
+    @target_waters.setter
+    def target_waters(self, value):
+        self._target_waters = value
+
+    @property
+    def template_file(self):
+        """os.PathLike: Specify a ``TLeap`` template file."""
+        return self._template_file
+
+    @template_file.setter
+    def template_file(self, value):
+        self._template_file = value
+
+    @property
+    def template_lines(self):
+        """list: List of user-based commands as strings for ``TLeap``."""
+        return self._template_lines
+
+    @template_lines.setter
+    def template_lines(self, value):
+        self._template_lines = value
+
+    @property
+    def unit(self):
+        """str: The `unit` name for the structure in ``TLeap``."""
+        return self._unit
+
+    @unit.setter
+    def unit(self, value):
+        self._unit = value
+
+    @property
+    def waters_added_history(self):
+        """list: The history of number of waters added."""
+        return self._waters_added_history
+
+    @waters_added_history.setter
+    def waters_added_history(self, value):
+        self._waters_added_history = value
+
+    @property
+    def water_model(self):
+        """dict: The water model for ``TLeap`` to use stored as a dictionary."""
+        return self._water_model
+
+    @water_model.setter
+    def water_model(self, value):
+        self._water_model = value
+
+    @property
+    def waters_to_remove(self):
+        """list: A list of water molecules to remove after solvation."""
+        return self._waters_to_remove
+
+    @waters_to_remove.setter
+    def waters_to_remove(self, value):
+        self._waters_to_remove = value
+
+    @property
+    def write_save_lines(self):
+        """bool: Whether to run ``saveamberparm`` and ``savepdb`` when ``TLeap`` is executed."""
+        return self._write_save_lines
+
+    @write_save_lines.setter
+    def write_save_lines(self, value):
+        self._write_save_lines = value
+
     def __init__(self):
 
         # User Settings: Defaults
-        self.template_file = None
-        self.template_lines = None
-        self.loadpdb_file = None
-        self.pbc_type = "cubic"
-        self.buffer_value = 12.0
-        self.target_waters = None
-        self.water_box = "TIP3PBOX"
-        self.neutralize = True
-        self.counter_cation = "Na+"
-        self.counter_anion = "Cl-"
-        self.add_ions = None
-        self.output_path = "./"
-        self.output_prefix = "build"
+        self._template_file = None
+        self._template_lines = None
+        self._loadpdb_file = None
+        self._pbc_type = PBCBox.cubic
+        self._buffer_value = 12.0
+        self._target_waters = None
+        self._water_model = {
+            "library": "tip3p",
+            "frcmod": "tip3p",
+            "water_box": "TIP3PBOX",
+        }
+        self._neutralize = True
+        self._counter_cation = "Na+"
+        self._counter_anion = "Cl-"
+        self._add_ions = None
+        self._output_path = "../"
+        self._output_prefix = "build"
 
         # Advanced Settings: Defaults
-        self.unit = "model"
-        self.exponent = 1
-        self.min_exponent_limit = -5
-        self.cyc_since_last_exp_change = 0
-        self.max_cycles = 50
-        self.manual_switch_thresh = None
-        self.waters_to_remove = None
-        self.add_ion_residues = None
-        self.kg_per_mol_solvent = 0.018
-        self.buffer_val_history = [0]
-        self.wat_added_history = [0]
-        self.write_save_lines = True
+        self._unit = "model"
+        self._exponent = 1
+        self._min_exponent_limit = -5
+        self._cycles_since_last_exp_change = 0
+        self._max_cycles = 50
+        self._manual_switch_thresh = None
+        self._waters_to_remove = None
+        self._add_ion_residues = None
+        self._solvent_molecular_mass = 0.018
+        self._buffer_value_history = [0]
+        self._waters_added_history = [0]
+        self._write_save_lines = True
 
     def build(self):
         """
-        Build the ``tleap.System``.
+        Build the ``TLeap`` system.
         """
 
         log.debug("Running tleap.build() in {}".format(self.output_path))
@@ -201,7 +428,7 @@ class System(object):
 
     def filter_template(self):
         """
-        Filter out any template_lines that may interfere with solvation.
+        Filter out any ``template_lines`` that may interfere with solvation.
         """
 
         filtered_lines = []
@@ -243,7 +470,7 @@ class System(object):
 
     def write_input(self):
         """
-        Write a ``tleap`` input file based on template_lines and other things we have set.
+        Write a ``TLeap`` input file based on ``template_lines`` and other things we have set.
         """
 
         file_path = os.path.join(self.output_path, self.output_prefix + ".tleap.in")
@@ -254,32 +481,37 @@ class System(object):
                 raise
 
         with open(file_path, "w") as f:
+            # load the water leaprc library
+            if self.pbc_type and self.water_model:
+                f.write(f"source leaprc.water.{self.water_model['library']}\n")
+                f.write(f"loadamberparams frcmod.{self.water_model['frcmod']}\n")
+
             for line in self.template_lines:
                 f.write(line + "\n")
 
-            if self.pbc_type == "cubic":
+            if self.pbc_type == PBCBox.cubic:
                 f.write(
                     "solvatebox {} {} {} iso\n".format(
-                        self.unit, self.water_box, self.buffer_value
+                        self.unit, self.water_model["water_box"], self.buffer_value
                     )
                 )
-            elif self.pbc_type == "rectangular":
+            elif self.pbc_type == PBCBox.rectangular:
                 f.write(
                     "solvatebox {} {} {{10.0 10.0 {}}}\n".format(
-                        self.unit, self.water_box, self.buffer_value
+                        self.unit, self.water_model["water_box"], self.buffer_value
                     )
                 )
-            elif self.pbc_type == "octahedral":
+            elif self.pbc_type == PBCBox.octahedral:
                 f.write(
                     "solvateoct {} {} {} iso\n".format(
-                        self.unit, self.water_box, self.buffer_value
+                        self.unit, self.water_model["water_box"], self.buffer_value
                     )
                 )
             elif self.pbc_type is None:
                 f.write("# Skipping solvation ...\n")
             else:
                 raise Exception(
-                    "Incorrect pbctype value provided: "
+                    "Incorrect pbc_type value provided: "
                     + str(self.pbc_type)
                     + ". Only `cubic`, `rectangular`, `octahedral`, and None are valid"
                 )
@@ -317,7 +549,7 @@ class System(object):
 
     def run(self):
         """
-        Execute `tleap`.
+        Execute ``TLeap``.
 
         Returns
         -------
@@ -341,7 +573,7 @@ class System(object):
 
     def grep_leap_log(self):
         """
-        Check for a few keywords in the `tleap` output.
+        Check for a few keywords in the ``TLeap`` output.
         """
         try:
             with open(self.output_path + "leap.log", "r") as file:
@@ -357,7 +589,7 @@ class System(object):
 
     def check_for_leap_log(self, log_file="leap.log"):
         """
-        Check if `leap.log` exists in output_path, and if so, delete so the current run doesn't append.
+        Check if `leap.log` exists in ``output_path``, and if so, delete so the current run doesn't append.
 
         Parameters
         ----------
@@ -418,8 +650,9 @@ class System(object):
 
             # Find out how many waters for *this* buffer value...
             waters = self.count_waters()
-            self.wat_added_history.append(waters)
-            self.buffer_val_history.append(self.buffer_value)
+            self.waters_added_history.append(waters)
+            # noinspection PyTypeChecker
+            self.buffer_value_history.append(self.buffer_value)
             log.debug(
                 "Cycle {:02.0f} {:.0f} {:10.7f} {:6.0f} ({:6.0f})".format(
                     cycle, self.exponent, self.buffer_value, waters, self.target_waters
@@ -454,7 +687,8 @@ class System(object):
 
         if cycle >= self.max_cycles and waters > self.target_waters:
             log.debug(
-                "The added waters ({}) didn't reach the manual_switch_thresh ({}) with max_cycles ({}), but we'll try manual removal anyway.".format(
+                "The added waters ({}) didn't reach the manual_switch_thresh ({}) with max_cycles ({}), "
+                "but we'll try manual removal anyway.".format(
                     waters, self.target_waters, self.max_cycles
                 )
             )
@@ -510,7 +744,7 @@ class System(object):
 
     def count_residues(self, print_results=False):
         """
-        Run and parse `tleap` output and return a dictionary of residues in the structure.
+        Run and parse ``TLeap`` output and return a dictionary of residues in the structure.
 
         Parameters
         ----------
@@ -562,7 +796,7 @@ class System(object):
         **Sets:**
 
         ``self.add_ion_residues`` : list
-            A processed list of ions and their amounts that can be passed to `tleap`.
+            A processed list of ions and their amounts that can be passed to ``TLeap``.
 
         """
         if not self.add_ions:
@@ -588,7 +822,7 @@ class System(object):
                     np.ceil(
                         float(amount[:-1])
                         * self.target_waters
-                        * self.kg_per_mol_solvent
+                        * self.solvent_molecular_mass
                     )
                 )
                 self.add_ion_residues.append(number_to_add)
@@ -609,7 +843,7 @@ class System(object):
 
     def get_volume(self):
         """
-        Run and parse ``tleap`` output and return the volume of the structure.
+        Run and parse ``TLeap`` output and return the volume of the structure.
 
         Returns
         -------
@@ -630,12 +864,12 @@ class System(object):
 
     def remove_waters_manually(self):
         """
-        Remove a few water molecules manually with ``tleap`` to exactly match a desired number of waters.
+        Remove a few water molecules manually with ``TLeap`` to exactly match a desired number of waters.
         """
 
         cycle = 0
         max_cycles = 100
-        waters = self.wat_added_history[-1]
+        waters = self.waters_added_history[-1]
         while waters > self.target_waters:
             # Retrieve excess water residues
             water_surplus = waters - self.target_waters
@@ -649,9 +883,8 @@ class System(object):
                 additional_water = int(float(cycle) / 5.0)
                 water_surplus += additional_water
                 log.debug(
-                    "Detected trouble with manually removing water. Increasing the number of surplus waters by {}".format(
-                        additional_water
-                    )
+                    "Detected trouble with manually removing water. Increasing the number"
+                    "of surplus waters by {}".format(additional_water)
                 )
 
             self.waters_to_remove = water_residues[-1 * water_surplus :]
@@ -672,7 +905,7 @@ class System(object):
 
     def list_waters(self):
         """
-        Run and parse ``tleap`` output and return the a list of water residues.
+        Run and parse ``TLeap`` output and return the a list of water residues.
 
         Returns
         -------
@@ -701,7 +934,7 @@ class System(object):
             A new buffer size to try.
         ``self.exponent`` : int
             Adjusts the order of magnitude of buffer value changes.
-        ``self.cyc_since_last_exp_change`` : int
+        ``self.cycles_since_last_exp_change`` : int
             Resets this value to 0 when exponent value is changed to help with the logic gates.
 
         """
@@ -709,63 +942,69 @@ class System(object):
         # If the number of waters was less than the target and is now greater than the target, make the buffer smaller
         # smaller
         if (
-            self.wat_added_history[-2] < self.target_waters
-            and self.wat_added_history[-1] > self.target_waters
+            self.waters_added_history[-2]
+            < self.target_waters
+            < self.waters_added_history[-1]
         ):
             # If its been more than one round since last exponent change,
             # change exponent
-            if self.cyc_since_last_exp_change > 1:
+            if self.cycles_since_last_exp_change > 1:
                 log.debug("Adjustment loop 1a")
                 self.exponent -= 1
-                self.buffer_value = self.buffer_val_history[-1] + -5 * (
+                self.buffer_value = self.buffer_value_history[-1] + -5 * (
                     10 ** self.exponent
                 )
-                self.cyc_since_last_exp_change = 0
+                self.cycles_since_last_exp_change = 0
             else:
                 log.debug("Adjustment loop 1b")
-                self.buffer_value = self.buffer_val_history[-1] + -1 * (
+                self.buffer_value = self.buffer_value_history[-1] + -1 * (
                     10 ** self.exponent
                 )
-                self.cyc_since_last_exp_change += 1
+                self.cycles_since_last_exp_change += 1
         # If the number of waters was greater than the target and is now less
         # than the target, make the buffer bigger
         elif (
-            self.wat_added_history[-2] > self.target_waters
-            and self.wat_added_history[-1] < self.target_waters
+            self.waters_added_history[-2]
+            > self.target_waters
+            > self.waters_added_history[-1]
         ):
             # If its been more than one round since last exponent change,
             # change exponent
-            if self.cyc_since_last_exp_change > 1:
+            if self.cycles_since_last_exp_change > 1:
                 log.debug("Adjustment loop 2a")
                 self.exponent -= 1
-                self.buffer_value = self.buffer_val_history[-1] + 5 * (
+                self.buffer_value = self.buffer_value_history[-1] + 5 * (
                     10 ** self.exponent
                 )
-                self.cyc_since_last_exp_change = 0
+                self.cycles_since_last_exp_change = 0
             else:
                 log.debug("Adjustment loop 2b")
-                self.buffer_value = self.buffer_val_history[-1] + 1 * (
+                self.buffer_value = self.buffer_value_history[-1] + 1 * (
                     10 ** self.exponent
                 )
-                self.cyc_since_last_exp_change += 1
+                self.cycles_since_last_exp_change += 1
         # If the last two rounds of solvation have too many waters, make the
         # buffer smaller...
         elif (
-            self.wat_added_history[-2] > self.target_waters
-            and self.wat_added_history[-1] > self.target_waters
+            self.waters_added_history[-2] > self.target_waters
+            and self.waters_added_history[-1] > self.target_waters
         ):
             log.debug("Adjustment loop 3")
-            self.buffer_value = self.buffer_val_history[-1] + -1 * (10 ** self.exponent)
-            self.cyc_since_last_exp_change += 1
+            self.buffer_value = self.buffer_value_history[-1] + -1 * (
+                10 ** self.exponent
+            )
+            self.cycles_since_last_exp_change += 1
         # If the last two rounds of solvation had too few waters, make the
         # buffer bigger...
         elif (
-            self.wat_added_history[-2] < self.target_waters
-            and self.wat_added_history[-1] < self.target_waters
+            self.waters_added_history[-2] < self.target_waters
+            and self.waters_added_history[-1] < self.target_waters
         ):
             log.debug("Adjustment loop 4")
-            self.buffer_value = self.buffer_val_history[-1] + 1 * (10 ** self.exponent)
-            self.cyc_since_last_exp_change += 1
+            self.buffer_value = self.buffer_value_history[-1] + 1 * (
+                10 ** self.exponent
+            )
+            self.cycles_since_last_exp_change += 1
         else:
             raise Exception(
                 "The buffer_values search died due to an unanticipated set of variable values"
@@ -796,6 +1035,7 @@ class System(object):
 
         structure = pmd.load_file(prmtop, structure=True)
 
+        # noinspection PyTypeChecker
         pmd.tools.actions.HMassRepartition(structure, arg_list=options).execute()
 
         structure.save(prmtop, overwrite=True)
@@ -817,10 +1057,10 @@ class System(object):
             exists in the folder.
         output_path: str, optional, default=None
             Alternate directory path where the AMBER files are located. Default is the
-            `path` parsed to the :class:`paprika.tleap.System` object.
+            `path` parsed to the :class:`TLeap` object.
         output_prefix: str, optional, default=None
             Alternate file name prefix for the Amber files. Default is the `prefix` parsed
-            to the :class:`paprika.tleap.System` object.
+            to the :class:`TLeap` object.
         toolkit: :class:`ConversionToolkit`, default=ConversionToolkit.InterMol
             Option to choose the toolkit for converting the AMBER files, ParmEd or InterMol
         """
@@ -901,7 +1141,7 @@ class System(object):
 
             if output_status["gromacs"] != "Converted":
                 raise Exception(
-                    f"Converting AMBER to GROMACS with Intermol unsuccesful: {output_status['gromacs']}"
+                    f"Converting AMBER to GROMACS with Intermol unsuccessful: {output_status['gromacs']}"
                 )
 
     def convert_to_charmm(
@@ -921,10 +1161,10 @@ class System(object):
             exists in the folder.
         output_path: str, optional, default=None
             Alternate directory path where the AMBER files are located. Default is the
-            `path` parsed to the :class:`paprika.tleap.System` object.
+            `path` parsed to the :class:`TLeap` object.
         output_prefix: str, optional, default=None
             Alternate file name prefix for the Amber files. Default is the `prefix` parsed
-            to the :class:`paprika.tleap.System` object.
+            to the :class:`TLeap` object.
         toolkit: :class:`ConversionToolkit`, default=ConversionToolkit.InterMol
             Option to choose the toolkit for converting the AMBER files, ParmEd or InterMol
         """
@@ -1005,7 +1245,7 @@ class System(object):
 
             if output_status["charmm"] != "Converted":
                 raise Exception(
-                    f"Converting AMBER to CHARMM with Intermol unsuccesful: {output_status['charmm']}"
+                    f"Converting AMBER to CHARMM with Intermol unsuccessful: {output_status['charmm']}"
                 )
 
     def convert_to_lammps(
@@ -1024,10 +1264,10 @@ class System(object):
             simulation.
         output_path: str, optional, default=None
             Alternate directory path where the AMBER files are located. Default is the
-            `path` parsed to the :class:`paprika.tleap.System` object.
+            `path` parsed to the :class:`TLeap` object.
         output_prefix: str, optional, default=None
             Alternate file name prefix for the Amber files. Default is the `prefix` parsed
-            to the :class:`paprika.tleap.System` object.
+            to the :class:`TLeap` object.
         """
         if output_path is None:
             output_path = self.output_path
@@ -1078,7 +1318,7 @@ class System(object):
 
         if output_status["lammps"] != "Converted":
             raise Exception(
-                f"Converting AMBER to LAMMPS with Intermol unsuccesful: {output_status['lammps']}"
+                f"Converting AMBER to LAMMPS with Intermol unsuccessful: {output_status['lammps']}"
             )
 
     def convert_to_desmond(
@@ -1093,10 +1333,10 @@ class System(object):
         ----------
         output_path: str, optional, default=None
             Alternate directory path where the AMBER files are located. Default is the
-            `path` parsed to the :class:`paprika.tleap.System` object.
+            `path` parsed to the :class:`TLeap` object.
         output_prefix: str, optional, default=None
             Alternate file name prefix for the Amber files. Default is the `prefix` parsed
-            to the :class:`paprika.tleap.System` object.
+            to the :class:`TLeap` object.
         """
         if output_path is None:
             output_path = self.output_path
@@ -1138,5 +1378,95 @@ class System(object):
 
         if output_status["desmond"] != "Converted":
             raise Exception(
-                f"Converting AMBER to DESMOND with Intermol unsuccesful: {output_status['desmond']}"
+                f"Converting AMBER to DESMOND with Intermol unsuccessful: {output_status['desmond']}"
             )
+
+    def set_water_model(self, model, model_type=None):
+        """
+        Specify the water model for ``TLeap`` to use. The water model is stored as a dictionary in
+        the variable ``water_model``.
+
+        Parameters
+        ----------
+        model: str
+            The water model to use, models supported are ["spc", "opc", "tip3p", "tip4p"].
+            Strings are case-insensitive.
+        model_type: str
+            The particular type of the water model, default is None and the key in parenthesis is the water box
+            used in TLeap. Strings are case-insensitive.
+            * spc: None (SPCBOX), "flexible" (SPCFWBOX), "quantum" (QSPCFWBOX)
+            * opc: None (OPCBOX), "three-point" (OPC3BOX)
+            * tip3p: None (TIP3PBOX), "flexible" (TIP3PFBOX), "force-balance" (FB3BOX)
+            * tip4p: None (TIP4PBOX), "ewald" (TIP4PEWBOX), "force-balance" (FB4BOX)
+        """
+        if model.lower() not in ["spc", "opc", "tip3p", "tip4p"]:
+            raise KeyError(f"Water model {model} is not supported.")
+
+        library = None
+        frcmod = None
+        water_box = None
+
+        if model.lower() == "spc":
+            library = "spce"
+            frcmod = "spce"
+            if model_type is None:
+                water_box = "SPCBOX"
+            elif model_type.lower() == "flexible":
+                water_box = "SPCFWBOX"
+            elif model_type.lower() == "quantum":
+                water_box = "QSPCFWBOX"
+            else:
+                raise KeyError(
+                    f"Water type {model_type} is not supported for SPC water model."
+                )
+
+        if model.lower() == "opc":
+            library = "opc"
+            if model_type is None:
+                frcmod = "opc"
+                water_box = "OPCBOX"
+            elif model_type.lower() == "three-point":
+                frcmod = "opc3"
+                water_box = "OPC3BOX"
+            else:
+                raise KeyError(
+                    f"Water type {model_type} is not supported for OPC water model."
+                )
+
+        if model.lower() == "tip3p":
+            library = "tip3p"
+            if model_type is None:
+                frcmod = "tip3p"
+                water_box = "TIP3PBOX"
+            elif model_type.lower() == "force-balance":
+                frcmod = "tip3pfb"
+                water_box = "FB3BOX"
+            elif model_type.lower() == "flexible":
+                frcmod = "tip3p"
+                water_box = "TIP3PFBOX"
+            else:
+                raise KeyError(
+                    f"Water type {model_type} is not supported for TIP3P water model."
+                )
+
+        if model.lower() == "tip4p":
+            library = "tip4pew"
+            if model_type is None:
+                frcmod = "tip4p"
+                water_box = "TIP4PBOX"
+            elif model_type.lower() == "force-balance":
+                frcmod = "tip4pfb"
+                water_box = "FB4BOX"
+            elif model_type.lower() == "ewald":
+                frcmod = "tip4pew"
+                water_box = "TIP4PEWBOX"
+            else:
+                raise KeyError(
+                    f"Water type {model_type} is not supported for TIP4P water model."
+                )
+
+        self.water_model = {
+            "library": library,
+            "frcmod": frcmod,
+            "water_box": water_box,
+        }

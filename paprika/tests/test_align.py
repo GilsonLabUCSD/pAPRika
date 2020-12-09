@@ -8,7 +8,7 @@ import numpy as np
 import parmed as pmd
 import pytest
 
-from paprika.align import (
+from paprika.build.align import (
     align_principal_axes,
     check_coordinates,
     get_principal_axis_vector,

@@ -4,7 +4,7 @@ import os
 import numpy as np
 from parmed.structure import Structure as ParmedStructureClass
 
-from paprika.dummy import extract_dummy_atoms
+from paprika.build.dummy import extract_dummy_atoms
 from paprika.restraints.utils import get_bias_potential_type, parse_window
 from paprika.utils import get_key, return_parmed_structure
 

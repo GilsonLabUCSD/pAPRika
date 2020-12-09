@@ -63,11 +63,12 @@ The `mol2` files that we use here (`cb6.mol2` and `but.mol2`) were created by ru
 In this example, we will use GAFF parameters for both the host and guest. For the host, `parmchk2` has identified two parameters that are missing from GAFF and added the most similar ones into the supplementary `cb6.frcmod` file.
 
 ```python
-from paprika import tleap
+
+from paprika.build.system import TLeap
 ```
 
 ```python
-system = tleap.System()
+system = TLeap()
 system.output_path = "cb6-but"
 system.pbc_type = None
 system.neutralize = False
@@ -116,7 +117,8 @@ structure = pmd.load_file("cb6-but/vac.prmtop",
 
 
 ```python
-from paprika import align
+
+from paprika.build import align
 
 ```
 
@@ -145,7 +147,8 @@ Note, these dummy atoms do not interact with the other atoms in the system, and 
 
 
 ```python
-from paprika import dummy
+
+from paprika.build import dummy
 ```
 
 
@@ -189,7 +192,7 @@ Now all the pieces are in place to build the system for an APR calculation.
 
 
 ```python
-system = tleap.System()
+system = TLeap()
 system.output_path = "cb6-but"
 system.pbc_type = None
 system.neutralize = False

@@ -22,7 +22,7 @@ translate a structure to the origin and then orient the system to the :math:`z`-
 
 .. code ::
 
-    from paprika.align import *
+    from paprika.build.align import *
 
     translated_structure = translate_to_origin(structure)
     aligned_structure = zalign(translated_structure, ":GST@C1", ":GST@C2")
@@ -32,7 +32,7 @@ These dummy atoms can be added to a the host-guest structure using the ``Dummy A
 
 .. code ::
 
-    from paprika.dummy import add_dummy
+    from paprika.build.dummy import add_dummy
 
     structure = dummy.add_dummy(structure, residue_name="DM1", z=-6.0)
     structure = dummy.add_dummy(structure, residue_name="DM2", z=-9.0)
@@ -52,9 +52,9 @@ Finally, we can use the ``tleap`` wrapper to combine all of these components to 
 
 .. code ::
 
-    import paprika.tleap as tleap
+    from paprika.build.system import TLeap
 
-    system = tleap.System()
+    system = TLeap()
     system.output_prefix = "host-guest-dum"
     system.pbc_type = None
     system.neutralize = False
