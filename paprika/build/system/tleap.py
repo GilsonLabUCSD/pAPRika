@@ -489,7 +489,7 @@ class TLeap(object):
             frcmod_path = os.path.join(self.output_path, "frcmod.bind3p")
             with open(frcmod_path, "w") as f:
                 f.write(
-"""\
+                    """\
 This is the additional/replacement parameter set for Bind3P water
 MASS
 OW    16.0
