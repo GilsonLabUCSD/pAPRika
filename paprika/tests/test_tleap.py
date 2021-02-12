@@ -74,7 +74,7 @@ def test_solvation_shapes(shape, clean_files):
     assert int(grepped_waters) == waters
 
 
-@pytest.mark.parametrize("water_model", ["tip4p", "opc", "bind3p"])
+@pytest.mark.parametrize("water_model", ["tip4p", "opc"])
 def test_solvation_water_model(water_model, clean_files):
     """ Test that we can solvate CB6-BUT with a truncated octahedron. """
     waters = np.random.randint(1000, 10000)
@@ -103,30 +103,49 @@ def test_solvation_water_model(water_model, clean_files):
     )
     assert int(grepped_waters) == waters
 
-    if water_model == "bind3p":
-        prmtop = os.path.join("./tmp/solvate.prmtop")
-        inpcrd = os.path.join("./tmp/solvate.rst7")
-        structure = pmd.load_file(prmtop, inpcrd, structure=True)
-        water_index = [
-            atom.index
-            for atom in structure.topology.atoms()
-            if atom.residue.name == "WAT" and atom.residue.index == 10
-        ]
-        system = structure.createSystem()
-        nonbonded = [
-            force for force in system.getForces() if isinstance(force, NonbondedForce)
-        ][0]
-        oxygen = nonbonded.getParticleParameters(water_index[0])
-        assert (
-            pytest.approx(oxygen[1].value_in_unit(unit.angstrom) - 3.1319, abs=1e-3)
-            == 0.0
+
+def test_solvation_bind3p(clean_files):
+    logger.debug("Solvating with 500 Bind3P waters in a truncated octahedron...")
+    sys = TLeap()
+    sys.output_path = "tmp"
+    sys.loadpdb_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb"
+    )
+    sys.target_waters = 500
+    sys.output_prefix = "solvate"
+    sys.pbc_type = PBCBox.cubic
+    sys.set_water_model("bind3p")
+    sys.template_lines = [
+        "source leaprc.gaff",
+        "loadamberparams ../../data/cb6-but/cb6.frcmod",
+        "CB6 = loadmol2 ../../data/cb6-but/cb6.mol2",
+        "BUT = loadmol2 ../../data/cb6-but/but.mol2",
+        "model = loadpdb ../../data/cb6-but/cb6-but.pdb",
+    ]
+    sys.build()
+
+    prmtop = os.path.join("./tmp/solvate.prmtop")
+    inpcrd = os.path.join("./tmp/solvate.rst7")
+    structure = pmd.load_file(prmtop, inpcrd, structure=True)
+    water_index = [
+        atom.index
+        for atom in structure.topology.atoms()
+        if atom.residue.name == "WAT" and atom.residue.index == 10
+    ]
+    system = structure.createSystem()
+    nonbonded = [
+        force for force in system.getForces() if isinstance(force, NonbondedForce)
+    ][0]
+    oxygen = nonbonded.getParticleParameters(water_index[0])
+    assert (
+        pytest.approx(oxygen[1].value_in_unit(unit.angstrom) - 3.1319, abs=1e-3) == 0.0
+    )
+    assert (
+        pytest.approx(
+            oxygen[2].value_in_unit(unit.kilocalorie_per_mole) - 0.1818, abs=1e-3
         )
-        assert (
-            pytest.approx(
-                oxygen[2].value_in_unit(unit.kilocalorie_per_mole) - 0.1818, abs=1e-3
-            )
-            == 0.0
-        )
+        == 0.0
+    )
 
 
 @pytest.mark.slow
