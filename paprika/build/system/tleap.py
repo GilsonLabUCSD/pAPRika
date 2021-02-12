@@ -472,6 +472,23 @@ class TLeap(object):
 
         self.template_lines = filtered_lines
 
+        # Add the water leaprc library to template_lines
+        if self.pbc_type and self.water_model:
+            # We need to source the water model after all other modules are loaded
+            # because some modules will overwrite the water model definition.
+            # Example case: source leaprc.protein.ff14SB contains tip3p parameters so
+            # we need to load this first before the water frcmod file.
+            insert_index = 0
+            for idx, line in enumerate(self.template_lines):
+                if "source" in line:
+                    insert_index = idx + 1
+            self.template_lines.insert(
+                insert_index, f"loadamberparams frcmod.{self.water_model['frcmod']}"
+            )
+            self.template_lines.insert(
+                insert_index, f"source leaprc.water.{self.water_model['library']}"
+            )
+
     def write_input(self):
         """
         Write a ``TLeap`` input file based on ``template_lines`` and other things we have set.
@@ -510,11 +527,6 @@ NONBON
                 )
 
         with open(file_path, "w") as f:
-            # load the water leaprc library
-            if self.pbc_type and self.water_model:
-                f.write(f"source leaprc.water.{self.water_model['library']}\n")
-                f.write(f"loadamberparams frcmod.{self.water_model['frcmod']}\n")
-
             for line in self.template_lines:
                 f.write(line + "\n")
 
@@ -1418,18 +1430,17 @@ NONBON
         Parameters
         ----------
         model: str
-            The water model to use, models supported are ["spc", "opc", "tip3p", "bind3p", "tip4p"].
+            The water model to use, models supported are ["spc", "opc", "tip3p", "tip4p"].
             Strings are case-insensitive.
         model_type: str
-            The particular type of the water model, default is None and the key in parenthesis is the water box
-            used in TLeap. Strings are case-insensitive.
+            The particular type of the water model, default is ``None`` and the key in parenthesis is the water box
+            used in ``TLeap``. Strings are case-insensitive.
             * spc: None (SPCBOX), "flexible" (SPCFWBOX), "quantum" (QSPCFWBOX)
             * opc: None (OPCBOX), "three-point" (OPC3BOX)
-            * tip3p: None (TIP3PBOX), "flexible" (TIP3PFBOX), "force-balance" (FB3BOX)
-            * bind3p: None (TIP3PBOX)
+            * tip3p: None (TIP3PBOX), "flexible" (TIP3PFBOX), "force-balance" (FB3BOX), "bind3p" (TIP3PBOX)
             * tip4p: None (TIP4PBOX), "ewald" (TIP4PEWBOX), "force-balance" (FB4BOX)
         """
-        if model.lower() not in ["spc", "opc", "tip3p", "bind3p", "tip4p"]:
+        if model.lower() not in ["spc", "opc", "tip3p", "tip4p"]:
             raise KeyError(f"Water model {model} is not supported.")
 
         library = None
@@ -1465,9 +1476,11 @@ NONBON
 
         if model.lower() == "tip3p":
             library = "tip3p"
+            water_box = "TIP3PBOX"
             if model_type is None:
                 frcmod = "tip3p"
-                water_box = "TIP3PBOX"
+            elif model_type.lower() == "bind3p":
+                frcmod = "bind3p"
             elif model_type.lower() == "force-balance":
                 frcmod = "tip3pfb"
                 water_box = "FB3BOX"
@@ -1478,11 +1491,6 @@ NONBON
                 raise KeyError(
                     f"Water type {model_type} is not supported for TIP3P water model."
                 )
-
-        if model.lower() == "bind3p":
-            library = "tip3p"
-            frcmod = "bind3p"
-            water_box = "TIP3PBOX"
 
         if model.lower() == "tip4p":
             library = "tip4pew"

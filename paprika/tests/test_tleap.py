@@ -114,7 +114,7 @@ def test_solvation_bind3p(clean_files):
     sys.target_waters = 2000
     sys.output_prefix = "solvate"
     sys.pbc_type = PBCBox.cubic
-    sys.set_water_model("bind3p")
+    sys.set_water_model("tip3p", model_type="bind3p")
     sys.template_lines = [
         "source leaprc.gaff",
         "loadamberparams ../paprika/data/cb6-but/cb6.frcmod",
