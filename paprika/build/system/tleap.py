@@ -426,6 +426,10 @@ class TLeap(object):
         else:
             self.solvate()
 
+        # Clean bind3p frcmod file
+        if self.water_model["frcmod"] == "bind3p":
+            os.remove(os.path.join(self.output_path, "frcmod.bind3p"))
+
     def filter_template(self):
         """
         Filter out any ``template_lines`` that may interfere with solvation.
@@ -479,6 +483,31 @@ class TLeap(object):
                 os.makedirs(os.path.dirname(file_path))
             except OSError:
                 raise
+
+        # If Bind3P, write frcmod.bind3p file
+        if self.water_model["frcmod"] == "bind3p":
+            frcmod_path = os.path.join(self.output_path, "frcmod.bind3p")
+            with open(frcmod_path, "w") as f:
+                f.write(
+"""\
+This is the additional/replacement parameter set for Bind3P water
+MASS
+OW    16.0
+HW     1.008   0.000
+
+BOND
+OW-HW  553.0    0.9572      Bind3P water
+HW-HW  553.0    1.5136      Bind3P water
+
+ANGLE
+
+DIHE
+
+NONBON
+  OW          1.7577  0.1818             Bind3P water model
+  HW          0.0000  0.0000             Bind3P water model
+"""
+                )
 
         with open(file_path, "w") as f:
             # load the water leaprc library
@@ -1389,7 +1418,7 @@ class TLeap(object):
         Parameters
         ----------
         model: str
-            The water model to use, models supported are ["spc", "opc", "tip3p", "tip4p"].
+            The water model to use, models supported are ["spc", "opc", "tip3p", "bind3p", "tip4p"].
             Strings are case-insensitive.
         model_type: str
             The particular type of the water model, default is None and the key in parenthesis is the water box
@@ -1397,9 +1426,10 @@ class TLeap(object):
             * spc: None (SPCBOX), "flexible" (SPCFWBOX), "quantum" (QSPCFWBOX)
             * opc: None (OPCBOX), "three-point" (OPC3BOX)
             * tip3p: None (TIP3PBOX), "flexible" (TIP3PFBOX), "force-balance" (FB3BOX)
+            * bind3p: None (TIP3PBOX)
             * tip4p: None (TIP4PBOX), "ewald" (TIP4PEWBOX), "force-balance" (FB4BOX)
         """
-        if model.lower() not in ["spc", "opc", "tip3p", "tip4p"]:
+        if model.lower() not in ["spc", "opc", "tip3p", "bind3p", "tip4p"]:
             raise KeyError(f"Water model {model} is not supported.")
 
         library = None
@@ -1448,6 +1478,11 @@ class TLeap(object):
                 raise KeyError(
                     f"Water type {model_type} is not supported for TIP3P water model."
                 )
+
+        if model.lower() == "bind3p":
+            library = "tip3p"
+            frcmod = "bind3p"
+            water_box = "TIP3PBOX"
 
         if model.lower() == "tip4p":
             library = "tip4pew"

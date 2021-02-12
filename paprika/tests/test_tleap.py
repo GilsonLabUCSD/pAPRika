@@ -10,6 +10,8 @@ import subprocess as sp
 import numpy as np
 import parmed as pmd
 import pytest
+import simtk.unit as unit
+from simtk.openmm import NonbondedForce
 
 from paprika.build.align import zalign
 from paprika.build.system import TLeap
@@ -72,7 +74,7 @@ def test_solvation_shapes(shape, clean_files):
     assert int(grepped_waters) == waters
 
 
-@pytest.mark.parametrize("water_model", ["tip4p", "opc"])
+@pytest.mark.parametrize("water_model", ["tip4p", "opc", "bind3p"])
 def test_solvation_water_model(water_model, clean_files):
     """ Test that we can solvate CB6-BUT with a truncated octahedron. """
     waters = np.random.randint(1000, 10000)
@@ -100,6 +102,31 @@ def test_solvation_water_model(water_model, clean_files):
         ["grep -oh 'WAT' ./tmp/solvate.prmtop | wc -w"], shell=True
     )
     assert int(grepped_waters) == waters
+
+    if water_model == "bind3p":
+        prmtop = os.path.join("./tmp/solvate.prmtop")
+        inpcrd = os.path.join("./tmp/solvate.inpcrd")
+        structure = pmd.load_file(prmtop, inpcrd, structure=True)
+        water_index = [
+            atom.index
+            for atom in structure.topology.atoms()
+            if atom.residue.name == "WAT" and atom.residue.index == 10
+        ]
+        system = structure.createSystem()
+        nonbonded = [
+            force for force in system.getForces() if isinstance(force, NonbondedForce)
+        ][0]
+        oxygen = nonbonded.getParticleParameters(water_index[0])
+        assert (
+            pytest.approx(oxygen[1].value_in_unit(unit.angstrom) - 3.1319, abs=1e-3)
+            == 0.0
+        )
+        assert (
+            pytest.approx(
+                oxygen[2].value_in_unit(unit.kilocalorie_per_mole) - 0.1818, abs=1e-3
+            )
+            == 0.0
+        )
 
 
 @pytest.mark.slow
