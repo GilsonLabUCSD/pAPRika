@@ -117,10 +117,10 @@ def test_solvation_bind3p(clean_files):
     sys.set_water_model("bind3p")
     sys.template_lines = [
         "source leaprc.gaff",
-        "loadamberparams ../../data/cb6-but/cb6.frcmod",
-        "CB6 = loadmol2 ../../data/cb6-but/cb6.mol2",
-        "BUT = loadmol2 ../../data/cb6-but/but.mol2",
-        "model = loadpdb ../../data/cb6-but/cb6-but.pdb",
+        "loadamberparams ../paprika/data/cb6-but/cb6.frcmod",
+        "CB6 = loadmol2 ../paprika/data/cb6-but/cb6.mol2",
+        "BUT = loadmol2 ../paprika/data/cb6-but/but.mol2",
+        "model = loadpdb ../paprika/data/cb6-but/cb6-but.pdb",
     ]
     sys.build()
 
