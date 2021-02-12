@@ -111,7 +111,7 @@ def test_solvation_bind3p(clean_files):
     sys.loadpdb_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb"
     )
-    sys.target_waters = 500
+    sys.target_waters = 2000
     sys.output_prefix = "solvate"
     sys.pbc_type = PBCBox.cubic
     sys.set_water_model("bind3p")
