@@ -105,7 +105,7 @@ def test_solvation_water_model(water_model, clean_files):
 
     if water_model == "bind3p":
         prmtop = os.path.join("./tmp/solvate.prmtop")
-        inpcrd = os.path.join("./tmp/solvate.inpcrd")
+        inpcrd = os.path.join("./tmp/solvate.rst7")
         structure = pmd.load_file(prmtop, inpcrd, structure=True)
         water_index = [
             atom.index
