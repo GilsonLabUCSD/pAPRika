@@ -260,7 +260,7 @@ def test_solvation_by_M_and_m(clean_files):
     sys.neutralize = False
     sys.pbc_type = PBCBox.rectangular
     sys.add_ions = ["NA", "0.150M", "CL", "0.150M", "K", "0.100m", "BR", "0.100m"]
-    sys.build()
+    sys.build(clean_files=False)
 
     # Molarity Check
     obs_num_na = sp.check_output(
