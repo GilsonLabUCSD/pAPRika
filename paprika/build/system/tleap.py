@@ -395,9 +395,14 @@ class TLeap(object):
         self._waters_added_history = [0]
         self._write_save_lines = True
 
-    def build(self):
+    def build(self, clean_files: bool = True):
         """
         Build the ``TLeap`` system.
+
+        Parameters
+        ----------
+        clean_files : bool, optional
+            Whether to delete log files after completion.
         """
 
         log.debug("Running tleap.build() in {}".format(self.output_path))
@@ -426,9 +431,13 @@ class TLeap(object):
         else:
             self.solvate()
 
-        # Clean bind3p frcmod file
-        if self.water_model["frcmod"] == "bind3p":
-            os.remove(os.path.join(self.output_path, "frcmod.bind3p"))
+        # Cleanup
+        if clean_files:
+            os.remove(os.path.join(self.output_path, self.output_prefix + ".tleap.in"))
+            os.remove(os.path.join(self.output_path, "leap.log"))
+
+            if self.water_model["frcmod"] == "bind3p":
+                os.remove(os.path.join(self.output_path, "frcmod.bind3p"))
 
     def filter_template(self):
         """
