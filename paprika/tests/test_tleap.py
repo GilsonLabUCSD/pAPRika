@@ -390,7 +390,7 @@ def test_multiple_pdb_files(clean_files):
     sys.output_prefix = "multi"
     sys.pbc_type = None
     sys.neutralize = False
-    sys.build()
+    sys.build(clean_files=False)
 
     with open(f"{temporary_directory}/multi.tleap.in", "r") as f:
         lines = f.read()
