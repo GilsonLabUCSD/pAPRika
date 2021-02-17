@@ -15,7 +15,7 @@ dependencies:
   - sphinx
   - nbsphinx
   - sphinx_rtd_theme
-  - sphinxcontrib-bibtex
+  - sphinxcontrib-bibtex ==1.0.0
 
   # Standard dependencies
   - pip

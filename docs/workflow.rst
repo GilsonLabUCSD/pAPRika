@@ -15,22 +15,27 @@ finish.
 
 Structure Preparation
 ---------------------
+
+**Aligning the host-guest complex**
+
 The starting structure for the APR simulation can be configured with `paprika`. The APR calculation is most efficient in
 a rectangular box with the long axis parallel to the pulling axis (reduces the number of water molecules in the system).
 To make this easy to set up, the ``Align`` module provides functions to shift and orient a structure. For example, we can
 translate a structure to the origin and then orient the system to the :math:`z`-axis by running
 
-.. code ::
+.. code :: python
 
     from paprika.build.align import *
 
     translated_structure = translate_to_origin(structure)
     aligned_structure = zalign(translated_structure, ":GST@C1", ":GST@C2")
 
+**Adding dummy atoms**
+
 To provide something to pull "against," we add dummy atoms that are fixed in place with strong positional restraints.
 These dummy atoms can be added to a the host-guest structure using the ``Dummy Atoms`` module in `paprika`.
 
-.. code ::
+.. code :: python
 
     from paprika.build.dummy import add_dummy
 
@@ -41,16 +46,18 @@ These dummy atoms can be added to a the host-guest structure using the ``Dummy A
 
 We will need the ``mol2`` and ``frcmod`` files for the dummy atoms, which we will need to generate the `AMBER` topology
 
-.. code ::
+.. code :: python
 
    dummy.write_dummy_frcmod(filepath="complex/dummy.frcmod")
    dummy.write_dummy_mol2(residue_name="DM1", filepath="complex/dm1.mol2")
    dummy.write_dummy_mol2(residue_name="DM2", filepath="complex/dm2.mol2")
    dummy.write_dummy_mol2(residue_name="DM3", filepath="complex/dm3.mol2")
 
+**Building the topology**
+
 Finally, we can use the ``tleap`` wrapper to combine all of these components to generate the topology and coordinate files.
 
-.. code ::
+.. code :: python
 
     from paprika.build.system import TLeap
 
@@ -58,6 +65,45 @@ Finally, we can use the ``tleap`` wrapper to combine all of these components to 
     system.output_prefix = "host-guest-dum"
     system.pbc_type = None
     system.neutralize = False
+
+    system.template_lines = [
+        "source leaprc.gaff",
+        "HST = loadmol2 host.mol2",
+        "GST = loadmol2 guest.mol2",
+        "DM1 = loadmol2 dm1.mol2",
+        "DM2 = loadmol2 dm2.mol2",
+        "DM3 = loadmol2 dm3.mol2",
+        "model = loadpdb aligned_with_dummy.pdb",
+    ]
+    system.build()
+
+
+**Solvating the structure**
+
+The ``TLeap`` wrapper also provides an API for choosing water models when the user wants to solvate their structure.
+``tleap`` provides a number of models for both 3-point and 4-point water models. There are also sub-types for each
+water model, e.g. for TIP3P we can choose to use the ForceBalance optimized variant called TIP3P-FB or the host-guest
+binding optimized model called Bind3P. To choose a water model for solvation we use the ``set_water_model`` method of
+the ``TLeap`` wrapper. The method requires the user to specify the water model and optionally the sub-type as the
+``model_type`` attibute. The supported water models are:
+
+* spc: None (SPCBOX), "flexible" (SPCFWBOX), "quantum" (QSPCFWBOX)
+* opc: None (OPCBOX), "three-point" (OPC3BOX)
+* tip3p: None (TIP3PBOX), "flexible" (TIP3PFBOX), "force-balance" (FB3BOX)
+* tip4p: None (TIP4PBOX), "ewald" (TIP4PEWBOX), "force-balance" (FB4BOX)
+
+Below is an example for solvating a system with 2000 TIP3P water molecules with ``ForceBalance`` optimized parameters.
+
+.. code :: python
+
+    from paprika.build.system import TLeap
+    from paprika.build.system.utils import PBCBox
+
+    system = TLeap()
+    system.output_prefix = "host-guest-dum"
+    system.pbc_type = PBCBox.rectangular
+    system.target_waters = 2000
+    system.set_water_model("tip3p", model_type="force-balance")
 
     system.template_lines = [
         "source leaprc.gaff",
@@ -155,7 +201,7 @@ the half-harmonic potential.
    ``custom_restraint_values`` follows the *AMBER* NMR-restraint format, see Chapter 27 in the AMBER20 manual
    for more details.
 
-Below is an example for generating a `"lower wall"` restraint that prevents the angle of ``[D1,G1,G2]`` from
+Below is an example for generating a `"lower wall"` restraint that prevents the angle of ``[D2,G1,G2]`` from
 decreasing below 91 degrees.
 
 .. code :: python
@@ -195,6 +241,68 @@ differently. For example, in ``AMBER`` you can define positional restraints in t
    be taken when applying *positional restraints*. Take a look at tutorials `5 <tutorials/05-tutorial-cb6-but-plumed.ipynb>`_
    and `6 <tutorials/06-tutorial-cb6-but-gromacs.ipynb>`_ to see this distinction.
 
+**Creating the APR windows and saving restraints to file**
+
+To create the windows for the APR calculation we need to parse a `varying restraint` to the utility function ``create_window_list``.
+This function will return a list of strings for the APR protocol
+
+.. code :: python
+
+    window_list = create_window_list(restraints_list)
+    window_list
+    ["a000", "a001", ..., "p000", "p001", ...]
+
+It may also be useful to save both the windows list and the restraints to a JSON file so you do not need to redefine again.
+The restraints can be saved to a JSON file using the utility function ``save_restraints``.
+
+.. code :: python
+
+    from paprika.io import save_restraints
+    save_restraints(restraints_list, filepath="restraints.json")
+
+    import json
+    with open("windows.json", "w") as f:
+        dumped = json.dumps(window_list)
+        f.write(dumped)
+
+**Extending/adding more windows**
+
+Sometimes it may be necessary to add more windows in the APR calculation due to insufficient overlap between neighboring
+windows. For convenience we can add the windows at the end of the current list instead of inserting them in order. For
+example, let's say that we have a defined a restraint that spans from 8.4 to 9.8 Å and we want to add three windows
+between 8.6 and 9.0 Å.
+
+.. code :: python
+
+    r_restraint.pull
+    {'fc': 10.0,
+     'target_initial': None,
+     'target_final': None,
+     'num_windows': None,
+     'target_increment': None,
+     'fraction_increment': None,
+     'fraction_list': None,
+     'target_list': array([8.4, 8.6, 9. , 9.4, 9.8])}
+
+We will just need to append the `target_list` of this dictionary and reinitialize the restraints
+
+.. code :: python
+
+    r_restraint.pull["target_list"] = np.append(r_restraint.pull["target_list"], [8.7, 8.8, 8.9])
+    r_restraint.initialize()
+    r_restraint.pull
+    {'fc': 10.0,
+     'target_initial': None,
+     'target_final': None,
+     'num_windows': None,
+     'target_increment': None,
+     'fraction_increment': None,
+     'fraction_list': None,
+     'target_list': array([8.4, 8.6, 9. , 9.4, 9.8, 8.7, 8.8, 8.9])}
+
+We can save the updated restraints to a new file and pass it to the analysis script. The ``fe_calc`` class will take
+care of the window ordering thus there is no need to manually order the windows.
+
 
 Running a Simulation
 --------------------
@@ -208,9 +316,11 @@ in python.
 
    simulation = AMBER()
    simulation.executable = "pmemd.cuda"
+   simulation.gpu_devices = "0"
+
    simulation.path = "simulation"
    simulation.prefix = "equilibration"
-   simulation.inpcrd = "minimize.rst7"
+   simulation.coordinates = "minimize.rst7"
    simulation.ref = "host-guest-dum.rst7"
    simulation.topology = "host-guest-dum.prmtop"
    simulation.restraint_file = "disang.rest"
@@ -225,23 +335,55 @@ in python.
    print(f"Running equilibration in window {window}...")
    simulation.run()
 
+
 Analysis
 --------
 
 Once the simulation is complete, the free energy can be obtained using the ``Analysis`` module, which will also
-estimate the uncertainties.
+estimate the uncertainties using the bootstrapping method. There are three types of methods that you can do
+with the ``Analysis`` module: (1) `thermodynamic integration` with `block-data` analysis ("ti-block"), (2) `multistate
+Benett-Acceptance-Ratio` with `block-data` analysis ("mbar-block"), and (3) `multistate Benett-Acceptance-Ratio` with
+`autocorrelation` analysis ("mbar-autoc").
 
 .. code :: python
 
     from paprika.analysis import fe_calc
+    from paprika.io import load_restraints
+
+    restraints_list = load_restraints(filepath="restraints.json")
 
     free_energy = fe_calc()
     free_energy.prmtop = "host-guest-dum.prmtop"
     free_energy.trajectory = 'production.nc'
     free_energy.path = "windows"
-    free_energy.restraint_list = guest_restraints
+    free_energy.restraint_list = restraints_list
     free_energy.collect_data()
     free_energy.methods = ['ti-block']
     free_energy.ti_matrix = "full"
     free_energy.bootcycles = 1000
     free_energy.compute_free_energy()
+
+We can also estimate the free energy cost of releasing the restraints on the guest molecule semianalytically. To do
+this we need to extract the restraints that is specific to the guest molecule. The ``extract_guest_restraints``
+function from the ``restraints`` module and pass this to the `analysis` object.
+
+.. code :: python
+
+    import parmed as pmd
+    from paprika.restraints.utils import extract_guest_restraints
+
+    structure = pmd.load_file("guest.prmtop", "guest.rst7", structure=True)
+    guest_restraints = extract_guest_restraints(structure, restraints_list, guest_resname="GST")
+    free_energy.compute_ref_state_work(guest_restraints)
+
+The results are stored in the variable ``results`` as a python dictionary and you can save this to a JSON file.
+
+.. code :: python
+
+    print(free_energy.results["pull"]["ti-block"]["fe"])
+    -3.82139135698
+
+    from paprika.io import NumpyEncoder
+    with open("APR_results.json", "w") as f:
+        dumped = json.dumps(free_energy.results, cls=NumpyEncoder)
+        f.write(dumped)

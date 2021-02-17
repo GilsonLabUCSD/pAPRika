@@ -10,6 +10,8 @@ import subprocess as sp
 import numpy as np
 import parmed as pmd
 import pytest
+import simtk.unit as unit
+from simtk.openmm import NonbondedForce
 
 from paprika.build.align import zalign
 from paprika.build.system import TLeap
@@ -100,6 +102,50 @@ def test_solvation_water_model(water_model, clean_files):
         ["grep -oh 'WAT' ./tmp/solvate.prmtop | wc -w"], shell=True
     )
     assert int(grepped_waters) == waters
+
+
+def test_solvation_bind3p(clean_files):
+    logger.debug("Solvating with 500 Bind3P waters in a truncated octahedron...")
+    sys = TLeap()
+    sys.output_path = "tmp"
+    sys.loadpdb_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb"
+    )
+    sys.target_waters = 2000
+    sys.output_prefix = "solvate"
+    sys.pbc_type = PBCBox.cubic
+    sys.set_water_model("tip3p", model_type="bind3p")
+    sys.template_lines = [
+        "source leaprc.gaff",
+        "loadamberparams ../paprika/data/cb6-but/cb6.frcmod",
+        "CB6 = loadmol2 ../paprika/data/cb6-but/cb6.mol2",
+        "BUT = loadmol2 ../paprika/data/cb6-but/but.mol2",
+        "model = loadpdb ../paprika/data/cb6-but/cb6-but.pdb",
+    ]
+    sys.build()
+
+    prmtop = os.path.join("./tmp/solvate.prmtop")
+    inpcrd = os.path.join("./tmp/solvate.rst7")
+    structure = pmd.load_file(prmtop, inpcrd, structure=True)
+    water_index = [
+        atom.index
+        for atom in structure.topology.atoms()
+        if atom.residue.name == "WAT" and atom.residue.index == 10
+    ]
+    system = structure.createSystem()
+    nonbonded = [
+        force for force in system.getForces() if isinstance(force, NonbondedForce)
+    ][0]
+    oxygen = nonbonded.getParticleParameters(water_index[0])
+    assert (
+        pytest.approx(oxygen[1].value_in_unit(unit.angstrom) - 3.1319, abs=1e-3) == 0.0
+    )
+    assert (
+        pytest.approx(
+            oxygen[2].value_in_unit(unit.kilocalorie_per_mole) - 0.1818, abs=1e-3
+        )
+        == 0.0
+    )
 
 
 @pytest.mark.slow
@@ -214,7 +260,7 @@ def test_solvation_by_M_and_m(clean_files):
     sys.neutralize = False
     sys.pbc_type = PBCBox.rectangular
     sys.add_ions = ["NA", "0.150M", "CL", "0.150M", "K", "0.100m", "BR", "0.100m"]
-    sys.build()
+    sys.build(clean_files=False)
 
     # Molarity Check
     obs_num_na = sp.check_output(
@@ -344,7 +390,7 @@ def test_multiple_pdb_files(clean_files):
     sys.output_prefix = "multi"
     sys.pbc_type = None
     sys.neutralize = False
-    sys.build()
+    sys.build(clean_files=False)
 
     with open(f"{temporary_directory}/multi.tleap.in", "r") as f:
         lines = f.read()
