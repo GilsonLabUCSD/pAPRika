@@ -23,7 +23,7 @@ a rectangular box with the long axis parallel to the pulling axis (reduces the n
 To make this easy to set up, the ``Align`` module provides functions to shift and orient a structure. For example, we can
 translate a structure to the origin and then orient the system to the :math:`z`-axis by running
 
-.. code ::
+.. code :: python
 
     from paprika.build.align import *
 
@@ -35,7 +35,7 @@ translate a structure to the origin and then orient the system to the :math:`z`-
 To provide something to pull "against," we add dummy atoms that are fixed in place with strong positional restraints.
 These dummy atoms can be added to a the host-guest structure using the ``Dummy Atoms`` module in `paprika`.
 
-.. code ::
+.. code :: python
 
     from paprika.build.dummy import add_dummy
 
@@ -46,7 +46,7 @@ These dummy atoms can be added to a the host-guest structure using the ``Dummy A
 
 We will need the ``mol2`` and ``frcmod`` files for the dummy atoms, which we will need to generate the `AMBER` topology
 
-.. code ::
+.. code :: python
 
    dummy.write_dummy_frcmod(filepath="complex/dummy.frcmod")
    dummy.write_dummy_mol2(residue_name="DM1", filepath="complex/dm1.mol2")
@@ -57,7 +57,7 @@ We will need the ``mol2`` and ``frcmod`` files for the dummy atoms, which we wil
 
 Finally, we can use the ``tleap`` wrapper to combine all of these components to generate the topology and coordinate files.
 
-.. code ::
+.. code :: python
 
     from paprika.build.system import TLeap
 
@@ -94,7 +94,8 @@ the ``TLeap`` wrapper. The method requires the user to specify the water model a
 
 Below is an example for solvating a system with 2000 TIP3P water molecules with ``ForceBalance`` optimized parameters.
 
-.. code ::
+.. code :: python
+
     from paprika.build.system import TLeap
     from paprika.build.system.utils import PBCBox
 
