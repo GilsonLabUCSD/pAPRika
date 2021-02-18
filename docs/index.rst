@@ -116,19 +116,23 @@ with the `van't Hoff` method.
 
 
 
-Supported Molecular Dynamics Engine
-***********************************
-Currently, `pAPRika` can be used to setup and analyze APR simulations with `AMBER <https://ambermd.org/>`_,
-`OpenMM <http://openmm.org/>`_ and `GROMACS <http://www.gromacs.org/>`_. These MD engines provides their own interface
-(e.g., AMBER uses NMR-style restraints). `pAPRika` also provides modules to generate `Plumed <https://www.plumed.org/>`_-based
-restraints, which is supported in a number of MD engines.
+Supported Molecular Dynamics Engines
+************************************
+Currently, we can use `pAPRika` to set up, perform, and analyze APR simulations with the `AMBER <https://ambermd
+.org/>`_, `OpenMM <http://openmm.org/>`_, `GROMACS <http://www.gromacs.org/>`_, and `NAMD <https://www.ks.uiuc
+.edu/Research/namd/>`_ programs. `pAPRika` supports these MD programs by providing a python-based wrapper for running
+the simulations except for OpenMM. These MD programs provide their own interface for restraints (e.g., AMBER uses NMR-style restraints).
+However, `pAPRika` also provides modules for generating APR restraints in `Plumed <https://www.plumed.org/>`_ and
+`Colvars <https://github.com/Colvars/colvars>`_ format, which can interface with various MD programs.
 
-Future releases of `pAPRika` will include support for other MD engines like ,
-`NAMD <https://www.ks.uiuc.edu/Research/namd/>`_ and `LAMMPS <https://lammps.sandia.gov/>`_. Plumed is supported by all
-of these but for NAMD only NPT simulations can be performed. Hence, a module converting `pAPRika` restraints to a
-`Colvars <https://github.com/Colvars/colvars>`_ module, which is supported in NAMD and LAMMPS, is also in the works.
+Future releases of `pAPRika` will include support for other MD engines like `LAMMPS <https://lammps.sandia.gov/>`_.
+Plumed is supported by all of the listed MD programs below, but for NAMD, only NVT simulations can be performed.
+For running NPT simulations in NAMD, however, we can use the Colvars module. Also, a pipeline for running
+double-decoupling calculations with `pAPRika` is currently in development and will be released soon.
 
-.. table:: MD engines that are supported in `pAPRika` (or planned) and the respective restraint modules it supports.
+
+.. table:: MD engines that are supported in `pAPRika` as simulation wrappers (or planned) and the respective
+           restraint modules.
    :widths: auto
    :align: center
    :class: clean-table property-table
@@ -146,7 +150,7 @@ of these but for NAMD only NPT simulations can be performed. Hence, a module con
    +-----------------+----------------+----------------+-----------------+-----------------+
    || NAMD           || |cross|       || |cross|       || |tick|         || |tick|         |
    +-----------------+----------------+----------------+-----------------+-----------------+
-   || LAMMPS\ |ast|  || |cross|       || |cross|       || |tick|         || |tick|         |
+   || LAMMPS\ |ast|  || |cross|       || |cross|       || |tick|\ |ast|  || |tick|\ |ast|  |
    +-----------------+----------------+----------------+-----------------+-----------------+
 
 *\* Currently not supported but will be available in future releases.* |br|
