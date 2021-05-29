@@ -3,8 +3,10 @@ import logging
 import numpy as np
 import parmed as pmd
 import pytraj as pt
+from openff.units import unit
 
 from paprika import utils
+from paprika.utils import check_unit
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,11 @@ class DAT_restraint(object):
     @instances.setter
     def instances(self, value):
         self._instances = value
+
+    @property
+    def restraint_type(self):
+        """str: The type of restraints for this instance: Distance, Angle or Dihedral."""
+        return self._restraint_type
 
     @property
     def topology(self):
@@ -221,6 +228,8 @@ class DAT_restraint(object):
 
     def __init__(self):
 
+        self._restraint_type = None
+
         self._topology = None
         self._mask1 = None
         self._mask2 = None
@@ -379,12 +388,14 @@ class DAT_restraint(object):
 
         # Attach/Release, Force Constant Method 3
         elif phase in ("a", "r") and method == "3":
+            units = restraint_dictionary["fc_final"].units
             force_constants = np.asarray(
                 [
-                    fraction * restraint_dictionary["fc_final"]
+                    fraction * restraint_dictionary["fc_final"].magnitude
                     for fraction in restraint_dictionary["fraction_list"]
                 ]
             )
+            force_constants *= units
 
         # Attach/Release, Force Constant Method 4
         elif phase in ("a", "r") and method == "4":
@@ -393,19 +404,30 @@ class DAT_restraint(object):
                 1.0 + restraint_dictionary["fraction_increment"],
                 restraint_dictionary["fraction_increment"],
             )
+            units = restraint_dictionary["fc_final"].units
             force_constants = np.asarray(
-                [fraction * restraint_dictionary["fc_final"] for fraction in fractions]
+                [
+                    fraction * restraint_dictionary["fc_final"].magnitude
+                    for fraction in fractions
+                ]
             )
+            force_constants *= units
 
         # Attach/Release, Force Constant Method 5
         elif phase in ("a", "r") and method == "5":
-            force_constants = np.asarray(restraint_dictionary["fc_list"])
+            units = restraint_dictionary["fc_list"][0].units
+            force_constants = np.asarray(
+                [x.magnitude for x in restraint_dictionary["fc_list"]]
+            )
+            force_constants *= units
 
         # Attach/Release, Target Method
         if phase in ("a", "r"):
+            units = restraint_dictionary["target"].units
             targets = np.asarray(
-                [restraint_dictionary["target"]] * len(force_constants)
+                [restraint_dictionary["target"].magnitude] * len(force_constants)
             )
+            targets *= units
 
         # Pull, Target Method 1
         if phase == "p" and method == "1":
@@ -443,12 +465,14 @@ class DAT_restraint(object):
 
         # Pull, Target Method 3
         elif phase == "p" and method == "3":
+            units = restraint_dictionary["target_final"].units
             targets = np.asarray(
                 [
-                    fraction * restraint_dictionary["target_final"]
+                    fraction * restraint_dictionary["target_final"].magnitude
                     for fraction in restraint_dictionary["fraction_list"]
                 ]
             )
+            targets *= units
 
         # Pull, Target Method 4
         elif phase == "p" and method == "4":
@@ -457,20 +481,29 @@ class DAT_restraint(object):
                 1.0 + restraint_dictionary["fraction_increment"],
                 restraint_dictionary["fraction_increment"],
             )
+            units = restraint_dictionary["target_final"].units
             targets = np.asarray(
                 [
-                    fraction * restraint_dictionary["target_final"]
+                    fraction * restraint_dictionary["target_final"].magnitude
                     for fraction in fractions
                 ]
             )
+            targets *= units
 
         # Pull, Target Method 5
         elif phase == "p" and method == "5":
-            targets = np.asarray(restraint_dictionary["target_list"])
+            units = restraint_dictionary["target_list"][0].units
+            targets = np.asarray(
+                [x.magnitude for x in restraint_dictionary["target_list"]]
+            )
 
         # Pull, Force Constant Method
         if phase == "p":
-            force_constants = np.asarray([restraint_dictionary["fc"]] * len(targets))
+            units = restraint_dictionary["fc"].units
+            force_constants = np.asarray(
+                [restraint_dictionary["fc"].magnitude] * len(targets)
+            )
+            force_constants *= units
 
         if force_constants is None and targets is None:
             logger.error("Unsupported Phase/Method: {} / {}".format(phase, method))
@@ -510,6 +543,95 @@ class DAT_restraint(object):
         .. note ::
             This is unnecessary overengineering.
         """
+
+        # Set units
+        energy_unit = unit.kcal / unit.mole
+        target_unit = unit.angstrom
+        if self.mask3 or self.mask4:
+            target_unit = unit.degrees
+        force_constant_unit = energy_unit / target_unit ** 2
+        if self.mask3 or self.mask4:
+            force_constant_unit = energy_unit / unit.radians ** 2
+
+        # Check attach units
+        if self._attach["target"]:
+            self._attach["target"] = check_unit(
+                self._attach["target"], base_unit=target_unit
+            )
+        if self._attach["fc_initial"]:
+            self._attach["fc_initial"] = check_unit(
+                self._attach["fc_initial"], base_unit=force_constant_unit
+            )
+        if self._attach["fc_final"]:
+            self._attach["fc_final"] = check_unit(
+                self._attach["fc_final"], base_unit=force_constant_unit
+            )
+        if self._attach["fc_increment"]:
+            self._attach["fc_increment"] = check_unit(
+                self._attach["fc_increment"], base_unit=force_constant_unit
+            )
+        if self._attach["fc_list"]:
+            self._attach["fc_list"] = check_unit(
+                self._attach["fc_list"], base_unit=force_constant_unit
+            )
+
+        # Check pull units
+        if self._pull["target_initial"]:
+            self._pull["target_initial"] = check_unit(
+                self._pull["target_initial"], base_unit=target_unit
+            )
+        if self._pull["target_final"]:
+            self._pull["target_final"] = check_unit(
+                self._pull["target_final"], base_unit=target_unit
+            )
+        if self._pull["target_increment"]:
+            self._pull["target_increment"] = check_unit(
+                self._pull["target_increment"], base_unit=target_unit
+            )
+        if self._pull["target_list"]:
+            self._pull["target_list"] = check_unit(
+                self._pull["target_list"], base_unit=target_unit
+            )
+        if self._pull["fc"]:
+            self._pull["fc"] = check_unit(
+                self._pull["fc"], base_unit=force_constant_unit
+            )
+
+        # Check release units
+        if self._release["target"]:
+            self._release["target"] = check_unit(
+                self._release["target"], base_unit=target_unit
+            )
+        if self._release["fc_initial"]:
+            self._release["fc_initial"] = check_unit(
+                self._release["fc_initial"], base_unit=force_constant_unit
+            )
+        if self._release["fc_final"]:
+            self._release["fc_final"] = check_unit(
+                self._release["fc_final"], base_unit=force_constant_unit
+            )
+        if self._release["fc_increment"]:
+            self._release["fc_increment"] = check_unit(
+                self._release["fc_increment"], base_unit=force_constant_unit
+            )
+        if self._release["fc_list"]:
+            self._release["fc_list"] = check_unit(
+                self._release["fc_list"], base_unit=force_constant_unit
+            )
+
+        # Check custom restraint units
+        if self._custom_restraint_values:
+            for target_key in ["r1", "r2", "r3", "r4"]:
+                if self._custom_restraint_values[target_key]:
+                    check_unit(
+                        self._custom_restraint_values[target_key], base_unit=target_unit
+                    )
+            for force_constant_key in ["rk2", "rk3"]:
+                if self._custom_restraint_values[force_constant_key]:
+                    check_unit(
+                        self._custom_restraint_values[target_key],
+                        base_unit=force_constant_unit,
+                    )
 
         self.phase = {
             "attach": {"force_constants": None, "targets": None},
@@ -743,16 +865,19 @@ class DAT_restraint(object):
         logger.debug("Assigning atom indices...")
         self.index1 = utils.index_from_mask(self.topology, self.mask1, self.amber_index)
         self.index2 = utils.index_from_mask(self.topology, self.mask2, self.amber_index)
+        self._restraint_type = "distance"
         if self.mask3:
             self.index3 = utils.index_from_mask(
                 self.topology, self.mask3, self.amber_index
             )
+            self._restraint_type = "angle"
         else:
             self.index3 = None
         if self.mask4:
             self.index4 = utils.index_from_mask(
                 self.topology, self.mask4, self.amber_index
             )
+            self._restraint_type = "torsion"
         else:
             self.index4 = None
         # If any `index` has more than one atom, mark it as a group restraint.
@@ -789,8 +914,8 @@ def static_DAT_restraint(
         pull windows, release windows].
     ref_structure: os.PathLike or :class:`parmed.Structure`
         The reference structure that is used to determine the initial, **static** value for this restraint.
-    force_constant: float
-        The force constant for this restraint.
+    force_constant: float or unit.Quantity
+        The force constant for this restraint. If float, the number will be transformed to kcal/mol/[Angstrom,radians].
     continuous_apr: bool, optional
         Whether this restraint uses ``continuous_apr``. This must be consistent with existing restraints.
     amber_index: bool, optional
@@ -826,12 +951,21 @@ def static_DAT_restraint(
             + type(ref_structure)
         )
 
+    # Get atom masks
     rest.mask1 = restraint_mask_list[0]
     rest.mask2 = restraint_mask_list[1]
     if len(restraint_mask_list) >= 3:
         rest.mask3 = restraint_mask_list[2]
     if len(restraint_mask_list) == 4:
         rest.mask4 = restraint_mask_list[3]
+
+    # Force constant
+    k_unit = (
+        unit.kcal / unit.mole / unit.angstrom
+        if len(restraint_mask_list) == 2
+        else unit.kcal / unit.mole / unit.radians
+    )
+    check_unit(force_constant, k_unit)
 
     # Target value
     mask_string = " ".join(restraint_mask_list)
@@ -843,12 +977,18 @@ def static_DAT_restraint(
         else:
             target = pt.distance(reference_trajectory, mask_string, image=False)[0]
             logger.debug("Calculating distance with 'image = False' ...")
+        target = unit.Quantity(target, units=unit.angstrom)
+
     elif len(restraint_mask_list) == 3:
         # Angle restraint
         target = pt.angle(reference_trajectory, mask_string)[0]
+        target = unit.Quantity(target, units=unit.degrees)
+
     elif len(restraint_mask_list) == 4:
         # Dihedral restraint
         target = pt.dihedral(reference_trajectory, mask_string)[0]
+        target = unit.Quantity(target, units=unit.degrees)
+
     else:
         raise IndexError(
             f"The number of masks -- {len(restraint_mask_list)} -- is not 2, 3, or 4 and thus is not one of the "

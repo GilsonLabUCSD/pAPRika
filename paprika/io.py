@@ -4,6 +4,7 @@ import logging as log
 import os
 
 import numpy as np
+from openff.units import unit
 from parmed import Structure
 from parmed.amber import AmberParm
 
@@ -14,7 +15,59 @@ from paprika.restraints import DAT_restraint
 # https://stackoverflow.com/questions/3488934/simplejson-and-numpy-array/24375113#24375113
 
 
-class NumpyEncoder(json.JSONEncoder):
+def serialize_quantity(quantity):
+    """Serializes a openff.units.unit.Quantity into a dictionary of the form
+    `{'value': quantity.value_in_unit(quantity.unit), 'unit': quantity.unit}`
+    This copied from openff-evaluator.
+
+    Parameters
+    ----------
+    quantity : openff.evaluator.unit.Quantity
+        The quantity to serialize
+
+    Returns
+    -------
+    dict of str and str
+        A dictionary representation of a openff.units.unit.Quantity
+        with keys of {"value", "unit"}
+    """
+
+    value = quantity.magnitude
+    return {
+        "@type": "openff.units.unit.Quantity",
+        "value": value,
+        "unit": str(quantity.units),
+    }
+
+
+def deserialize_quantity(serialized):
+    """Deserialize a openff.units.unit.Quantity from a dictionary.
+    This copied from openff-evaluator.
+
+    Parameters
+    ----------
+    serialized : dict of str and str
+        A dictionary representation of a openff.units.unit.Quantity
+        which must have keys {"value", "unit"}
+
+    Returns
+    -------
+    openff.units.unit.Quantity
+        The deserialized quantity.
+    """
+
+    if "@type" in serialized:
+        serialized.pop("@type")
+
+    value_unit = unit.dimensionless
+
+    if serialized["unit"] is not None:
+        value_unit = unit(serialized["unit"])
+
+    return serialized["value"] * value_unit
+
+
+class PaprikaEncoder(json.JSONEncoder):
     """Save :class:`DAT_restraint` as JSON by re-encoding :class:`numpy` arrays."""
 
     def default(self, obj):
@@ -73,30 +126,32 @@ class NumpyEncoder(json.JSONEncoder):
             return float(obj)
         elif isinstance(obj, (np.ndarray,)):
             return obj.tolist()
+        elif isinstance(obj, unit.Quantity):
+            return serialize_quantity(obj)
 
         # Let the base class default method raise the TypeError
         # return json.JSONEncoder(self, obj)
-        return super(NumpyEncoder, self).default(obj)
+        return super(PaprikaEncoder, self).default(obj)
 
 
-def json_numpy_obj_hook(dct):
-    """Decodes a previously encoded :class:`numpy.ndarray` with proper shape and `dtype`.
-
-    Parameters
-    ----------
-    dct: dict
-        json encoded ndarray.
-
-    Returns
-    -------
-    dct: :class:`numpy.ndarray`
-        if input was an encoded ndarray.
+class PaprikaDecoder(json.JSONDecoder):
     """
-    if isinstance(dct, dict) and "__ndarray__" in dct:
-        data = base64.b64decode(dct["__ndarray__"])
-        return np.frombuffer(data, dct["dtype"]).reshape(dct["shape"])
-        # return dct['__ndarray__']
-    return dct
+    Decodes a previously encoded :class:`numpy.ndarray` with proper shape and `dtype`,
+    and for unit.Quantity variables.
+    """
+
+    def __init__(self, *args, **kwargs):
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, obj):
+        if "__ndarray__" in obj:
+            data = base64.b64decode(obj["__ndarray__"])
+            return np.frombuffer(data, obj["dtype"]).reshape(obj["shape"])
+
+        if "@type" in obj:
+            return deserialize_quantity(obj)
+
+        return obj
 
 
 def save_restraints(restraint_list, filepath="restraints.json"):
@@ -112,7 +167,7 @@ def save_restraints(restraint_list, filepath="restraints.json"):
     log.debug("Saving restraint information as JSON.")
     with open(os.path.join(filepath), "w") as f:
         for restraint in restraint_list:
-            dumped = json.dumps(restraint.__dict__, cls=NumpyEncoder)
+            dumped = json.dumps(restraint.__dict__, cls=PaprikaEncoder)
             f.write(dumped)
             f.write("\n")
 
@@ -133,12 +188,15 @@ def load_restraints(filepath="restraints.json"):
     log.debug("Loading restraint information from JSON.")
     with open(os.path.join(filepath), "r") as f:
         json_data = f.read()
+
     restraint_json = json_data.split("\n")
     restraints = []
+
     for restraint in restraint_json:
         if restraint == "":
             continue
-        loaded = json.loads(restraint, object_hook=json_numpy_obj_hook)
+
+        loaded = json.loads(restraint, cls=PaprikaDecoder)
         tmp = DAT_restraint()
         tmp.__dict__ = loaded
 
@@ -157,9 +215,11 @@ def load_restraints(filepath="restraints.json"):
             "release",
             "amber_index",
         ]
+
         for class_property in properties:
             if f"_{class_property}" in tmp.__dict__.keys():
                 tmp.__dict__[class_property] = tmp.__dict__[f"_{class_property}"]
+
         restraints.append(tmp)
 
     return restraints

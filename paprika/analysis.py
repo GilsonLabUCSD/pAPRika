@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import traceback
@@ -6,8 +7,12 @@ from itertools import compress
 import numpy as np
 import pymbar
 import pytraj as pt
+from openff.units import unit
 from pymbar import timeseries
 from scipy.interpolate import Akima1DInterpolator
+
+from paprika.io import PaprikaDecoder, PaprikaEncoder
+from paprika.utils import check_unit
 
 logger = logging.getLogger(__name__)
 
@@ -41,20 +46,20 @@ class fe_calc(object):
     @temperature.setter
     def temperature(self, new_temperature):
         """Update temperature and β with a new temperature."""
-        self._temperature = new_temperature
-        self.beta = 1 / (self.k_B * new_temperature)
+        self._temperature = check_unit(new_temperature, base_unit=unit.kelvin)
+        self.beta = 1 / (self.k_B * self._temperature)
 
     @property
-    def prmtop(self):
+    def topology(self):
         """
-        os.PathLike: The `.prmtop` (topology) file used for the analysis.
+        os.PathLike: The topology (prmtop or pdb) file used for the analysis.
         This should match the topology used for the simulation.
         """
-        return self._prmtop
+        return self._topology
 
-    @prmtop.setter
-    def prmtop(self, value):
-        self._prmtop = value
+    @topology.setter
+    def topology(self, value):
+        self._topology = value
 
     @property
     def trajectory(self):
@@ -334,12 +339,49 @@ class fe_calc(object):
     def results(self, value):
         self._results = value
 
+    @property
+    def energy_unit(self):
+        return self._energy_unit
+
+    @energy_unit.setter
+    def energy_unit(self, value: unit.Quantity):
+        self._energy_unit = value
+
+    @property
+    def distance_unit(self):
+        return self._distance_unit
+
+    @distance_unit.setter
+    def distance_unit(self, value: unit.Quantity):
+        self._distance_unit = value
+
+    @property
+    def angle_unit(self):
+        return self._angle_unit
+
+    @angle_unit.setter
+    def angle_unit(self, value: unit.Quantity):
+        self._angle_unit = value
+
+    @property
+    def temperature_unit(self):
+        return self._temperature_unit
+
+    @temperature_unit.setter
+    def temperature_unit(self, value: unit.Quantity):
+        self._temperature_unit = value
+
     def __init__(self):
 
-        self._temperature = 298.15
-        self.k_B = 0.0019872041
+        self._energy_unit = unit.kcal / unit.mole
+        self._distance_unit = unit.angstrom
+        self._angle_unit = unit.degrees
+        self._temperature_unit = unit.kelvin
+
+        self._temperature = 298.15 * self._temperature_unit
+        self.k_B = 1.987204118e-3 * self._energy_unit / self._temperature_unit
         self.beta = 1 / (self.k_B * self._temperature)
-        self._prmtop = None
+        self._topology = None
         self._trajectory = None
         self._path = None
         self._restraint_list = []
@@ -356,19 +398,36 @@ class fe_calc(object):
         self._fractions = [1.0]
         self._results = {}
 
-    def collect_data(self, single_prmtop=False):
+    def collect_data(self, single_topology=False):
         """
         Gather simulation data on the distance, angle, and torsion restraints that change during the simulation.
 
         Parameters
         ----------
-        single_prmtop: bool
-            Whether a single `prmtop` is read for all windows
+        single_topology: bool
+            Whether a single `topology` file is read for all windows
         """
 
         self.changing_restraints = self.identify_changing_restraints()
         self.orders = self.determine_window_order()
-        self.simulation_data = self.read_trajectories(single_prmtop=single_prmtop)
+        self.simulation_data = self.read_trajectories(single_topology=single_topology)
+
+    def collect_data_from_json(self, filepath):
+        """
+        Read in simulation data from a JSON file.
+
+        Parameters
+        ----------
+        filepath: os.PathLike
+            The name of the JSON file.
+        """
+        with open(filepath, "r") as f:
+            json_data = f.read()
+            data = json.loads(json_data, cls=PaprikaDecoder)
+
+        self.changing_restraints = data["changing_restraints"]
+        self.orders = data["orders"]
+        self.simulation_data = data["simulation_data"]
 
     def identify_changing_restraints(self):
         """Figure out which restraints change during each phase of the calculation.
@@ -463,14 +522,14 @@ class fe_calc(object):
 
         return orders
 
-    def read_trajectories(self, single_prmtop=False):
+    def read_trajectories(self, single_topology=False):
         """For each each phase and window, and for each non-static restraint, parse the trajectories to
         get the restraint values.
 
         Parameters
         ----------
-        single_prmtop : bool
-            Whether a single `prmtop` is read for all windows
+        single_topology : bool
+            Whether a single `topology` file is read for all windows
 
         Returns
         -------
@@ -541,7 +600,9 @@ class fe_calc(object):
         for window_index, window in enumerate(ordered_attach_windows):
             phase = "attach"
             data[phase].append([])
-            traj = load_trajectory(window, self.trajectory, self.prmtop, single_prmtop)
+            traj = load_trajectory(
+                window, self.trajectory, self.topology, single_topology
+            )
             for restraint_index, restraint in enumerate(active_attach_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(
@@ -551,7 +612,9 @@ class fe_calc(object):
         for window_index, window in enumerate(ordered_pull_windows):
             phase = "pull"
             data[phase].append([])
-            traj = load_trajectory(window, self.trajectory, self.prmtop, single_prmtop)
+            traj = load_trajectory(
+                window, self.trajectory, self.topology, single_topology
+            )
             for restraint_index, restraint in enumerate(active_pull_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(
@@ -561,7 +624,9 @@ class fe_calc(object):
         for window_index, window in enumerate(ordered_release_windows):
             phase = "release"
             data[phase].append([])
-            traj = load_trajectory(window, self.trajectory, self.prmtop, single_prmtop)
+            traj = load_trajectory(
+                window, self.trajectory, self.topology, single_topology
+            )
             for restraint_index, restraint in enumerate(active_release_restraints):
                 data[phase][window_index].append([])
                 data[phase][window_index][restraint_index] = read_restraint_data(
@@ -580,10 +645,6 @@ class fe_calc(object):
         force_constants = [
             np.copy(i.phase[phase]["force_constants"]) for i in active_restraints
         ]
-        # Convert force constants from radians to degrees for angles/dihedrals
-        for r, rest in enumerate(active_restraints):
-            if rest.mask3 is not None:
-                force_constants[r] *= (np.pi / 180.0) ** 2
         targets = [i.phase[phase]["targets"] for i in active_restraints]
 
         ordered_force_constants = [i[self.orders[phase]] for i in force_constants]
@@ -605,16 +666,16 @@ class fe_calc(object):
 
         Parameters
         ----------
-            phase: str
-                The phase of the calculation to analyze.
-            prepared_data: :class:`np.array`
-                The list of "prepared data" including the number of windows, data points, which restraints are changing,
-                their force constants and targets, and well as the order of the windows. This probably ought to be
-                redesigned.
-            method: str
-                The method used to calculate the SEM.
-            verbose: bool, optional
-                Whether to set the `verbose` option on pyMBAR.
+        phase: str
+            The phase of the calculation to analyze.
+        prepared_data: :class:`np.array`
+            The list of "prepared data" including the number of windows, data points, which restraints are changing,
+            their force constants and targets, and well as the order of the windows. This probably ought to be
+            redesigned.
+        method: str
+            The method used to calculate the SEM.
+        verbose: bool, optional
+            Whether to set the `verbose` option on pyMBAR.
         """
 
         # Unpack the prepared data
@@ -637,8 +698,13 @@ class fe_calc(object):
 
         # Transpose force_constants and targets into "per window" format, instead of
         # the "per restraint" format.
-        force_constants_T = np.asarray(force_constants).T
-        targets_T = np.asarray(targets).T
+        target_units = np.array([targets[r][0].units for r in range(len(active_rest))])
+        force_units = np.array(
+            [force_constants[r][0].units for r in range(len(active_rest))]
+        )
+
+        force_constants_T = np.asarray(force_constants).T * force_units
+        targets_T = np.asarray(targets).T * target_units
 
         # Note, the organization of k = coordinate windows, l = potential windows
         # seems to be opposite of the documentation. But I got wrong numbers
@@ -653,20 +719,22 @@ class fe_calc(object):
                     if rest.mask3 is not None and rest.mask4 is not None:
                         target = targets_T[l, r]
                         # Coords from coord window, k
-                        bool_list = ordered_values[k][r] < target - 180.0
-                        ordered_values[k][r][bool_list] += 360.0
-                        bool_list = ordered_values[k][r] > target + 180.0
-                        ordered_values[k][r][bool_list] -= 360.0
+                        bool_list = ordered_values[k][r] < target - 180.0 * unit.degrees
+                        ordered_values[k][r][bool_list] += 360.0 * unit.degrees
+                        bool_list = ordered_values[k][r] > target + 180.0 * unit.degrees
+                        ordered_values[k][r][bool_list] -= 360.0 * unit.degrees
 
                 # Compute the potential ... for each frame, sum the contributions for each restraint
                 # Note, we multiply by beta, and do some extra [l,:,None] to
                 # get the math operation correct.
-                u_kln[k, l, 0 : N_k[k]] = np.sum(
-                    self.beta
-                    * force_constants_T[l, :, None]
-                    * (ordered_values[k] - targets_T[l, :, None]) ** 2,
-                    axis=0,
-                )
+                u_kln[k, l, 0 : N_k[k]] = sum(
+                    [
+                        self.beta * k * (val - eq) ** 2
+                        for k, val, eq in zip(
+                            force_constants_T[l], ordered_values[k], targets_T[l]
+                        )
+                    ]
+                ).magnitude
 
         g_k = np.ones([num_win], np.float64)
         # Should I subsample based on the restraint coordinate values? Here I'm
@@ -799,7 +867,6 @@ class fe_calc(object):
         method: str
             The method used to calculate the SEM.
 
-
         .. note ::
             ``phase`` and ``method`` should be `enum` types and tied to class attributes.
 
@@ -844,15 +911,25 @@ class fe_calc(object):
         # this progressively by appending ...
         dl_intp = np.zeros([0], np.float64)
 
+        # Get units
+        target_units = np.array([targets[r][0].units for r in range(len(active_rest))])
+        force_units = np.array(
+            [force_constants[r][0].units for r in range(len(active_rest))]
+        )
+
         # Store the max force constant value for each restraint.
-        max_force_constants = np.array(
-            [np.max(force_constants[r]) for r in range(len(active_rest))]
+        max_force_constants = (
+            np.array(
+                [np.max(force_constants[r]).magnitude for r in range(len(active_rest))]
+            )
+            * force_units
         )
 
         # Transpose force_constants and targets into "per window" format, instead of
         # the "per restraint" format.
-        force_constants_T = np.asarray(force_constants).T
-        targets_T = np.asarray(targets).T
+        # print(targets)
+        force_constants_T = np.asarray(force_constants).T * force_units
+        targets_T = np.asarray(targets).T * target_units
 
         # For each window: do dihedral wrapping, compute forces, append dl_intp
         for k in range(num_win):  # Coordinate windows
@@ -864,30 +941,45 @@ class fe_calc(object):
 
                 if rest.mask3 is not None and rest.mask4 is not None:
                     target = targets_T[k, r]
-                    bool_list = ordered_values[k][r] < target - 180.0
-                    ordered_values[k][r][bool_list] += 360.0
-                    bool_list = ordered_values[k][r] > target + 180.0
-                    ordered_values[k][r][bool_list] -= 360.0
+                    bool_list = ordered_values[k][r] < target - 180.0 * unit.degrees
+                    ordered_values[k][r][bool_list] += 360.0 * unit.degrees
+                    bool_list = ordered_values[k][r] > target + 180.0 * unit.degrees
+                    ordered_values[k][r][bool_list] -= 360.0 * unit.degrees
 
             # Compute forces and store the values of the changing coordinate,
             # either lambda or target
             if phase == "attach" or phase == "release":
-                dU[k, 0 : N_k[k]] = np.sum(
-                    max_force_constants[:, None]
-                    * (ordered_values[k] - targets_T[k, :, None]) ** 2,
-                    axis=0,
+                dU[k, 0 : N_k[k]] = (
+                    sum(
+                        [
+                            (k * (val - eq) ** 2)
+                            for k, val, eq in zip(
+                                max_force_constants, ordered_values[k], targets_T[k]
+                            )
+                        ]
+                    )
+                    .to(self.energy_unit)
+                    .magnitude
                 )
+
                 # this is lambda. assume the same scaling for all restraints
                 dl_vals[k] = force_constants_T[k, 0] / max_force_constants[0]
             else:
-                dU[k, 0 : N_k[k]] = np.sum(
-                    2.0
-                    * max_force_constants[:, None]
-                    * (ordered_values[k] - targets_T[k, :, None]),
-                    axis=0,
+                dU[k, 0 : N_k[k]] = (
+                    sum(
+                        [
+                            2.0 * k * (val - eq)
+                            for k, val, eq in zip(
+                                max_force_constants, ordered_values[k], targets_T[k]
+                            )
+                        ]
+                    )
+                    .to(self.energy_unit / self.distance_unit)
+                    .magnitude
                 )
+
                 # Currently assuming a single distance restraint
-                dl_vals[k] = targets_T[k, 0]
+                dl_vals[k] = targets_T[k, 0].to(self.distance_unit).magnitude
 
             # Compute standard deviations and SEMs, unless we're going to do
             # exact_sem_each_ti_fraction
@@ -920,6 +1012,7 @@ class fe_calc(object):
         # if we're doing the total data, ie self.fractions=[1.0].
         self.results[phase][method]["fraction_fe_matrix"] = {}
         self.results[phase][method]["fraction_sem_matrix"] = {}
+
         for fraction in self.fractions:
 
             logger.debug("Working on fraction ... {}".format(fraction))
@@ -957,6 +1050,14 @@ class fe_calc(object):
             ) = integrate_bootstraps(
                 dl_vals, dU_samples, x_intp=dl_intp, matrix=self.ti_matrix
             )
+
+            # Put units back on
+            self.results[phase][method]["fraction_fe_matrix"][
+                fraction
+            ] *= self.energy_unit
+            self.results[phase][method]["fraction_sem_matrix"][
+                fraction
+            ] *= self.energy_unit
 
             # The attach/release work (integration) yields appropriately positive work, but
             # the pull work needs a negative multiplier. Think W = −Force × distance type thing.
@@ -1021,7 +1122,6 @@ class fe_calc(object):
         Compute the free energy of binding from a simulation. This function populates the ``results`` dictionary
         of the :class:`fe_calc` object.
 
-
         Parameters
         ----------
         phases: list
@@ -1039,6 +1139,7 @@ class fe_calc(object):
         for phase in phases:
             self.results[phase] = {}
             self.results[phase]["window_order"] = self.orders[phase]
+
             for method in self.methods:
                 if seed is not None:
                     np.random.seed(seed)
@@ -1070,6 +1171,7 @@ class fe_calc(object):
                 self.results[phase][method]["fraction_n_frames"] = {}
                 self.results[phase][method]["fraction_fe"] = {}
                 self.results[phase][method]["fraction_sem"] = {}
+
                 for fraction in self.fractions:
                     self.results[phase][method]["fraction_n_frames"][fraction] = int(
                         fraction * self.results[phase][method]["n_frames"]
@@ -1109,6 +1211,7 @@ class fe_calc(object):
                         np.ones([windows], np.float64) * -1.0
                     )
                     logger.info(f"{phase}: computing largest_neighbor for {method}...")
+
                     for i in range(windows):
                         if i == 0:
                             self.results[phase][method]["largest_neighbor"][
@@ -1170,11 +1273,6 @@ class fe_calc(object):
                     "Restraints should have pull or release values initialized in order to compute_ref_state_work"
                 )
 
-        # Convert degrees to radians for theta, phi, alpha, beta, gamma
-        for i in range(1, 5):
-            if targs[i] is not None:
-                targs[i] = np.radians(targs[i])
-
         self.results["ref_state_work"] = ref_state_work(
             self.temperature,
             fcs[0],
@@ -1190,6 +1288,64 @@ class fe_calc(object):
             fcs[5],
             targs[5],
         )
+
+    def save_results(self, filepath="results.json", overwrite=False):
+        """
+        Save the analysis results to a JSON file.
+
+        Parameters
+        ----------
+        filepath: os.PathLike
+            The name of the JSON file to write to.
+        overwrite: bool
+            Option to whether overwrite file if already exist.
+        """
+        if overwrite and os.path.isfile(filepath):
+            raise FileExistsError(f"File `{filepath}` exists, will not overwrite.")
+
+        with open(filepath, "w") as f:
+            dumped = json.dumps(self.results, cls=PaprikaEncoder)
+            f.write(dumped)
+
+    @staticmethod
+    def load_results(filepath):
+        """
+        Read in a JSON file for the results.
+
+        Parameters
+        ----------
+        filepath: os.PathLike
+            The name of the JSON file to read.
+        """
+        with open(filepath, "r") as f:
+            data = f.read()
+
+        return json.loads(data, cls=PaprikaDecoder)
+
+    def save_data(self, filepath="simulation_data.json", overwrite=False):
+        """
+        Save the simulation data (DAT values) to a JSON file.
+
+        Parameters
+        ----------
+        filepath: os.PathLike
+            The name of the JSON file to write to.
+        overwrite: bool
+            Option to whether overwrite file if already exist.
+        """
+        if overwrite and os.path.isfile(filepath):
+            raise FileExistsError(f"File `{filepath}` exists, will not overwrite.")
+
+        with open(filepath, "w") as f:
+            dumped = json.dumps(
+                {
+                    "simulation_data": self.simulation_data,
+                    "changing_restraints": self.changing_restraints,
+                    "orders": self.orders,
+                },
+                cls=PaprikaEncoder,
+            )
+            f.write(dumped)
 
 
 def get_factors(n):
@@ -1344,7 +1500,7 @@ def get_subsampled_indices(N, g, conservative=False):
     return indices
 
 
-def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
+def load_trajectory(window, trajectory, topology, single_topology=False):
     """Load a trajectory (or trajectories) and return a pytraj ``trajectory`` object.
 
     Parameters
@@ -1353,10 +1509,10 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
         The simulation window to analyze
     trajectory: str or list
         The name or names of the trajectory
-    prmtop: str or :class:`parmed.Structure`
-        The parameters for the simulation
-    single_prmtop: bool
-        Whether a single `prmtop` is read for all windows
+    topology: str or :class:`parmed.Structure`
+        The topology the simulation
+    single_topology: bool
+        Whether a single topology is read for all windows
 
     Returns
     -------
@@ -1373,27 +1529,27 @@ def load_trajectory(window, trajectory, prmtop, single_prmtop=False):
     else:
         raise RuntimeError("Trajectory path should be a `str` or `list`.")
 
-    if isinstance(prmtop, str) and not single_prmtop:
-        if not os.path.isfile(os.path.join(window, prmtop)):
+    if isinstance(topology, str) and not single_topology:
+        if not os.path.isfile(os.path.join(window, topology)):
             raise FileNotFoundError(
-                f"Cannot find `prmtop` file: {os.path.join(window, prmtop)}"
+                f"Cannot find `topology` file: {os.path.join(window, topology)}"
             )
-        logger.debug(f"Loading {os.path.join(window, prmtop)} and {trajectory_path}")
+        logger.debug(f"Loading {os.path.join(window, topology)} and {trajectory_path}")
         try:
-            traj = pt.iterload(trajectory_path, os.path.join(window, prmtop))
+            traj = pt.iterload(trajectory_path, os.path.join(window, topology))
         except ValueError as e:
             formatted_exception = traceback.format_exception(None, e, e.__traceback__)
             logger.info(
-                f"Failed trying to load {os.path.join(window, prmtop)} and {trajectory_path}: "
+                f"Failed trying to load {os.path.join(window, topology)} and {trajectory_path}: "
                 f"{formatted_exception}"
             )
-    elif isinstance(prmtop, str) and single_prmtop:
-        traj = pt.iterload(trajectory_path, os.path.join(prmtop))
+    elif isinstance(topology, str) and single_topology:
+        traj = pt.iterload(trajectory_path, os.path.join(topology))
     else:
         try:
-            traj = pt.iterload(trajectory_path, prmtop)
+            traj = pt.iterload(trajectory_path, topology)
         except BaseException:
-            raise Exception("Tried to load `prmtop` object directly and failed.")
+            raise Exception("Tried to load `topology` object directly and failed.")
 
     logger.debug("Loaded {} frames...".format(traj.n_frames))
 
@@ -1422,22 +1578,32 @@ def read_restraint_data(traj, restraint):
         and not restraint.mask3
         and not restraint.mask4
     ):
-        data = pt.distance(
-            traj, " ".join([restraint.mask1, restraint.mask2]), image=True
+        data = unit.Quantity(
+            pt.distance(traj, " ".join([restraint.mask1, restraint.mask2]), image=True),
+            units=unit.angstrom,
         )
+
     elif (
         restraint.mask1 and restraint.mask2 and restraint.mask3 and not restraint.mask4
     ):
-        data = pt.angle(
-            traj, " ".join([restraint.mask1, restraint.mask2, restraint.mask3])
-        )
-    elif restraint.mask1 and restraint.mask2 and restraint.mask3 and restraint.mask4:
-        data = pt.dihedral(
-            traj,
-            " ".join(
-                [restraint.mask1, restraint.mask2, restraint.mask3, restraint.mask4]
+        data = unit.Quantity(
+            pt.angle(
+                traj, " ".join([restraint.mask1, restraint.mask2, restraint.mask3])
             ),
+            units=unit.degrees,
         )
+
+    elif restraint.mask1 and restraint.mask2 and restraint.mask3 and restraint.mask4:
+        data = unit.Quantity(
+            pt.dihedral(
+                traj,
+                " ".join(
+                    [restraint.mask1, restraint.mask2, restraint.mask3, restraint.mask4]
+                ),
+            ),
+            units=unit.degrees,
+        )
+
     return data
 
 
@@ -1491,45 +1657,40 @@ def ref_state_work(
 
     Parameters
     ----------
-    temperature : float
+    temperature : unit.Quantity
         The temperature (in Kelvin) at which the reference state calculation will take place.
-    r_fc: float
+    r_fc: unit.Quantity
         The distance, :math:`r`, restraint force constant (kcal/mol-Å²).
-    r_tg : float
+    r_tg : unit.Quantity
         The distance, :math:`r`, restraint target values (Å). The target range is 0 to infinity.
-    th_fc : float
+    th_fc : unit.Quantity
         The angle, :math:`θ`, restraint force constant (kcal/mol-radian²).
-    th_tg : float
+    th_tg : unit.Quantity
         The angle, :math:`θ`, restraint target values (radian). The target range is 0 to π.
-    ph_fc : float
+    ph_fc : unit.Quantity
         The torsion, :math:`\\phi`, restraint force constant (kcal/mol-radian²).
-    ph_tg : float
+    ph_tg : unit.Quantity
         The torsion, :math:`\\phi`, restraint target values (radian). The target range is 0 to 2π.
-    a_fc : float
+    a_fc : unit.Quantity
         The torsion, :math:`α`, restraint force constant (kcal/mol-radian²).
-    a_tg: float
+    a_tg: unit.Quantity
         The torsion, :math:`α`, restraint target values (radian). The target range is 0 to 2π.
-    b_fc : float
+    b_fc : unit.Quantity
         The angle, :math:`β`, restraint force (kcal/mol-radian²).
-    b_tg : float
+    b_tg : unit.Quantity
         The angle, :math:`β`, restraint target values (radian). The target range is 0 to π.
-    g_fc: float
+    g_fc: unit.Quantity
         The angle, :math:`γ`, restraint force (kcal/mol-radian²).
-    g_tg: float
+    g_tg: unit.Quantity
         The angle, :math:`γ`, restraint target values (radian). The target range is 0 to 2π.
 
     Returns
     -------
     RT * np.log(trans * orient): float
-        The free energy associated with releasing the restraints.
-
-
-    .. note ::
-        It would be great if this function accepted (and correctly propagated) units using a library like ``pint``.
-
+        The free energy associated with releasing the restraints (in kcal/mol Pint units).
     """
 
-    R = 1.987204118e-3  # kcal/mol-K (Boltzman constant)
+    R = 1.987204118e-3 * unit.kcal / unit.mole / unit.kelvin
     RT = R * temperature
 
     # Distance Integration Function
@@ -1537,7 +1698,7 @@ def ref_state_work(
         def potential(arange, RT, fc, targ):
             return (arange ** 2) * np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
 
-        arange = np.arange(0.0, 100.0, 0.0001)
+        arange = np.arange(0.0, 100.0, 0.0001) * unit.angstrom
         return np.trapz(potential(arange, RT, fc, targ), arange)
 
     # Angle Integration Function
@@ -1545,7 +1706,7 @@ def ref_state_work(
         def potential(arange, RT, fc, targ):
             return np.sin(arange) * np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
 
-        arange = np.arange(0.0, np.pi, 0.00005)
+        arange = np.arange(0.0, np.pi, 0.00005) * unit.radians
         return np.trapz(potential(arange, RT, fc, targ), arange)
 
     # Torsion Integration Function
@@ -1554,7 +1715,7 @@ def ref_state_work(
             return np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
 
         # Note, because of periodicity, I'm gonna wrap +/- pi around target for integration.
-        arange = np.arange(targ - np.pi, targ + np.pi, 0.00005)
+        arange = np.arange(targ - np.pi, targ + np.pi, 0.00005) * unit.radians
         return np.trapz(potential(arange, RT, fc, targ), arange)
 
     # Distance restraint, r
@@ -1571,13 +1732,13 @@ def ref_state_work(
 
     # Torsion restraint, phi
     if None in [ph_fc, ph_tg]:
-        ph_int = 2.0 * np.pi
+        ph_int = 2.0 * np.pi * unit.radians
     else:
         ph_int = tors_int(RT, ph_fc, ph_tg)
 
     # Torsion restraint, alpha
     if None in [a_fc, a_tg]:
-        a_int = 2.0 * np.pi
+        a_int = 2.0 * np.pi * unit.radians
     else:
         a_int = tors_int(RT, a_fc, a_tg)
 
@@ -1589,17 +1750,20 @@ def ref_state_work(
 
     # Torsion restraint, gamma
     if None in [g_fc, g_tg]:
-        g_int = 2.0 * np.pi
+        g_int = 2.0 * np.pi * unit.radians
     else:
         g_int = tors_int(RT, g_fc, g_tg)
 
     # Concentration term
-    trans = r_int * th_int * ph_int * (1.0 / 1660.5392)  # C^o = 1/V^o
+    V0 = 1660.5392 * unit.angstrom ** 3
+    translational = r_int * th_int * ph_int * (1.0 / V0)  # C^o = 1/V^o
+
     # Orientational term
-    orient = a_int * b_int * g_int / (8.0 * (np.pi ** 2))
+    rotational_volume = 8.0 * np.pi ** 2
+    orientational = a_int * b_int * g_int / rotational_volume
 
     # Return the free energy
-    return RT * np.log(trans * orient)
+    return RT * np.log(translational * orientational)
 
 
 def integrate_bootstraps(x, ys, x_intp=None, matrix="full"):

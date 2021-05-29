@@ -2,10 +2,11 @@ import logging
 import os
 
 import numpy as np
+from openff.units import unit
 
 from paprika.restraints.plumed import Plumed
 from paprika.restraints.utils import get_bias_potential_type, parse_window
-from paprika.utils import get_key
+from paprika.utils import check_unit, get_key
 
 logger = logging.getLogger(__name__)
 
@@ -82,22 +83,6 @@ class Colvars(Plumed):
     """
 
     @property
-    def units_from_DAT(self):
-        """
-        dict: Dictionary of units used in the definition of :class:`paprika.restraints.DAT_restraints`. We have to
-        resort to strings until ``pAPRika`` uses ``Pint`` units. The dictionary requires the key values of:
-            * ``distance`` (default: `Angstrom`)
-            * ``angle`` (default: `radians`)
-            * ``k_distance`` (default: `kcal/mol/A^2`)
-            * ``k_angle`` (default: `kcal/mol/rad^2`)
-        """
-        return self._units_from_DAT
-
-    @units_from_DAT.setter
-    def units_from_DAT(self, value):
-        self._units_from_DAT = value
-
-    @property
     def output_freq(self) -> int:
         """int: The frequency at which the `colvars` will be printed to ``*.colvars.traj`` file."""
         return self._output_freq
@@ -111,7 +96,6 @@ class Colvars(Plumed):
         super().__init__()
 
         self._file_name = "colvars.dat"
-        self._units_from_DAT = None
         self._output_freq = 500
         self._colvars_factor = {}
 
@@ -120,39 +104,10 @@ class Colvars(Plumed):
         if self.uses_legacy_k:
             self.k_factor = 2.0
 
-        # Check units
-        # NOTE: We have to resort to strings until (if) we migrate all quantities to Pint/SimTK units
-        if self.units_from_DAT is None:
-            self.units_from_DAT = {
-                "distance": "Angstrom",
-                "angle": "degrees",
-                "k_distance": "kcal/mol/A^2",
-                "k_angle": "kcal/mol/rad^2",
-            }
-        _check_DAT_units(self.units_from_DAT)
-        self._fetch_colvars_factor()
-
         # header line
         self.header_line = (
             f"ColvarsTrajFrequency {self.output_freq}\n"
             f"ColvarsRestartFrequency {self.output_freq*100} "
-        )
-
-    def _fetch_colvars_factor(self):
-        """Temporary workaround until pAPRika uses Pint units."""
-        self._colvars_factor["distance"] = (
-            0.1 if self.units_from_DAT["distance"] == "nanometer" else 1.0
-        )
-        self._colvars_factor["angle"] = (
-            180.0 / _PI_ if self.units_from_DAT["angle"] == "radians" else 1.0
-        )
-        self._colvars_factor["k_distance"] = (
-            0.01 if self.units_from_DAT["k_distance"] == "kcal/mol/nm^2" else 1.0
-        )
-        self._colvars_factor["k_angle"] = (
-            (_PI_ / 180.0) ** 2
-            if self.units_from_DAT["k_angle"] == "kcal/mol/rad^2"
-            else 1.0
         )
 
     def dump_to_file(self):
@@ -193,22 +148,19 @@ class Colvars(Plumed):
                 atom_index = self._get_atom_indices(restraint)
                 atom_string = " ".join(map(str, atom_index))
 
-                # Determine collective variable type
-                if len(atom_index) == 2:
-                    colvar_type = "distance"
-                    target *= self._colvars_factor["distance"]
-                if len(atom_index) == 3:
-                    colvar_type = "angle"
-                    target *= self._colvars_factor["angle"]
-                    force_constant *= (
-                        _PI_ / 180.0
-                    ) ** 2  # Temporary until pAPRika uses Pint unit
-                elif len(atom_index) == 4:
-                    colvar_type = "dihedral"
-                    target *= self._colvars_factor["angle"]
-                    force_constant *= (
-                        _PI_ / 180.0
-                    ) ** 2  # Temporary until pAPRika uses Pint unit
+                # Convert units to the correct type for COLVAR module
+                energy_units = unit.kcal / unit.mole
+                if restraint.restraint_type == "distance":
+                    target = target.to(unit.angstrom)
+                    force_constant = force_constant.to(
+                        energy_units / unit.angstrom ** 2
+                    )
+                elif (
+                    restraint.restraint_type == "angle"
+                    or restraint.restraint_type == "torsion"
+                ):
+                    target = target.to(unit.degrees)
+                    force_constant = force_constant.to(energy_units / unit.degrees ** 2)
 
                 # Determine bias type for this restraint
                 bias_type = get_bias_potential_type(restraint, phase, window_number)
@@ -223,18 +175,18 @@ class Colvars(Plumed):
                     cv_template_lines = [
                         "colvar {",
                         f"  name {cv_key}",
-                        f"  {colvar_type} {{",
+                        f"  {'dihedral' if restraint.restraint_type == 'torsion' else restraint.restraint_type} {{",
                         "    forceNoPBC yes",
                         f"    group1 {{ atomNumbers {atom_index[0]} }}",
                         f"    group2 {{ atomNumbers {atom_index[1]} }}",
                     ]
 
-                    if colvar_type == "angle":
+                    if restraint.restraint_type == "angle":
                         cv_template_lines += [
                             f"    group3 {{ atomNumbers {atom_index[2]} }}"
                         ]
 
-                    if colvar_type == "dihedral":
+                    if restraint.restraint_type == "torsion":
                         cv_template_lines += [
                             f"    group3 {{ atomNumbers {atom_index[2]} }}",
                             f"    group4 {{ atomNumbers {atom_index[3]} }}",
@@ -281,24 +233,24 @@ class Colvars(Plumed):
             bias_template_lines = [
                 "harmonic {",
                 f"  colvars {cv_key}",
-                f"  centers {target:.4f}",
-                f"  forceConstant {force_constant:.4f}",
+                f"  centers {target.magnitude:.4f}",
+                f"  forceConstant {force_constant.magnitude:.4f}",
                 "}",
             ]
         elif bias_type == "upper_walls":
             bias_template_lines = [
                 "harmonicWalls {",
                 f"  colvars {cv_key}",
-                f"  upperWalls {target:.4f}",
-                f"  upperWallConstant {force_constant:.4f}",
+                f"  upperWalls {target.magnitude:.4f}",
+                f"  upperWallConstant {force_constant.magnitude:.4f}",
                 "}",
             ]
         elif bias_type == "lower_walls":
             bias_template_lines = [
                 "harmonicWalls {",
                 f"  colvars {cv_key}",
-                f"  lowerWalls {target:.4f}",
-                f"  lowerWallConstant {force_constant:.4f}",
+                f"  lowerWalls {target.magnitude:.4f}",
+                f"  lowerWallConstant {force_constant.magnitude:.4f}",
                 "}",
             ]
 
@@ -364,8 +316,8 @@ class Colvars(Plumed):
             The file object handle to save the plumed file.
         dummy_atoms : dict
             Dictionary containing information about the dummy atoms.
-        kpos : float
-            Spring constant used to restrain dummy atoms (kcal/mol/A^2).
+        kpos : float or unit.Quantity
+            Spring constant used to restrain dummy atoms (default for float: kcal/mol/A^2).
 
         Examples
         --------
@@ -383,6 +335,9 @@ class Colvars(Plumed):
                 forceConstant 100.0
             }
         """
+        # Check k units
+        kpos = check_unit(kpos, base_unit=unit.kcal / unit.mole / unit.angstrom ** 2)
+
         # Get dummy atom indices
         dummy_indices = [dummy_atoms[key]["idx"] for key in dummy_atoms.keys()]
         dummy_index_string = " ".join(map(str, dummy_indices))
@@ -406,7 +361,7 @@ class Colvars(Plumed):
             "harmonic {",
             "  colvars dummyAtoms",
             f"  centers ( {dummy_position_string} )",
-            f"  forceConstant {kpos:.2f}",
+            f"  forceConstant {kpos.magnitude:.2f}",
             "}",
         ]
 
@@ -419,28 +374,3 @@ class Colvars(Plumed):
         # Write bias potential to file
         for line in bias_template_lines:
             file.write(line + "\n")
-
-
-def _check_DAT_units(units):
-    """
-    Checks the specified units and makes sure that its supported.
-    """
-    if units["distance"] not in ["Angstrom", "nanometer"]:
-        raise Exception(
-            f"Specified unit for energy ({units['distance']}) is not supported."
-        )
-
-    if units["angle"] not in ["rad", "radians", "deg", "degrees"]:
-        raise Exception(
-            f"Specified unit for length ({units['angle']}) is not supported."
-        )
-
-    if units["k_distance"] not in ["kcal/mol/A^2", "kcal/mol/nm^2"]:
-        raise Exception(
-            f"Specified unit for time ({units['k_distance']}) is not supported."
-        )
-
-    if units["k_angle"] not in ["kcal/mol/rad^2", "kcal/mol/deg^2"]:
-        raise Exception(
-            f"Specified unit for time ({units['k_angle']}) is not supported."
-        )

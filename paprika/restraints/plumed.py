@@ -2,6 +2,7 @@ import logging
 import os
 
 import numpy as np
+from openff.units import unit
 from parmed.structure import Structure as ParmedStructureClass
 
 from paprika.build.dummy import extract_dummy_atoms
@@ -231,14 +232,28 @@ class Plumed:
                 atom_index = self._get_atom_indices(restraint)
                 atom_string = ",".join(map(str, atom_index))
 
-                # Determine collective variable type
-                colvar_type = "distance"
-                if len(atom_index) == 3:
-                    colvar_type = "angle"
-                    target *= _PI_ / 180.0
-                elif len(atom_index) == 4:
-                    colvar_type = "torsion"
-                    target *= _PI_ / 180.0
+                # Convert units to the correct type for PLUMED module
+                energy_units = unit.kilojoule / unit.mole
+                if self.units["energy"] == "kcal/mol":
+                    energy_units = unit.kcal / unit.mole
+
+                if restraint.restraint_type == "distance":
+                    if self.units["length"] == "A":
+                        target = target.to(unit.angstrom)
+                        force_constant = force_constant.to(
+                            energy_units / unit.angstrom ** 2
+                        )
+                    elif self.units["length"] == "nm":
+                        target = target.to(unit.nanometer)
+                        force_constant = force_constant.to(
+                            energy_units / unit.nanometer ** 2
+                        )
+                elif (
+                    restraint.restraint_type == "angle"
+                    or restraint.restraint_type == "torsion"
+                ):
+                    target = target.to(unit.radians)
+                    force_constant = force_constant.to(energy_units / unit.radians ** 2)
 
                 # Determine bias type for this restraint
                 bias_type = get_bias_potential_type(restraint, phase, window)
@@ -251,10 +266,11 @@ class Plumed:
                     cv_dict[cv_key] = atom_string
 
                     cv_lines.append(
-                        f"{cv_key}: {colvar_type.upper()} ATOMS={atom_string} NOPBC\n"
+                        f"{cv_key}: {restraint.restraint_type.upper()} ATOMS={atom_string} NOPBC\n"
                     )
                     bias_lines.append(
-                        f"{bias_type.upper()} ARG={cv_key} AT={target:.4f} KAPPA={force_constant:.2f}\n"
+                        f"{bias_type.upper()} ARG={cv_key} AT={target.magnitude:.4f} KAPPA="
+                        f"{force_constant.magnitude:.2f}\n"
                     )
                 else:
                     cv_key = get_key(cv_dict, atom_string)[0]

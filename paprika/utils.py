@@ -6,6 +6,7 @@ from functools import lru_cache
 
 import parmed as pmd
 import pytraj as pt
+from openff.units import unit
 from parmed.structure import Structure as ParmedStructureClass
 
 logger = logging.getLogger(__name__)
@@ -315,3 +316,33 @@ def is_file_and_not_empty(file_path):
     """
     # This function is copied from OpenFF-Evaluator
     return os.path.isfile(file_path) and (os.path.getsize(file_path) != 0)
+
+
+def check_unit(variable, base_unit):
+    """
+    Run a check if variable is a float or unit.Quantity. If float, assign
+    the unit of ``base_unit``, if unit.Quantity, check the dimensionality.
+
+    variable: float or unit.Quantity
+    base_unit: unit.Quantity
+    """
+    quantity = variable
+    if isinstance(variable, float):
+        quantity = unit.Quantity(variable, units=base_unit)
+    elif isinstance(variable, unit.Quantity):
+        assert variable.dimensionality == base_unit.dimensionality
+    elif isinstance(variable, list):
+        if all(isinstance(x, float) for x in variable):
+            quantity = unit.Quantity(variable, units=base_unit)
+        elif all(isinstance(x, unit.Quantity) for x in variable):
+            assert all(
+                variable[x].dimensionality == base_unit.dimensionality for x in variable
+            )
+        else:
+            raise KeyError(
+                "Please make my life easier by either specifying a list of all float or all unit.Quantity."
+            )
+    else:
+        raise KeyError("``variable`` should be a float or unit.Quantity.")
+
+    return quantity
