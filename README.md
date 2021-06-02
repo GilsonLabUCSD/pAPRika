@@ -44,13 +44,22 @@ We recommend installing pAPRika in a fresh `conda` environment if possible. Ther
 
 In this example, we will setup and simulate butane (BUT) as a guest molecule for the host [cucurbit[6]uril](https://en.wikipedia.org/wiki/Cucurbituril) (CB6). CBs are rigid, symmetric, cyclic host molecules with oxygen atoms around the portal edge of the cavity. We will run the simulation in implicit solvent, using the [Generalized-Born](https://en.wikipedia.org/wiki/Implicit_solvation#Generalized_Born) model, for speed and simplicity, using AMBER. This tutorial assumes familiarity with basic MD procedures.
 
-The `cb6-but` folder referred to below are in the `paprika/data` directory.
+The `cb6-but` folder referred to below are located in the directory `paprika/data`. 
+
+pAPRika utilizes `Pint` units through the `openff-units` wrapper. Any float value that is passed to a function (mostly in the `build`, `restraints` and `analysis` modules) for masses, distances, angles, energy and force constants will be transformed to a `Pint` quantity based on the default units below (AMBER convention):
+* mass: Dalton
+* distance: angstrom
+* angle: degrees
+* energy: kcal/mol
+* force constants: kcal/mol/angstrom^2 (distances) or kcal/mol/radians^2 (angles)
+
+If a `Pint` quantity is specified then the units will be converted accordingly to match the list above.
 
 ## Initial Setup
 
 The very first step in the calculation is creating a coordinate file for the bound host-guest complex (we usually use PDB format for this part because it works well with `tleap`). This does not have to perfectly match the bound state by any means (we will later minimize and equilibrate), but this should be a reasonable illustration of the bound complex. This file can be created by hand (in a program like Chimera, VMD, or PyMOL) or by docking the guest into the host cavity (with MOE, AutoDock, DOCK, ...).
 
-In this example, this file is called `cb6-but.pdb`, in the `paprika/data/` directory, and this is what it looks like.
+In this example, the host-guest system coordinates (`cb6-but.pdb`) is located in `paprika/data`. Below is an image of the host-guest molecules.
 
 ![](docs/tutorials/images/cb6-but.png)
 
@@ -63,7 +72,6 @@ The `mol2` files that we use here (`cb6.mol2` and `but.mol2`) were created by ru
 In this example, we will use GAFF parameters for both the host and guest. For the host, `parmchk2` has identified two parameters that are missing from GAFF and added the most similar ones into the supplementary `cb6.frcmod` file.
 
 ```python
-
 from paprika.build.system import TLeap
 ```
 
@@ -93,10 +101,10 @@ After running `tleap`, it is always a good idea to check `leap.log`. `pAPRika` d
 
 Now we are ready to prepare the complex for the attach-pull-release calculation. This involves:
 
-- Aligning the structure so the guest can be pulled along the $z$ axis, and
+- Aligning the structure so the guest can be pulled along the *z*-axis, and
 - Adding dummy atoms that are used to orient the host and guest.
 
-To access the host-guest structure in Python, we use the ParmEd `Structure` class. So we start by loading the vacuum model that we just created. Then, we need to define two atoms on the guest that are placed along the $z$ axis. These should be heavy atoms on either end of the guest, the second atom leading the pulling.
+To access the host-guest structure in Python, we use the ParmEd `Structure` class. So we start by loading the vacuum model that we just created. Then, we need to define two atoms on the guest that are placed along the *z*-axis. These should be heavy atoms on either end of the guest, the second atom leading the pulling.
 
 These same atoms will be used later for the restraints, so I will name them `G1` and `G2`, using AMBER selection syntax.
 
@@ -135,11 +143,11 @@ aligned_structure.save("cb6-but/aligned.prmtop", overwrite=True)
 aligned_structure.save("cb6-but/aligned.rst7", overwrite=True)
 ```
 
-Here, the origin is shown as a grey sphere, with the $z$ axis drawn as a blue arrow. The coordinates used for this example were already aligned, so Python warns that the cross product is zero, but this won't be the case in general.
+Here, the origin is shown as a grey sphere, with the *z*-axis drawn as a blue arrow. The coordinates used for this example were already aligned, so Python warns that the cross product is zero, but this won't be the case in general.
 
 ![](docs/tutorials/images/aligned.png)
 
-Next, we add the dummy atoms. The dummy atoms will be fixed in place during the simulation and are used to orient the host and guest in the lab frame. The dummy atoms are placed along the $z$ axis, behind the host. The dummy atoms are used in distance, angle, and torsion restraints and therefore, the exact positioning of these atoms affects the value of those restraints. For a typical host-guest system, like the one here, we generally place the first dummy atom 6 Angstroms behind the origin, the second dummy atom 9 Angstroms behind the origin, and the third dummy atom 11.2 Angstroms behind the origin and offset about 2.2 Angstroms along the $y$ axis. After we add restraints, the positioning of the dummy atoms should be more clear.
+Next, we add the dummy atoms. The dummy atoms will be fixed in place during the simulation and are used to orient the host and guest in the lab frame. The dummy atoms are placed along the \ axis, behind the host. The dummy atoms are used in distance, angle, and torsion restraints and therefore, the exact positioning of these atoms affects the value of those restraints. For a typical host-guest system, like the one here, we generally place the first dummy atom 6 Angstroms behind the origin, the second dummy atom 9 Angstroms behind the origin, and the third dummy atom 11.2 Angstroms behind the origin and offset about 2.2 Angstroms along the *y*-axis. After we add restraints, the positioning of the dummy atoms should be more clear.
 
 Note, these dummy atoms do not interact with the other atoms in the system, and therefore, there is no problem placing them near host atoms.
 
@@ -147,7 +155,6 @@ Note, these dummy atoms do not interact with the other atoms in the system, and 
 
 
 ```python
-
 from paprika.build import dummy
 ```
 
@@ -263,7 +270,7 @@ Alternatively, we could specify the number of windows for each phase and the for
 
 
 - Static restraints: these six restraints keep the host and in the proper orientation during the simulation (necessary),
-- Guest restraints: these restraints pull the guest away from the host along the $z$ axis (necessary),
+- Guest restraints: these restraints pull the guest away from the host along the *z*-axis (necessary),
 - Conformational restraints: these restraints alter the conformational sampling of the host molecule (optional), and
 - Wall restraints: these restraints help define the bound state of the guest (optional).
 
@@ -299,7 +306,7 @@ Note that these restraints are not "attached" and they don't need to be "release
 
 The first three static restraints affect the translational distance, angle, and torsion angle between the host and the dummy atoms. These control the position of the host, via the first anchor atom, from moving relative to the dummy atoms.
 
-There is no *correct* value for the force constants. From experience, we know that a distance force constant of 5.0 kcal/mol/Angstrom$^2$ won't nail down the host and yet it also won't wander away. Likewise, we have had good results using 100.0 kcal/mol/radian$^2$ for the angle force constant.
+There is no *correct* value for the force constants. From experience, we know that a distance force constant of 5.0 kcal/mol/Angstrom^2 won't nail down the host and yet it also won't wander away. Likewise, we have had good results using 100.0 kcal/mol/radian^2 for the angle force constant.
 
 ![](docs/tutorials/images/static-restraints-1.png)
 
@@ -823,3 +830,5 @@ print(f"The binding affinity for butane and cucurbit[6]uril = {binding_affinity:
 
 
 There is a large uncertainty associated with this calculation because we only simulated for a very short amount of time in each window and we used a large amount of spacing between each window in the pull phase, but the uncertainty will go down with more time.
+
+The experimental value is **−RTln(280∗10^3M)** = -7.44 kcal/mol.
