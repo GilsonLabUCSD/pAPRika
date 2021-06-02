@@ -22,7 +22,7 @@ def clean_files(directory=os.path.join(os.path.dirname(__file__), "tmp")):
 
 
 def test_mkdirs():
-    """ Test that we can make directories for the windows. """
+    """Test that we can make directories for the windows."""
     window_list = ["a000", "p014", "r089"]
     make_window_dirs(window_list, path="tmp")
     for window in window_list:
@@ -30,7 +30,7 @@ def test_mkdirs():
 
 
 def test_strip_prmtop():
-    """ Test that we can remove items from structures. """
+    """Test that we can remove items from structures."""
     cb6_only = strip_prmtop(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.prmtop"),
         mask=":BUT",

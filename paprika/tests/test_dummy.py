@@ -31,7 +31,7 @@ def clean_files(directory=os.path.join(os.path.dirname(__file__), "tmp")):
 
 
 def test_add_dummy(clean_files):
-    """ Test that dummy atoms get added correctly """
+    """Test that dummy atoms get added correctly"""
     temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
     host_guest = pmd.load_file(
         os.path.join(
