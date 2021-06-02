@@ -553,6 +553,9 @@ def test_DAT_restraint():
     rest9.pull["target_initial"] = 0.0
     rest9.pull["target_final"] = 3.0
     rest9.initialize()
+
+    target_units = unit.angstrom
+    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
     assert rest9.index1 == [13]
     assert rest9.index2 == [119]
     assert rest9.index3 is None
@@ -560,9 +563,13 @@ def test_DAT_restraint():
     assert rest9.phase["attach"]["force_constants"] is None
     assert rest9.phase["attach"]["targets"] is None
     assert np.allclose(
-        rest9.phase["pull"]["force_constants"], np.array([3.0, 3.0, 3.0, 3.0])
+        rest9.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([3.0, 3.0, 3.0, 3.0]),
     )
-    assert np.allclose(rest9.phase["pull"]["targets"], np.array([0.0, 1.0, 2.0, 3.0]))
+    assert np.allclose(
+        rest9.phase["pull"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 1.0, 2.0, 3.0]),
+    )
     assert rest9.phase["release"]["force_constants"] is None
     assert rest9.phase["release"]["targets"] is None
     window_list = create_window_list([rest9])
@@ -584,6 +591,9 @@ def test_DAT_restraint():
     rest10.release["fc_initial"] = 0.0
     rest10.release["fc_final"] = 2.0
     rest10.initialize()
+
+    target_units = unit.angstrom
+    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
     assert rest10.index1 == [13]
     assert rest10.index2 == [119]
     assert rest10.index3 is None
@@ -593,9 +603,13 @@ def test_DAT_restraint():
     assert rest10.phase["pull"]["force_constants"] is None
     assert rest10.phase["pull"]["targets"] is None
     assert np.allclose(
-        rest10.phase["release"]["force_constants"], np.array([0.0, 1.0, 2.0])
+        rest10.phase["release"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 1.0, 2.0]),
     )
-    assert np.allclose(rest10.phase["release"]["targets"], np.array([0.0, 0.0, 0.0]))
+    assert np.allclose(
+        rest10.phase["release"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 0.0, 0.0]),
+    )
     window_list = create_window_list([rest10])
     assert window_list == ["r000", "r001", "r002"]
 
@@ -633,20 +647,20 @@ def test_get_restraint_values():
     restraint.initialize()
 
     restraint_values = get_restraint_values(restraint, "attach", 0)
-    assert restraint_values["r1"] == 0.0
-    assert restraint_values["r2"] == 2.65
-    assert restraint_values["r3"] == 2.65
-    assert restraint_values["r4"] == 999.0
-    assert restraint_values["rk2"] == 0.0
-    assert restraint_values["rk3"] == 0.0
+    assert restraint_values["r1"].magnitude == 0.0
+    assert restraint_values["r2"].magnitude == 2.65
+    assert restraint_values["r3"].magnitude == 2.65
+    assert restraint_values["r4"].magnitude == 999.0
+    assert restraint_values["rk2"].magnitude == 0.0
+    assert restraint_values["rk3"].magnitude == 0.0
 
     restraint_values = get_restraint_values(restraint, "pull", 0)
-    assert restraint_values["r1"] == 0.0
-    assert restraint_values["r2"] == 2.65
-    assert restraint_values["r3"] == 2.65
-    assert restraint_values["r4"] == 999.0
-    assert restraint_values["rk2"] == 10.0
-    assert restraint_values["rk3"] == 10.0
+    assert restraint_values["r1"].magnitude == 0.0
+    assert restraint_values["r2"].magnitude == 2.65
+    assert restraint_values["r3"].magnitude == 2.65
+    assert restraint_values["r4"].magnitude == 999.0
+    assert restraint_values["rk2"].magnitude == 10.0
+    assert restraint_values["rk3"].magnitude == 10.0
 
     # Test custom values
     wall = DAT_restraint()
@@ -670,12 +684,12 @@ def test_get_restraint_values():
     wall.initialize()
 
     restraint_values = get_restraint_values(wall, "attach", 0)
-    assert restraint_values["r1"] == 0.0
-    assert restraint_values["r2"] == 0.0
-    assert restraint_values["r3"] == 3.5
-    assert restraint_values["r4"] == 999.0
-    assert restraint_values["rk2"] == 1.0
-    assert restraint_values["rk3"] == 1.0
+    assert restraint_values["r1"].magnitude == 0.0
+    assert restraint_values["r2"].magnitude == 0.0
+    assert restraint_values["r3"].magnitude == 3.5
+    assert restraint_values["r4"].magnitude == 999.0
+    assert restraint_values["rk2"].magnitude == 1.0
+    assert restraint_values["rk3"].magnitude == 1.0
 
     wall = DAT_restraint()
     wall.auto_apr = False
@@ -698,12 +712,12 @@ def test_get_restraint_values():
     wall.initialize()
 
     restraint_values = get_restraint_values(wall, "attach", 0)
-    assert restraint_values["r1"] == 0.0
-    assert restraint_values["r2"] == 3.5
-    assert restraint_values["r3"] == 0.0
-    assert restraint_values["r4"] == 999.0
-    assert restraint_values["rk2"] == 1.0
-    assert restraint_values["rk3"] == 1.0
+    assert restraint_values["r1"].magnitude == 0.0
+    assert restraint_values["r2"].magnitude == 3.5
+    assert restraint_values["r3"].magnitude == 0.0
+    assert restraint_values["r4"].magnitude == 999.0
+    assert restraint_values["rk2"].magnitude == 1.0
+    assert restraint_values["rk3"].magnitude == 1.0
 
 
 def test_get_bias_potential_type():
