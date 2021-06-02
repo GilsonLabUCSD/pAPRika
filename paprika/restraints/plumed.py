@@ -276,7 +276,8 @@ class Plumed:
                     cv_key = get_key(cv_dict, atom_string)[0]
 
                     bias_lines.append(
-                        f"{bias_type.upper()} ARG={cv_key} AT={target:.4f} KAPPA={force_constant:.2f}\n"
+                        f"{bias_type.upper()} ARG={cv_key} AT={target.magnitude:.4f} KAPPA="
+                        f"{force_constant.magnitude:.2f}\n"
                     )
 
                 # Increment cv index

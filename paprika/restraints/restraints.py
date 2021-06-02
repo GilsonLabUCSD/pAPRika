@@ -283,6 +283,11 @@ class DAT_restraint(object):
             "fraction_list": None,
             "fc_list": None,
         }
+        self.phase = {
+            "attach": {"force_constants": None, "targets": None},
+            "pull": {"force_constants": None, "targets": None},
+            "release": {"force_constants": None, "targets": None},
+        }
 
         DAT_restraint.instances.append(self)
 
@@ -372,18 +377,28 @@ class DAT_restraint(object):
 
         # Attach/Release, Force Constant Method 2
         elif phase in ("a", "r") and method == "2":
-            force_constants = np.arange(
-                restraint_dictionary["fc_initial"],
-                restraint_dictionary["fc_final"] + restraint_dictionary["fc_increment"],
-                restraint_dictionary["fc_increment"],
+            units = restraint_dictionary["fc_initial"].units
+            force_constants = (
+                np.arange(
+                    restraint_dictionary["fc_initial"].magnitude,
+                    restraint_dictionary["fc_final"].magnitude
+                    + restraint_dictionary["fc_increment"].magnitude,
+                    restraint_dictionary["fc_increment"].magnitude,
+                )
+                * units
             )
 
         # Attach/Release, Force Constant Method 2a
         elif phase in ("a", "r") and method == "2a":
-            force_constants = np.arange(
-                0.0,
-                restraint_dictionary["fc_final"] + restraint_dictionary["fc_increment"],
-                restraint_dictionary["fc_increment"],
+            units = restraint_dictionary["fc_initial"].units
+            force_constants = (
+                np.arange(
+                    0.0,
+                    restraint_dictionary["fc_final"].magnitude
+                    + restraint_dictionary["fc_increment"].magnitude,
+                    restraint_dictionary["fc_increment"].magnitude,
+                )
+                * units
             )
 
         # Attach/Release, Force Constant Method 3
@@ -447,20 +462,22 @@ class DAT_restraint(object):
 
         # Pull, Target Method 2
         elif phase == "p" and method == "2":
+            units = restraint_dictionary["target_initial"]
             targets = np.arange(
-                restraint_dictionary["target_initial"],
-                restraint_dictionary["target_final"]
-                + restraint_dictionary["target_increment"],
-                restraint_dictionary["target_increment"],
+                restraint_dictionary["target_initial"].magnitude,
+                restraint_dictionary["target_final"].magnitude
+                + restraint_dictionary["target_increment"].magnitude,
+                restraint_dictionary["target_increment"].magnitude,
             )
 
         # Pull, Target Method 2a
         elif phase == "p" and method == "2a":
+            units = restraint_dictionary["target_final"]
             targets = np.arange(
                 0.0,
-                restraint_dictionary["target_final"]
-                + restraint_dictionary["target_increment"],
-                restraint_dictionary["target_increment"],
+                restraint_dictionary["target_final"].magnitude
+                + restraint_dictionary["target_increment"].magnitude,
+                restraint_dictionary["target_increment"].magnitude,
             )
 
         # Pull, Target Method 3
@@ -544,100 +561,50 @@ class DAT_restraint(object):
             This is unnecessary overengineering.
         """
 
-        # Set units
+        # Set default units (Based on Amber)
         energy_unit = unit.kcal / unit.mole
         target_unit = unit.angstrom
-        if self.mask3 or self.mask4:
-            target_unit = unit.degrees
         force_constant_unit = energy_unit / target_unit ** 2
         if self.mask3 or self.mask4:
+            target_unit = unit.degrees
             force_constant_unit = energy_unit / unit.radians ** 2
 
-        # Check attach units
-        if self._attach["target"]:
-            self._attach["target"] = check_unit(
-                self._attach["target"], base_unit=target_unit
-            )
-        if self._attach["fc_initial"]:
-            self._attach["fc_initial"] = check_unit(
-                self._attach["fc_initial"], base_unit=force_constant_unit
-            )
-        if self._attach["fc_final"]:
-            self._attach["fc_final"] = check_unit(
-                self._attach["fc_final"], base_unit=force_constant_unit
-            )
-        if self._attach["fc_increment"]:
-            self._attach["fc_increment"] = check_unit(
-                self._attach["fc_increment"], base_unit=force_constant_unit
-            )
-        if self._attach["fc_list"]:
-            self._attach["fc_list"] = check_unit(
-                self._attach["fc_list"], base_unit=force_constant_unit
-            )
+        # Check attach/release units
+        for phase in [self._attach, self._release]:
+            for key in ["target", "fc_initial", "fc_final", "fc_increment", "fc_list"]:
+                if phase[key] is not None:
+                    phase[key] = check_unit(
+                        phase[key],
+                        base_unit=target_unit
+                        if key == "target"
+                        else force_constant_unit,
+                    )
 
         # Check pull units
-        if self._pull["target_initial"]:
-            self._pull["target_initial"] = check_unit(
-                self._pull["target_initial"], base_unit=target_unit
-            )
-        if self._pull["target_final"]:
-            self._pull["target_final"] = check_unit(
-                self._pull["target_final"], base_unit=target_unit
-            )
-        if self._pull["target_increment"]:
-            self._pull["target_increment"] = check_unit(
-                self._pull["target_increment"], base_unit=target_unit
-            )
-        if self._pull["target_list"]:
-            self._pull["target_list"] = check_unit(
-                self._pull["target_list"], base_unit=target_unit
-            )
-        if self._pull["fc"]:
-            self._pull["fc"] = check_unit(
-                self._pull["fc"], base_unit=force_constant_unit
-            )
-
-        # Check release units
-        if self._release["target"]:
-            self._release["target"] = check_unit(
-                self._release["target"], base_unit=target_unit
-            )
-        if self._release["fc_initial"]:
-            self._release["fc_initial"] = check_unit(
-                self._release["fc_initial"], base_unit=force_constant_unit
-            )
-        if self._release["fc_final"]:
-            self._release["fc_final"] = check_unit(
-                self._release["fc_final"], base_unit=force_constant_unit
-            )
-        if self._release["fc_increment"]:
-            self._release["fc_increment"] = check_unit(
-                self._release["fc_increment"], base_unit=force_constant_unit
-            )
-        if self._release["fc_list"]:
-            self._release["fc_list"] = check_unit(
-                self._release["fc_list"], base_unit=force_constant_unit
-            )
+        for key in [
+            "target_initial",
+            "target_final",
+            "target_increment",
+            "target_list",
+            "fc",
+        ]:
+            if self._pull[key]:
+                self._pull[key] = check_unit(
+                    self._pull[key],
+                    base_unit=force_constant_unit if key == "fc" else target_unit,
+                )
 
         # Check custom restraint units
         if self._custom_restraint_values:
-            for target_key in ["r1", "r2", "r3", "r4"]:
-                if self._custom_restraint_values[target_key]:
-                    check_unit(
-                        self._custom_restraint_values[target_key], base_unit=target_unit
-                    )
-            for force_constant_key in ["rk2", "rk3"]:
-                if self._custom_restraint_values[force_constant_key]:
-                    check_unit(
-                        self._custom_restraint_values[target_key],
-                        base_unit=force_constant_unit,
+            for key in ["r1", "r2", "r3", "r4", "rk2", "rk3"]:
+                if self._custom_restraint_values[key]:
+                    self._custom_restraint_values[key] = check_unit(
+                        self._custom_restraint_values[key],
+                        base_unit=force_constant_unit
+                        if key in ["rk2", "rk3"]
+                        else target_unit,
                     )
 
-        self.phase = {
-            "attach": {"force_constants": None, "targets": None},
-            "pull": {"force_constants": None, "targets": None},
-            "release": {"force_constants": None, "targets": None},
-        }
         # ------------------------------------ ATTACH ------------------------------------ #
         logger.debug("Calculating attach targets and force constants...")
 
@@ -965,7 +932,7 @@ def static_DAT_restraint(
         if len(restraint_mask_list) == 2
         else unit.kcal / unit.mole / unit.radians
     )
-    check_unit(force_constant, k_unit)
+    force_constant = check_unit(force_constant, k_unit)
 
     # Target value
     mask_string = " ".join(restraint_mask_list)

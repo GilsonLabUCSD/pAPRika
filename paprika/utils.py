@@ -4,6 +4,7 @@ import shutil
 from datetime import datetime
 from functools import lru_cache
 
+import numpy as np
 import parmed as pmd
 import pytraj as pt
 from openff.units import unit
@@ -342,6 +343,8 @@ def check_unit(variable, base_unit):
             raise KeyError(
                 "Please make my life easier by either specifying a list of all float or all unit.Quantity."
             )
+    elif isinstance(variable, np.ndarray):
+        quantity = unit.Quantity(variable, units=base_unit)
     else:
         raise KeyError("``variable`` should be a float or unit.Quantity.")
 
