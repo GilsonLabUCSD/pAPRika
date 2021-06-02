@@ -390,7 +390,7 @@ class DAT_restraint(object):
 
         # Attach/Release, Force Constant Method 2a
         elif phase in ("a", "r") and method == "2a":
-            units = restraint_dictionary["fc_initial"].units
+            units = restraint_dictionary["fc_final"].units
             force_constants = (
                 np.arange(
                     0.0,
@@ -439,10 +439,12 @@ class DAT_restraint(object):
         # Attach/Release, Target Method
         if phase in ("a", "r"):
             units = restraint_dictionary["target"].units
-            targets = np.asarray(
-                [restraint_dictionary["target"].magnitude] * len(force_constants)
+            targets = (
+                np.asarray(
+                    [restraint_dictionary["target"].magnitude] * len(force_constants)
+                )
+                * units
             )
-            targets *= units
 
         # Pull, Target Method 1
         if phase == "p" and method == "1":
@@ -462,34 +464,44 @@ class DAT_restraint(object):
 
         # Pull, Target Method 2
         elif phase == "p" and method == "2":
-            units = restraint_dictionary["target_initial"]
-            targets = np.arange(
-                restraint_dictionary["target_initial"].magnitude,
-                restraint_dictionary["target_final"].magnitude
-                + restraint_dictionary["target_increment"].magnitude,
-                restraint_dictionary["target_increment"].magnitude,
+            units = restraint_dictionary["target_initial"].units
+            targets = (
+                np.arange(
+                    restraint_dictionary["target_initial"].magnitude,
+                    (
+                        restraint_dictionary["target_final"]
+                        + restraint_dictionary["target_increment"]
+                    ).magnitude,
+                    restraint_dictionary["target_increment"].magnitude,
+                )
+                * units
             )
 
         # Pull, Target Method 2a
         elif phase == "p" and method == "2a":
-            units = restraint_dictionary["target_final"]
-            targets = np.arange(
-                0.0,
-                restraint_dictionary["target_final"].magnitude
-                + restraint_dictionary["target_increment"].magnitude,
-                restraint_dictionary["target_increment"].magnitude,
+            units = restraint_dictionary["target_final"].units
+            targets = (
+                np.arange(
+                    0.0,
+                    restraint_dictionary["target_final"].magnitude
+                    + restraint_dictionary["target_increment"].magnitude,
+                    restraint_dictionary["target_increment"].magnitude,
+                )
+                * units
             )
 
         # Pull, Target Method 3
         elif phase == "p" and method == "3":
             units = restraint_dictionary["target_final"].units
-            targets = np.asarray(
-                [
-                    fraction * restraint_dictionary["target_final"].magnitude
-                    for fraction in restraint_dictionary["fraction_list"]
-                ]
+            targets = (
+                np.asarray(
+                    [
+                        fraction * restraint_dictionary["target_final"].magnitude
+                        for fraction in restraint_dictionary["fraction_list"]
+                    ]
+                )
+                * units
             )
-            targets *= units
 
         # Pull, Target Method 4
         elif phase == "p" and method == "4":
@@ -499,28 +511,31 @@ class DAT_restraint(object):
                 restraint_dictionary["fraction_increment"],
             )
             units = restraint_dictionary["target_final"].units
-            targets = np.asarray(
-                [
-                    fraction * restraint_dictionary["target_final"].magnitude
-                    for fraction in fractions
-                ]
+            targets = (
+                np.asarray(
+                    [
+                        fraction * restraint_dictionary["target_final"].magnitude
+                        for fraction in fractions
+                    ]
+                )
+                * units
             )
-            targets *= units
 
         # Pull, Target Method 5
         elif phase == "p" and method == "5":
             units = restraint_dictionary["target_list"][0].units
-            targets = np.asarray(
-                [x.magnitude for x in restraint_dictionary["target_list"]]
+            targets = (
+                np.asarray([x.magnitude for x in restraint_dictionary["target_list"]])
+                * units
             )
 
         # Pull, Force Constant Method
         if phase == "p":
             units = restraint_dictionary["fc"].units
-            force_constants = np.asarray(
-                [restraint_dictionary["fc"].magnitude] * len(targets)
+            force_constants = (
+                np.asarray([restraint_dictionary["fc"].magnitude] * len(targets))
+                * units
             )
-            force_constants *= units
 
         if force_constants is None and targets is None:
             logger.error("Unsupported Phase/Method: {} / {}".format(phase, method))
@@ -564,7 +579,7 @@ class DAT_restraint(object):
         # Set default units (Based on Amber)
         energy_unit = unit.kcal / unit.mole
         target_unit = unit.angstrom
-        force_constant_unit = energy_unit / target_unit ** 2
+        force_constant_unit = energy_unit / unit.angstrom ** 2
         if self.mask3 or self.mask4:
             target_unit = unit.degrees
             force_constant_unit = energy_unit / unit.radians ** 2
@@ -588,7 +603,7 @@ class DAT_restraint(object):
             "target_list",
             "fc",
         ]:
-            if self._pull[key]:
+            if self._pull[key] is not None:
                 self._pull[key] = check_unit(
                     self._pull[key],
                     base_unit=force_constant_unit if key == "fc" else target_unit,
@@ -597,13 +612,15 @@ class DAT_restraint(object):
         # Check custom restraint units
         if self._custom_restraint_values:
             for key in ["r1", "r2", "r3", "r4", "rk2", "rk3"]:
-                if self._custom_restraint_values[key]:
+                if key in self._custom_restraint_values:
                     self._custom_restraint_values[key] = check_unit(
                         self._custom_restraint_values[key],
                         base_unit=force_constant_unit
                         if key in ["rk2", "rk3"]
                         else target_unit,
                     )
+                else:
+                    self._custom_restraint_values[key] = None
 
         # ------------------------------------ ATTACH ------------------------------------ #
         logger.debug("Calculating attach targets and force constants...")
@@ -926,13 +943,15 @@ def static_DAT_restraint(
     if len(restraint_mask_list) == 4:
         rest.mask4 = restraint_mask_list[3]
 
-    # Force constant
-    k_unit = (
-        unit.kcal / unit.mole / unit.angstrom
-        if len(restraint_mask_list) == 2
-        else unit.kcal / unit.mole / unit.radians
+    # Force constant - convert to unit.Quantity
+    force_constant = check_unit(
+        force_constant,
+        base_unit=(
+            unit.kcal / unit.mole / unit.angstrom ** 2
+            if len(restraint_mask_list) == 2
+            else unit.kcal / unit.mole / unit.radians ** 2
+        ),
     )
-    force_constant = check_unit(force_constant, k_unit)
 
     # Target value
     mask_string = " ".join(restraint_mask_list)

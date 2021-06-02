@@ -61,14 +61,6 @@ def get_restraint_values(restraint, phase, window_number):
         Dictionary containing the Amber NMR-style values
 
     """
-    # Unit type
-    energy_unit = unit.kcal / unit.mole
-    target_unit = (
-        unit.angstrom if restraint.restraint_type == "distance" else unit.degrees
-    )
-    force_constant_unit = energy_unit / target_unit ** 2
-    if not restraint.restraint_type == "distance":
-        force_constant_unit = energy_unit / unit.radians ** 2
 
     # Amber NMR bounds
     lower_bound = 0.0 * unit.angstrom
@@ -87,23 +79,18 @@ def get_restraint_values(restraint, phase, window_number):
         )
 
     restraint_values = {
-        "r1": lower_bound.to(target_unit).magnitude,
-        "r2": restraint.phase[phase]["targets"][window_number]
-        .to(target_unit)
-        .magnitude,
-        "r3": restraint.phase[phase]["targets"][window_number]
-        .to(target_unit)
-        .magnitude,
-        "r4": upper_bound.to(target_unit).magnitude,
-        "rk2": restraint.phase[phase]["force_constants"][window_number]
-        .to(force_constant_unit)
-        .magnitude,
-        "rk3": restraint.phase[phase]["force_constants"][window_number]
-        .to(force_constant_unit)
-        .magnitude,
+        "r1": lower_bound,
+        "r2": restraint.phase[phase]["targets"][window_number],
+        "r3": restraint.phase[phase]["targets"][window_number],
+        "r4": upper_bound,
+        "rk2": restraint.phase[phase]["force_constants"][window_number],
+        "rk3": restraint.phase[phase]["force_constants"][window_number],
     }
+    print(restraint_values)
 
     override_dict(restraint_values, restraint.custom_restraint_values)
+
+    print(restraint_values)
 
     return restraint_values
 

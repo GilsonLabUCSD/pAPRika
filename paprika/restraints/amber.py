@@ -1,5 +1,7 @@
 import logging
 
+from openff.units import unit
+
 from paprika.restraints.utils import get_restraint_values, parse_window
 
 logger = logging.getLogger(__name__)
@@ -80,16 +82,35 @@ def amber_restraint_line(restraint, window):
     # Restraint values - Amber NMR-style
     amber_restraint_values = get_restraint_values(restraint, phase, window)
 
+    # Amber units
+    energy_unit = unit.kcal / unit.mole
+    target_unit = (
+        unit.angstrom if restraint.restraint_type == "distance" else unit.degrees
+    )
+    force_constant_unit = energy_unit / target_unit ** 2
+    if not restraint.restraint_type == "distance":
+        force_constant_unit = energy_unit / unit.radians ** 2
+
     # Prepare AMBER NMR-style restraint
     atoms = "".join([iat1, iat2, iat3, iat4])
     string = "&rst iat= {:16s} ".format(atoms)
     string += (
-        " r1= {0:10.5f},".format(amber_restraint_values["r1"])
-        + " r2= {0:10.5f},".format(amber_restraint_values["r2"])
-        + " r3= {0:10.5f},".format(amber_restraint_values["r3"])
-        + " r4= {0:10.5f},".format(amber_restraint_values["r4"])
-        + " rk2= {0:10.5f},".format(amber_restraint_values["rk2"])
-        + " rk3= {0:10.5f},".format(amber_restraint_values["rk3"])
+        " r1= {0:10.5f},".format(amber_restraint_values["r1"].to(target_unit).magnitude)
+        + " r2= {0:10.5f},".format(
+            amber_restraint_values["r2"].to(target_unit).magnitude
+        )
+        + " r3= {0:10.5f},".format(
+            amber_restraint_values["r3"].to(target_unit).magnitude
+        )
+        + " r4= {0:10.5f},".format(
+            amber_restraint_values["r4"].to(target_unit).magnitude
+        )
+        + " rk2= {0:10.5f},".format(
+            amber_restraint_values["rk2"].to(force_constant_unit).magnitude
+        )
+        + " rk3= {0:10.5f},".format(
+            amber_restraint_values["rk3"].to(force_constant_unit).magnitude
+        )
     )
 
     if any([restraint.group1, restraint.group2, restraint.group3, restraint.group4]):
