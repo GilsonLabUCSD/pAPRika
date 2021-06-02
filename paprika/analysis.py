@@ -1079,8 +1079,9 @@ class fe_calc(object):
             else:
                 total_sem_matrix = self.results[phase][method]["fraction_sem_matrix"][
                     max_fraction
-                ]
+                ].magnitude
             self.results[phase][method]["roi"] = np.zeros([num_win], np.float64)
+
             for k in range(num_win):
                 # Compute overall integrated SEM with 10% smaller SEM for dU[k]
                 cnvg_dU_samples = np.array(dU_samples)
@@ -1207,8 +1208,9 @@ class fe_calc(object):
                     # Store convergence values, which are helpful for running
                     # simulations
                     windows = len(self.results[phase][method]["sem_matrix"])
-                    self.results[phase][method]["largest_neighbor"] = (
-                        np.ones([windows], np.float64) * -1.0
+                    self.results[phase][method]["largest_neighbor"] = unit.Quantity(
+                        np.ones([windows], np.float64) * -1.0,
+                        units=self.energy_unit,
                     )
                     logger.info(f"{phase}: computing largest_neighbor for {method}...")
 
