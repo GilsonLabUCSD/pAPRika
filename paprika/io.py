@@ -141,7 +141,9 @@ class PaprikaDecoder(json.JSONDecoder):
     """
 
     def __init__(self, *args, **kwargs):
-        json.JSONDecoder.__init__(self, object_hook=self.custom_object_hook, *args, **kwargs)
+        json.JSONDecoder.__init__(
+            self, object_hook=self.custom_object_hook, *args, **kwargs
+        )
 
     def custom_object_hook(self, obj):
         if "__ndarray__" in obj:
