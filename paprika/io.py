@@ -141,9 +141,9 @@ class PaprikaDecoder(json.JSONDecoder):
     """
 
     def __init__(self, *args, **kwargs):
-        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+        json.JSONDecoder.__init__(self, object_hook=self.custom_object_hook, *args, **kwargs)
 
-    def object_hook(self, obj):
+    def custom_object_hook(self, obj):
         if "__ndarray__" in obj:
             data = base64.b64decode(obj["__ndarray__"])
             return np.frombuffer(data, obj["dtype"]).reshape(obj["shape"])
