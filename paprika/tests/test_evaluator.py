@@ -9,6 +9,7 @@ import numpy as np
 import parmed as pmd
 import pytest
 import pytraj as pt
+from openff.units import unit
 
 from paprika.evaluator import Analyze, Setup
 from paprika.evaluator.amber import generate_gaff
@@ -200,7 +201,10 @@ def test_evaluator_analyze(clean_files):
     temperature = 298.15
     guest_restraints = [rest1, rest2, rest3]
     ref_state_work = Analyze.compute_ref_state_work(temperature, guest_restraints)
-    assert pytest.approx(ref_state_work, abs=1e-3) == -7.14151
+    assert (
+        pytest.approx(ref_state_work.to(unit.kcal / unit.mole).magnitude, abs=1e-3)
+        == -7.14151
+    )
 
     fe_sym = Analyze.symmetry_correction(n_microstates=1, temperature=298.15)
     assert fe_sym == 0.0

@@ -49,13 +49,21 @@ def test_theta_after_alignment():
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     )
     aligned_cb6 = zalign(cb6, ":CB6", ":BUT")
-    assert get_theta(aligned_cb6, ":CB6", ":BUT", axis="z") == 0
     assert (
-        pytest.approx(get_theta(aligned_cb6, ":CB6", ":BUT", axis="x"), abs=1e-3)
+        get_theta(aligned_cb6, ":CB6", ":BUT", axis="z").to(unit.radians).magnitude == 0
+    )
+    assert (
+        pytest.approx(
+            get_theta(aligned_cb6, ":CB6", ":BUT", axis="x").to(unit.radians).magnitude,
+            abs=1e-3,
+        )
         == 1.5708
     )
     assert (
-        pytest.approx(get_theta(aligned_cb6, ":CB6", ":BUT", axis="y"), abs=1e-3)
+        pytest.approx(
+            get_theta(aligned_cb6, ":CB6", ":BUT", axis="y").to(unit.radians).magnitude,
+            abs=1e-3,
+        )
         == 1.5708
     )
 
@@ -121,13 +129,19 @@ def test_align_principal_axes():
         cb6, atom_mask=":CB6", principal_axis=1, axis="y"
     )
 
-    angle = get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="z") * 180 / np.pi
+    angle = (
+        get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="z").to(unit.degrees).magnitude
+    )
     assert pytest.approx(angle, abs=1e-1) == 90.0
 
-    angle = get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="y") * 180 / np.pi
+    angle = (
+        get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="y").to(unit.degrees).magnitude
+    )
     assert pytest.approx(angle, abs=1e-1) == 0.0
 
-    angle = get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="x") * 180 / np.pi
+    angle = (
+        get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="x").to(unit.degrees).magnitude
+    )
     assert pytest.approx(angle, abs=1e-1) == 90.0
 
 

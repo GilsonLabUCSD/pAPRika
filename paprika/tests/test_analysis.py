@@ -124,12 +124,12 @@ def test_mbar_block(clean_files, setup_free_energy_calculation):
     assert reference_values == approx(test_vals, abs=0.01)
 
     # Test attach mbar-block largest_neighbor values
-    test_vals = results["attach"][method]["largest_neighbor"]
+    test_vals = results["attach"][method]["largest_neighbor"].magnitude
     reference_values = np.array([0.0198918, 0.0451676, 0.0564517, 0.1079282, 0.1079282])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # Test pull mbar-block largest_neighbor values
-    test_vals = results["pull"][method]["largest_neighbor"]
+    test_vals = results["pull"][method]["largest_neighbor"].magnitude
     reference_values = np.array(
         [
             0.2053769,
@@ -174,12 +174,12 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
     # ROI only runs during TI.
 
     # Test attach ti-block largest_neighbor values
-    test_vals = results["attach"][method]["largest_neighbor"]
+    test_vals = results["attach"][method]["largest_neighbor"].magnitude
     reference_values = np.array([0.03, 0.07, 0.10, 0.18, 0.18])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # Test pull ti-block largest_neighbor values
-    test_vals = results["pull"][method]["largest_neighbor"]
+    test_vals = results["pull"][method]["largest_neighbor"].magnitude
 
     reference_values = np.array(
         [
