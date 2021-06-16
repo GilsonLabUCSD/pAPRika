@@ -545,12 +545,18 @@ def _return_array(var):
     array = None
 
     if isinstance(var, str):
-        if "x" in var.lower():
+        if "x" == var.lower():
             array = np.array([1.0, 0.0, 0.0])
-        elif "y" in var.lower():
+        elif "y" == var.lower():
             array = np.array([0.0, 1.0, 0.0])
-        elif "z" in var.lower():
+        elif "z" == var.lower():
             array = np.array([0.0, 0.0, 1.0])
+        elif "-x" == var.lower():
+            array = np.array([-1.0, 0.0, 0.0])
+        elif "-y" == var.lower():
+            array = np.array([0.0, -1.0, 0.0])
+        elif "-z" == var.lower():
+            array = np.array([0.0, 0.0, -1.0])
         else:
             raise KeyError(f"Cannot understand the variable: {var}.")
 

@@ -33,7 +33,7 @@ setup(
     # Extend/modify the list to include/exclude other items as need be
     package_data={"paprika": ["data/*.dat"]},
     include_package_data=True,
-    install_requires=["numpy"]
+    install_requires=["numpy"],
     # Additional entries you may want simply uncomment the lines you want and fill in the data
     # author_email='me@place.org',      # Author email
     # url='http://www.my_package.com',  # Website
@@ -45,4 +45,9 @@ setup(
     # python_requires=">=3.5",          # Python version restrictions
     # Manual control if final package is compressible or not, set False to prevent the .egg from being made
     # zip_safe=False,
+    entry_points={
+        'console_scripts': [
+            'paprika = paprika.cli.main:main',
+        ],
+    },
 )

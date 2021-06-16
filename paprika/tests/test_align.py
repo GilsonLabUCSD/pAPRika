@@ -21,7 +21,7 @@ from paprika.build.align import (
 
 
 def test_center_mask():
-    """ Test that the first mask is centered """
+    """Test that the first mask is centered"""
     cb6 = pmd.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     )
@@ -31,7 +31,7 @@ def test_center_mask():
 
 
 def test_alignment_after_offset():
-    """ Test that molecule is properly aligned after random offset. """
+    """Test that molecule is properly aligned after random offset."""
     cb6 = pmd.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     )
@@ -43,7 +43,7 @@ def test_alignment_after_offset():
 
 
 def test_theta_after_alignment():
-    """ Test that molecule is properly aligned after random offset. """
+    """Test that molecule is properly aligned after random offset."""
     cb6 = pmd.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     )
@@ -60,7 +60,7 @@ def test_theta_after_alignment():
 
 
 def test_translate_to_origin():
-    """ Test that molecule is properly aligned after translated to the origin."""
+    """Test that molecule is properly aligned after translated to the origin."""
     cb6 = pmd.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb"),
         structure=True,
