@@ -40,7 +40,7 @@ class fe_calc(object):
 
     @property
     def temperature(self):
-        """float: The temperature used during the simulation. This will update β (1/kT) as well."""
+        """float or unit.Quantity: The temperature used during the simulation. This will update β (1/kT) as well."""
         return self._temperature
 
     @temperature.setter
@@ -341,6 +341,7 @@ class fe_calc(object):
 
     @property
     def energy_unit(self):
+        """pint.unit: The based unit for energy."""
         return self._energy_unit
 
     @energy_unit.setter
@@ -349,6 +350,7 @@ class fe_calc(object):
 
     @property
     def distance_unit(self):
+        """pint.unit: The base unit for distance."""
         return self._distance_unit
 
     @distance_unit.setter
@@ -357,6 +359,7 @@ class fe_calc(object):
 
     @property
     def angle_unit(self):
+        """pint.unit: The base unit for angles."""
         return self._angle_unit
 
     @angle_unit.setter
@@ -365,6 +368,7 @@ class fe_calc(object):
 
     @property
     def temperature_unit(self):
+        """pint.unit: The base unit for temperature."""
         return self._temperature_unit
 
     @temperature_unit.setter

@@ -5,6 +5,7 @@ import numpy as np
 import parmed as pmd
 import simtk.openmm as openmm
 import simtk.unit as simtk_unit
+from openff.units import unit
 from openff.units.simtk import to_simtk
 
 logger = logging.getLogger(__name__)
@@ -28,8 +29,8 @@ def apply_positional_restraints(
         The system object to add the positional restraints to.
     force_group : int, optional
         The force group to add the positional restraints to.
-    kpos : float, optional
-        The force constant for restraining the dummy atoms (kcal/mol/Å^2).
+    kpos : float, simkt.unit.Quantity or pint.unit.Quantity, optional
+        The force constant for restraining the dummy atoms (kcal/mol/Å^2 if float).
     """
 
     # noinspection PyTypeChecker
@@ -50,7 +51,12 @@ def apply_positional_restraints(
             # ParmEd correctly reports `atom.positions` as units of Ångstroms.
             # But then we can't access atom indices. Using `atom.xx` works for
             # coordinates, but is unitless.
-            k = kpos * simtk_unit.kilocalories_per_mole / simtk_unit.angstroms ** 2
+            if isinstance(kpos, float):
+                k = kpos * simtk_unit.kilocalories_per_mole / simtk_unit.angstroms ** 2
+            elif isinstance(kpos, simtk_unit.Quantity):
+                k = kpos
+            elif isinstance(kpos, unit.Quantity):
+                k = to_simtk(kpos)
 
             x0 = 0.1 * atom.xx * simtk_unit.nanometers
             y0 = 0.1 * atom.xy * simtk_unit.nanometers
