@@ -126,7 +126,8 @@ Defining Restraints
 
 In APR calculations we apply restraints on the host (or protein) and the guest molecules. The restraints can be grouped
 into four categories: (1) *static restraints*, (2) *varying restraints*, (3) *wall restraints* and (4) *positional
-restraints*.
+restraints*. The equilibrium target values and force constants can be specified as either a float or `Pint` quantity
+through the `openff-units` wrapper.
 
 **(1) Static Restraints**
 
@@ -141,14 +142,19 @@ on ``D1`` and ``H1`` with a force constant of 5 kcal/mol/:math:`Å^2` we call
 
 .. code :: python
 
-    from paprika.restraints import static_DAT_restraint
+   from openff.units import unit
+   from paprika.restraints import static_DAT_restraint
+
+   k_dist = 5.0 * unit.kcal / unit.mole / unit.angstrom ** 2
 
     dist_static = static_DAT_restraint(
         restraint_mask_list = [D1, H1],
         num_window_list = windows,  # list: [len(attach_lambda), len(pull_windows), len(release_lambda)]
-        ref_structure = structure,  # Structure file (PDB)
-        force_constant = 5.0,
+        ref_structure = structure,  # Structure file (PDB) or ParmEd structure object
+        force_constant = k_dist,
     )
+
+The equilibrium target for the harmonic restraint is estimated from the ``ref_structure``.
 
 **(2) Varying Restraints**
 
@@ -163,6 +169,10 @@ from 6.0 Å to 24 Å in the `pull` phase and stays restrained at 24 Å during th
 
     from paprika.restraints import DAT_restraint
 
+    r_init = 6.0 * unit.angstrom
+    r_final = 24.0 * unit.angstrom
+    k_dist = 5.0 * unit.kcal / unit.mole / unit.angstrom ** 2
+
     r = DAT_restraint()
     r.mask1 = D1
     r.mask2 = G1
@@ -170,16 +180,16 @@ from 6.0 Å to 24 Å in the `pull` phase and stays restrained at 24 Å during th
     r.auto_apr = True
     r.continuous_apr = True
 
-    r.attach["target"] = 6.0
+    r.attach["target"] = r_init
     r.attach["fraction_list"] = attach_lambda
-    r.attach["fc_final"] = 5.0
+    r.attach["fc_final"] = k_dist
 
-    r.pull["target_final"] = 24.0
+    r.pull["target_final"] = r_final
     r.pull["num_windows"] = len(pull_windows)
 
-    r.release["target"] = 24.0
+    r.release["target"] = r_final
     r.release["fraction_list"] = [1.0] * len(release_lambda)
-    r.release["fc_final"] = 5.0
+    r.release["fc_final"] = k_dist
 
     r.initialize()
 
@@ -206,6 +216,9 @@ decreasing below 91 degrees.
 
 .. code :: python
 
+    r_wall = 91.0 * unit.degrees
+    k_wall = 200.0 * unit.kcal / unit.mole / unit.radians ** 2
+
     wall_orient = DAT_restraint()
     wall_orient.mask1 = D1
     wall_orient.mask2 = G1
@@ -215,12 +228,12 @@ decreasing below 91 degrees.
     wall_orient.continuous_apr = True
 
     wall_orient.attach["num_windows"] = attach_fractions
-    wall_orient.attach["fc_initial"] = 200.0
-    wall_orient.attach["fc_final"] = 200.0
+    wall_orient.attach["fc_initial"] = k_wall
+    wall_orient.attach["fc_final"] = k_wall
 
-    wall_orient.custom_restraint_values["r1"] = 91.0
+    wall_orient.custom_restraint_values["r1"] = k_wall
     wall_orient.custom_restraint_values["r2"] = 0.0
-    wall_orient.custom_restraint_values["rk2"] = 200.0
+    wall_orient.custom_restraint_values["rk2"] = k_wall
     wall_orient.custom_restraint_values["rk3"] = 0.0
 
     wall_orient.initialize()
@@ -381,9 +394,14 @@ The results are stored in the variable ``results`` as a python dictionary and yo
 .. code :: python
 
     print(free_energy.results["pull"]["ti-block"]["fe"])
-    -3.82139135698
+    -3.82139135698 kcal/mol
 
-    from paprika.io import NumpyEncoder
-    with open("APR_results.json", "w") as f:
-        dumped = json.dumps(free_energy.results, cls=NumpyEncoder)
-        f.write(dumped)
+    free_energy.save_results("APR_results.json")
+
+The processed simulation data can also be saved to a JSON file so that you do not need to re-read the MD trajectories
+if you need to do further analysis.
+
+.. code :: python
+
+    free_energy.save_data("APR_simulation_data.json")
+    free_energy.collect_data_from_json("APR_simulation_data.json")

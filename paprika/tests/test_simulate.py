@@ -3,6 +3,7 @@ import shutil
 
 import parmed as pmd
 import pytest
+from openff.units import unit
 
 from paprika import restraints
 from paprika.restraints import amber
@@ -82,8 +83,12 @@ def test_amber_single_window_gbmin(clean_files):
                 structure=True,
             )
             target_difference = (
-                restraint.phase["pull"]["targets"][int(window[1:])]
-                - restraint.phase["pull"]["targets"][0]
+                (
+                    restraint.phase["pull"]["targets"][int(window[1:])]
+                    - restraint.phase["pull"]["targets"][0]
+                )
+                .to(unit.angstrom)
+                .magnitude
             )
 
             for atom in structure.atoms:

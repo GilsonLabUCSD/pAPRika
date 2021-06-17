@@ -4,17 +4,19 @@ import parmed as pmd
 from parmed.structure import Structure as ParmedStructureClass
 
 from paprika import utils
+from paprika.utils import check_unit
+from openff.units import unit
 
 
 def add_dummy(
     structure,
     atom_name="DUM",
     residue_name="DUM",
-    mass=208.00,
+    mass=208.00 * unit.dalton,
     atomic_number=82,
-    x=0.000,
-    y=0.000,
-    z=0.000,
+    x=0.000 * unit.angstrom,
+    y=0.000 * unit.angstrom,
+    z=0.000 * unit.angstrom,
 ):
     """Add a dummy atom at the specified coordinates to the end of a structure.
 
@@ -44,6 +46,11 @@ def add_dummy(
 
     """
 
+    mass = check_unit(mass, base_unit=unit.dalton)
+    x = check_unit(x, base_unit=unit.angstrom)
+    y = check_unit(y, base_unit=unit.angstrom)
+    z = check_unit(z, base_unit=unit.angstrom)
+
     if isinstance(structure, str):
         structure = utils.return_parmed_structure(structure)
     elif isinstance(structure, ParmedStructureClass):
@@ -57,14 +64,14 @@ def add_dummy(
     # Create an atom object
     dum = pmd.topologyobjects.Atom()
     dum.name = atom_name
-    dum.mass = mass
+    dum.mass = mass.to(unit.dalton).magnitude
     dum.atomic_number = atomic_number
     # This may be a problem if these coordinates are outside the periodic box
     # dimensions and ParmEd does not recalculate the box vectors before saving
     # `inpcrd`...
-    dum.xx = x
-    dum.xy = y
-    dum.xz = z
+    dum.xx = x.to(unit.angstrom).magnitude
+    dum.xy = y.to(unit.angstrom).magnitude
+    dum.xz = z.to(unit.angstrom).magnitude
 
     # Assume that the last atom in the structure has the highest atom index,
     # so the new atom will be at the end.

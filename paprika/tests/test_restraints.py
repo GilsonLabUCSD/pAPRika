@@ -8,6 +8,7 @@ import os
 import numpy as np
 import parmed as pmd
 import pytest
+from openff.units import unit
 
 from paprika.restraints.restraints import DAT_restraint, create_window_list
 from paprika.restraints.utils import (
@@ -44,23 +45,36 @@ def test_DAT_restraint():
     rest1.release["fc_initial"] = rest1.attach["fc_initial"]
     rest1.release["fc_final"] = rest1.attach["fc_final"]
     rest1.initialize()
+
+    target_units = unit.angstrom
+    force_constant_units = unit.kcal / unit.mole / target_units ** 2
     assert rest1.index1 == [13, 31, 49, 67, 85, 103]
     assert rest1.index2 == [119]
     assert rest1.index3 is None
     assert rest1.index4 is None
     assert np.allclose(
-        rest1.phase["attach"]["force_constants"], np.array([0.0, 1.0, 2.0, 3.0])
-    )
-    assert np.allclose(rest1.phase["attach"]["targets"], np.array([3.0, 3.0, 3.0, 3.0]))
-    assert np.allclose(
-        rest1.phase["pull"]["force_constants"], np.array([3.0, 3.0, 3.0, 3.0])
-    )
-    assert np.allclose(rest1.phase["pull"]["targets"], np.array([3.0, 4.0, 5.0, 6.0]))
-    assert np.allclose(
-        rest1.phase["release"]["force_constants"], np.array([0.0, 1.0, 2.0, 3.0])
+        rest1.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 1.0, 2.0, 3.0]),
     )
     assert np.allclose(
-        rest1.phase["release"]["targets"], np.array([6.0, 6.0, 6.0, 6.0])
+        rest1.phase["attach"]["targets"].to(target_units).magnitude,
+        np.array([3.0, 3.0, 3.0, 3.0]),
+    )
+    assert np.allclose(
+        rest1.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([3.0, 3.0, 3.0, 3.0]),
+    )
+    assert np.allclose(
+        rest1.phase["pull"]["targets"].to(target_units).magnitude,
+        np.array([3.0, 4.0, 5.0, 6.0]),
+    )
+    assert np.allclose(
+        rest1.phase["release"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 1.0, 2.0, 3.0]),
+    )
+    assert np.allclose(
+        rest1.phase["release"]["targets"].to(target_units).magnitude,
+        np.array([6.0, 6.0, 6.0, 6.0]),
     )
     window_list = create_window_list([rest1])
     assert window_list == [
@@ -100,27 +114,36 @@ def test_DAT_restraint():
     rest2.release["num_windows"] = rest2.attach["num_windows"]
     rest2.release["fc_final"] = rest2.attach["fc_final"]
     rest2.initialize()
+
+    target_units = unit.degrees
+    force_constant_units = unit.kcal / unit.mole / unit.radians ** 2
     assert rest2.index1 == [13, 31, 49, 67, 85, 103]
     assert rest2.index2 == [119]
     assert rest2.index3 == [109]
     assert rest2.index4 is None
     assert np.allclose(
-        rest2.phase["attach"]["force_constants"], np.array([0.0, 25.0, 50.0, 75.0])
+        rest2.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 25.0, 50.0, 75.0]),
     )
     assert np.allclose(
-        rest2.phase["attach"]["targets"], np.array([180.0, 180.0, 180.0, 180.0])
+        rest2.phase["attach"]["targets"].to(target_units).magnitude,
+        np.array([180.0, 180.0, 180.0, 180.0]),
     )
     assert np.allclose(
-        rest2.phase["pull"]["force_constants"], np.array([75.0, 75.0, 75.0, 75.0])
+        rest2.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([75.0, 75.0, 75.0, 75.0]),
     )
     assert np.allclose(
-        rest2.phase["pull"]["targets"], np.array([0.0, 60.0, 120.0, 180.0])
+        rest2.phase["pull"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 60.0, 120.0, 180.0]),
     )
     assert np.allclose(
-        rest2.phase["release"]["force_constants"], np.array([0.0, 25.0, 50.0, 75.0])
+        rest2.phase["release"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 25.0, 50.0, 75.0]),
     )
     assert np.allclose(
-        rest2.phase["release"]["targets"], np.array([180.0, 180.0, 180.0, 180.0])
+        rest2.phase["release"]["targets"].to(target_units).magnitude,
+        np.array([180.0, 180.0, 180.0, 180.0]),
     )
     window_list = create_window_list([rest2])
     assert window_list == [
@@ -159,27 +182,36 @@ def test_DAT_restraint():
     rest3.pull["target_final"] = 93.0
     rest3.release["fc_final"] = 75.0
     rest3.initialize()
+
+    target_units = unit.degrees
+    force_constant_units = unit.kcal / unit.mole / unit.radians ** 2
     assert rest3.index1 == [31]
     assert rest3.index2 == [13]
     assert rest3.index3 == [119]
     assert rest3.index4 == [109]
     assert np.allclose(
-        rest3.phase["attach"]["force_constants"], np.array([0.0, 25.0, 50.0, 75.0])
+        rest3.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 25.0, 50.0, 75.0]),
     )
     assert np.allclose(
-        rest3.phase["attach"]["targets"], np.array([90.0, 90.0, 90.0, 90.0])
+        rest3.phase["attach"]["targets"].to(target_units).magnitude,
+        np.array([90.0, 90.0, 90.0, 90.0]),
     )
     assert np.allclose(
-        rest3.phase["pull"]["force_constants"], np.array([75.0, 75.0, 75.0, 75.0])
+        rest3.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([75.0, 75.0, 75.0, 75.0]),
     )
     assert np.allclose(
-        rest3.phase["pull"]["targets"], np.array([90.0, 91.0, 92.0, 93.0])
+        rest3.phase["pull"]["targets"].to(target_units).magnitude,
+        np.array([90.0, 91.0, 92.0, 93.0]),
     )
     assert np.allclose(
-        rest3.phase["release"]["force_constants"], np.array([0.0, 25.0, 50.0, 75.0])
+        rest3.phase["release"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 25.0, 50.0, 75.0]),
     )
     assert np.allclose(
-        rest3.phase["release"]["targets"], np.array([93.0, 93.0, 93.0, 93.0])
+        rest3.phase["release"]["targets"].to(target_units).magnitude,
+        np.array([93.0, 93.0, 93.0, 93.0]),
     )
     window_list = create_window_list([rest3])
     assert window_list == [
@@ -220,23 +252,36 @@ def test_DAT_restraint():
     rest4.release["fc_increment"] = 25.0
     rest4.release["fc_final"] = 75.0
     rest4.initialize()
+
+    target_units = unit.degrees
+    force_constant_units = unit.kcal / unit.mole / unit.radians ** 2
     assert rest4.index1 == [31]
     assert rest4.index2 == [13]
     assert rest4.index3 == [119]
     assert rest4.index4 == [109]
     assert np.allclose(
-        rest4.phase["attach"]["force_constants"], np.array([0.0, 25.0, 50.0, 75.0])
-    )
-    assert np.allclose(rest4.phase["attach"]["targets"], np.array([0.0, 0.0, 0.0, 0.0]))
-    assert np.allclose(
-        rest4.phase["pull"]["force_constants"], np.array([75.0, 75.0, 75.0, 75.0])
-    )
-    assert np.allclose(rest4.phase["pull"]["targets"], np.array([0.0, 1.0, 2.0, 3.0]))
-    assert np.allclose(
-        rest4.phase["release"]["force_constants"], np.array([0.0, 25.0, 50.0, 75.0])
+        rest4.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 25.0, 50.0, 75.0]),
     )
     assert np.allclose(
-        rest4.phase["release"]["targets"], np.array([3.0, 3.0, 3.0, 3.0])
+        rest4.phase["attach"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 0.0, 0.0, 0.0]),
+    )
+    assert np.allclose(
+        rest4.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([75.0, 75.0, 75.0, 75.0]),
+    )
+    assert np.allclose(
+        rest4.phase["pull"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 1.0, 2.0, 3.0]),
+    )
+    assert np.allclose(
+        rest4.phase["release"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 25.0, 50.0, 75.0]),
+    )
+    assert np.allclose(
+        rest4.phase["release"]["targets"].to(target_units).magnitude,
+        np.array([3.0, 3.0, 3.0, 3.0]),
     )
     window_list = create_window_list([rest4])
     assert window_list == [
@@ -275,23 +320,36 @@ def test_DAT_restraint():
     rest5.release["fraction_list"] = [0.0, 0.3, 0.6, 1.0]
     rest5.release["fc_final"] = rest5.attach["fc_final"]
     rest5.initialize()
+
+    target_units = unit.angstrom
+    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
     assert rest5.index1 == [13, 31, 49, 67, 85, 103]
     assert rest5.index2 == [109, 113, 115, 119]
     assert rest5.index3 is None
     assert rest5.index4 is None
     assert np.allclose(
-        rest5.phase["attach"]["force_constants"], np.array([0.0, 1.0, 2.5, 5.0])
-    )
-    assert np.allclose(rest5.phase["attach"]["targets"], np.array([0.0, 0.0, 0.0, 0.0]))
-    assert np.allclose(
-        rest5.phase["pull"]["force_constants"], np.array([5.0, 5.0, 5.0])
-    )
-    assert np.allclose(rest5.phase["pull"]["targets"], np.array([0.0, 0.5, 1.0]))
-    assert np.allclose(
-        rest5.phase["release"]["force_constants"], np.array([0.0, 1.5, 3.0, 5.0])
+        rest5.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 1.0, 2.5, 5.0]),
     )
     assert np.allclose(
-        rest5.phase["release"]["targets"], np.array([1.0, 1.0, 1.0, 1.0])
+        rest5.phase["attach"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 0.0, 0.0, 0.0]),
+    )
+    assert np.allclose(
+        rest5.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([5.0, 5.0, 5.0]),
+    )
+    assert np.allclose(
+        rest5.phase["pull"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 0.5, 1.0]),
+    )
+    assert np.allclose(
+        rest5.phase["release"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 1.5, 3.0, 5.0]),
+    )
+    assert np.allclose(
+        rest5.phase["release"]["targets"].to(target_units).magnitude,
+        np.array([1.0, 1.0, 1.0, 1.0]),
     )
     window_list = create_window_list([rest5])
     assert window_list == [
@@ -329,26 +387,37 @@ def test_DAT_restraint():
     rest6.release["fraction_increment"] = 0.33
     rest6.release["fc_final"] = rest6.attach["fc_final"]
     rest6.initialize()
+
+    target_units = unit.angstrom
+    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
     assert rest6.index1 == [13, 31, 49, 67, 85, 103]
     assert rest6.index2 == [109, 113, 115, 119]
     assert rest6.index3 is None
     assert rest6.index4 is None
     assert np.allclose(
-        rest6.phase["attach"]["force_constants"], np.array([0.0, 1.25, 2.5, 3.75, 5.0])
+        rest6.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 1.25, 2.5, 3.75, 5.0]),
     )
     assert np.allclose(
-        rest6.phase["attach"]["targets"], np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+        rest6.phase["attach"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
     )
     assert np.allclose(
-        rest6.phase["pull"]["force_constants"], np.array([5.0, 5.0, 5.0])
+        rest6.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([5.0, 5.0, 5.0]),
     )
-    assert np.allclose(rest6.phase["pull"]["targets"], np.array([0.0, 0.5, 1.0]))
+    assert np.allclose(
+        rest6.phase["pull"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 0.5, 1.0]),
+    )
     ### Note, the 6.6 in the following test is wrong ... needs to get fixed.
     assert np.allclose(
-        rest6.phase["release"]["force_constants"], np.array([0.0, 1.65, 3.3, 4.95, 6.6])
+        rest6.phase["release"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 1.65, 3.3, 4.95, 6.6]),
     )
     assert np.allclose(
-        rest6.phase["release"]["targets"], np.array([1.0, 1.0, 1.0, 1.0, 1.0])
+        rest6.phase["release"]["targets"].to(target_units).magnitude,
+        np.array([1.0, 1.0, 1.0, 1.0, 1.0]),
     )
     window_list = create_window_list([rest6])
     assert window_list == [
@@ -385,23 +454,36 @@ def test_DAT_restraint():
     rest7.release["target"] = 1.5
     rest7.release["fc_list"] = [0.0, 0.66, 1.2, 2.0]
     rest7.initialize()
+
+    target_units = unit.angstrom
+    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
     assert rest7.index1 == [13, 14, 111]
     assert rest7.index2 == [3]
     assert rest7.index3 is None
     assert rest7.index4 is None
     assert np.allclose(
-        rest7.phase["attach"]["force_constants"], np.array([0.0, 0.5, 1.0, 2.0])
-    )
-    assert np.allclose(rest7.phase["attach"]["targets"], np.array([0.0, 0.0, 0.0, 0.0]))
-    assert np.allclose(
-        rest7.phase["pull"]["force_constants"], np.array([2.0, 2.0, 2.0, 2.0])
-    )
-    assert np.allclose(rest7.phase["pull"]["targets"], np.array([0.0, 0.5, 1.0, 1.5]))
-    assert np.allclose(
-        rest7.phase["release"]["force_constants"], np.array([0.0, 0.66, 1.2, 2.0])
+        rest7.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 0.5, 1.0, 2.0]),
     )
     assert np.allclose(
-        rest7.phase["release"]["targets"], np.array([1.5, 1.5, 1.5, 1.5])
+        rest7.phase["attach"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 0.0, 0.0, 0.0]),
+    )
+    assert np.allclose(
+        rest7.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([2.0, 2.0, 2.0, 2.0]),
+    )
+    assert np.allclose(
+        rest7.phase["pull"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 0.5, 1.0, 1.5]),
+    )
+    assert np.allclose(
+        rest7.phase["release"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 0.66, 1.2, 2.0]),
+    )
+    assert np.allclose(
+        rest7.phase["release"]["targets"].to(target_units).magnitude,
+        np.array([1.5, 1.5, 1.5, 1.5]),
     )
     window_list = create_window_list([rest7])
     assert window_list == [
@@ -433,14 +515,21 @@ def test_DAT_restraint():
     rest8.attach["fc_initial"] = 0.0
     rest8.attach["fc_final"] = 3.0
     rest8.initialize()
+
+    target_units = unit.angstrom
+    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
     assert rest8.index1 == [13]
     assert rest8.index2 == [119]
     assert rest8.index3 is None
     assert rest8.index4 is None
     assert np.allclose(
-        rest8.phase["attach"]["force_constants"], np.array([0.0, 1.0, 2.0, 3.0])
+        rest8.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 1.0, 2.0, 3.0]),
     )
-    assert np.allclose(rest8.phase["attach"]["targets"], np.array([0.0, 0.0, 0.0, 0.0]))
+    assert np.allclose(
+        rest8.phase["attach"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 0.0, 0.0, 0.0]),
+    )
     assert rest8.phase["pull"]["force_constants"] is None
     assert rest8.phase["pull"]["targets"] is None
     assert rest8.phase["release"]["force_constants"] is None
@@ -464,6 +553,9 @@ def test_DAT_restraint():
     rest9.pull["target_initial"] = 0.0
     rest9.pull["target_final"] = 3.0
     rest9.initialize()
+
+    target_units = unit.angstrom
+    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
     assert rest9.index1 == [13]
     assert rest9.index2 == [119]
     assert rest9.index3 is None
@@ -471,9 +563,13 @@ def test_DAT_restraint():
     assert rest9.phase["attach"]["force_constants"] is None
     assert rest9.phase["attach"]["targets"] is None
     assert np.allclose(
-        rest9.phase["pull"]["force_constants"], np.array([3.0, 3.0, 3.0, 3.0])
+        rest9.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([3.0, 3.0, 3.0, 3.0]),
     )
-    assert np.allclose(rest9.phase["pull"]["targets"], np.array([0.0, 1.0, 2.0, 3.0]))
+    assert np.allclose(
+        rest9.phase["pull"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 1.0, 2.0, 3.0]),
+    )
     assert rest9.phase["release"]["force_constants"] is None
     assert rest9.phase["release"]["targets"] is None
     window_list = create_window_list([rest9])
@@ -495,6 +591,9 @@ def test_DAT_restraint():
     rest10.release["fc_initial"] = 0.0
     rest10.release["fc_final"] = 2.0
     rest10.initialize()
+
+    target_units = unit.angstrom
+    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
     assert rest10.index1 == [13]
     assert rest10.index2 == [119]
     assert rest10.index3 is None
@@ -504,9 +603,13 @@ def test_DAT_restraint():
     assert rest10.phase["pull"]["force_constants"] is None
     assert rest10.phase["pull"]["targets"] is None
     assert np.allclose(
-        rest10.phase["release"]["force_constants"], np.array([0.0, 1.0, 2.0])
+        rest10.phase["release"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([0.0, 1.0, 2.0]),
     )
-    assert np.allclose(rest10.phase["release"]["targets"], np.array([0.0, 0.0, 0.0]))
+    assert np.allclose(
+        rest10.phase["release"]["targets"].to(target_units).magnitude,
+        np.array([0.0, 0.0, 0.0]),
+    )
     window_list = create_window_list([rest10])
     assert window_list == ["r000", "r001", "r002"]
 
@@ -544,20 +647,20 @@ def test_get_restraint_values():
     restraint.initialize()
 
     restraint_values = get_restraint_values(restraint, "attach", 0)
-    assert restraint_values["r1"] == 0.0
-    assert restraint_values["r2"] == 2.65
-    assert restraint_values["r3"] == 2.65
-    assert restraint_values["r4"] == 999.0
-    assert restraint_values["rk2"] == 0.0
-    assert restraint_values["rk3"] == 0.0
+    assert restraint_values["r1"].magnitude == 0.0
+    assert restraint_values["r2"].magnitude == 2.65
+    assert restraint_values["r3"].magnitude == 2.65
+    assert restraint_values["r4"].magnitude == 999.0
+    assert restraint_values["rk2"].magnitude == 0.0
+    assert restraint_values["rk3"].magnitude == 0.0
 
     restraint_values = get_restraint_values(restraint, "pull", 0)
-    assert restraint_values["r1"] == 0.0
-    assert restraint_values["r2"] == 2.65
-    assert restraint_values["r3"] == 2.65
-    assert restraint_values["r4"] == 999.0
-    assert restraint_values["rk2"] == 10.0
-    assert restraint_values["rk3"] == 10.0
+    assert restraint_values["r1"].magnitude == 0.0
+    assert restraint_values["r2"].magnitude == 2.65
+    assert restraint_values["r3"].magnitude == 2.65
+    assert restraint_values["r4"].magnitude == 999.0
+    assert restraint_values["rk2"].magnitude == 10.0
+    assert restraint_values["rk3"].magnitude == 10.0
 
     # Test custom values
     wall = DAT_restraint()
@@ -581,12 +684,12 @@ def test_get_restraint_values():
     wall.initialize()
 
     restraint_values = get_restraint_values(wall, "attach", 0)
-    assert restraint_values["r1"] == 0.0
-    assert restraint_values["r2"] == 0.0
-    assert restraint_values["r3"] == 3.5
-    assert restraint_values["r4"] == 999.0
-    assert restraint_values["rk2"] == 1.0
-    assert restraint_values["rk3"] == 1.0
+    assert restraint_values["r1"].magnitude == 0.0
+    assert restraint_values["r2"].magnitude == 0.0
+    assert restraint_values["r3"].magnitude == 3.5
+    assert restraint_values["r4"].magnitude == 999.0
+    assert restraint_values["rk2"].magnitude == 1.0
+    assert restraint_values["rk3"].magnitude == 1.0
 
     wall = DAT_restraint()
     wall.auto_apr = False
@@ -609,12 +712,12 @@ def test_get_restraint_values():
     wall.initialize()
 
     restraint_values = get_restraint_values(wall, "attach", 0)
-    assert restraint_values["r1"] == 0.0
-    assert restraint_values["r2"] == 3.5
-    assert restraint_values["r3"] == 0.0
-    assert restraint_values["r4"] == 999.0
-    assert restraint_values["rk2"] == 1.0
-    assert restraint_values["rk3"] == 1.0
+    assert restraint_values["r1"].magnitude == 0.0
+    assert restraint_values["r2"].magnitude == 3.5
+    assert restraint_values["r3"].magnitude == 0.0
+    assert restraint_values["r4"].magnitude == 999.0
+    assert restraint_values["rk2"].magnitude == 1.0
+    assert restraint_values["rk3"].magnitude == 1.0
 
 
 def test_get_bias_potential_type():

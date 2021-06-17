@@ -34,7 +34,7 @@ def clean_files(directory=os.path.join(os.path.dirname(__file__), "tmp")):
 
 @pytest.mark.slow
 def test_solvation_simple(clean_files):
-    """ Test that we can solvate CB6-BUT using default settings. """
+    """Test that we can solvate CB6-BUT using default settings."""
     waters = np.random.randint(100, 10000)
     logger.debug("Trying {} waters with default settings...".format(waters))
     sys = TLeap()
@@ -53,7 +53,7 @@ def test_solvation_simple(clean_files):
 
 @pytest.mark.parametrize("shape", [PBCBox.octahedral, PBCBox.cubic])
 def test_solvation_shapes(shape, clean_files):
-    """ Test that we can solvate CB6-BUT with a truncated octahedron. """
+    """Test that we can solvate CB6-BUT with a truncated octahedron."""
     waters = np.random.randint(1000, 10000)
     logger.debug("Trying {} waters in a truncated octahedron...".format(waters))
     sys = TLeap()
@@ -76,7 +76,7 @@ def test_solvation_shapes(shape, clean_files):
 
 @pytest.mark.parametrize("water_model", ["tip4p", "opc"])
 def test_solvation_water_model(water_model, clean_files):
-    """ Test that we can solvate CB6-BUT with a truncated octahedron. """
+    """Test that we can solvate CB6-BUT with a truncated octahedron."""
     waters = np.random.randint(1000, 10000)
     logger.debug("Trying {} waters in a truncated octahedron...".format(waters))
     sys = TLeap()
@@ -150,7 +150,7 @@ def test_solvation_bind3p(clean_files):
 
 @pytest.mark.slow
 def test_solvation_spatial_size(clean_files):
-    """ Test that we can solvate CB6-BUT with an buffer size in Angstroms. """
+    """Test that we can solvate CB6-BUT with an buffer size in Angstroms."""
     random_int = np.random.randint(10, 20)
     random_size = random_int * np.random.random_sample(1) + random_int
     logger.debug("Trying buffer size of {} A...".format(random_size[0]))
@@ -174,7 +174,7 @@ def test_solvation_spatial_size(clean_files):
 
 @pytest.mark.slow
 def test_solvation_potassium_control(clean_files):
-    """ Test there is no potassium by default. A negative control. """
+    """Test there is no potassium by default. A negative control."""
     waters = np.random.randint(1000, 10000)
     logger.debug("Trying {} waters with potassium...".format(waters))
     sys = TLeap()
@@ -197,7 +197,7 @@ def test_solvation_potassium_control(clean_files):
 
 @pytest.mark.slow
 def test_solvation_with_additional_ions(clean_files):
-    """ Test that we can solvate CB6-BUT with additional ions. """
+    """Test that we can solvate CB6-BUT with additional ions."""
     waters = np.random.randint(1000, 10000)
     cations = ["LI", "Na+", "K+", "RB", "CS"]
     anions = ["F", "Cl-", "BR", "IOD"]
@@ -245,7 +245,7 @@ def test_solvation_with_additional_ions(clean_files):
 
 
 def test_solvation_by_M_and_m(clean_files):
-    """ Test that we can solvate CB6-BUT through molarity and molality. """
+    """Test that we can solvate CB6-BUT through molarity and molality."""
     logger.debug("Trying 10 A buffer with 150 mM NaCl...")
     sys = TLeap()
     sys.template_file = os.path.join(
@@ -297,7 +297,7 @@ def test_solvation_by_M_and_m(clean_files):
 
 @pytest.mark.slow
 def test_alignment_workflow(clean_files):
-    """ Test that we can solvate CB6-BUT after alignment. """
+    """Test that we can solvate CB6-BUT after alignment."""
     cb6 = pmd.load_file(
         os.path.join(
             os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
@@ -322,7 +322,7 @@ def test_alignment_workflow(clean_files):
 
 
 def test_hydrogen_mass_repartitioning(clean_files):
-    """ Test that hydrogen mass is repartitioned. """
+    """Test that hydrogen mass is repartitioned."""
     temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
     sys = TLeap()
     but_frcmod = os.path.abspath(
@@ -402,7 +402,7 @@ def test_multiple_pdb_files(clean_files):
 
 
 def test_conversions(clean_files):
-    """ Test that conversion methods work in Tleap module. """
+    """Test that conversion methods work in Tleap module."""
     temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
 
     but_frcmod = os.path.abspath(
@@ -476,7 +476,7 @@ def test_conversions(clean_files):
 
 
 def test_ion_solvation(clean_files):
-    """ Test that tleap module is solvating an ion properly."""
+    """Test that tleap module is solvating an ion properly."""
     temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
 
     ions = ["Na+", "Cl-"]

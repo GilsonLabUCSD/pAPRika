@@ -12,11 +12,14 @@ dependencies:
   - parmed
   - mdtraj
   - pymbar >=3.0.5
-  - openmm
+  - openmm >=7.5.0
+  - yank
   - ambertools >=20.0
   - pyyaml
   - plumed
   - intermol
+  - openff-units
+  - openff-utilities
 
   # devtools
   - isort

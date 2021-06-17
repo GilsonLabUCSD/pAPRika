@@ -22,7 +22,7 @@ def clean_files(directory="tmp"):
 
 
 def test_save_and_load_single_restraint(clean_files):
-    """ Test we can save a simple restraint """
+    """Test we can save a simple restraint"""
     rest = DAT_restraint()
     rest.amber_index = True
     rest.continuous_apr = False
@@ -51,7 +51,7 @@ def test_save_and_load_single_restraint(clean_files):
 
 
 def test_save_and_load_list_restraint(clean_files):
-    """ Test we can save and load a list of restraints """
+    """Test we can save and load a list of restraints"""
     rest1 = DAT_restraint()
     rest1.amber_index = True
     rest1.continuous_apr = False
