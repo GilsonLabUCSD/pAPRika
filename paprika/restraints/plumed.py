@@ -2,6 +2,7 @@ import logging
 import os
 
 import numpy as np
+from openff.units import unit
 from parmed.structure import Structure as ParmedStructureClass
 
 from paprika.build.dummy import extract_dummy_atoms
@@ -11,6 +12,16 @@ from paprika.utils import get_key, return_parmed_structure
 logger = logging.getLogger(__name__)
 
 _PI_ = np.pi
+
+_plumed_unit_dict = {
+    unit.kcal / unit.mole: "kcal/mol",
+    unit.kJ / unit.mole: "kj/mol",
+    unit.nanometer: "nm",
+    unit.angstrom: "A",
+    unit.picosecond: "ps",
+    unit.femtosecond: "fs",
+    unit.nanosecond: "ns",
+}
 
 
 class Plumed:
@@ -149,16 +160,33 @@ class Plumed:
         self._uses_legacy_k = value
 
     @property
-    def units(self):
+    def output_units(self):
         """
-        dict: Dictionary of units for Plumed as strings. The dictionary requires the key values
-        of ``energy``, ``length``, ``time``.
+        dict: Dictionary of pint.unit.Quantity for the Plumed script. The dictionary requires the key values
+        of ``energy``, ``length``, ``time`` and will be converted to the appropriate string in the output script.
+        The default units are {"energy": unit.kcal/unit.mole, "length": unit.angstrom, "time": unit.picosecond}.
+        The units supported are
+        _plumed_unit_dict = {
+            "energy": {
+                unit.kcal / unit.mole,
+                unit.kJ / unit.mole,
+            },
+            "length": {
+                unit.nanometer,
+                unit.angstrom,
+            },
+            "time": {
+                unit.picosecond,
+                unit.femtosecond,
+                unit.nanosecond,
+            }
+        }
         """
-        return self._units
+        return self._output_units
 
-    @units.setter
-    def units(self, value: dict):
-        self._units = value
+    @output_units.setter
+    def output_units(self, value: dict):
+        self._output_units = value
 
     def __init__(self):
         self._file_name = "plumed.dat"
@@ -167,7 +195,7 @@ class Plumed:
         self._path = "./"
         self._uses_legacy_k = True
         self.k_factor = 1.0
-        self._units = None
+        self._output_units = None
         self.header_line = None
         self.group_index = None
         self.group_atoms = None
@@ -177,17 +205,20 @@ class Plumed:
         if self.uses_legacy_k:
             self.k_factor = 2.0
 
-        # Check units
-        # NOTE: We have to resort to strings until (if) we migrate all quantities to Pint/SimTK units
-        if self.units is None:
-            self.units = {"energy": "kcal/mol", "length": "A", "time": "ns"}
-        _check_plumed_units(self.units)
+        # Check user-specified units
+        if self.output_units is None:
+            self.output_units = {
+                "energy": unit.kcal / unit.mole,
+                "length": unit.angstrom,
+                "time": unit.nanosecond,
+            }
+        _check_plumed_units(self.output_units)
 
         # header line
         self.header_line = (
-            f"UNITS LENGTH={self.units['length']} "
-            f"ENERGY={self.units['energy']} "
-            f"TIME={self.units['time']}"
+            f"UNITS LENGTH={_plumed_unit_dict[self.output_units['length']]} "
+            f"ENERGY={_plumed_unit_dict[self.output_units['energy']]} "
+            f"TIME={_plumed_unit_dict[self.output_units['time']]}"
         )
 
     def dump_to_file(self):
@@ -231,14 +262,20 @@ class Plumed:
                 atom_index = self._get_atom_indices(restraint)
                 atom_string = ",".join(map(str, atom_index))
 
-                # Determine collective variable type
-                colvar_type = "distance"
-                if len(atom_index) == 3:
-                    colvar_type = "angle"
-                    target *= _PI_ / 180.0
-                elif len(atom_index) == 4:
-                    colvar_type = "torsion"
-                    target *= _PI_ / 180.0
+                # Convert units to the correct type for PLUMED module
+                if restraint.restraint_type == "distance":
+                    target = target.to(unit.angstrom)
+                    force_constant = force_constant.to(
+                        self.output_units["energy"] / self.output_units["length"] ** 2
+                    )
+                elif (
+                    restraint.restraint_type == "angle"
+                    or restraint.restraint_type == "torsion"
+                ):
+                    target = target.to(unit.radians)
+                    force_constant = force_constant.to(
+                        self.output_units["energy"] / unit.radians ** 2
+                    )
 
                 # Determine bias type for this restraint
                 bias_type = get_bias_potential_type(restraint, phase, window)
@@ -251,16 +288,18 @@ class Plumed:
                     cv_dict[cv_key] = atom_string
 
                     cv_lines.append(
-                        f"{cv_key}: {colvar_type.upper()} ATOMS={atom_string} NOPBC\n"
+                        f"{cv_key}: {restraint.restraint_type.upper()} ATOMS={atom_string} NOPBC\n"
                     )
                     bias_lines.append(
-                        f"{bias_type.upper()} ARG={cv_key} AT={target:.4f} KAPPA={force_constant:.2f}\n"
+                        f"{bias_type.upper()} ARG={cv_key} AT={target.magnitude:.4f} KAPPA="
+                        f"{force_constant.magnitude:.2f}\n"
                     )
                 else:
                     cv_key = get_key(cv_dict, atom_string)[0]
 
                     bias_lines.append(
-                        f"{bias_type.upper()} ARG={cv_key} AT={target:.4f} KAPPA={force_constant:.2f}\n"
+                        f"{bias_type.upper()} ARG={cv_key} AT={target.magnitude:.4f} KAPPA="
+                        f"{force_constant.magnitude:.2f}\n"
                     )
 
                 # Increment cv index
@@ -457,17 +496,17 @@ class Plumed:
 
 def _check_plumed_units(units):
     """
-    Checks the specified units and makes sure that its supported.
+    Checks the specified units and makes sure that it is supported in Plumed.
     """
-    if units["energy"] not in ["kj/mol", "kcal/mol"]:
+    if units["energy"] not in _plumed_unit_dict:
         raise Exception(
             f"Specified unit for energy ({units['energy']}) is not supported."
         )
 
-    if units["length"] not in ["nm", "A"]:
+    if units["length"] not in _plumed_unit_dict:
         raise Exception(
             f"Specified unit for length ({units['length']}) is not supported."
         )
 
-    if units["time"] not in ["ps", "fs", "ns"]:
+    if units["time"] not in _plumed_unit_dict:
         raise Exception(f"Specified unit for time ({units['time']}) is not supported.")

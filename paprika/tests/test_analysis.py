@@ -87,7 +87,7 @@ def setup_free_energy_calculation():
     seed = 12345
 
     fecalc = analysis.fe_calc()
-    fecalc.prmtop = os.path.join(
+    fecalc.topology = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but-apr/vac.prmtop"
     )
     fecalc.trajectory = "*.nc"
@@ -98,7 +98,7 @@ def setup_free_energy_calculation():
     fecalc.ti_matrix = "diagonal"
     fecalc.compute_largest_neighbor = True
     fecalc.compute_roi = True
-    fecalc.collect_data(single_prmtop=True)
+    fecalc.collect_data(single_topology=True)
     fecalc.compute_free_energy(seed=seed)
     fecalc.compute_ref_state_work([rest1, rest2, rest3, None, None, None])
 
@@ -115,21 +115,21 @@ def test_mbar_block(clean_files, setup_free_energy_calculation):
 
     # Test mbar-block free energies and uncertainties
     test_vals = [
-        results["attach"][method]["fe"],
-        results["attach"][method]["sem"],
-        results["pull"][method]["fe"],
-        results["pull"][method]["sem"],
+        results["attach"][method]["fe"].magnitude,
+        results["attach"][method]["sem"].magnitude,
+        results["pull"][method]["fe"].magnitude,
+        results["pull"][method]["sem"].magnitude,
     ]
     reference_values = [13.267731176, 0.16892084090, -2.1791430735, 0.93638948302]
     assert reference_values == approx(test_vals, abs=0.01)
 
     # Test attach mbar-block largest_neighbor values
-    test_vals = results["attach"][method]["largest_neighbor"]
+    test_vals = results["attach"][method]["largest_neighbor"].magnitude
     reference_values = np.array([0.0198918, 0.0451676, 0.0564517, 0.1079282, 0.1079282])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # Test pull mbar-block largest_neighbor values
-    test_vals = results["pull"][method]["largest_neighbor"]
+    test_vals = results["pull"][method]["largest_neighbor"].magnitude
     reference_values = np.array(
         [
             0.2053769,
@@ -163,10 +163,10 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
 
     # Test ti-block free energies and uncertainties
     test_vals = [
-        results["attach"][method]["fe"],
-        results["attach"][method]["sem"],
-        results["pull"][method]["fe"],
-        results["pull"][method]["sem"],
+        results["attach"][method]["fe"].magnitude,
+        results["attach"][method]["sem"].magnitude,
+        results["pull"][method]["fe"].magnitude,
+        results["pull"][method]["sem"].magnitude,
     ]
     reference_values = np.array([13.35, 0.26, -1.85, 0.78])
     assert reference_values == approx(test_vals, abs=0.01)
@@ -174,12 +174,12 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
     # ROI only runs during TI.
 
     # Test attach ti-block largest_neighbor values
-    test_vals = results["attach"][method]["largest_neighbor"]
+    test_vals = results["attach"][method]["largest_neighbor"].magnitude
     reference_values = np.array([0.03, 0.07, 0.10, 0.18, 0.18])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # Test pull ti-block largest_neighbor values
-    test_vals = results["pull"][method]["largest_neighbor"]
+    test_vals = results["pull"][method]["largest_neighbor"].magnitude
 
     reference_values = np.array(
         [
@@ -209,7 +209,7 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
 
 def test_reference_state_work(clean_files, setup_free_energy_calculation):
     results = setup_free_energy_calculation.results
-    assert np.isclose(-4.34372240, results["ref_state_work"])
+    assert np.isclose(-4.34372240, results["ref_state_work"].magnitude)
 
 
 def test_temperature(clean_files):
@@ -269,18 +269,24 @@ def test_temperature(clean_files):
 
     fecalc = analysis.fe_calc()
     fecalc.temperature = 298.15
-    assert pytest.approx(fecalc.beta, abs=1e-3) == 1.68780
+    assert pytest.approx(fecalc.beta.magnitude, abs=1e-3) == 1.68780
     fecalc.compute_ref_state_work([rest1, rest2, None, None, rest3, None])
-    assert pytest.approx(fecalc.results["ref_state_work"], abs=1e-3) == -7.14151
+    assert (
+        pytest.approx(fecalc.results["ref_state_work"].magnitude, abs=1e-3) == -7.14151
+    )
 
     fecalc = analysis.fe_calc()
     fecalc.temperature = 328.15
-    assert pytest.approx(fecalc.beta, abs=1e-3) == 1.53285
+    assert pytest.approx(fecalc.beta.magnitude, abs=1e-3) == 1.53285
     fecalc.compute_ref_state_work([rest1, rest2, None, None, rest3, None])
-    assert pytest.approx(fecalc.results["ref_state_work"], abs=1e-3) == -7.70392
+    assert (
+        pytest.approx(fecalc.results["ref_state_work"].magnitude, abs=1e-3) == -7.70392
+    )
 
     fecalc = analysis.fe_calc()
     fecalc.temperature = 278.15
-    assert pytest.approx(fecalc.beta, abs=1e-3) == 1.80839
+    assert pytest.approx(fecalc.beta.magnitude, abs=1e-3) == 1.80839
     fecalc.compute_ref_state_work([rest1, rest2, None, None, rest3, None])
-    assert pytest.approx(fecalc.results["ref_state_work"], abs=1e-3) == -6.75834
+    assert (
+        pytest.approx(fecalc.results["ref_state_work"].magnitude, abs=1e-3) == -6.75834
+    )

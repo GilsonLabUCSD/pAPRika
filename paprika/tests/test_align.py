@@ -7,6 +7,7 @@ import os
 import numpy as np
 import parmed as pmd
 import pytest
+from openff.units import unit
 
 from paprika.build.align import (
     align_principal_axes,
@@ -21,7 +22,7 @@ from paprika.build.align import (
 
 
 def test_center_mask():
-    """Test that the first mask is centered"""
+    """Test that the first mask is centered."""
     cb6 = pmd.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     )
@@ -48,13 +49,21 @@ def test_theta_after_alignment():
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     )
     aligned_cb6 = zalign(cb6, ":CB6", ":BUT")
-    assert get_theta(aligned_cb6, ":CB6", ":BUT", axis="z") == 0
     assert (
-        pytest.approx(get_theta(aligned_cb6, ":CB6", ":BUT", axis="x"), abs=1e-3)
+        get_theta(aligned_cb6, ":CB6", ":BUT", axis="z").to(unit.radians).magnitude == 0
+    )
+    assert (
+        pytest.approx(
+            get_theta(aligned_cb6, ":CB6", ":BUT", axis="x").to(unit.radians).magnitude,
+            abs=1e-3,
+        )
         == 1.5708
     )
     assert (
-        pytest.approx(get_theta(aligned_cb6, ":CB6", ":BUT", axis="y"), abs=1e-3)
+        pytest.approx(
+            get_theta(aligned_cb6, ":CB6", ":BUT", axis="y").to(unit.radians).magnitude,
+            abs=1e-3,
+        )
         == 1.5708
     )
 
@@ -120,13 +129,19 @@ def test_align_principal_axes():
         cb6, atom_mask=":CB6", principal_axis=1, axis="y"
     )
 
-    angle = get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="z") * 180 / np.pi
+    angle = (
+        get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="z").to(unit.degrees).magnitude
+    )
     assert pytest.approx(angle, abs=1e-1) == 90.0
 
-    angle = get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="y") * 180 / np.pi
+    angle = (
+        get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="y").to(unit.degrees).magnitude
+    )
     assert pytest.approx(angle, abs=1e-1) == 0.0
 
-    angle = get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="x") * 180 / np.pi
+    angle = (
+        get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="x").to(unit.degrees).magnitude
+    )
     assert pytest.approx(angle, abs=1e-1) == 90.0
 
 
@@ -136,16 +151,22 @@ def test_rotate_around_axis():
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         structure=True,
     )
-    cb6_aligned = rotate_around_axis(cb6, axis="z", angle=90.0)
-    angle = get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="z") * 180 / np.pi
+    cb6_aligned = rotate_around_axis(cb6, axis="z", angle=90.0 * unit.degrees)
+    angle = (
+        get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="z").to(unit.degrees).magnitude
+    )
     assert pytest.approx(angle, abs=1e-1) == 0.0
 
-    cb6_aligned = rotate_around_axis(cb6_aligned, axis="x", angle=90.0)
-    angle = get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="x") * 180 / np.pi
+    cb6_aligned = rotate_around_axis(cb6_aligned, axis="x", angle=90.0 * unit.degrees)
+    angle = (
+        get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="x").to(unit.degrees).magnitude
+    )
     assert pytest.approx(angle, abs=1e-1) == 90.0
 
-    cb6_aligned = rotate_around_axis(cb6_aligned, axis="y", angle=90.0)
-    angle = get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="y") * 180 / np.pi
+    cb6_aligned = rotate_around_axis(cb6_aligned, axis="y", angle=90.0) * unit.degrees
+    angle = (
+        get_theta(cb6_aligned, ":BUT@C", ":BUT@C3", axis="y").to(unit.degrees).magnitude
+    )
     assert pytest.approx(angle, abs=1e-1) == 180.0
 
     # Arbitrary axes
@@ -153,12 +174,20 @@ def test_rotate_around_axis():
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         structure=True,
     )
-    cb6_axis = rotate_around_axis(cb6, axis=[0, 0, 1], angle=90.0)
-    angle = get_theta(cb6_axis, ":BUT@C", ":BUT@C3", axis=[0, 0, 1]) * 180 / np.pi
+    cb6_axis = rotate_around_axis(cb6, axis=[0, 0, 1], angle=90.0 * unit.degrees)
+    angle = (
+        get_theta(cb6_axis, ":BUT@C", ":BUT@C3", axis=[0, 0, 1])
+        .to(unit.degrees)
+        .magnitude
+    )
     assert pytest.approx(angle, abs=1e-1) == 0.0
 
-    cb6_axis = rotate_around_axis(cb6, axis=[1, 1, 1], angle=90.0)
-    angle = get_theta(cb6_axis, ":BUT@C", ":BUT@C3", axis=[1, 1, 1]) * 180 / np.pi
+    cb6_axis = rotate_around_axis(cb6, axis=[1, 1, 1], angle=90.0 * unit.degrees)
+    angle = (
+        get_theta(cb6_axis, ":BUT@C", ":BUT@C3", axis=[1, 1, 1])
+        .to(unit.degrees)
+        .magnitude
+    )
     assert pytest.approx(angle, abs=1e-1) == 54.7
 
 
