@@ -1,5 +1,3 @@
-import sys
-
 import click
 import parmed as pmd
 
@@ -160,7 +158,7 @@ def princ(
     vector,
     atom_mask,
 ):
-    """Aligns a principal-axis of the structure to an reference axis."""
+    """Aligns a principal-axis of a structure to an reference axis."""
     from paprika.build.align import align_principal_axes
 
     # Load files as a ParmEd structure
@@ -207,55 +205,119 @@ def princ(
     "-o",
     "--output",
     "output_file",
-    required=True,
+    default="output.pdb",
     type=str,
     help="The name for the output file (default: output.pdb).",
 )
 @click.option(
+    "-m",
     "--mask",
     "atom_mask",
     default=None,
-    help="The selection of atoms as reference when translating the structure to the origin (default: all atoms).",
+    help="A selection of atoms as reference when translating the structure to the origin (default: all atoms).",
 )
 @click.option(
-    "--origin", "origin", is_flag=True, help="Translate the structure to the origin."
-)
-@click.option(
-    "--offset",
-    "offset",
-    default=None,
-    type=float,
-    help="Offset the structure by this amount (direction needs to be specified).",
-)
-@click.option(
-    "--direction",
-    "direction",
+    "-d",
+    "--dimension",
+    "dimension",
     default=None,
     type=str,
-    help="The direction to offset the structure +-(x, y, or z).",
+    help="The dimension to offset the structure (x, y, or z) (default: all).",
 )
-@click.option(
-    "--vector",
-    "vector",
-    nargs=3,
-    type=float,
-    default=None,
-    help="Translate the structure with a vector.",
-)
-def translate(
+@click.argument("dimension", nargs=-1)
+def origin(
     coordinates_file,
     topology_file,
     output_file,
     atom_mask,
-    origin,
+    dimension,
+):
+    """Translate the coordinates of a structure to the origin."""
+    from paprika.build.align import translate_to_origin
+
+    # Load files as a ParmEd structure
+    files = [coordinates_file]
+    if topology_file is not None:
+        files = [topology_file] + files
+
+    structure = pmd.load_file(*files, structure=True)
+
+    # Translate to the origin
+    print("origin: Translating structure to the origin.")
+    structure = translate_to_origin(
+        structure,
+        atom_mask=atom_mask,
+        dimension=None if len(dimension) == 0 else dimension,
+    )
+
+    # Save to files
+    structure.save(output_file, overwrite=True)
+
+
+@align.command()
+@click.option(
+    "-c",
+    "--coordinates",
+    "coordinates_file",
+    required=True,
+    type=str,
+    help="The coordinates file (pdb, rst7, mol2, gro)",
+)
+@click.option(
+    "-t",
+    "--topology",
+    "topology_file",
+    default=None,
+    type=str,
+    help="The topology file (pdb, psf, prmtop, top).",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_file",
+    default="output.pdb",
+    type=str,
+    help="The name for the output file (default: output.pdb).",
+)
+@click.option(
+    "-off",
+    "--offset",
+    "offset",
+    default=None,
+    type=float,
+    help="Offset the structure by this amount. By default the structure "
+    "will be translated by this amount in all direction.",
+)
+@click.option(
+    "-d",
+    "--dimension",
+    "dimension",
+    default=None,
+    nargs=0,
+    type=str,
+    help="The dimension to offset the structure (x, y, or z) (default: all).",
+)
+@click.argument("dimension", nargs=-1)
+@click.option(
+    "--vector",
+    "vector",
+    default=None,
+    nargs=3,
+    type=float,
+    help="The vector to translate the structure by.",
+)
+def shift(
+    coordinates_file,
+    topology_file,
+    output_file,
     offset,
-    direction,
+    dimension,
     vector,
 ):
-    """Translate a structure to the origin or by an arbitrary amount."""
+    """Translate the coordinates of a structure."""
     import numpy as np
 
-    from paprika.build.align import offset_structure, translate_to_origin
+    from paprika.build.align import offset_structure
 
     # Load files as a ParmEd structure
     files = [coordinates_file]
@@ -265,20 +327,16 @@ def translate(
     structure = pmd.load_file(*files, structure=True)
 
     # Translate structure
-    if offset is not None and direction is None:
-        print("error: `axis` needs to be defined if `offset` is specified.")
-        sys.exit()
-    elif offset is not None and direction is not None:
-        print(
-            f"translate: Translating structure by {offset} in the `{direction}` direction."
-        )
-        structure = offset_structure(structure, offset, dimension=direction)
-    if origin:
-        print("translate: Translating structure to the origin.")
-        structure = translate_to_origin(structure, atom_mask=atom_mask, dimension=direction)
-    elif not origin and len(vector) == 3:
-        print(f"translate: Translating structure by {vector}.")
+    if len(vector) == 3:
+        print(f"shift: Translating structure by {vector}.")
         structure = offset_structure(structure, np.array(vector), dimension=None)
+    else:
+        print(
+            f"shift: Translating structure by {offset} in the `{dimension}` direction."
+            if dimension is not None
+            else f"shift: Translating structure by {offset} in all directions."
+        )
+        structure = offset_structure(structure, offset, dimension=dimension)
 
     # Save to files
     structure.save(output_file, overwrite=True)
@@ -335,9 +393,7 @@ def translate(
     help="The axis of rotation in vector form (e.g. 1 1 1). "
     "This option supersedes the choice of axis if both `axis` and `vector` are specified.",
 )
-def rotate(
-    coordinates_file, topology_file, output_file, angle, axis, vector
-):
+def rotate(coordinates_file, topology_file, output_file, angle, axis, vector):
     """Rotate a structure around an axis."""
     from paprika.build.align import rotate_around_axis
 
@@ -451,9 +507,9 @@ def add(coordinates_file, topology_file, output_name, file_format, x_pos, y_pos,
     "-o",
     "--output",
     "output",
-    required=True,
+    default="dummy.frcmod",
     type=str,
-    help="The name for the frcmod file.",
+    help="The name for the frcmod file (default: dummy.frcmod).",
 )
 @click.option(
     "-m",
@@ -483,9 +539,9 @@ def frcmod(atom_type, output, mass):
     "-o",
     "--output",
     "output_name",
-    required=True,
+    default="dummy.mol2",
     type=str,
-    help="The name for the MOL2 file.",
+    help="The name for the MOL2 file (default: dummy.mol2).",
 )
 @click.option(
     "-t",
