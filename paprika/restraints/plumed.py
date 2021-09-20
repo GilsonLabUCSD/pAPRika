@@ -2,7 +2,7 @@ import logging
 import os
 
 import numpy as np
-from openff.units import unit
+from openff.units import unit as pint_unit
 from parmed.structure import Structure as ParmedStructureClass
 
 from paprika.build.dummy import extract_dummy_atoms
@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 _PI_ = np.pi
 
 _plumed_unit_dict = {
-    unit.kcal / unit.mole: "kcal/mol",
-    unit.kJ / unit.mole: "kj/mol",
-    unit.nanometer: "nm",
-    unit.angstrom: "A",
-    unit.picosecond: "ps",
-    unit.femtosecond: "fs",
-    unit.nanosecond: "ns",
+    pint_unit.kcal / pint_unit.mole: "kcal/mol",
+    pint_unit.kJ / pint_unit.mole: "kj/mol",
+    pint_unit.nanometer: "nm",
+    pint_unit.angstrom: "A",
+    pint_unit.picosecond: "ps",
+    pint_unit.femtosecond: "fs",
+    pint_unit.nanosecond: "ns",
 }
 
 
@@ -208,9 +208,9 @@ class Plumed:
         # Check user-specified units
         if self.output_units is None:
             self.output_units = {
-                "energy": unit.kcal / unit.mole,
-                "length": unit.angstrom,
-                "time": unit.nanosecond,
+                "energy": pint_unit.kcal / pint_unit.mole,
+                "length": pint_unit.angstrom,
+                "time": pint_unit.nanosecond,
             }
         _check_plumed_units(self.output_units)
 
@@ -264,7 +264,7 @@ class Plumed:
 
                 # Convert units to the correct type for PLUMED module
                 if restraint.restraint_type == "distance":
-                    target = target.to(unit.angstrom)
+                    target = target.to(pint_unit.angstrom)
                     force_constant = force_constant.to(
                         self.output_units["energy"] / self.output_units["length"] ** 2
                     )
@@ -272,9 +272,9 @@ class Plumed:
                     restraint.restraint_type == "angle"
                     or restraint.restraint_type == "torsion"
                 ):
-                    target = target.to(unit.radians)
+                    target = target.to(pint_unit.radians)
                     force_constant = force_constant.to(
-                        self.output_units["energy"] / unit.radians ** 2
+                        self.output_units["energy"] / pint_unit.radians ** 2
                     )
 
                 # Determine bias type for this restraint

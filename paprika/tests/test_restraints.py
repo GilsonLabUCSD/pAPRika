@@ -1,21 +1,25 @@
 """
 Tests the restraints utilities.
 """
-
 import logging
 import os
 
 import numpy as np
+import openmm
+import openmm.app as app
+import openmm.unit as openmm_unit
 import parmed as pmd
 import pytest
-from openff.units import unit
+from openff.units import unit as pint_unit
 
+from paprika.restraints.openmm import apply_dat_restraint, apply_positional_restraints
 from paprika.restraints.restraints import DAT_restraint, create_window_list
 from paprika.restraints.utils import (
     extract_guest_restraints,
     get_bias_potential_type,
     get_restraint_values,
 )
+from paprika.tests.test_tleap import clean_files
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +50,8 @@ def test_DAT_restraint():
     rest1.release["fc_final"] = rest1.attach["fc_final"]
     rest1.initialize()
 
-    target_units = unit.angstrom
-    force_constant_units = unit.kcal / unit.mole / target_units ** 2
+    target_units = pint_unit.angstrom
+    force_constant_units = pint_unit.kcal / pint_unit.mole / target_units ** 2
     assert rest1.index1 == [13, 31, 49, 67, 85, 103]
     assert rest1.index2 == [119]
     assert rest1.index3 is None
@@ -115,8 +119,8 @@ def test_DAT_restraint():
     rest2.release["fc_final"] = rest2.attach["fc_final"]
     rest2.initialize()
 
-    target_units = unit.degrees
-    force_constant_units = unit.kcal / unit.mole / unit.radians ** 2
+    target_units = pint_unit.degrees
+    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.radians ** 2
     assert rest2.index1 == [13, 31, 49, 67, 85, 103]
     assert rest2.index2 == [119]
     assert rest2.index3 == [109]
@@ -183,8 +187,8 @@ def test_DAT_restraint():
     rest3.release["fc_final"] = 75.0
     rest3.initialize()
 
-    target_units = unit.degrees
-    force_constant_units = unit.kcal / unit.mole / unit.radians ** 2
+    target_units = pint_unit.degrees
+    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.radians ** 2
     assert rest3.index1 == [31]
     assert rest3.index2 == [13]
     assert rest3.index3 == [119]
@@ -253,8 +257,8 @@ def test_DAT_restraint():
     rest4.release["fc_final"] = 75.0
     rest4.initialize()
 
-    target_units = unit.degrees
-    force_constant_units = unit.kcal / unit.mole / unit.radians ** 2
+    target_units = pint_unit.degrees
+    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.radians ** 2
     assert rest4.index1 == [31]
     assert rest4.index2 == [13]
     assert rest4.index3 == [119]
@@ -321,8 +325,8 @@ def test_DAT_restraint():
     rest5.release["fc_final"] = rest5.attach["fc_final"]
     rest5.initialize()
 
-    target_units = unit.angstrom
-    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
+    target_units = pint_unit.angstrom
+    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom ** 2
     assert rest5.index1 == [13, 31, 49, 67, 85, 103]
     assert rest5.index2 == [109, 113, 115, 119]
     assert rest5.index3 is None
@@ -388,8 +392,8 @@ def test_DAT_restraint():
     rest6.release["fc_final"] = rest6.attach["fc_final"]
     rest6.initialize()
 
-    target_units = unit.angstrom
-    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
+    target_units = pint_unit.angstrom
+    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom ** 2
     assert rest6.index1 == [13, 31, 49, 67, 85, 103]
     assert rest6.index2 == [109, 113, 115, 119]
     assert rest6.index3 is None
@@ -455,8 +459,8 @@ def test_DAT_restraint():
     rest7.release["fc_list"] = [0.0, 0.66, 1.2, 2.0]
     rest7.initialize()
 
-    target_units = unit.angstrom
-    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
+    target_units = pint_unit.angstrom
+    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom ** 2
     assert rest7.index1 == [13, 14, 111]
     assert rest7.index2 == [3]
     assert rest7.index3 is None
@@ -516,8 +520,8 @@ def test_DAT_restraint():
     rest8.attach["fc_final"] = 3.0
     rest8.initialize()
 
-    target_units = unit.angstrom
-    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
+    target_units = pint_unit.angstrom
+    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom ** 2
     assert rest8.index1 == [13]
     assert rest8.index2 == [119]
     assert rest8.index3 is None
@@ -554,8 +558,8 @@ def test_DAT_restraint():
     rest9.pull["target_final"] = 3.0
     rest9.initialize()
 
-    target_units = unit.angstrom
-    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
+    target_units = pint_unit.angstrom
+    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom ** 2
     assert rest9.index1 == [13]
     assert rest9.index2 == [119]
     assert rest9.index3 is None
@@ -592,8 +596,8 @@ def test_DAT_restraint():
     rest10.release["fc_final"] = 2.0
     rest10.initialize()
 
-    target_units = unit.angstrom
-    force_constant_units = unit.kcal / unit.mole / unit.angstrom ** 2
+    target_units = pint_unit.angstrom
+    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom ** 2
     assert rest10.index1 == [13]
     assert rest10.index2 == [119]
     assert rest10.index3 is None
@@ -1093,3 +1097,285 @@ def test_extract_guest_restraints():
     assert guest_restraints[3] is not None
     assert guest_restraints[4] is not None
     assert guest_restraints[5] is not None
+
+
+def test_restraints_output_modules(clean_files):
+    """Test restraints output modules (colvars, plumed, openmm, amber)."""
+    import paprika.build.dummy as dummy
+    from paprika.restraints.amber import amber_restraint_line
+    from paprika.restraints.colvars import Colvars
+    from paprika.restraints.plumed import Plumed
+    from paprika.restraints.utils import parse_window
+
+    window = "p000"
+    window_number, phase = parse_window(window)
+    os.makedirs(os.path.join("tmp", window))
+
+    # Test OpenMM restraint modules
+    prmtop_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.prmtop")
+    )
+    inpcrd_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.rst7")
+    )
+
+    # Add Dummy atoms
+    structure = pmd.load_file(prmtop_path, inpcrd_path, structure=True)
+
+    dummy_atoms = {
+        0: {"resname": "DM1", "x": 0.0, "y": 0.0, "z": -6.0},
+        1: {"resname": "DM2", "x": 0.0, "y": 0.0, "z": -9.0},
+        2: {"resname": "DM3", "x": 0.0, "y": 2.2, "z": -11.2},
+    }
+    for i in dummy_atoms:
+        structure = dummy.add_dummy(
+            structure,
+            residue_name=dummy_atoms[i]["resname"],
+            x=dummy_atoms[i]["x"],
+            y=dummy_atoms[i]["y"],
+            z=dummy_atoms[i]["z"],
+        )
+
+    # Create DAT restraints
+    guest_restraints = []
+
+    # Guest - r
+    r = DAT_restraint()
+    r.amber_index = True
+    r.continuous_apr = True
+    r.auto_apr = True
+    r.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r.mask1 = ":DM1"
+    r.mask2 = ":BUT@C3"
+    r.attach["target"] = 6.0
+    r.attach["num_windows"] = 4
+    r.attach["fc_initial"] = 0.0
+    r.attach["fc_final"] = 5.0
+    r.pull["fc"] = r.attach["fc_final"]
+    r.pull["num_windows"] = 46
+    r.pull["target_initial"] = r.attach["target"]
+    r.pull["target_final"] = 24.0
+    r.release["target"] = r.pull["target_final"]
+    r.release["num_windows"] = r.attach["num_windows"]
+    r.release["fc_initial"] = r.attach["fc_initial"]
+    r.release["fc_final"] = r.attach["fc_final"]
+    r.initialize()
+    guest_restraints.append(r)
+
+    # Guest - theta
+    r = DAT_restraint()
+    r.amber_index = True
+    r.continuous_apr = True
+    r.auto_apr = True
+    r.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r.mask1 = ":DM1"
+    r.mask2 = ":BUT@C3"
+    r.mask3 = ":BUT@C"
+    r.attach["target"] = 180.0
+    r.attach["num_windows"] = 15
+    r.attach["fc_initial"] = 0.0
+    r.attach["fc_final"] = 100.0
+    r.pull["fc"] = r.attach["fc_final"]
+    r.pull["num_windows"] = 46
+    r.pull["target_initial"] = r.attach["target"]
+    r.pull["target_final"] = 180.0
+    r.release["target"] = r.pull["target_final"]
+    r.release["num_windows"] = r.attach["num_windows"]
+    r.release["fc_initial"] = r.attach["fc_initial"]
+    r.release["fc_final"] = r.attach["fc_final"]
+    r.initialize()
+    guest_restraints.append(r)
+
+    # Guest - beta
+    r = DAT_restraint()
+    r.amber_index = True
+    r.continuous_apr = True
+    r.auto_apr = True
+    r.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r.mask1 = ":DM2"
+    r.mask2 = ":DM1"
+    r.mask3 = ":BUT@C3"
+    r.attach["target"] = 180.0
+    r.attach["num_windows"] = 15
+    r.attach["fc_initial"] = 0.0
+    r.attach["fc_final"] = 100.0
+    r.pull["fc"] = r.attach["fc_final"]
+    r.pull["num_windows"] = 46
+    r.pull["target_initial"] = r.attach["target"]
+    r.pull["target_final"] = 180.0
+    r.release["target"] = r.pull["target_final"]
+    r.release["num_windows"] = r.attach["num_windows"]
+    r.release["fc_initial"] = r.attach["fc_initial"]
+    r.release["fc_final"] = r.attach["fc_final"]
+    r.initialize()
+    guest_restraints.append(r)
+
+    # Create OpenMM System
+    system = structure.createSystem(
+        nonbondedMethod=app.NoCutoff,
+        constraints=app.HBonds,
+    )
+
+    # Create restraints for OpenMM system
+    kpos = 50.0 * openmm_unit.kilocalories_per_mole / openmm_unit.angstrom ** 2
+    apply_positional_restraints(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
+        system,
+        kpos=kpos,
+    )
+    for restraint in guest_restraints:
+        apply_dat_restraint(system, restraint, phase=phase, window_number=window_number)
+
+    positional_restraints = [
+        force
+        for force in system.getForces()
+        if isinstance(force, openmm.CustomExternalForce)
+    ]
+    DAT_restraint_list = [
+        force
+        for force in system.getForces()
+        if isinstance(force, openmm.CustomBondForce)
+        or isinstance(force, openmm.CustomAngleForce)
+        or isinstance(force, openmm.CustomTorsionForce)
+    ]
+
+    # Test dummy atom positional restraint
+    for i, force in enumerate(positional_restraints):
+        particle, parameters = force.getParticleParameters(0)
+        assert pytest.approx(parameters[0], abs=1e-3) == kpos.value_in_unit(
+            openmm_unit.kilojoule_per_mole / openmm_unit.nanometer ** 2
+        )
+        assert pytest.approx(parameters[1], abs=1e-3) == dummy_atoms[i]["x"] / 10
+        assert pytest.approx(parameters[2], abs=1e-3) == dummy_atoms[i]["y"] / 10
+        assert pytest.approx(parameters[3], abs=1e-3) == dummy_atoms[i]["z"] / 10
+
+    # Test Amber NMR-style restraints
+    atom1, atom2, parameters = DAT_restraint_list[0].getBondParameters(0)
+    assert pytest.approx(parameters[0]) == 2092.0
+    assert pytest.approx(parameters[1]) == 0.6
+
+    atom1, atom2, atom3, parameters = DAT_restraint_list[1].getAngleParameters(0)
+    assert pytest.approx(parameters[0]) == 418.4
+    assert pytest.approx(parameters[1]) == np.pi
+
+    atom1, atom2, atom3, parameters = DAT_restraint_list[2].getAngleParameters(0)
+    assert pytest.approx(parameters[0]) == 418.4
+    assert pytest.approx(parameters[1]) == np.pi
+
+    # Test Amber restraints
+    r_string = amber_restraint_line(guest_restraints[0], window)
+    assert r_string.split()[2].split(",")[0] == "123"
+    assert r_string.split()[2].split(",")[1] == "119"
+    assert float(r_string.split()[4].split(",")[0]) == 0.0
+    assert float(r_string.split()[6].split(",")[0]) == 6.0
+    assert float(r_string.split()[8].split(",")[0]) == 6.0
+    assert float(r_string.split()[10].split(",")[0]) == 999.0
+    assert float(r_string.split()[12].split(",")[0]) == 5.0
+    assert float(r_string.split()[14].split(",")[0]) == 5.0
+
+    theta_string = amber_restraint_line(guest_restraints[1], window)
+    assert theta_string.split()[2].split(",")[0] == "123"
+    assert theta_string.split()[2].split(",")[1] == "119"
+    assert theta_string.split()[2].split(",")[2] == "109"
+    assert float(theta_string.split()[4].split(",")[0]) == 0.0
+    assert float(theta_string.split()[6].split(",")[0]) == 180.0
+    assert float(theta_string.split()[8].split(",")[0]) == 180.0
+    assert float(theta_string.split()[10].split(",")[0]) == 180.0
+    assert float(theta_string.split()[12].split(",")[0]) == 100.0
+    assert float(theta_string.split()[14].split(",")[0]) == 100.0
+
+    # Test Plumed output
+    plumed = Plumed()
+    plumed.path = "tmp"
+    plumed.file_name = "plumed.dat"
+    plumed.window_list = [window]
+    plumed.restraint_list = guest_restraints
+    # plumed.add_dummy_atom_restraints(structure, window)
+    plumed.dump_to_file()
+
+    with open(os.path.join(plumed.path, window, "plumed.dat"), "r") as f:
+        plumed_string = f.readlines()
+
+    for line in plumed_string:
+        if "DISTANCE" in line:
+            restraint_line = line.split()
+            if restraint_line[0] == ":c1":
+                assert restraint_line[2] == "ATOMS=123,119"
+            elif restraint_line[1] == ":c2":
+                assert restraint_line[2] == "ATOMS=123,119,109"
+            elif restraint_line[1] == ":c3":
+                assert restraint_line[2] == "ATOMS=124,123,119"
+
+        if line.startswith("RESTRAINT"):
+            restraint_line = line.split()
+            if "c1" in restraint_line[1]:
+                assert float(restraint_line[2].split("=")[1]) == 6.0
+                assert float(restraint_line[3].split("=")[1]) == 10.0
+            elif "c2" in restraint_line[1]:
+                assert float(restraint_line[2].split("=")[1]) == 3.1416
+                assert float(restraint_line[3].split("=")[1]) == 200.0
+            elif "c3" in restraint_line[1]:
+                assert float(restraint_line[2].split("=")[1]) == 3.1416
+                assert float(restraint_line[3].split("=")[1]) == 200.0
+
+    # Test Colvar output
+    colvar = Colvars()
+    colvar.path = "tmp"
+    colvar.file_name = "colvars.dat"
+    colvar.window_list = [window]
+    colvar.restraint_list = guest_restraints
+    colvar.dump_to_file()
+
+    f = open(os.path.join(colvar.path, window, "colvars.dat"), "r+")
+    for line in f:
+        if "name c1" in line:
+            line = f.readline()
+            line = f.readline()
+            line = f.readline()
+            assert line.strip() == "group1 { atomNumbers 123 }"
+            line = f.readline()
+            assert line.strip() == "group2 { atomNumbers 119 }"
+
+        elif "name c2" in line:
+            line = f.readline()
+            line = f.readline()
+            line = f.readline()
+            assert line.strip() == "group1 { atomNumbers 123 }"
+            line = f.readline()
+            assert line.strip() == "group2 { atomNumbers 119 }"
+            line = f.readline()
+            assert line.strip() == "group3 { atomNumbers 109 }"
+
+        elif "name c3" in line:
+            line = f.readline()
+            line = f.readline()
+            line = f.readline()
+            assert line.strip() == "group1 { atomNumbers 124 }"
+            line = f.readline()
+            assert line.strip() == "group2 { atomNumbers 123 }"
+            line = f.readline()
+            assert line.strip() == "group3 { atomNumbers 119 }"
+
+        elif "colvars c1" in line:
+            line = f.readline()
+            assert line.strip() == "centers 6.0000"
+            line = f.readline()
+            assert line.strip() == "forceConstant 10.0000"
+
+        elif "colvars c2" in line:
+            line = f.readline()
+            assert line.strip() == "centers 180.0000"
+            line = f.readline()
+            assert line.strip() == "forceConstant 0.0609"
+
+        elif "colvars c3" in line:
+            line = f.readline()
+            assert line.strip() == "centers 180.0000"
+            line = f.readline()
+            assert line.strip() == "forceConstant 0.0609"
