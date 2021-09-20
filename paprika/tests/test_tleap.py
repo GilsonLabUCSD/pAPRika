@@ -8,9 +8,9 @@ import shutil
 import subprocess as sp
 
 import numpy as np
+import openmm.unit as unit
 import parmed as pmd
 import pytest
-import openmm.unit as unit
 from openmm import NonbondedForce
 
 from paprika.build.align import zalign
