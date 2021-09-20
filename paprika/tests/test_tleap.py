@@ -10,8 +10,8 @@ import subprocess as sp
 import numpy as np
 import parmed as pmd
 import pytest
-import simtk.unit as unit
-from simtk.openmm import NonbondedForce
+import openmm.unit as unit
+from openmm import NonbondedForce
 
 from paprika.build.align import zalign
 from paprika.build.system import TLeap
