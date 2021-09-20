@@ -29,7 +29,7 @@ _import_message = (
 _exe_message = "Cannot detect executable {}. Install package if necessary."
 
 using_openmm = pytest.mark.skipif(
-    _plugin_import("simtk.openmm") is False, reason=_import_message.format("OpenMM")
+    _plugin_import("openmm") is False, reason=_import_message.format("OpenMM")
 )
 using_sander = pytest.mark.skipif(
     _find_executable("sander") is False, reason=_import_message.format("sander")
