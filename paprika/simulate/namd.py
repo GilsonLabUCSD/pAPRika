@@ -598,17 +598,17 @@ class NAMD(Simulation, abc.ABC):
 
         # Check if box info exists
         if structure.box_vectors:
-            import simtk.unit as unit
+            import openmm.unit as openmm_unit
 
             self.cell_basis_vectors["cellBasisVector1"] = structure.box_vectors[
                 0
-            ].value_in_unit(unit.angstroms)
+            ].value_in_unit(openmm_unit.angstroms)
             self.cell_basis_vectors["cellBasisVector2"] = structure.box_vectors[
                 1
-            ].value_in_unit(unit.angstroms)
+            ].value_in_unit(openmm_unit.angstroms)
             self.cell_basis_vectors["cellBasisVector3"] = structure.box_vectors[
                 2
-            ].value_in_unit(unit.angstroms)
+            ].value_in_unit(openmm_unit.angstroms)
 
         else:
             self.cell_basis_vectors["cellBasisVector1"] = [

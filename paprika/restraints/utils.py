@@ -1,7 +1,7 @@
 import logging
 
 import numpy as np
-from openff.units import unit
+from openff.units import unit as pint_unit
 
 from paprika.utils import override_dict
 
@@ -63,19 +63,19 @@ def get_restraint_values(restraint, phase, window_number):
     """
 
     # Amber NMR bounds
-    lower_bound = 0.0 * unit.angstrom
-    upper_bound = 999.0 * unit.angstrom
+    lower_bound = 0.0 * pint_unit.angstrom
+    upper_bound = 999.0 * pint_unit.angstrom
 
     if restraint.mask3 and not restraint.mask4:
-        lower_bound = 0.0 * unit.degrees
-        upper_bound = 180.0 * unit.degrees
+        lower_bound = 0.0 * pint_unit.degrees
+        upper_bound = 180.0 * pint_unit.degrees
 
     if restraint.mask3 and restraint.mask4:
         lower_bound = (
-            restraint.phase[phase]["targets"][window_number] - 180.0 * unit.degrees
+            restraint.phase[phase]["targets"][window_number] - 180.0 * pint_unit.degrees
         )
         upper_bound = (
-            restraint.phase[phase]["targets"][window_number] + 180.0 * unit.degrees
+            restraint.phase[phase]["targets"][window_number] + 180.0 * pint_unit.degrees
         )
 
     restraint_values = {

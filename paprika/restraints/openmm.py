@@ -2,10 +2,10 @@
 import logging
 
 import numpy as np
+import openmm as openmm
+import openmm.unit as openmm_unit
 import parmed as pmd
-import simtk.openmm as openmm
-import simtk.unit as simtk_unit
-from openff.units import unit
+from openff.units import unit as pint_unit
 from openff.units.simtk import to_simtk
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ _PI_ = np.pi
 
 
 def apply_positional_restraints(
-    coordinate_path: str, system, force_group: int = 15, kpos=50.0
+    coordinate_path: str, system, atom_name="DUM", force_group: int = 15, kpos=50.0
 ):
     """A utility function which will add OpenMM harmonic positional restraints to
     any dummy atoms found within a system to restrain them to their initial
@@ -27,9 +27,11 @@ def apply_positional_restraints(
         and solvent.
     system : :class:`openmm.System`
         The system object to add the positional restraints to.
+    atom_name : str
+        The name of the atom to restrain.
     force_group : int, optional
         The force group to add the positional restraints to.
-    kpos : float, simkt.unit.Quantity or pint.unit.Quantity, optional
+    kpos : float, openmm.unit.Quantity or pint.unit.Quantity, optional
         The force constant for restraining the dummy atoms (kcal/mol/Å^2 if float).
     """
 
@@ -38,7 +40,7 @@ def apply_positional_restraints(
 
     for atom in structure.atoms:
 
-        if atom.name == "DUM":
+        if atom.name == atom_name:
             positional_restraint = openmm.CustomExternalForce(
                 "k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)"
             )
@@ -52,15 +54,19 @@ def apply_positional_restraints(
             # But then we can't access atom indices. Using `atom.xx` works for
             # coordinates, but is unitless.
             if isinstance(kpos, float):
-                k = kpos * simtk_unit.kilocalories_per_mole / simtk_unit.angstroms ** 2
-            elif isinstance(kpos, simtk_unit.Quantity):
+                k = (
+                    kpos
+                    * openmm_unit.kilocalories_per_mole
+                    / openmm_unit.angstroms ** 2
+                )
+            elif isinstance(kpos, openmm_unit.Quantity):
                 k = kpos
-            elif isinstance(kpos, unit.Quantity):
+            elif isinstance(kpos, pint_unit.Quantity):
                 k = to_simtk(kpos)
 
-            x0 = 0.1 * atom.xx * simtk_unit.nanometers
-            y0 = 0.1 * atom.xy * simtk_unit.nanometers
-            z0 = 0.1 * atom.xz * simtk_unit.nanometers
+            x0 = 0.1 * atom.xx * openmm_unit.nanometers
+            y0 = 0.1 * atom.xy * openmm_unit.nanometers
+            z0 = 0.1 * atom.xz * openmm_unit.nanometers
 
             positional_restraint.addParticle(atom.idx, [k, x0, y0, z0])
             system.addForce(positional_restraint)
@@ -102,7 +108,7 @@ def apply_dat_restraint(
         flat_bottom_force.addPerAngleParameter("k")
         flat_bottom_force.addPerAngleParameter("theta_0")
 
-        theta_0 = 91.0 * simtk_unit.degrees
+        theta_0 = 91.0 * openmm_unit.degrees
         k = to_simtk(restraint.phase[phase]["force_constants"][window_number])
 
         flat_bottom_force.addAngle(

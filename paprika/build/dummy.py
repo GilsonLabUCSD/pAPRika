@@ -5,18 +5,18 @@ from parmed.structure import Structure as ParmedStructureClass
 
 from paprika import utils
 from paprika.utils import check_unit
-from openff.units import unit
+from openff.units import unit as pint_unit
 
 
 def add_dummy(
     structure,
     atom_name="DUM",
     residue_name="DUM",
-    mass=208.00 * unit.dalton,
+    mass=208.00 * pint_unit.dalton,
     atomic_number=82,
-    x=0.000 * unit.angstrom,
-    y=0.000 * unit.angstrom,
-    z=0.000 * unit.angstrom,
+    x=0.000 * pint_unit.angstrom,
+    y=0.000 * pint_unit.angstrom,
+    z=0.000 * pint_unit.angstrom,
 ):
     """Add a dummy atom at the specified coordinates to the end of a structure.
 
@@ -46,10 +46,10 @@ def add_dummy(
 
     """
 
-    mass = check_unit(mass, base_unit=unit.dalton)
-    x = check_unit(x, base_unit=unit.angstrom)
-    y = check_unit(y, base_unit=unit.angstrom)
-    z = check_unit(z, base_unit=unit.angstrom)
+    mass = check_unit(mass, base_unit=pint_unit.dalton)
+    x = check_unit(x, base_unit=pint_unit.angstrom)
+    y = check_unit(y, base_unit=pint_unit.angstrom)
+    z = check_unit(z, base_unit=pint_unit.angstrom)
 
     if isinstance(structure, str):
         structure = utils.return_parmed_structure(structure)
@@ -64,14 +64,14 @@ def add_dummy(
     # Create an atom object
     dum = pmd.topologyobjects.Atom()
     dum.name = atom_name
-    dum.mass = mass.to(unit.dalton).magnitude
+    dum.mass = mass.to(pint_unit.dalton).magnitude
     dum.atomic_number = atomic_number
     # This may be a problem if these coordinates are outside the periodic box
     # dimensions and ParmEd does not recalculate the box vectors before saving
     # `inpcrd`...
-    dum.xx = x.to(unit.angstrom).magnitude
-    dum.xy = y.to(unit.angstrom).magnitude
-    dum.xz = z.to(unit.angstrom).magnitude
+    dum.xx = x.to(pint_unit.angstrom).magnitude
+    dum.xy = y.to(pint_unit.angstrom).magnitude
+    dum.xz = z.to(pint_unit.angstrom).magnitude
 
     # Assume that the last atom in the structure has the highest atom index,
     # so the new atom will be at the end.

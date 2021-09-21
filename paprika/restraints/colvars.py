@@ -2,7 +2,7 @@ import logging
 import os
 
 import numpy as np
-from openff.units import unit
+from openff.units import unit as pint_unit
 
 from paprika.restraints.plumed import Plumed
 from paprika.restraints.utils import get_bias_potential_type, parse_window
@@ -149,18 +149,20 @@ class Colvars(Plumed):
                 atom_string = " ".join(map(str, atom_index))
 
                 # Convert units to the correct type for COLVAR module
-                energy_units = unit.kcal / unit.mole
+                energy_units = pint_unit.kcal / pint_unit.mole
                 if restraint.restraint_type == "distance":
-                    target = target.to(unit.angstrom)
+                    target = target.to(pint_unit.angstrom)
                     force_constant = force_constant.to(
-                        energy_units / unit.angstrom ** 2
+                        energy_units / pint_unit.angstrom ** 2
                     )
                 elif (
                     restraint.restraint_type == "angle"
                     or restraint.restraint_type == "torsion"
                 ):
-                    target = target.to(unit.degrees)
-                    force_constant = force_constant.to(energy_units / unit.degrees ** 2)
+                    target = target.to(pint_unit.degrees)
+                    force_constant = force_constant.to(
+                        energy_units / pint_unit.degrees ** 2
+                    )
 
                 # Determine bias type for this restraint
                 bias_type = get_bias_potential_type(restraint, phase, window_number)
@@ -316,7 +318,7 @@ class Colvars(Plumed):
             The file object handle to save the plumed file.
         dummy_atoms : dict
             Dictionary containing information about the dummy atoms.
-        kpos : float or unit.Quantity
+        kpos : float or pint_unit.Quantity
             Spring constant used to restrain dummy atoms (default for float: kcal/mol/A^2).
 
         Examples
@@ -336,7 +338,9 @@ class Colvars(Plumed):
             }
         """
         # Check k units
-        kpos = check_unit(kpos, base_unit=unit.kcal / unit.mole / unit.angstrom ** 2)
+        kpos = check_unit(
+            kpos, base_unit=pint_unit.kcal / pint_unit.mole / pint_unit.angstrom ** 2
+        )
 
         # Get dummy atom indices
         dummy_indices = [dummy_atoms[key]["idx"] for key in dummy_atoms.keys()]

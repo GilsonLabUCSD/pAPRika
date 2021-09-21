@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import parmed as pmd
 import pytraj as pt
-from openff.units import unit
+from openff.units import unit as pint_unit
 
 from paprika import utils
 from paprika.utils import check_unit
@@ -577,12 +577,12 @@ class DAT_restraint(object):
         """
 
         # Set default units (Based on Amber)
-        energy_unit = unit.kcal / unit.mole
-        target_unit = unit.angstrom
-        force_constant_unit = energy_unit / unit.angstrom ** 2
+        energy_unit = pint_unit.kcal / pint_unit.mole
+        target_unit = pint_unit.angstrom
+        force_constant_unit = energy_unit / pint_unit.angstrom ** 2
         if self.mask3 or self.mask4:
-            target_unit = unit.degrees
-            force_constant_unit = energy_unit / unit.radians ** 2
+            target_unit = pint_unit.degrees
+            force_constant_unit = energy_unit / pint_unit.radians ** 2
 
         # Check attach/release units
         for phase in [self._attach, self._release]:
@@ -898,7 +898,7 @@ def static_DAT_restraint(
         pull windows, release windows].
     ref_structure: os.PathLike or :class:`parmed.Structure`
         The reference structure that is used to determine the initial, **static** value for this restraint.
-    force_constant: float or unit.Quantity
+    force_constant: float or pint.unit.Quantity
         The force constant for this restraint. If float, the number will be transformed to kcal/mol/[Angstrom,radians].
     continuous_apr: bool, optional
         Whether this restraint uses ``continuous_apr``. This must be consistent with existing restraints.
@@ -943,13 +943,13 @@ def static_DAT_restraint(
     if len(restraint_mask_list) == 4:
         rest.mask4 = restraint_mask_list[3]
 
-    # Force constant - convert to unit.Quantity
+    # Force constant - convert to pint.unit.Quantity
     force_constant = check_unit(
         force_constant,
         base_unit=(
-            unit.kcal / unit.mole / unit.angstrom ** 2
+            pint_unit.kcal / pint_unit.mole / pint_unit.angstrom ** 2
             if len(restraint_mask_list) == 2
-            else unit.kcal / unit.mole / unit.radians ** 2
+            else pint_unit.kcal / pint_unit.mole / pint_unit.radians ** 2
         ),
     )
 
@@ -963,17 +963,17 @@ def static_DAT_restraint(
         else:
             target = pt.distance(reference_trajectory, mask_string, image=False)[0]
             logger.debug("Calculating distance with 'image = False' ...")
-        target = unit.Quantity(target, units=unit.angstrom)
+        target = pint_unit.Quantity(target, units=pint_unit.angstrom)
 
     elif len(restraint_mask_list) == 3:
         # Angle restraint
         target = pt.angle(reference_trajectory, mask_string)[0]
-        target = unit.Quantity(target, units=unit.degrees)
+        target = pint_unit.Quantity(target, units=pint_unit.degrees)
 
     elif len(restraint_mask_list) == 4:
         # Dihedral restraint
         target = pt.dihedral(reference_trajectory, mask_string)[0]
-        target = unit.Quantity(target, units=unit.degrees)
+        target = pint_unit.Quantity(target, units=pint_unit.degrees)
 
     else:
         raise IndexError(
