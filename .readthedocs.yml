@@ -1,15 +1,18 @@
 # .readthedocs.yml
+version: 2
 
 build:
-  image: latest
-
+  os: ubuntu-20.04
+  tools:
+    python: mambaforge-4.10
+sphinx:
+  configuration: docs/conf.py
 python:
-  version: 3.8
-  setup_py_install: true
-
+  install:
+  - method: setuptools
+    path: .
+conda:
+  file: docs/environment.yml
 # Build PDF in addition to default HTML and JSON
 formats:
     - pdf
-
-conda:
-  file: docs/environment.yml
