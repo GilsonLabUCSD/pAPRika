@@ -2,26 +2,24 @@ name: paprika
 
 channels:
   - conda-forge
-  - omnia
 
 dependencies:
-  # Base depends
-  - python ==3.7
-  - setuptools
+    # Base depends
+    - python ==3.8
+    - setuptools
 
-  # Sphinx specific
-  - numpydoc
-  - pandoc
-  - sphinx
-  - nbsphinx
-  - sphinx_rtd_theme
-  - sphinxcontrib-bibtex ==1.0.0
+    # Sphinx specific
+    - nbsphinx
+    - sphinx_rtd_theme
+    - sphinxcontrib-bibtex
+    - numpydoc
+    - pandoc
+    - ipython
 
-  # Standard dependencies
-  - pip
-  - numpy
-  - scipy
-  - parmed
-  - mdtraj
-  - pymbar
-  - openmm
+    # Standard dependencies
+    - numpy
+    - pandas
+    - lxml
+    - icu 58*  # REQUIRED - DO NOT REMOVE.
+    - networkx
+
