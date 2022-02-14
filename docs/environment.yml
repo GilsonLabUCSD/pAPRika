@@ -17,6 +17,7 @@ dependencies:
     - ipython
 
     # Standard dependencies
+    - pip
     - numpy
     - pandas
     - lxml
