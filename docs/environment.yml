@@ -10,7 +10,7 @@ dependencies:
 
   # Sphinx specific
   - nbsphinx
-  - sphinx_rtd_theme
+  - sphinx_rtd_theme ==0.5.2
   - sphinxcontrib-bibtex ==1.0.0
   - numpydoc
   - pandoc
