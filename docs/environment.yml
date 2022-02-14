@@ -13,12 +13,9 @@ dependencies:
   - sphinx_rtd_theme ==0.5.2
   - sphinxcontrib-bibtex ==1.0.0
   - numpydoc
-  - pandoc
-  - ipython
 
   # Standard dependencies
   - pip
   - numpy
   - pandas
   - lxml
-  - icu 58*  # REQUIRED - DO NOT REMOVE.
