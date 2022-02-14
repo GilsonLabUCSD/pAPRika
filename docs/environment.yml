@@ -4,23 +4,21 @@ channels:
   - conda-forge
 
 dependencies:
-    # Base depends
-    - python ==3.8
-    - setuptools
+  # Base depends
+  - python ==3.8
+  - setuptools
 
-    # Sphinx specific
-    - nbsphinx
-    - sphinx_rtd_theme
-    - sphinxcontrib-bibtex
-    - numpydoc
-    - pandoc
-    - ipython
+  # Sphinx specific
+  - nbsphinx
+  - sphinx_rtd_theme
+  - sphinxcontrib-bibtex
+  - numpydoc
+  - pandoc
+  - ipython
 
-    # Standard dependencies
-    - pip
-    - numpy
-    - pandas
-    - lxml
-    - icu 58*  # REQUIRED - DO NOT REMOVE.
-    - networkx
-
+  # Standard dependencies
+  - pip
+  - numpy
+  - pandas
+  - lxml
+  - icu 58*  # REQUIRED - DO NOT REMOVE.
