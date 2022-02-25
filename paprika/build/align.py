@@ -319,14 +319,18 @@ def get_rotation_matrix(vector, ref_vector):
         A 3x3 rotation matrix.
 
     """
-
-    # Find axis between the mask vector and the axis using cross and dot products.
-    try:
-        x = np.cross(vector, ref_vector) / np.linalg.norm(np.cross(vector, ref_vector))
-    except RuntimeWarning:
-        # The structure is already aligned and the denominator is invalid
+    
+    # If the structures are already aligned (cross product is zero), output info
+    if np.linalg.norm(np.cross(vector, ref_vector)) == 0:
         logger.info("The structure is already aligned and the denominator is invalid, skipping")
-        pass
+    
+    # Find axis between the mask vector and the axis using cross and dot products.
+    else:
+        try:
+            x = np.cross(vector, ref_vector) / np.linalg.norm(np.cross(vector, ref_vector))
+        except RuntimeWarning:
+            # The structure is already aligned and the denominator is invalid
+            pass
 
     theta = np.arccos(
         np.dot(vector, ref_vector)
