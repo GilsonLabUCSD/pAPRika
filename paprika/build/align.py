@@ -325,6 +325,7 @@ def get_rotation_matrix(vector, ref_vector):
         x = np.cross(vector, ref_vector) / np.linalg.norm(np.cross(vector, ref_vector))
     except RuntimeWarning:
         # The structure is already aligned and the denominator is invalid
+        logger.info("The structure is already aligned and the denominator is invalid, skipping")
         pass
 
     theta = np.arccos(
