@@ -5,9 +5,16 @@ import logging
 import os
 
 import numpy as np
-import openmm
-import openmm.app as app
-import openmm.unit as openmm_unit
+
+try:
+    import simtk.openmm as openmm
+    import simtk.openmm.app as app
+    import simtk.unit as openmm_unit
+except ImportError:
+    import openmm
+    import openmm.app as app
+    import openmm.unit as openmm_unit
+
 import parmed as pmd
 import pytest
 from openff.units import unit as pint_unit
@@ -981,7 +988,9 @@ def test_extract_guest_restraints():
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         structure=True,
     )
-    guest_restraints = extract_guest_restraints(structure, restraints, "BUT")
+    guest_restraints = extract_guest_restraints(
+        structure, restraints, "BUT", return_type="list"
+    )
 
     assert guest_restraints[0] is not None
     assert guest_restraints[1] is not None
@@ -1017,7 +1026,9 @@ def test_extract_guest_restraints():
     r.initialize()
     restraints.append(r)
 
-    guest_restraints = extract_guest_restraints(structure, restraints, "BUT")
+    guest_restraints = extract_guest_restraints(
+        structure, restraints, "BUT", return_type="list"
+    )
 
     assert guest_restraints[0] is not None
     assert guest_restraints[1] is not None
@@ -1053,7 +1064,9 @@ def test_extract_guest_restraints():
     r.initialize()
     restraints.append(r)
 
-    guest_restraints = extract_guest_restraints(structure, restraints, "BUT")
+    guest_restraints = extract_guest_restraints(
+        structure, restraints, "BUT", return_type="list"
+    )
 
     assert guest_restraints[0] is not None
     assert guest_restraints[1] is not None
@@ -1089,7 +1102,9 @@ def test_extract_guest_restraints():
     r.initialize()
     restraints.append(r)
 
-    guest_restraints = extract_guest_restraints(structure, restraints, "BUT")
+    guest_restraints = extract_guest_restraints(
+        structure, restraints, "BUT", return_type="list"
+    )
 
     assert guest_restraints[0] is not None
     assert guest_restraints[1] is not None

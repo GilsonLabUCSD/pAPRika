@@ -8,10 +8,16 @@ import shutil
 import subprocess as sp
 
 import numpy as np
-import openmm.unit as unit
+
+try:
+    import simtk.openmm as openmm
+    import simtk.unit as unit
+except ImportError:
+    import openmm
+    import openmm.unit as unit
+
 import parmed as pmd
 import pytest
-from openmm import NonbondedForce
 
 from paprika.build.align import zalign
 from paprika.build.system import TLeap
@@ -134,7 +140,9 @@ def test_solvation_bind3p(clean_files):
     ]
     system = structure.createSystem()
     nonbonded = [
-        force for force in system.getForces() if isinstance(force, NonbondedForce)
+        force
+        for force in system.getForces()
+        if isinstance(force, openmm.NonbondedForce)
     ][0]
     oxygen = nonbonded.getParticleParameters(water_index[0])
     assert (

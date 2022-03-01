@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import traceback
+import warnings
 from itertools import compress
 
 import numpy as np
@@ -1238,47 +1239,84 @@ class fe_calc(object):
                                 max_val = right
                             self.results[phase][method]["largest_neighbor"][i] = max_val
 
-    def compute_ref_state_work(self, restraints):
+    def compute_ref_state_work(self, restraints, state="final"):
         """
-        Compute the work to place a molecule at standard reference state conditions
-        starting from a state defined by up to six restraints. These are Boresch-style restraints.
+        Compute the work to place a molecule at standard reference state conditions starting from a state defined by
+        up to six restraints. These are Boresch-style restraints.
 
         Parameters
         ----------
-        restraints : list
-            A list of :class:`paprika.restraints.DAT_restraint` objects in order of the six translational and
-            orientational restraints needed to describe the configuration of one molecule
-            relative to another. The six restraints are: r, theta, phi, alpha, beta, gamma and they should be passed to
-            this function in that order. If any of these coordinates is not being restrained, use a `None` in place of a
-            :class:`paprika.restraints.DAT_restraint` object.
+        restraints : list or dict
+            A list or dict of :class:`paprika.restraints.DAT_restraint` objects. If a list is specified, the restraints
+            must be in order of the six translational and orientational Boresch-restraints. The six restraints are:
+            [r, theta, phi, alpha, beta, gamma] and they should be passed to this function in that order. If any of
+            these coordinates is not being restrained, use a `None` in place of a
+            :class:`paprika.restraints.DAT_restraint` object. For a dictionary, the restraints should have `r`, `theta`,
+            `phi`, `alpha`, `beta`, `gamma`, as the dictionary keys.
 
             See :meth:`paprika.analysis.ref_state_work` for details on the calculation.
+        state : str, optional, default="final"
+            Option to estimate the reference work using the `initial` state (DDM) or `final` pulling state (APR) for
+            `r0` when calculating the reference work of releasing guest restraints in bulk water.
         """
 
-        if not restraints or restraints[0] is None:
+        # Convert list to dictionary
+        if isinstance(restraints, list):
+            warnings.warn(
+                "Converting restraint list to dictionary, make sure the restraints are listed "
+                "in the order of [`r`, `theta`,`phi`, `alpha`, `beta`, `gamma`]."
+            )
+            restraints = {
+                "r": restraints[0],
+                "theta": restraints[1],
+                "phi": restraints[2],
+                "alpha": restraints[3],
+                "beta": restraints[4],
+                "gamma": restraints[5],
+            }
+
+        # Raise error is no distance restraint is not included
+        if not restraints or restraints["r"] is None:
             raise ValueError(
-                "At minimum, a single distance restraint is necesarry to compute the work of releasing"
-                " the guest to standard state."
+                "At minimum, a single distance restraint is necessary to compute the work of releasing "
+                "the guest to standard state."
             )
 
         fcs = []
         targs = []
 
-        for restraint in restraints:
+        # Distance restraint - special care when extracting `r0`, depends on whether calculating with APR or DDM.
+        for colvar in ["r", "theta", "phi", "alpha", "beta", "gamma"]:
+            restraint = restraints[colvar]
+
+            target_index = -1
+            if colvar == "r" and state == "initial":
+                target_index = 0
+
             if restraint is None:
                 fcs.append(None)
                 targs.append(None)
-            elif restraint.phase["release"]["force_constants"] is not None:
-                fcs.append(np.sort(restraint.phase["release"]["force_constants"])[-1])
-                targs.append(np.sort(restraint.phase["release"]["targets"])[-1])
-            elif restraint.phase["pull"]["force_constants"] is not None:
-                fcs.append(np.sort(restraint.phase["pull"]["force_constants"])[-1])
-                targs.append(np.sort(restraint.phase["pull"]["targets"])[-1])
-            else:
-                raise ValueError(
-                    "Restraints should have pull or release values initialized in order to compute_ref_state_work"
-                )
 
+            else:
+                target_and_force_exist = False
+                for phase in ["attach", "pull", "release"]:
+                    if restraint.phase[phase] is not None:
+                        fcs.append(
+                            np.sort(restraints["r"].phase["attach"]["force_constants"])[-1]
+                        )
+                        targs.append(
+                            np.sort(restraints["r"].phase["attach"]["targets"])[target_index]
+                        )
+                        target_and_force_exist = True
+                        break
+
+                if not target_and_force_exist:
+                    raise ValueError(
+                        f"The `{colvar}` restraints should have attach/release values (for DDM) or pull/release "
+                        f"values (for APR) initialized in order to `compute_ref_state_work`."
+                    )
+
+        # Store reference work of release guest restraints
         self.results["ref_state_work"] = ref_state_work(
             self.temperature,
             fcs[0],
