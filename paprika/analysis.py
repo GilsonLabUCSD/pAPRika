@@ -1302,10 +1302,14 @@ class fe_calc(object):
                 for phase in ["attach", "pull", "release"]:
                     if restraint.phase[phase] is not None:
                         fcs.append(
-                            np.sort(restraints["r"].phase["attach"]["force_constants"])[-1]
+                            np.sort(restraints["r"].phase["attach"]["force_constants"])[
+                                -1
+                            ]
                         )
                         targs.append(
-                            np.sort(restraints["r"].phase["attach"]["targets"])[target_index]
+                            np.sort(restraints["r"].phase["attach"]["targets"])[
+                                target_index
+                            ]
                         )
                         target_and_force_exist = True
                         break
