@@ -290,9 +290,9 @@ class fe_calc(object):
 
         The final free energy and uncertainty estimate is specified in the ``fe`` and ``sem`` keys.
 
-        If multiple fractions of the data are specified, the free energy and SEM from each fraction are stored in a nested
-        dictionary under the keys ``fraction_fe`` and ``fractrion_sem``. The number of frames analyzed for each fraciton
-        is stored under ``fraction_n_frames``.
+        If multiple fractions of the data are specified, the free energy and SEM from each fraction are stored in
+        a nested dictionary under the keys ``fraction_fe`` and ``fractrion_sem``. The number of frames analyzed for
+        each fraciton is stored under ``fraction_n_frames``.
 
         The full free energy matrix (window-to-window free energy differences) is stored in the ``fe_matrix`` entry.
         Likewise, the full SEM matrix (window-to-window free energy SEMs) is stored in the ``sem_matrix`` entry.
@@ -300,8 +300,8 @@ class fe_calc(object):
         The work to release the guest to standard concentration is stored under ``ref_state_work``, and is
         negative by convention.
 
-        The format of a typical dictionary will resemble this (where I have a omitted the values in the matrices for
-        clarity):
+        The format of a typical dictionary will resemble this (where I have a omitted the values in the matrices
+        for clarity):
 
         ::
 
@@ -1275,7 +1275,7 @@ class fe_calc(object):
                 "gamma": restraints[5],
             }
 
-        # Raise error is no distance restraint is not included
+        # Raise error if no distance restraint exist
         if not restraints or restraints["r"] is None:
             raise ValueError(
                 "At minimum, a single distance restraint is necessary to compute the work of releasing "
@@ -1299,25 +1299,34 @@ class fe_calc(object):
 
             else:
                 target_and_force_exist = False
-                for phase in ["attach", "pull", "release"]:
+
+                phases = ["release", "pull"]
+                if state == "initial":
+                    phases = ["attach", "release"]
+
+                for phase in phases:
                     if restraint.phase[phase] is not None:
+                        force_index = -1
+                        if phase == "release":
+                            force_index = 0
+
                         fcs.append(
-                            np.sort(restraints["r"].phase["attach"]["force_constants"])[
-                                -1
+                            np.sort(restraint.phase[phase]["force_constants"])[
+                                force_index
                             ]
                         )
                         targs.append(
-                            np.sort(restraints["r"].phase["attach"]["targets"])[
-                                target_index
-                            ]
+                            np.sort(restraint.phase[phase]["targets"])[target_index]
                         )
+
                         target_and_force_exist = True
+
                         break
 
                 if not target_and_force_exist:
                     raise ValueError(
-                        f"The `{colvar}` restraints should have attach/release values (for DDM) or pull/release "
-                        f"values (for APR) initialized in order to `compute_ref_state_work`."
+                        f"The `{colvar}` restraints should have at least attach/release values (for DDM) or "
+                        "pull/release values (for APR) initialized in order to `compute_ref_state_work`."
                     )
 
         # Store reference work of release guest restraints
