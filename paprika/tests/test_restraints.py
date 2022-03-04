@@ -7,13 +7,13 @@ import os
 import numpy as np
 
 try:
-    import simtk.openmm as openmm
-    import simtk.openmm.app as app
-    import simtk.unit as openmm_unit
-except ImportError:
     import openmm
     import openmm.app as app
     import openmm.unit as openmm_unit
+except ImportError:
+    import simtk.openmm as openmm
+    import simtk.openmm.app as app
+    import simtk.unit as openmm_unit
 
 import parmed as pmd
 import pytest

@@ -4,11 +4,11 @@ import logging
 import numpy as np
 
 try:
-    import simtk.openmm as openmm
-    import simtk.unit as openmm_unit
-except ImportError:
     import openmm
     import openmm.unit as openmm_unit
+except ImportError:
+    import simtk.openmm as openmm
+    import simtk.unit as openmm_unit
 
 import parmed as pmd
 from openff.units import unit as pint_unit
