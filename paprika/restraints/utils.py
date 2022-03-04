@@ -213,6 +213,13 @@ def extract_guest_restraints(
         >>> print(free_energy["ref_state_work"])
 
     """
+    # Check input argument
+    return_type = return_type.lower()
+    if return_type not in ["list", "dict"]:
+        raise ValueError(
+            'Function argument `return_type` can only take values "list" or "dict" as input.'
+        )
+
     guest_resname = guest_resname.upper()
 
     DM1 = f"{dummy_prefix}1"
@@ -288,6 +295,7 @@ def extract_guest_restraints(
 
     if return_type == "list":
         guest_restraints = [r, theta, phi, alpha, beta, gamma]
+
     elif return_type == "dict":
         guest_restraints = {
             "r": r,
@@ -297,6 +305,7 @@ def extract_guest_restraints(
             "beta": beta,
             "gamma": gamma,
         }
+
     else:
         raise KeyError(
             "`return_type` argument not valid. Only `list` or `dict` are accepted."

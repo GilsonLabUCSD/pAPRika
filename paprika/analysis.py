@@ -1257,8 +1257,15 @@ class fe_calc(object):
             See :meth:`paprika.analysis.ref_state_work` for details on the calculation.
         state : str, optional, default="final"
             Option to estimate the reference work using the `initial` state (DDM) or `final` pulling state (APR) for
-            `r0` when calculating the reference work of releasing guest restraints in bulk water.
+            `r0` when calculating the reference work of releasing guest restraints in bulk water. See Equation 9 in ref
+            Henriksen et al. (2015).
         """
+        # Check input argument
+        state = state.lower()
+        if state not in ["initial", "final"]:
+            raise ValueError(
+                'Function argument `state` can only take values "initial" or "final" as input.'
+            )
 
         # Convert list to dictionary
         if isinstance(restraints, list):
