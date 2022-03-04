@@ -1312,7 +1312,7 @@ class fe_calc(object):
                     phases = ["attach", "release"]
 
                 for phase in phases:
-                    if restraint.phase[phase] is not None:
+                    if restraint.phase[phase]["force_constants"] is not None:
                         force_index = -1
                         if phase == "release":
                             force_index = 0
@@ -1779,6 +1779,7 @@ def ref_state_work(
             return np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
 
         # Note, because of periodicity, I'm gonna wrap +/- pi around target for integration.
+        targ = targ.to(unit.radians).magnitude
         arange = np.arange(targ - np.pi, targ + np.pi, 0.00005) * unit.radians
         return np.trapz(potential(arange, RT, fc, targ), arange)
 
