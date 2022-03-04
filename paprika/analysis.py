@@ -759,7 +759,7 @@ class fe_calc(object):
                 nearest_max = get_nearest_max(N_k[k])
                 sem = get_block_sem(u_kln[k, l, 0:nearest_max])
                 variance = np.var(u_kln[k, l, 0 : N_k[k]])
-                g_k[k] = N_k[k] * (sem ** 2) / variance
+                g_k[k] = N_k[k] * (sem**2) / variance
 
         if method == "mbar-autoc":
             for k in range(num_win):
@@ -1760,7 +1760,7 @@ def ref_state_work(
     # Distance Integration Function
     def dist_int(RT, fc, targ):
         def potential(arange, RT, fc, targ):
-            return (arange ** 2) * np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
+            return (arange**2) * np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
 
         arange = np.arange(0.0, 100.0, 0.0001) * unit.angstrom
         return np.trapz(potential(arange, RT, fc, targ), arange)
@@ -1819,11 +1819,11 @@ def ref_state_work(
         g_int = tors_int(RT, g_fc, g_tg)
 
     # Concentration term
-    V0 = 1660.5392 * unit.angstrom ** 3
+    V0 = 1660.5392 * unit.angstrom**3
     translational = r_int * th_int * ph_int * (1.0 / V0)  # C^o = 1/V^o
 
     # Orientational term
-    rotational_volume = 8.0 * np.pi ** 2
+    rotational_volume = 8.0 * np.pi**2
     orientational = a_int * b_int * g_int / rotational_volume
 
     # Return the free energy

@@ -282,8 +282,8 @@ def test_solvation_by_M_and_m(clean_files):
 
     volume = sys.get_volume()
     volume_in_liters = volume * ANGSTROM_CUBED_TO_LITERS
-    calc_num_na = np.ceil((6.022 * 10 ** 23) * 0.150 * volume_in_liters)
-    calc_num_cl = np.ceil((6.022 * 10 ** 23) * 0.150 * volume_in_liters)
+    calc_num_na = np.ceil((6.022 * 10**23) * 0.150 * volume_in_liters)
+    calc_num_cl = np.ceil((6.022 * 10**23) * 0.150 * volume_in_liters)
     assert int(obs_num_na) == int(calc_num_na)
     assert int(obs_num_cl) == int(calc_num_cl)
 

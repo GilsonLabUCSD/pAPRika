@@ -63,7 +63,7 @@ def apply_positional_restraints(
                 k = (
                     kpos
                     * openmm_unit.kilocalories_per_mole
-                    / openmm_unit.angstroms ** 2
+                    / openmm_unit.angstroms**2
                 )
             elif isinstance(kpos, openmm_unit.Quantity):
                 k = kpos

@@ -153,7 +153,7 @@ class Colvars(Plumed):
                 if restraint.restraint_type == "distance":
                     target = target.to(pint_unit.angstrom)
                     force_constant = force_constant.to(
-                        energy_units / pint_unit.angstrom ** 2
+                        energy_units / pint_unit.angstrom**2
                     )
                 elif (
                     restraint.restraint_type == "angle"
@@ -161,7 +161,7 @@ class Colvars(Plumed):
                 ):
                     target = target.to(pint_unit.degrees)
                     force_constant = force_constant.to(
-                        energy_units / pint_unit.degrees ** 2
+                        energy_units / pint_unit.degrees**2
                     )
 
                 # Determine bias type for this restraint
@@ -339,7 +339,7 @@ class Colvars(Plumed):
         """
         # Check k units
         kpos = check_unit(
-            kpos, base_unit=pint_unit.kcal / pint_unit.mole / pint_unit.angstrom ** 2
+            kpos, base_unit=pint_unit.kcal / pint_unit.mole / pint_unit.angstrom**2
         )
 
         # Get dummy atom indices
