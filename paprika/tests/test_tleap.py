@@ -10,11 +10,11 @@ import subprocess as sp
 import numpy as np
 
 try:
-    import simtk.openmm as openmm
-    import simtk.unit as unit
-except ImportError:
     import openmm
     import openmm.unit as unit
+except ImportError:
+    import simtk.openmm as openmm
+    import simtk.unit as unit
 
 import parmed as pmd
 import pytest
