@@ -32,10 +32,10 @@ class fe_calc(object):
         It would be great to add unit support here from ``pint``.
 
     .. warning ::
-        This class really ought to be split into a few smaller classes that sublcass a ``BaseAnalysis`` class. There
-        could be separate ``MBARAnalysis`` and ``TIAnalysis`` classes, for example. This would make it much more modular
-        and easy to test where TI and MBAR disagree. This could also be used to benchmark autocorrelation-based and
-        blocking-analysis-based methods for evaluating the statistical inefficiency.
+        This class really ought to be split into a few smaller classes that sublcass a ``BaseAnalysis`` class.
+        There could be separate ``MBARAnalysis`` and ``TIAnalysis`` classes, for example. This would make it much
+        more modular and easy to test where TI and MBAR disagree. This could also be used to benchmark
+        autocorrelation-based and blocking-analysis-based methods for evaluating the statistical inefficiency.
 
     """
 
@@ -113,13 +113,14 @@ class fe_calc(object):
     @property
     def orders(self):
         """
-        The sorted order of windows for analysis. In principle, windows could be out-of-order if subsequent additional
-        sampling was requested.
+        The sorted order of windows for analysis. In principle, windows could be out-of-order if subsequent
+        additional sampling was requested.
 
         .. note ::
-            As far as I know, we have not tested analysis on windows out of order. We imagined that one could add additional
-            λ windows through multiple runs by modifying existing restraints (e.g., restraint values of [0, 0.5, 1.0, 0.8])
-            and this module would be able to correctly sort the simulation directories and restraint targets.
+            As far as I know, we have not tested analysis on windows out of order. We imagined that one could add
+            additional λ windows through multiple runs by modifying existing restraints (e.g., restraint values of
+            [0, 0.5, 1.0, 0.8]) and this module would be able to correctly sort the simulation directories and
+            restraint targets.
 
         .. note ::
             This should probably be a private attribute, as this property is determined automatically.
@@ -149,8 +150,8 @@ class fe_calc(object):
     @property
     def methods(self):
         """
-        list: List of analysis methods to be performed. This is a combination of free energy method (e.g., MBAR, TI, ...)
-        and de-correlation method (blocking, autocorrelation, ...).
+        list: List of analysis methods to be performed. This is a combination of free energy method (e.g., MBAR, TI,
+        ...) and de-correlation method (blocking, autocorrelation, ...).
 
         Implemented methods are:
 
@@ -159,8 +160,8 @@ class fe_calc(object):
             - ``ti-block``
 
         .. note ::
-            This is really fragile. We should definitely use something like an ``ENUM`` here to check for the few combinations
-            that we support.
+            This is really fragile. We should definitely use something like an ``ENUM`` here to check for the few
+            combinations that we support.
 
         .. todo ::
             - Add ``ti-autoc``.
@@ -229,15 +230,15 @@ class fe_calc(object):
     @property
     def ti_matrix(self):
         """
-        str: If ``full``, the TI mean and SEM free energy is computed between all windows (i.e., the energy differences between
-        all windows and all other windows). If ``diagonal``, the mean and SEM of the free energy is computed between the
-        first window and all other windows, as well as between all neighboring windows. If ``endpoints``, the mean and
-        SEM free energy is computed between only the first and the last window.
+        str: If ``full``, the TI mean and SEM free energy is computed between all windows (i.e., the energy differences
+        between all windows and all other windows). If ``diagonal``, the mean and SEM of the free energy is computed
+        between the first window and all other windows, as well as between all neighboring windows. If ``endpoints``,
+        the mean and SEM free energy is computed between only the first and the last window.
 
         For most cases, ``diagonal`` should be sufficient and ``full`` is overkill.
 
         .. note ::
-            This is fragile and we should be checking for the valid strings supported.
+            This is fragile, and we should be checking for the valid strings supported.
 
         """
         return self._ti_matrix
@@ -254,8 +255,8 @@ class fe_calc(object):
     def exact_sem_each_ti_fraction(self):
         """
         bool: Whether the SEM is computed once for the full data set and then the SEM for each fraction is estimated
-        based on the total SEM and the fractional number of uncorrelated data points. If ``True``, the SEM will be recomputed
-        each fraction using just that fraction of the raw data.
+        based on the total SEM and the fractional number of uncorrelated data points. If ``True``, the SEM will be
+        recomputed each fraction using just that fraction of the raw data.
         """
         return self._exact_sem_each_ti_fraction
 
@@ -284,15 +285,15 @@ class fe_calc(object):
     @property
     def results(self):
         """
-        dict: A dictionary containing the results. The results dictionary is indexed first by phase, and then by
+        dict: A dictionary containing the results. The ``results`` dictionary is indexed first by phase, and then by
         method. That is, ``results["attach"]["mbar-block"]`` will contain the results from analyzing the attach
         phase with the MBAR free energy estimator and blocking analysis used to estimate the SEM.
 
         The final free energy and uncertainty estimate is specified in the ``fe`` and ``sem`` keys.
 
         If multiple fractions of the data are specified, the free energy and SEM from each fraction are stored in
-        a nested dictionary under the keys ``fraction_fe`` and ``fractrion_sem``. The number of frames analyzed for
-        each fraciton is stored under ``fraction_n_frames``.
+        a nested dictionary under the keys ``fraction_fe`` and ``fraction_sem``. The number of frames analyzed for
+        each fraction is stored under ``fraction_n_frames``.
 
         The full free energy matrix (window-to-window free energy differences) is stored in the ``fe_matrix`` entry.
         Likewise, the full SEM matrix (window-to-window free energy SEMs) is stored in the ``sem_matrix`` entry.
@@ -528,7 +529,7 @@ class fe_calc(object):
         return orders
 
     def read_trajectories(self, single_topology=False):
-        """For each each phase and window, and for each non-static restraint, parse the trajectories to
+        """For each phase and window, and for each non-static restraint, parse the trajectories to
         get the restraint values.
 
         Parameters
@@ -667,7 +668,8 @@ class fe_calc(object):
 
     def run_mbar(self, phase, prepared_data, method, verbose=False):
         """
-        Compute the free energy matrix for a series of windows. We'll follow the pymbar nomenclature for data structures.
+        Compute the free energy matrix for a series of windows. We'll follow the pymbar nomenclature
+        for data structures.
 
         Parameters
         ----------
@@ -1248,9 +1250,9 @@ class fe_calc(object):
         ----------
         restraints : list or dict
             A list or dict of :class:`paprika.restraints.DAT_restraint` objects. If a list is specified, the restraints
-            must be in order of the six translational and orientational Boresch-restraints. The six restraints are:
-            [r, theta, phi, alpha, beta, gamma] and they should be passed to this function in that order. If any of
-            these coordinates is not being restrained, use a `None` in place of a
+            must be in order of the six translational and orientational restraints (Boresch-style). The six restraints
+            are: [r, theta, phi, alpha, beta, gamma] and they should be passed to this function in that order. If any
+            of these coordinates is not being restrained, use a `None` in place of a
             :class:`paprika.restraints.DAT_restraint` object. For a dictionary, the restraints should have `r`, `theta`,
             `phi`, `alpha`, `beta`, `gamma`, as the dictionary keys.
 
