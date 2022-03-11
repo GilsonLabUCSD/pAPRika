@@ -2,6 +2,8 @@ import logging
 
 import numpy as np
 import parmed as pmd
+from openff.units import unit as pint_unit
+from paprika.utils import check_unit
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +169,7 @@ def rotate_around_axis(structure, axis, angle):
         Molecular structure containing coordinates.
     axis: str or list or :class:`numpy.ndarray`
         The axis of rotation. If an array is specified, the axis-vector will be normalized automatically.
-    angle: float
+    angle: float or pint.unit.Quantity
         The angle of rotation in degrees.
 
     Returns
@@ -188,7 +190,7 @@ def rotate_around_axis(structure, axis, angle):
     axis = _return_array(axis)
 
     # Convert angle to radians (temporary until Pint integration)
-    angle *= np.pi / 180.0
+    angle = check_unit(angle, base_unit=pint_unit.radians).to(pint_unit.radians).magnitude
 
     if np.array_equal(axis, np.array([1.0, 0.0, 0.0])):
         rotation_matrix = np.array(
@@ -298,7 +300,7 @@ def get_theta(structure, mask1, mask2, axis):
         np.dot(vector, axis) / (np.linalg.norm(vector) * np.linalg.norm(axis))
     )
 
-    return theta
+    return pint_unit.Quantity(theta, units=pint_unit.radians)
 
 
 def get_rotation_matrix(vector, ref_vector):
@@ -317,13 +319,14 @@ def get_rotation_matrix(vector, ref_vector):
         A 3x3 rotation matrix.
 
     """
-
+    
+    # If the structures are already aligned (cross product is zero), return 3x3 identity matrix
+    if np.linalg.norm(np.cross(vector, ref_vector)) == 0:
+        logger.info("The structure is already aligned and the denominator is invalid, returning identity matrix.")
+        return np.identity(3)
+    
     # Find axis between the mask vector and the axis using cross and dot products.
-    try:
-        x = np.cross(vector, ref_vector) / np.linalg.norm(np.cross(vector, ref_vector))
-    except RuntimeWarning:
-        # The structure is already aligned and the denominator is invalid
-        pass
+    x = np.cross(vector, ref_vector) / np.linalg.norm(np.cross(vector, ref_vector))
 
     theta = np.arccos(
         np.dot(vector, ref_vector)
@@ -429,7 +432,7 @@ def offset_structure(structure, offset, dimension=None):
     ----------
     structure : :class:`parmed.Structure`
         Molecular structure containing coordinates.
-    offset : float or :class:`numpy.ndarray`
+    offset : float or :class:`numpy.ndarray` or pint.unit.Quantity
         The offset that will be added to *every* atom in the structure.
     dimension : str or list or :class:`numpy.ndarray`, optional, default=None
         By default the structure will be moved by ``offset`` in all direction if it is a single number, i.e. ``xyz +
@@ -459,7 +462,9 @@ def offset_structure(structure, offset, dimension=None):
     else:
         mask = _return_array(dimension)
 
+    offset = check_unit(offset, base_unit=pint_unit.angstrom)
     offset *= mask
+    offset = offset.to(pint_unit.angstrom).magnitude
 
     # Offset coordinates
     offset_coords = np.empty_like(structure.coordinates)

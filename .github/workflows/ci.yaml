@@ -1,0 +1,65 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - "master"
+  pull_request:
+    branches:
+      - "master"
+  schedule:
+    # Run a cron job once daily
+    - cron: "0 0 * * *"
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macOS-latest, ubuntu-latest]
+        python-version: [3.7, 3.8, 3.9]
+    env:
+      PYVER: ${{ matrix.python-version }}
+      PACKAGE: paprika
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        activate-environment: paprika-dev
+        channel-priority: true
+        environment-file: devtools/conda-envs/test_env.yaml
+        auto-activate-base: false
+
+    - name: Additional info about the build
+      shell: bash
+      run: |
+        uname -a
+        df -h
+        ulimit -a
+
+    - name: Environment Information
+      shell: bash -l {0}
+      run: |
+        conda info --all
+        conda list
+
+    - name: Install package
+      shell: bash -l {0}
+      run: |
+        python -m pip install --no-deps .
+
+    - name: Run tests
+      shell: bash -l {0}
+      run: |
+        PYTEST_ARGS=" -v --cov=$PACKAGE --cov-report=xml "
+        pytest $PYTEST_ARGS $PACKAGE
+
+    - name: Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: true

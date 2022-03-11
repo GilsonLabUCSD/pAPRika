@@ -3,15 +3,12 @@ This class contains a simulation setup wrapper for use with the OpenFF Evaluator
 """
 
 import logging
-import os
-import subprocess
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import parmed as pmd
-import pkg_resources
 
-from paprika import align
+from paprika.build import align
 from paprika.restraints import DAT_restraint, static_DAT_restraint
 
 logger = logging.getLogger(__name__)
@@ -20,7 +17,7 @@ _PI_ = np.pi
 
 class Setup:
     """
-    The Setup class provides a wrapper function around the preparation of the host-guest
+    The ``Setup`` class provides a wrapper function around the preparation of the host-guest
     system and the application of restraints.
     """
 
@@ -607,167 +604,3 @@ class Setup:
             restraints.append(guest_restraint)
 
         return restraints
-
-
-def get_benchmarks():
-    """
-    Determine the installed `taproom` benchmarks.
-    """
-    installed_benchmarks = {}
-
-    for entry_point in pkg_resources.iter_entry_points(group="taproom.benchmarks"):
-        installed_benchmarks[entry_point.name] = entry_point.load()
-
-    return installed_benchmarks
-
-
-def generate_gaff(
-    mol2_file,
-    residue_name,
-    output_name=None,
-    need_gaff_atom_types=True,
-    generate_frcmod=True,
-    directory_path="benchmarks",
-    gaff="gaff2",
-):
-
-    if output_name is None:
-        output_name = mol2_file.stem
-
-    if need_gaff_atom_types:
-        _generate_gaff_atom_types(
-            mol2_file=mol2_file,
-            residue_name=residue_name,
-            output_name=output_name,
-            gaff=gaff,
-            directory_path=directory_path,
-        )
-        logging.debug(
-            "Checking to see if we have a multi-residue MOL2 file that should be converted "
-            "to single-residue..."
-        )
-        structure = pmd.load_file(
-            os.path.join(directory_path, f"{output_name}.{gaff}.mol2"), structure=True
-        )
-        if len(structure.residues) > 1:
-            structure[":1"].save("tmp.mol2")
-            if os.path.exists("tmp.mol2"):
-                os.rename(
-                    "tmp.mol2",
-                    os.path.join(directory_path, f"{output_name}.{gaff}.mol2"),
-                )
-                logging.debug("Saved single-residue MOL2 file for `tleap`.")
-            else:
-                raise RuntimeError(
-                    "Unable to convert multi-residue MOL2 file to single-residue for `tleap`."
-                )
-
-        if generate_frcmod:
-            _generate_frcmod(
-                mol2_file=f"{output_name}.{gaff}.mol2",
-                gaff=gaff,
-                output_name=output_name,
-                directory_path=directory_path,
-            )
-        else:
-            raise NotImplementedError()
-
-
-def _generate_gaff_atom_types(
-    mol2_file, residue_name, output_name, gaff="gaff2", directory_path="benchmarks"
-):
-
-    p = subprocess.Popen(
-        [
-            "antechamber",
-            "-i",
-            str(mol2_file),
-            "-fi",
-            "mol2",
-            "-o",
-            f"{output_name}.{gaff}.mol2",
-            "-fo",
-            "mol2",
-            "-rn",
-            f"{residue_name.upper()}",
-            "-at",
-            f"{gaff}",
-            "-an",
-            "no",
-            "-dr",
-            "no",
-            "-pf",
-            "yes",
-        ],
-        cwd=directory_path,
-    )
-    p.communicate()
-
-    files = [
-        "ANTECHAMBER_AC.AC",
-        "ANTECHAMBER_AC.AC0",
-        "ANTECHAMBER_BOND_TYPE.AC",
-        "ANTECHAMBER_BOND_TYPE.AC0",
-        "ATOMTYPE.INF",
-    ]
-    files = [directory_path.joinpath(i) for i in files]
-    for file in files:
-        if file.exists():
-            logger.debug(f"Removing temporary file: {file}")
-            file.unlink()
-
-    if not os.path.exists(f"{output_name}.{gaff}.mol2"):
-        # Try with the newer (AmberTools 19) version of `antechamber` which doesn't have the `-dr` flag
-        p = subprocess.Popen(
-            [
-                "antechamber",
-                "-i",
-                str(mol2_file),
-                "-fi",
-                "mol2",
-                "-o",
-                f"{output_name}.{gaff}.mol2",
-                "-fo",
-                "mol2",
-                "-rn",
-                f"{residue_name.upper()}",
-                "-at",
-                f"{gaff}",
-                "-an",
-                "no",
-                "-pf",
-                "yes",
-            ],
-            cwd=directory_path,
-        )
-        p.communicate()
-
-        files = [
-            "ANTECHAMBER_AC.AC",
-            "ANTECHAMBER_AC.AC0",
-            "ANTECHAMBER_BOND_TYPE.AC",
-            "ANTECHAMBER_BOND_TYPE.AC0",
-            "ATOMTYPE.INF",
-        ]
-        files = [directory_path.joinpath(i) for i in files]
-        for file in files:
-            if file.exists():
-                logger.debug(f"Removing temporary file: {file}")
-                file.unlink()
-
-
-def _generate_frcmod(mol2_file, gaff, output_name, directory_path="benchmarks"):
-    subprocess.Popen(
-        [
-            "parmchk2",
-            "-i",
-            str(mol2_file),
-            "-f",
-            "mol2",
-            "-o",
-            f"{output_name}.{gaff}.frcmod",
-            "-s",
-            f"{gaff}",
-        ],
-        cwd=directory_path,
-    )

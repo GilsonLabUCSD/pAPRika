@@ -1,7 +1,7 @@
 Dummy Atoms API
 ---------------
 
-.. automodule:: paprika.dummy
+.. automodule:: paprika.build.dummy
    :members:
    :undoc-members:
    :show-inheritance:

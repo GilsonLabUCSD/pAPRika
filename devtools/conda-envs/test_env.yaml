@@ -1,8 +1,6 @@
 name: paprika-dev
 channels:
   - conda-forge
-  - omnia
-  - mwt
 dependencies:
   
   # Base depends
@@ -13,11 +11,14 @@ dependencies:
   - parmed
   - mdtraj
   - pymbar >=3.0.5
-  - openmm
+  - openmm >=7.6.0
+  - yank
   - ambertools >=20.0
   - pyyaml
   - plumed
   - intermol
+  - openff-units
+  - openff-utilities
 
   # devtools
   - isort
@@ -25,8 +26,12 @@ dependencies:
   - flake8
   
   # Documentation
+  - numpydoc
+  - pandoc
   - sphinx
+  - nbsphinx
   - sphinx_rtd_theme
+  - sphinxcontrib-bibtex ==1.0.0
 
   # Testing
   - pytest

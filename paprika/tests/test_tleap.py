@@ -8,12 +8,15 @@ import shutil
 import subprocess as sp
 
 import numpy as np
+import openmm.unit as unit
 import parmed as pmd
 import pytest
+from openmm import NonbondedForce
 
-from paprika.align import zalign
-from paprika.dummy import add_dummy, write_dummy_frcmod, write_dummy_mol2
-from paprika.tleap import ANGSTROM_CUBED_TO_LITERS, System
+from paprika.build.align import zalign
+from paprika.build.system import TLeap
+from paprika.build.system.utils import ANGSTROM_CUBED_TO_LITERS, PBCBox
+from paprika.utils import is_file_and_not_empty
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +34,10 @@ def clean_files(directory=os.path.join(os.path.dirname(__file__), "tmp")):
 
 @pytest.mark.slow
 def test_solvation_simple(clean_files):
-    """ Test that we can solvate CB6-BUT using default settings. """
+    """Test that we can solvate CB6-BUT using default settings."""
     waters = np.random.randint(100, 10000)
     logger.debug("Trying {} waters with default settings...".format(waters))
-    sys = System()
+    sys = TLeap()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
     )
@@ -48,12 +51,12 @@ def test_solvation_simple(clean_files):
     assert int(grepped_waters) == waters
 
 
-@pytest.mark.parametrize("shape", ["octahedral", "cubic"])
+@pytest.mark.parametrize("shape", [PBCBox.octahedral, PBCBox.cubic])
 def test_solvation_shapes(shape, clean_files):
-    """ Test that we can solvate CB6-BUT with a truncated octahedron. """
+    """Test that we can solvate CB6-BUT with a truncated octahedron."""
     waters = np.random.randint(1000, 10000)
     logger.debug("Trying {} waters in a truncated octahedron...".format(waters))
-    sys = System()
+    sys = TLeap()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
     )
@@ -71,13 +74,87 @@ def test_solvation_shapes(shape, clean_files):
     assert int(grepped_waters) == waters
 
 
+@pytest.mark.parametrize("water_model", ["tip4p", "opc"])
+def test_solvation_water_model(water_model, clean_files):
+    """Test that we can solvate CB6-BUT with a truncated octahedron."""
+    waters = np.random.randint(1000, 10000)
+    logger.debug("Trying {} waters in a truncated octahedron...".format(waters))
+    sys = TLeap()
+    sys.output_path = "tmp"
+    sys.loadpdb_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb"
+    )
+    sys.target_waters = waters
+    sys.output_prefix = "solvate"
+    sys.pbc_type = PBCBox.cubic
+    sys.set_water_model(water_model)
+    sys.template_lines = [
+        "source leaprc.protein.ff14SB",
+        "source leaprc.gaff",
+        "loadamberparams ../paprika/data/cb6-but/cb6.frcmod",
+        "CB6 = loadmol2 ../paprika/data/cb6-but/cb6.mol2",
+        "loadamberparams ../paprika/data/cb6-but/but.frcmod",
+        "BUT = loadmol2 ../paprika/data/cb6-but/but.mol2",
+        "model = loadpdb ../paprika/data/cb6-but/cb6-but.pdb",
+    ]
+    sys.build()
+    grepped_waters = sp.check_output(
+        ["grep -oh 'WAT' ./tmp/solvate.prmtop | wc -w"], shell=True
+    )
+    assert int(grepped_waters) == waters
+
+
+def test_solvation_bind3p(clean_files):
+    logger.debug("Solvating with 500 Bind3P waters in a truncated octahedron...")
+    sys = TLeap()
+    sys.output_path = "tmp"
+    sys.loadpdb_file = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but.pdb"
+    )
+    sys.target_waters = 2000
+    sys.output_prefix = "solvate"
+    sys.pbc_type = PBCBox.cubic
+    sys.set_water_model("tip3p", model_type="bind3p")
+    sys.template_lines = [
+        "source leaprc.gaff",
+        "loadamberparams ../paprika/data/cb6-but/cb6.frcmod",
+        "CB6 = loadmol2 ../paprika/data/cb6-but/cb6.mol2",
+        "BUT = loadmol2 ../paprika/data/cb6-but/but.mol2",
+        "model = loadpdb ../paprika/data/cb6-but/cb6-but.pdb",
+    ]
+    sys.build()
+
+    prmtop = os.path.join("./tmp/solvate.prmtop")
+    inpcrd = os.path.join("./tmp/solvate.rst7")
+    structure = pmd.load_file(prmtop, inpcrd, structure=True)
+    water_index = [
+        atom.index
+        for atom in structure.topology.atoms()
+        if atom.residue.name == "WAT" and atom.residue.index == 10
+    ]
+    system = structure.createSystem()
+    nonbonded = [
+        force for force in system.getForces() if isinstance(force, NonbondedForce)
+    ][0]
+    oxygen = nonbonded.getParticleParameters(water_index[0])
+    assert (
+        pytest.approx(oxygen[1].value_in_unit(unit.angstrom) - 3.1319, abs=1e-3) == 0.0
+    )
+    assert (
+        pytest.approx(
+            oxygen[2].value_in_unit(unit.kilocalorie_per_mole) - 0.1818, abs=1e-3
+        )
+        == 0.0
+    )
+
+
 @pytest.mark.slow
 def test_solvation_spatial_size(clean_files):
-    """ Test that we can solvate CB6-BUT with an buffer size in Angstroms. """
+    """Test that we can solvate CB6-BUT with an buffer size in Angstroms."""
     random_int = np.random.randint(10, 20)
     random_size = random_int * np.random.random_sample(1) + random_int
     logger.debug("Trying buffer size of {} A...".format(random_size[0]))
-    sys = System()
+    sys = TLeap()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
     )
@@ -87,7 +164,7 @@ def test_solvation_spatial_size(clean_files):
     )
     sys.buffer_value = float(random_size[0])
     sys.output_prefix = "solvate"
-    sys.pbc_type = "cubic"
+    sys.pbc_type = PBCBox.cubic
     sys.build()
     grepped_waters = sp.check_output(
         ["grep -oh 'WAT' ./tmp/solvate.prmtop | wc -w"], shell=True
@@ -97,10 +174,10 @@ def test_solvation_spatial_size(clean_files):
 
 @pytest.mark.slow
 def test_solvation_potassium_control(clean_files):
-    """ Test there is no potassium by default. A negative control. """
+    """Test there is no potassium by default. A negative control."""
     waters = np.random.randint(1000, 10000)
     logger.debug("Trying {} waters with potassium...".format(waters))
-    sys = System()
+    sys = TLeap()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
     )
@@ -120,7 +197,7 @@ def test_solvation_potassium_control(clean_files):
 
 @pytest.mark.slow
 def test_solvation_with_additional_ions(clean_files):
-    """ Test that we can solvate CB6-BUT with additional ions. """
+    """Test that we can solvate CB6-BUT with additional ions."""
     waters = np.random.randint(1000, 10000)
     cations = ["LI", "Na+", "K+", "RB", "CS"]
     anions = ["F", "Cl-", "BR", "IOD"]
@@ -129,7 +206,7 @@ def test_solvation_with_additional_ions(clean_files):
     random_cation = random.choice(cations)
     random_anion = random.choice(anions)
     logger.debug("Trying {} waters with additional ions...".format(waters))
-    sys = System()
+    sys = TLeap()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
     )
@@ -168,9 +245,9 @@ def test_solvation_with_additional_ions(clean_files):
 
 
 def test_solvation_by_M_and_m(clean_files):
-    """ Test that we can solvate CB6-BUT through molarity and molality. """
+    """Test that we can solvate CB6-BUT through molarity and molality."""
     logger.debug("Trying 10 A buffer with 150 mM NaCl...")
-    sys = System()
+    sys = TLeap()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
     )
@@ -181,9 +258,9 @@ def test_solvation_by_M_and_m(clean_files):
     sys.buffer_value = 10.0
     sys.output_prefix = "solvate"
     sys.neutralize = False
-    sys.pbc_type = "rectangular"
+    sys.pbc_type = PBCBox.rectangular
     sys.add_ions = ["NA", "0.150M", "CL", "0.150M", "K", "0.100m", "BR", "0.100m"]
-    sys.build()
+    sys.build(clean_files=False)
 
     # Molarity Check
     obs_num_na = sp.check_output(
@@ -197,8 +274,8 @@ def test_solvation_by_M_and_m(clean_files):
 
     volume = sys.get_volume()
     volume_in_liters = volume * ANGSTROM_CUBED_TO_LITERS
-    calc_num_na = np.ceil((6.022 * 10 ** 23) * (0.150) * volume_in_liters)
-    calc_num_cl = np.ceil((6.022 * 10 ** 23) * (0.150) * volume_in_liters)
+    calc_num_na = np.ceil((6.022 * 10 ** 23) * 0.150 * volume_in_liters)
+    calc_num_cl = np.ceil((6.022 * 10 ** 23) * 0.150 * volume_in_liters)
     assert int(obs_num_na) == int(calc_num_na)
     assert int(obs_num_cl) == int(calc_num_cl)
 
@@ -220,7 +297,7 @@ def test_solvation_by_M_and_m(clean_files):
 
 @pytest.mark.slow
 def test_alignment_workflow(clean_files):
-    """ Test that we can solvate CB6-BUT after alignment. """
+    """Test that we can solvate CB6-BUT after alignment."""
     cb6 = pmd.load_file(
         os.path.join(
             os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
@@ -228,7 +305,7 @@ def test_alignment_workflow(clean_files):
     )
     zalign(cb6, ":CB6", ":BUT", save=True, filename="./tmp/tmp.pdb")
     waters = np.random.randint(1000, 10000)
-    sys = System()
+    sys = TLeap()
     sys.template_file = os.path.join(
         os.path.dirname(__file__), "../data/cb6-but/tleap_solvate.in"
     )
@@ -244,80 +321,10 @@ def test_alignment_workflow(clean_files):
     assert int(grepped_waters) == waters
 
 
-def test_add_dummy(clean_files):
-    """ Test that dummy atoms get added correctly """
-    temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
-    host_guest = pmd.load_file(
-        os.path.join(
-            os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
-        ),
-        structure=True,
-    )
-    host_guest = zalign(host_guest, ":BUT@C", ":BUT@C3", save=False)
-    host_guest = add_dummy(host_guest, residue_name="DM1", z=-11.000, y=2.000, x=-1.500)
-
-    host_guest.write_pdb(
-        os.path.join(temporary_directory, "cb6-but-dum.pdb"), renumber=False
-    )
-    with open(os.path.join(temporary_directory, "cb6-but-dum.pdb"), "r") as f:
-        lines = f.readlines()
-        test_line1 = lines[123].rstrip()
-        test_line2 = lines[124].rstrip()
-    ref_line1 = "TER     123      BUT     2"
-    ref_line2 = (
-        "HETATM  123 DUM  DM1     3      -1.500   2.000 -11.000  0.00  0.00          PB"
-    )
-    assert ref_line1 == test_line1
-    assert ref_line2 == test_line2
-
-    write_dummy_frcmod(path=temporary_directory)
-    write_dummy_mol2(path=temporary_directory, filename="dm1.mol2", residue_name="DM1")
-    sys = System()
-    cb6_frcmod = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.frcmod")
-    )
-    cb6_mol2 = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.mol2")
-    )
-    but_frcmod = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.frcmod")
-    )
-    but_mol2 = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.mol2")
-    )
-
-    sys.template_lines = [
-        "source leaprc.gaff",
-        f"loadamberparams {cb6_frcmod}",
-        f"CB6 = loadmol2 {cb6_mol2}",
-        f"loadamberparams {but_frcmod}",
-        f"BUT = loadmol2 {but_mol2}",
-        "loadamberparams dummy.frcmod",
-        "DM1 = loadmol2 dm1.mol2",
-        "model = loadpdb cb6-but-dum.pdb",
-    ]
-    sys.output_path = temporary_directory
-    sys.output_prefix = "cb6-but-dum"
-    sys.pbc_type = None
-    sys.neutralize = False
-    sys.build()
-    with open(
-        os.path.join(os.path.dirname(__file__), "../data/cb6-but/REF_cb6-but-dum.rst7"),
-        "r",
-    ) as f:
-        contents = f.read()
-        reference = [float(i) for i in contents.split()[2:]]
-
-    with open(os.path.join(temporary_directory, "cb6-but-dum.rst7"), "r") as f:
-        contents = f.read()
-        new = [float(i) for i in contents.split()[2:]]
-    assert np.allclose(reference, new)
-
-
 def test_hydrogen_mass_repartitioning(clean_files):
-    """ Test that hydrogen mass is repartitioned. """
+    """Test that hydrogen mass is repartitioned."""
     temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
-    sys = System()
+    sys = TLeap()
     but_frcmod = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.frcmod")
     )
@@ -355,7 +362,7 @@ def test_multiple_pdb_files(clean_files):
     Reference: https://github.com/slochower/pAPRika/issues/141
     """
     temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
-    sys = System()
+    sys = TLeap()
     cb6_frcmod = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6.frcmod")
     )
@@ -383,7 +390,7 @@ def test_multiple_pdb_files(clean_files):
     sys.output_prefix = "multi"
     sys.pbc_type = None
     sys.neutralize = False
-    sys.build()
+    sys.build(clean_files=False)
 
     with open(f"{temporary_directory}/multi.tleap.in", "r") as f:
         lines = f.read()
@@ -395,7 +402,7 @@ def test_multiple_pdb_files(clean_files):
 
 
 def test_conversions(clean_files):
-    """ Test that conversion methods work in Tleap module. """
+    """Test that conversion methods work in Tleap module."""
     temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
 
     but_frcmod = os.path.abspath(
@@ -405,7 +412,7 @@ def test_conversions(clean_files):
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/but.mol2")
     )
 
-    sys = System()
+    sys = TLeap()
     sys.template_lines = [
         "source leaprc.gaff",
         f"loadamberparams {but_frcmod}",
@@ -418,7 +425,7 @@ def test_conversions(clean_files):
     sys.neutralize = False
     sys.build()
 
-    from paprika.tleap import ConversionToolkit
+    from paprika.build.system.utils import ConversionToolkit
     from paprika.utils import is_file_and_not_empty
 
     # Gromacs ParmEd test
@@ -466,3 +473,70 @@ def test_conversions(clean_files):
     sys.convert_to_desmond()
     cms_file = os.path.join(sys.output_path, sys.output_prefix + ".cms")
     assert is_file_and_not_empty(cms_file) is True
+
+
+def test_ion_solvation(clean_files):
+    """Test that tleap module is solvating an ion properly."""
+    temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
+
+    ions = ["Na+", "Cl-"]
+    for ion in ions:
+        # Write PDB file
+        with open(os.path.join(temporary_directory, "ion.pdb"), "w") as f:
+            f.writelines(
+                "CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1           1\n"
+            )
+            f.writelines(
+                f"ATOM      1 {ion:3s}  {ion:3s}     1       0.000   0.000   0.000  1.00  0.00\n"
+            )
+            f.writelines("END")
+
+        # Write MOL2 file
+        with open(os.path.join(temporary_directory, "ion.mol2"), "w") as f:
+            charge = 1.0 if "+" in ion else -1.0
+            gaff_type = ion.split("+" if "+" in ion else "-")[0].lower()
+            f.writelines("@<TRIPOS>MOLECULE\n")
+            f.writelines(f"{ion}\n")
+            f.writelines("1     0     1     0     0\n")
+            f.writelines("SMALL\n")
+            f.writelines("No Charge or Current Charge\n\n\n")
+            f.writelines("@<TRIPOS>ATOM\n")
+            f.writelines(
+                f"      1 {ion:3s}          0.0000     0.0000     0.0000 {gaff_type}         1 {ion}       {charge:.6f}\n"
+            )
+            f.writelines("@<TRIPOS>BOND\n")
+            f.writelines("@<TRIPOS>SUBSTRUCTURE\n")
+            f.writelines(
+                f"     1 {ion:3s}         1 TEMP              0 ****  ****    0 ROOT"
+            )
+
+        # Run tleap
+        ion_sys = TLeap()
+        ion_sys.output_path = temporary_directory
+        ion_sys.target_waters = 1000
+        ion_sys.pbc_type = PBCBox.cubic
+        ion_sys.neutralize = False
+        ion_sys.template_lines = [
+            "source leaprc.gaff",
+            "source leaprc.water.tip3p",
+            f"{ion} = loadmol2 ion.mol2",
+            "model = loadpdb ion.pdb",
+        ]
+        ion_sys.build()
+
+        # Make sure Amber files are generated
+        assert (
+            is_file_and_not_empty(os.path.join(temporary_directory, "build.prmtop"))
+            is True
+        )
+        assert (
+            is_file_and_not_empty(os.path.join(temporary_directory, "build.rst7"))
+            is True
+        )
+
+        # Check number of atoms in files
+        structure = pmd.load_file(
+            os.path.join(temporary_directory, "build.prmtop"),
+            os.path.join(temporary_directory, "build.rst7"),
+        )
+        assert len(structure.atoms) == 3001

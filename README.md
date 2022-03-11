@@ -2,8 +2,8 @@
 pAPRika is a toolkit for setting up, running, and analyzing free energy molecular dynamics simulations.
 
 # Badges
-[![Build Status](https://travis-ci.org/slochower/pAPRika.svg?branch=master)](https://travis-ci.org/slochower/pAPRika)
-[![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=stable)](https://paprika.readthedocs.io/en/stable/?badge=stable)
+[![Build Status](https://github.com/slochower/pAPRika/workflows/ci/badge.svg)](https://github.com/slochower/pAPRika/actions?query=branch%3Amaster+workflow%3Aci)
+[![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=latest)](https://paprika.readthedocs.io/en/latest/?badge=latest)
 [![Anaconda-Server Badge](https://anaconda.org/conda-forge/paprika/badges/installer/conda.svg)](https://conda.anaconda.org/conda-forge)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/slochower/pAPRika.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/slochower/pAPRika/context:python)
 [![codecov](https://codecov.io/gh/slochower/pAPRika/branch/master/graph/badge.svg)](https://codecov.io/gh/slochower/pAPRika)
@@ -44,13 +44,26 @@ We recommend installing pAPRika in a fresh `conda` environment if possible. Ther
 
 In this example, we will setup and simulate butane (BUT) as a guest molecule for the host [cucurbit[6]uril](https://en.wikipedia.org/wiki/Cucurbituril) (CB6). CBs are rigid, symmetric, cyclic host molecules with oxygen atoms around the portal edge of the cavity. We will run the simulation in implicit solvent, using the [Generalized-Born](https://en.wikipedia.org/wiki/Implicit_solvation#Generalized_Born) model, for speed and simplicity, using AMBER. This tutorial assumes familiarity with basic MD procedures.
 
-The `cb6-but` folder referred to below are in the `paprika/data` directory.
+The `cb6-but` folder referred to below are located in the directory `paprika/data`. 
+
+pAPRika utilizes `Pint` units through the `openff-units` wrapper. Any float value that is passed to a function (mostly in the `build`, `restraints` and `analysis` modules) for masses, distances, angles, energy and force constants will be transformed to a `Pint` quantity based on the default units below (AMBER convention):
+* mass: Dalton
+* distance: angstrom
+* angle: degrees
+* energy: kcal/mol
+* force constants: kcal/mol/angstrom^2 (distances) or kcal/mol/radians^2 (angles)
+
+If a `Pint` quantity is specified then the units will be converted accordingly to match the list above.
+
+```python
+from openff.units import unit
+```
 
 ## Initial Setup
 
 The very first step in the calculation is creating a coordinate file for the bound host-guest complex (we usually use PDB format for this part because it works well with `tleap`). This does not have to perfectly match the bound state by any means (we will later minimize and equilibrate), but this should be a reasonable illustration of the bound complex. This file can be created by hand (in a program like Chimera, VMD, or PyMOL) or by docking the guest into the host cavity (with MOE, AutoDock, DOCK, ...).
 
-In this example, this file is called `cb6-but.pdb`, in the `paprika/data/` directory, and this is what it looks like.
+In this example, the host-guest system coordinates (`cb6-but.pdb`) is located in `paprika/data`. Below is an image of the host-guest molecules.
 
 ![](docs/tutorials/images/cb6-but.png)
 
@@ -63,11 +76,11 @@ The `mol2` files that we use here (`cb6.mol2` and `but.mol2`) were created by ru
 In this example, we will use GAFF parameters for both the host and guest. For the host, `parmchk2` has identified two parameters that are missing from GAFF and added the most similar ones into the supplementary `cb6.frcmod` file.
 
 ```python
-from paprika import tleap
+from paprika.build.system import TLeap
 ```
 
 ```python
-system = tleap.System()
+system = TLeap()
 system.output_path = "cb6-but"
 system.pbc_type = None
 system.neutralize = False
@@ -92,10 +105,10 @@ After running `tleap`, it is always a good idea to check `leap.log`. `pAPRika` d
 
 Now we are ready to prepare the complex for the attach-pull-release calculation. This involves:
 
-- Aligning the structure so the guest can be pulled along the $z$ axis, and
+- Aligning the structure so the guest can be pulled along the *z*-axis, and
 - Adding dummy atoms that are used to orient the host and guest.
 
-To access the host-guest structure in Python, we use the ParmEd `Structure` class. So we start by loading the vacuum model that we just created. Then, we need to define two atoms on the guest that are placed along the $z$ axis. These should be heavy atoms on either end of the guest, the second atom leading the pulling.
+To access the host-guest structure in Python, we use the ParmEd `Structure` class. So we start by loading the vacuum model that we just created. Then, we need to define two atoms on the guest that are placed along the *z*-axis. These should be heavy atoms on either end of the guest, the second atom leading the pulling.
 
 These same atoms will be used later for the restraints, so I will name them `G1` and `G2`, using AMBER selection syntax.
 
@@ -109,14 +122,13 @@ import parmed as pmd
 
 
 ```python
-structure = pmd.load_file("cb6-but/vac.prmtop",
-                          "cb6-but/vac.rst7",
-                          structure=True)
+structure = pmd.load_file("cb6-but/vac.prmtop", "cb6-but/vac.rst7", structure=True)
 ```
 
 
 ```python
-from paprika import align
+
+from paprika.build import align
 
 ```
 
@@ -133,11 +145,11 @@ aligned_structure.save("cb6-but/aligned.prmtop", overwrite=True)
 aligned_structure.save("cb6-but/aligned.rst7", overwrite=True)
 ```
 
-Here, the origin is shown as a grey sphere, with the $z$ axis drawn as a blue arrow. The coordinates used for this example were already aligned, so Python warns that the cross product is zero, but this won't be the case in general.
+Here, the origin is shown as a grey sphere, with the *z*-axis drawn as a blue arrow. The coordinates used for this example were already aligned, so Python warns that the cross product is zero, but this won't be the case in general.
 
 ![](docs/tutorials/images/aligned.png)
 
-Next, we add the dummy atoms. The dummy atoms will be fixed in place during the simulation and are used to orient the host and guest in the lab frame. The dummy atoms are placed along the $z$ axis, behind the host. The dummy atoms are used in distance, angle, and torsion restraints and therefore, the exact positioning of these atoms affects the value of those restraints. For a typical host-guest system, like the one here, we generally place the first dummy atom 6 Angstroms behind the origin, the second dummy atom 9 Angstroms behind the origin, and the third dummy atom 11.2 Angstroms behind the origin and offset about 2.2 Angstroms along the $y$ axis. After we add restraints, the positioning of the dummy atoms should be more clear.
+Next, we add the dummy atoms. The dummy atoms will be fixed in place during the simulation and are used to orient the host and guest in the lab frame. The dummy atoms are placed along the \ axis, behind the host. The dummy atoms are used in distance, angle, and torsion restraints and therefore, the exact positioning of these atoms affects the value of those restraints. For a typical host-guest system, like the one here, we generally place the first dummy atom 6 Angstroms behind the origin, the second dummy atom 9 Angstroms behind the origin, and the third dummy atom 11.2 Angstroms behind the origin and offset about 2.2 Angstroms along the *y*-axis. After we add restraints, the positioning of the dummy atoms should be more clear.
 
 Note, these dummy atoms do not interact with the other atoms in the system, and therefore, there is no problem placing them near host atoms.
 
@@ -145,21 +157,20 @@ Note, these dummy atoms do not interact with the other atoms in the system, and 
 
 
 ```python
-from paprika import dummy
+from paprika.build import dummy
+
 ```
 
 
 ```python
-structure = pmd.load_file("cb6-but/aligned.prmtop",
-                          "cb6-but/aligned.rst7",
-                          structure=True)
+structure = pmd.load_file("cb6-but/aligned.prmtop", "cb6-but/aligned.rst7", structure=True)
 ```
 
 
 ```python
-structure = dummy.add_dummy(structure, residue_name="DM1", z=-6.0)
-structure = dummy.add_dummy(structure, residue_name="DM2", z=-9.0)
-structure = dummy.add_dummy(structure, residue_name="DM3", z=-11.2, y=2.2)
+structure = dummy.add_dummy(structure, residue_name="DM1", z=-6.0 * unit.angstrom)
+structure = dummy.add_dummy(structure, residue_name="DM2", z=-9.0 * unit.angstrom)
+structure = dummy.add_dummy(structure, residue_name="DM3", z=-11.2 * unit.angstrom, y=2.2 * unit.angstrom)
 ```
 
 
@@ -189,7 +200,7 @@ Now all the pieces are in place to build the system for an APR calculation.
 
 
 ```python
-system = tleap.System()
+system = TLeap()
 system.output_path = "cb6-but"
 system.pbc_type = None
 system.neutralize = False
@@ -260,7 +271,7 @@ Alternatively, we could specify the number of windows for each phase and the for
 
 
 - Static restraints: these six restraints keep the host and in the proper orientation during the simulation (necessary),
-- Guest restraints: these restraints pull the guest away from the host along the $z$ axis (necessary),
+- Guest restraints: these restraints pull the guest away from the host along the *z*-axis (necessary),
 - Conformational restraints: these restraints alter the conformational sampling of the host molecule (optional), and
 - Wall restraints: these restraints help define the bound state of the guest (optional).
 
@@ -296,7 +307,7 @@ Note that these restraints are not "attached" and they don't need to be "release
 
 The first three static restraints affect the translational distance, angle, and torsion angle between the host and the dummy atoms. These control the position of the host, via the first anchor atom, from moving relative to the dummy atoms.
 
-There is no *correct* value for the force constants. From experience, we know that a distance force constant of 5.0 kcal/mol/Angstrom$^2$ won't nail down the host and yet it also won't wander away. Likewise, we have had good results using 100.0 kcal/mol/radian$^2$ for the angle force constant.
+There is no *correct* value for the force constants. From experience, we know that a distance force constant of 5.0 kcal/mol/Angstrom^2 won't nail down the host and yet it also won't wander away. Likewise, we have had good results using 100.0 kcal/mol/radian^2 for the angle force constant.
 
 ![](docs/tutorials/images/static-restraints-1.png)
 
@@ -306,6 +317,8 @@ from paprika import restraints
 ```
 
 ```python
+k_dist = 5.0 * unit.kcal / unit.mole / unit.angstrom ** 2
+k_angle = 100.0 * unit.kcal / unit.mole / unit.radians ** 2
 static_restraints = []
 ```
 
@@ -322,7 +335,7 @@ structure = pmd.load_file("cb6-but/cb6-but-dum.prmtop",
 r = restraints.static_DAT_restraint(restraint_mask_list = [D1, H1],
                                     num_window_list = windows,
                                     ref_structure = structure,
-                                    force_constant = 5.0,
+                                    force_constant = k_dist,
                                     amber_index=True)
 
 static_restraints.append(r)
@@ -333,7 +346,7 @@ static_restraints.append(r)
 r = restraints.static_DAT_restraint(restraint_mask_list = [D2, D1, H1],
                                     num_window_list = windows,
                                     ref_structure = structure,
-                                    force_constant = 100.0,
+                                    force_constant = k_angle,
                                     amber_index=True)
 
 static_restraints.append(r)
@@ -344,7 +357,7 @@ static_restraints.append(r)
 r = restraints.static_DAT_restraint(restraint_mask_list = [D3, D2, D1, H1],
                                     num_window_list = windows,
                                     ref_structure = structure,
-                                    force_constant = 100.0,
+                                    force_constant = k_angle,
                                     amber_index=True)
 
 static_restraints.append(r)
@@ -359,7 +372,7 @@ The next three restraints control the orientation of the host relative to the du
 r = restraints.static_DAT_restraint(restraint_mask_list = [D1, H1, H2],
                                     num_window_list = windows,
                                     ref_structure = structure,
-                                    force_constant = 100.0,
+                                    force_constant = k_angle,
                                     amber_index=True)
 
 static_restraints.append(r)
@@ -370,7 +383,7 @@ static_restraints.append(r)
 r = restraints.static_DAT_restraint(restraint_mask_list = [D2, D1, H1, H2],
                                     num_window_list = windows,
                                     ref_structure = structure,
-                                    force_constant = 100.0,
+                                    force_constant = k_angle,
                                     amber_index=True)
 
 static_restraints.append(r)
@@ -381,7 +394,7 @@ static_restraints.append(r)
 r = restraints.static_DAT_restraint(restraint_mask_list = [D1, H1, H2, H3],
                                     num_window_list = windows,
                                     ref_structure = structure,
-                                    force_constant = 100.0,
+                                    force_constant = k_angle,
                                     amber_index=True)
 
 static_restraints.append(r)
@@ -417,11 +430,11 @@ r.auto_apr = True
 r.continuous_apr = True
 r.amber_index = True
 
-r.attach["target"] = 6.0                            # Angstroms
+r.attach["target"] = 6.0 * unit.angstrom            # Angstroms
 r.attach["fraction_list"] = attach_fractions
-r.attach["fc_final"] = 5.0                          # kcal/mol/Angstroms**2
+r.attach["fc_final"] = k_dist                       # kcal/mol/Angstroms**2
 
-r.pull["target_final"] = 24.0                       # Angstroms
+r.pull["target_final"] = 24.0 * unit.angstrom       # Angstroms
 r.pull["num_windows"] = windows[1]
 
 r.initialize()
@@ -439,11 +452,11 @@ r.auto_apr = True
 r.continuous_apr = True
 r.amber_index = True
 
-r.attach["target"] = 180.0                          # Degrees
+r.attach["target"] = 180.0 * unit.degrees           # Degrees
 r.attach["fraction_list"] = attach_fractions
-r.attach["fc_final"] = 100.0                        # kcal/mol/radian**2
+r.attach["fc_final"] = k_angle                      # kcal/mol/radian**2
 
-r.pull["target_final"] = 180.0                      # Degrees
+r.pull["target_final"] = 180.0 * unit.degrees       # Degrees
 r.pull["num_windows"] = windows[1]
 
 r.initialize()
@@ -461,11 +474,11 @@ r.auto_apr = True
 r.continuous_apr = True
 r.amber_index = True
 
-r.attach["target"] = 180.0                          # Degrees
+r.attach["target"] = 180.0 * unit.degrees           # Degrees
 r.attach["fraction_list"] = attach_fractions
-r.attach["fc_final"] = 100.0                        # kcal/mol/radian**2
+r.attach["fc_final"] = k_angle                      # kcal/mol/radian**2
 
-r.pull["target_final"] = 180.0                      # Degrees
+r.pull["target_final"] = 180.0 * unit.degrees       # Degrees
 r.pull["num_windows"] = windows[1]
 
 r.initialize()
@@ -483,7 +496,7 @@ from paprika.restraints import create_window_list
 
 window_list = create_window_list(guest_restraints)
 for window in window_list:
-    os.makedirs(f"windows/{window}")
+    os.makedirs(f"windows/{window}", exist_ok=True)
 ```
 
 ## Next, we ask pAPRika to write the restraint information in each window
@@ -496,9 +509,9 @@ The functional form of the restraints is specified in section 25.1 of the AMBER1
 ```python
 from paprika.restraints import amber_restraint_line
 
-host_guest_restraints = static_restraints + guest_restraints
+host_guest_restraints = (static_restraints + guest_restraints)
 for window in window_list:
-    with open(f"windows/{window}/disang.rest", "a") as file:
+    with open(f"windows/{window}/disang.rest", "w") as file:
         for restraint in host_guest_restraints:
             string = amber_restraint_line(restraint, window)
             if string is not None:
@@ -521,14 +534,16 @@ for window in window_list:
     if window[0] == "a":
         shutil.copy("cb6-but/cb6-but-dum.prmtop", f"windows/{window}/cb6-but-dum.prmtop")
         shutil.copy("cb6-but/cb6-but-dum.rst7", f"windows/{window}/cb6-but-dum.rst7")
+
     elif window[0] == "p":
-        structure = pmd.load_file("cb6-but/cb6-but-dum.prmtop", "cb6-but/cb6-but-dum.rst7",
-                          structure = True)
+        structure = pmd.load_file("cb6-but/cb6-but-dum.prmtop", "cb6-but/cb6-but-dum.rst7", structure = True)
         target_difference = guest_restraints[0].phase['pull']['targets'][int(window[1:])] - guest_restraints[0].pull['target_initial']
-        print(f"In window {window} we will translate the guest {target_difference:0.1f} Angstroms.")
+
+        print(f"In window {window} we will translate the guest {target_difference:0.1f}.")
         for atom in structure.atoms:
             if atom.residue.name == "BUT":
-                atom.xz += target_difference
+                atom.xz += target_difference.magnitude
+
         structure.save(f"windows/{window}/cb6-but-dum.prmtop")
         structure.save(f"windows/{window}/cb6-but-dum.rst7")
 ```
@@ -594,9 +609,9 @@ for window in window_list:
     simulation.path = f"windows/{window}/"
     simulation.prefix = "minimize"
 
-    simulation.inpcrd = "cb6-but-dum.rst7"
-    simulation.ref = "cb6-but-dum.rst7"
     simulation.topology = "cb6-but-dum.prmtop"
+    simulation.coordinates = "cb6-but-dum.rst7"
+    simulation.ref = "cb6-but-dum.rst7"
     simulation.restraint_file = "disang.rest"
 
     simulation.config_gb_min()
@@ -684,9 +699,9 @@ for window in window_list:
     simulation.path = f"windows/{window}/"
     simulation.prefix = "production"
 
-    simulation.inpcrd = "minimize.rst7"
-    simulation.ref = "cb6-but-dum.rst7"
     simulation.topology = "cb6-but-dum.prmtop"
+    simulation.coordinates = "minimize.rst7"
+    simulation.ref = "cb6-but-dum.rst7"
     simulation.restraint_file = "disang.rest"
 
     simulation.config_gb_md()
@@ -780,7 +795,7 @@ from paprika import analysis
 
 ```python
 free_energy = analysis.fe_calc()
-free_energy.prmtop = "cb6-but-dum.prmtop"
+free_energy.topology = "cb6-but-dum.prmtop"
 free_energy.trajectory = 'production*.nc'
 free_energy.path = "windows"
 free_energy.restraint_list = guest_restraints
@@ -813,10 +828,12 @@ sem = np.sqrt(
 
 
 ```python
-print(f"The binding affinity for butane and cucurbit[6]uril = {binding_affinity:0.2f} +/- {sem:0.2f} kcal/mol")
+print(f"The binding affinity for butane and cucurbit[6]uril = {binding_affinity.magnitude:0.2f} +/- {sem.magnitude:0.2f} kcal/mol")
 ```
 
     The binding affinity for butane and cucurbit[6]uril = -9.00 +/- 5.53 kcal/mol
 
 
 There is a large uncertainty associated with this calculation because we only simulated for a very short amount of time in each window and we used a large amount of spacing between each window in the pull phase, but the uncertainty will go down with more time.
+
+The experimental value is **−RTln(280∗10^3M)** = -7.44 kcal/mol.

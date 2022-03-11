@@ -7,7 +7,7 @@ Submodules
 paprika.align module
 --------------------
 
-.. automodule:: paprika.align
+.. automodule:: paprika.build.align
     :members:
     :undoc-members:
     :show-inheritance:
@@ -23,7 +23,7 @@ paprika.analysis module
 paprika.dummy module
 --------------------
 
-.. automodule:: paprika.dummy
+.. automodule:: paprika.build.dummy
     :members:
     :undoc-members:
     :show-inheritance:
@@ -47,7 +47,7 @@ paprika.simulate module
 paprika.tleap module
 --------------------
 
-.. automodule:: paprika.tleap
+.. automodule:: paprika.build.system.tleap
     :members:
     :undoc-members:
     :show-inheritance:

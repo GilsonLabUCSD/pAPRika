@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class Analyze:
     """
-    The Analyze class provides a wrapper function around the analysis of simulations.
+    The ``Analyze`` class provides a wrapper function around the analysis of simulations.
     """
 
     @classmethod
@@ -58,7 +58,7 @@ class Analyze:
         """
         analysis = fe_calc()
 
-        analysis.prmtop = topology_name
+        analysis.topology = topology_name
         analysis.trajectory = trajectory_mask
         analysis.path = windows_directory
 
@@ -67,7 +67,7 @@ class Analyze:
         analysis.methods = [analysis_method]
         analysis.bootcycles = bootstrap_cycles
 
-        analysis.collect_data(single_prmtop=False)
+        analysis.collect_data(single_topology=False)
         analysis.compute_free_energy(phases=[phase])
 
         return analysis.results

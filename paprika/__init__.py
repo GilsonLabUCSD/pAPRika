@@ -8,7 +8,7 @@ from __future__ import absolute_import
 
 import logging
 
-from paprika.analyze import Analyze
+from paprika.evaluator import Analyze
 
 # Handle versioneer
 from ._version import get_versions
@@ -23,7 +23,7 @@ del get_versions, versions
 logger = logging.getLogger(__name__)
 
 try:
-    from paprika.setup import Setup
+    from paprika.evaluator import Setup
 
     setup = Setup
 except ImportError:
