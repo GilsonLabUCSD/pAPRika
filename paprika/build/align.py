@@ -319,12 +319,12 @@ def get_rotation_matrix(vector, ref_vector):
         A 3x3 rotation matrix.
 
     """
-    
+
     # If the structures are already aligned (cross product is zero), return 3x3 identity matrix
     if np.linalg.norm(np.cross(vector, ref_vector)) == 0:
         logger.info("The structure is already aligned and the denominator is invalid, returning identity matrix.")
         return np.identity(3)
-    
+
     # Find axis between the mask vector and the axis using cross and dot products.
     x = np.cross(vector, ref_vector) / np.linalg.norm(np.cross(vector, ref_vector))
 

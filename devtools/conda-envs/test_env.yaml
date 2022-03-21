@@ -22,7 +22,7 @@ dependencies:
 
   # devtools
   - isort
-  - black
+  - black >=22.1.0
   - flake8
   
   # Documentation

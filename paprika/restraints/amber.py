@@ -89,9 +89,9 @@ def amber_restraint_line(restraint, window):
         if restraint.restraint_type == "distance"
         else pint_unit.degrees
     )
-    force_constant_unit = energy_unit / target_unit ** 2
+    force_constant_unit = energy_unit / target_unit**2
     if not restraint.restraint_type == "distance":
-        force_constant_unit = energy_unit / pint_unit.radians ** 2
+        force_constant_unit = energy_unit / pint_unit.radians**2
 
     # Prepare AMBER NMR-style restraint
     atoms = "".join([iat1, iat2, iat3, iat4])

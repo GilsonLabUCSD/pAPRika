@@ -171,7 +171,9 @@ def get_bias_potential_type(restraint, phase, window_number):
     return bias_type
 
 
-def extract_guest_restraints(structure, restraints, guest_resname, dummy_prefix="DM"):
+def extract_guest_restraints(
+    structure, restraints, guest_resname, dummy_prefix="DM", return_type="dict"
+):
     """
     Utility function to extract the guest restraints from a list of restraints
     and return individual restraints in the form ``[r, theta, phi, alpha, beta, gamma]``.
@@ -192,10 +194,12 @@ def extract_guest_restraints(structure, restraints, guest_resname, dummy_prefix=
         Residue name of the guest molecule.
     dummy_prefix : str, optional, default="DM"
         The prefix for the dummy atoms residue name.
+    return_type : str, optional, default="dict"
+        Option to return guest restraints as a list or a dict
 
     Returns
     -------
-    guest_restraints : list
+    guest_restraints : list or dict
         list of guest-specific :class:`paprika.restraints.DAT_restraint` restraints.
 
     Examples
@@ -209,6 +213,13 @@ def extract_guest_restraints(structure, restraints, guest_resname, dummy_prefix=
         >>> print(free_energy["ref_state_work"])
 
     """
+    # Check input argument
+    return_type = return_type.lower()
+    if return_type not in ["list", "dict"]:
+        raise ValueError(
+            'Function argument `return_type` can only take values "list" or "dict" as input.'
+        )
+
     guest_resname = guest_resname.upper()
 
     DM1 = f"{dummy_prefix}1"
@@ -282,7 +293,23 @@ def extract_guest_restraints(structure, restraints, guest_resname, dummy_prefix=
             ):
                 gamma = restraint
 
-    guest_restraints = [r, theta, phi, alpha, beta, gamma]
+    if return_type == "list":
+        guest_restraints = [r, theta, phi, alpha, beta, gamma]
+
+    elif return_type == "dict":
+        guest_restraints = {
+            "r": r,
+            "theta": theta,
+            "phi": phi,
+            "alpha": alpha,
+            "beta": beta,
+            "gamma": gamma,
+        }
+
+    else:
+        raise KeyError(
+            "`return_type` argument not valid. Only `list` or `dict` are accepted."
+        )
 
     return guest_restraints
 

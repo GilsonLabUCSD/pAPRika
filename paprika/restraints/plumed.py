@@ -274,7 +274,7 @@ class Plumed:
                 ):
                     target = target.to(pint_unit.radians)
                     force_constant = force_constant.to(
-                        self.output_units["energy"] / pint_unit.radians ** 2
+                        self.output_units["energy"] / pint_unit.radians**2
                     )
 
                 # Determine bias type for this restraint

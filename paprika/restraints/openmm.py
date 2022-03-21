@@ -2,8 +2,14 @@
 import logging
 
 import numpy as np
-import openmm as openmm
-import openmm.unit as openmm_unit
+
+try:
+    import openmm
+    import openmm.unit as openmm_unit
+except ImportError:
+    import simtk.openmm as openmm
+    import simtk.unit as openmm_unit
+
 import parmed as pmd
 from openff.units import unit as pint_unit
 from openff.units.simtk import to_simtk
@@ -57,7 +63,7 @@ def apply_positional_restraints(
                 k = (
                     kpos
                     * openmm_unit.kilocalories_per_mole
-                    / openmm_unit.angstroms ** 2
+                    / openmm_unit.angstroms**2
                 )
             elif isinstance(kpos, openmm_unit.Quantity):
                 k = kpos
