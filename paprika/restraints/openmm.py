@@ -33,8 +33,8 @@ def apply_positional_restraints(
         and solvent.
     system : :class:`openmm.System`
         The system object to add the positional restraints to.
-    atom_name : str
-        The name of the atom to restrain.
+    atom_name : str or list
+        The name or list of atom names to restrain.
     force_group : int, optional
         The force group to add the positional restraints to.
     kpos : float, openmm.unit.Quantity or pint.unit.Quantity, optional
@@ -44,9 +44,12 @@ def apply_positional_restraints(
     # noinspection PyTypeChecker
     structure: pmd.Structure = pmd.load_file(coordinate_path, structure=True)
 
+    if isinstance(atom_name, str):
+        atom_name = [atom_name]
+
     for atom in structure.atoms:
 
-        if atom.name == atom_name:
+        if atom.name in atom_name:
             positional_restraint = openmm.CustomExternalForce(
                 "k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)"
             )
@@ -85,6 +88,10 @@ def apply_dat_restraint(
     """A utility function which takes in pAPRika restraints and applies the
     restraints to an OpenMM System object.
 
+    .. note::
+        Only `distance` and angle `restraints` are supported for flat-bottom potential.
+        In addition, flat-bottom potentials are only applied to the attach phase.
+
     Parameters
     ----------
     system : :class:`openmm.System`
@@ -104,6 +111,7 @@ def apply_dat_restraint(
 
     assert phase in {"attach", "pull", "release"}
 
+    # ------------------------------------ FLAT-BOTTOM POTENTIAL ------------------------------------ #
     # Angular flat-bottom potential
     if flat_bottom and phase == "attach" and restraint.mask3:
         flat_bottom_force = openmm.CustomAngleForce(
@@ -155,10 +163,12 @@ def apply_dat_restraint(
 
     elif flat_bottom and phase == "pull":
         return
+
     elif flat_bottom and phase == "release":
         return
 
-    # Distance restraints
+    # ------------------------------------ FULL HARMONIC POTENTIAL ------------------------------------ #
+    # Distance restraint
     if restraint.mask2 and not restraint.mask3:
         if not restraint.group1 and not restraint.group2:
             bond_restraint = openmm.CustomBondForce("k * (r - r_0)^2")
@@ -172,7 +182,7 @@ def apply_dat_restraint(
             system.addForce(bond_restraint)
         else:
             bond_restraint = openmm.CustomCentroidBondForce(
-                2, "k * (distance(g1, g2) - r_0)^2"
+                2, "k * (r - r_0)^2; " "r = distance(g1, g2);"
             )
             bond_restraint.addPerBondParameter("k")
             bond_restraint.addPerBondParameter("r_0")
@@ -180,8 +190,9 @@ def apply_dat_restraint(
             r_0 = to_simtk(restraint.phase[phase]["targets"][window_number])
             k = to_simtk(restraint.phase[phase]["force_constants"][window_number])
 
-            g1 = bond_restraint.addGroup(restraint.index1)
-            g2 = bond_restraint.addGroup(restraint.index2)
+            # Use weights of 1 instead of particle masses
+            g1 = bond_restraint.addGroup(restraint.index1, [1] * len(restraint.index1))
+            g2 = bond_restraint.addGroup(restraint.index2, [1] * len(restraint.index2))
 
             bond_restraint.addBond([g1, g2], [k, r_0])
             system.addForce(bond_restraint)
@@ -189,7 +200,7 @@ def apply_dat_restraint(
         if force_group:
             bond_restraint.setForceGroup(force_group)
 
-    # Angle restraints
+    # Angle restraint
     elif restraint.mask3 and not restraint.mask4:
         if not restraint.group1 and not restraint.group2 and not restraint.group3:
             angle_restraint = openmm.CustomAngleForce("k * (theta - theta_0)^2")
@@ -207,13 +218,27 @@ def apply_dat_restraint(
             )
             system.addForce(angle_restraint)
         else:
-            # Probably needs openmm.CustomCentroidAngleForce (?)
-            raise NotImplementedError
+            angle_restraint = openmm.CustomCentroidBondForce(
+                3, "k * (theta - theta_0)^2; " "theta = angle(g1, g2, g3);"
+            )
+            angle_restraint.addPerBondParameter("k")
+            angle_restraint.addPerBondParameter("theta_0")
+
+            theta_0 = to_simtk(restraint.phase[phase]["targets"][window_number])
+            k = to_simtk(restraint.phase[phase]["force_constants"][window_number])
+
+            # Use weights of 1 instead of particle masses
+            g1 = angle_restraint.addGroup(restraint.index1, [1] * len(restraint.index1))
+            g2 = angle_restraint.addGroup(restraint.index2, [1] * len(restraint.index2))
+            g3 = angle_restraint.addGroup(restraint.index3, [1] * len(restraint.index3))
+
+            angle_restraint.addBond([g1, g2, g3], [k, theta_0])
+            system.addForce(angle_restraint)
 
         if force_group:
             angle_restraint.setForceGroup(force_group)
 
-    # Torsion restraints
+    # Torsion restraint
     elif restraint.mask4:
         if (
             not restraint.group1
@@ -240,8 +265,34 @@ def apply_dat_restraint(
             )
             system.addForce(dihedral_restraint)
         else:
-            # Probably needs openmm.CustomCentroidTorsionForce (?)
-            raise NotImplementedError
+            dihedral_restraint = openmm.CustomCentroidBondForce(
+                4,
+                f"k * min(min(abs(theta - theta_0), abs(theta - theta_0 + 2 * "
+                f"{_PI_})), abs(theta - theta_0 - 2 * {_PI_}))^2; "
+                f"theta = dihedral(g1, g2, g3, g4);",
+            )
+            dihedral_restraint.addPerBondParameter("k")
+            dihedral_restraint.addPerBondParameter("theta_0")
+
+            theta_0 = to_simtk(restraint.phase[phase]["targets"][window_number])
+            k = to_simtk(restraint.phase[phase]["force_constants"][window_number])
+
+            # Use weights of 1 instead of particle masses
+            g1 = dihedral_restraint.addGroup(
+                restraint.index1, [1] * len(restraint.index1)
+            )
+            g2 = dihedral_restraint.addGroup(
+                restraint.index2, [1] * len(restraint.index2)
+            )
+            g3 = dihedral_restraint.addGroup(
+                restraint.index3, [1] * len(restraint.index3)
+            )
+            g4 = dihedral_restraint.addGroup(
+                restraint.index4, [1] * len(restraint.index4)
+            )
+
+            dihedral_restraint.addBond([g1, g2, g3, g4], [k, theta_0])
+            system.addForce(dihedral_restraint)
 
         if force_group:
             dihedral_restraint.setForceGroup(force_group)

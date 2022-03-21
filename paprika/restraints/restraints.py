@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 
 import numpy as np
 import parmed as pmd
@@ -9,6 +10,20 @@ from paprika import utils
 from paprika.utils import check_unit
 
 logger = logging.getLogger(__name__)
+
+
+class FECalcType(Enum):
+    """
+    An enumeration of the different free energy calculation type.
+
+    APR - attach-pull-release method
+    DDM - double-decoupling method
+    SDR - simultaneous-decouple-recouple method
+    """
+
+    APR = "APR"
+    DDM = "DDM"
+    SDR = "SDR"
 
 
 class DAT_restraint(object):
@@ -28,6 +43,15 @@ class DAT_restraint(object):
     @instances.setter
     def instances(self, value):
         self._instances = value
+
+    @property
+    def fe_method(self):
+        """str: The type of free energy method - APR, DDM or SDM."""
+        return self._fe_method
+
+    @fe_method.setter
+    def fe_method(self, value: FECalcType):
+        self._fe_method = value
 
     @property
     def restraint_type(self):
@@ -191,6 +215,18 @@ class DAT_restraint(object):
         self._pull = value
 
     @property
+    def decouple(self):
+        """
+        dict: Dictionary specifying the DDM parameters during decoupling phase. The dictionary keys are as follows:
+        """
+
+        return self._decouple
+
+    @decouple.setter
+    def decouple(self, value):
+        self._decouple = value
+
+    @property
     def release(self):
         """
         dict: Dictionary specifying the APR parameters during the release phase. The dictionary keys are as follows:
@@ -228,6 +264,7 @@ class DAT_restraint(object):
 
     def __init__(self):
 
+        self._fe_method = FECalcType.APR
         self._restraint_type = None
 
         self._topology = None
@@ -273,6 +310,24 @@ class DAT_restraint(object):
             "fraction_list": None,
             "target_list": None,
         }
+        self._decouple = {
+            "fc": None,
+            "target": None,
+            "electrostatics": {
+                "lambda_initial": None,
+                "lambda_final": None,
+                "lambda_increment": None,
+                "lambda_list": None,
+                "num_windows": None,
+            },
+            "sterics": {
+                "lambda_initial": None,
+                "lambda_final": None,
+                "lambda_increment": None,
+                "lambda_list": None,
+                "num_windows": None,
+            },
+        }
         self._release = {
             "target": None,
             "fc_initial": None,
@@ -286,6 +341,7 @@ class DAT_restraint(object):
         self.phase = {
             "attach": {"force_constants": None, "targets": None},
             "pull": {"force_constants": None, "targets": None},
+            "decouple": {"force_constants": None, "targets": None, "electrostatics": None, "sterics": None},
             "release": {"force_constants": None, "targets": None},
         }
 
@@ -311,6 +367,7 @@ class DAT_restraint(object):
             # but for some reason, that attribute was not always available.
             # Thus, I simply do not compare the `topology` attribute.
             dct["topology"] = None
+
         logger.debug(self_dictionary)
         logger.debug(other_dictionary)
         keys = set(self_dictionary.keys()) & set(other_dictionary.keys())
@@ -318,7 +375,7 @@ class DAT_restraint(object):
             if key != "phase":
                 assert self_dictionary[key] == other_dictionary[key]
             else:
-                for phs in ["attach", "pull", "release"]:
+                for phs in ["attach", "pull", "decouple", "release"]:
                     for value in ["force_constants", "targets"]:
                         if (
                             self_dictionary["phase"][phs][value] is None
@@ -330,6 +387,7 @@ class DAT_restraint(object):
                                 self_dictionary["phase"][phs][value],
                                 other_dictionary["phase"][phs][value],
                             )
+
         return True
 
     @staticmethod
@@ -358,9 +416,11 @@ class DAT_restraint(object):
 
         force_constants = None
         targets = None
+        electrostatics = None
+        sterics = None
 
         # Attach/Release, Force Constant Method 1
-        if phase in ("a", "r") and method == "1":
+        if phase in ("attach", "release") and method == "1":
             force_constants = np.linspace(
                 restraint_dictionary["fc_initial"],
                 restraint_dictionary["fc_final"],
@@ -368,7 +428,7 @@ class DAT_restraint(object):
             )
 
         # Attach/Release, Force Constant Method 1a
-        elif phase in ("a", "r") and method == "1a":
+        elif phase in ("attach", "release") and method == "1a":
             force_constants = np.linspace(
                 0.0,
                 restraint_dictionary["fc_final"],
@@ -376,7 +436,7 @@ class DAT_restraint(object):
             )
 
         # Attach/Release, Force Constant Method 2
-        elif phase in ("a", "r") and method == "2":
+        elif phase in ("attach", "release") and method == "2":
             units = restraint_dictionary["fc_initial"].units
             force_constants = (
                 np.arange(
@@ -389,7 +449,7 @@ class DAT_restraint(object):
             )
 
         # Attach/Release, Force Constant Method 2a
-        elif phase in ("a", "r") and method == "2a":
+        elif phase in ("attach", "release") and method == "2a":
             units = restraint_dictionary["fc_final"].units
             force_constants = (
                 np.arange(
@@ -402,7 +462,7 @@ class DAT_restraint(object):
             )
 
         # Attach/Release, Force Constant Method 3
-        elif phase in ("a", "r") and method == "3":
+        elif phase in ("attach", "release") and method == "3":
             units = restraint_dictionary["fc_final"].units
             force_constants = np.asarray(
                 [
@@ -413,7 +473,7 @@ class DAT_restraint(object):
             force_constants *= units
 
         # Attach/Release, Force Constant Method 4
-        elif phase in ("a", "r") and method == "4":
+        elif phase in ("attach", "release") and method == "4":
             fractions = np.arange(
                 0,
                 1.0 + restraint_dictionary["fraction_increment"],
@@ -429,7 +489,7 @@ class DAT_restraint(object):
             force_constants *= units
 
         # Attach/Release, Force Constant Method 5
-        elif phase in ("a", "r") and method == "5":
+        elif phase in ("attach", "release") and method == "5":
             units = restraint_dictionary["fc_list"][0].units
             force_constants = np.asarray(
                 [x.magnitude for x in restraint_dictionary["fc_list"]]
@@ -437,7 +497,7 @@ class DAT_restraint(object):
             force_constants *= units
 
         # Attach/Release, Target Method
-        if phase in ("a", "r"):
+        if phase in ("attach", "release"):
             units = restraint_dictionary["target"].units
             targets = (
                 np.asarray(
@@ -447,7 +507,7 @@ class DAT_restraint(object):
             )
 
         # Pull, Target Method 1
-        if phase == "p" and method == "1":
+        if phase == "pull" and method == "1":
             targets = np.linspace(
                 restraint_dictionary["target_initial"],
                 restraint_dictionary["target_final"],
@@ -455,7 +515,7 @@ class DAT_restraint(object):
             )
 
         # Pull, Target Method 1a
-        elif phase == "p" and method == "1a":
+        elif phase == "pull" and method == "1a":
             targets = np.linspace(
                 0.0,
                 restraint_dictionary["target_final"],
@@ -463,7 +523,7 @@ class DAT_restraint(object):
             )
 
         # Pull, Target Method 2
-        elif phase == "p" and method == "2":
+        elif phase == "pull" and method == "2":
             units = restraint_dictionary["target_initial"].units
             targets = (
                 np.arange(
@@ -478,7 +538,7 @@ class DAT_restraint(object):
             )
 
         # Pull, Target Method 2a
-        elif phase == "p" and method == "2a":
+        elif phase == "pull" and method == "2a":
             units = restraint_dictionary["target_final"].units
             targets = (
                 np.arange(
@@ -491,7 +551,7 @@ class DAT_restraint(object):
             )
 
         # Pull, Target Method 3
-        elif phase == "p" and method == "3":
+        elif phase == "pull" and method == "3":
             units = restraint_dictionary["target_final"].units
             targets = (
                 np.asarray(
@@ -504,7 +564,7 @@ class DAT_restraint(object):
             )
 
         # Pull, Target Method 4
-        elif phase == "p" and method == "4":
+        elif phase == "pull" and method == "4":
             fractions = np.arange(
                 0,
                 1.0 + restraint_dictionary["fraction_increment"],
@@ -522,7 +582,7 @@ class DAT_restraint(object):
             )
 
         # Pull, Target Method 5
-        elif phase == "p" and method == "5":
+        elif phase == "pull" and method == "5":
             units = restraint_dictionary["target_list"][0].units
             targets = (
                 np.asarray([x.magnitude for x in restraint_dictionary["target_list"]])
@@ -530,11 +590,111 @@ class DAT_restraint(object):
             )
 
         # Pull, Force Constant Method
-        if phase == "p":
+        if phase == "pull":
             units = restraint_dictionary["fc"].units
             force_constants = (
                 np.asarray([restraint_dictionary["fc"].magnitude] * len(targets))
                 * units
+            )
+
+        # Decouple, Electrostatics Method 1
+        if phase == "decouple" and method == "1":
+            electrostatics = np.linspace(
+                restraint_dictionary["electrostatics"]["lambda_initial"],
+                restraint_dictionary["electrostatics"]["lambda_final"],
+                restraint_dictionary["electrostatics"]["num_windows"],
+            )
+            sterics = np.linspace(
+                restraint_dictionary["sterics"]["lambda_initial"],
+                restraint_dictionary["sterics"]["lambda_final"],
+                restraint_dictionary["sterics"]["num_windows"],
+            )
+
+        # Decouple, Electrostatics Method 1a
+        if phase == "decouple" and method == "1a":
+            electrostatics = np.linspace(
+                0.0,
+                restraint_dictionary["electrostatics"]["lambda_final"],
+                restraint_dictionary["electrostatics"]["num_windows"],
+            )
+            sterics = np.linspace(
+                0.0,
+                restraint_dictionary["sterics"]["lambda_final"],
+                restraint_dictionary["sterics"]["num_windows"],
+            )
+
+        # Decouple, Electrostatics Method 1b
+        if phase == "decouple" and method == "1b":
+            electrostatics = np.linspace(
+                1.0,
+                restraint_dictionary["electrostatics"]["lambda_initial"],
+                restraint_dictionary["electrostatics"]["num_windows"],
+            )
+            sterics = np.linspace(
+                1.0,
+                restraint_dictionary["sterics"]["lambda_initial"],
+                restraint_dictionary["sterics"]["num_windows"],
+            )
+
+        # Decouple, Electrostatics Method 2
+        if phase == "decouple" and method == "2":
+            electrostatics = np.arange(
+                restraint_dictionary["electrostatics"]["lambda_initial"],
+                restraint_dictionary["electrostatics"]["lambda_final"]
+                + restraint_dictionary["electrostatics"]["lambda_increment"],
+                restraint_dictionary["electrostatics"]["lambda_increment"],
+            )
+            sterics = np.arange(
+                restraint_dictionary["sterics"]["lambda_initial"],
+                restraint_dictionary["sterics"]["lambda_final"]
+                + restraint_dictionary["sterics"]["lambda_increment"],
+                restraint_dictionary["sterics"]["lambda_increment"],
+            )
+
+        # Decouple, Electrostatics Method 2a
+        if phase == "decouple" and method == "2a":
+            electrostatics = np.arange(
+                0.0,
+                restraint_dictionary["electrostatics"]["lambda_final"]
+                + restraint_dictionary["electrostatics"]["lambda_increment"],
+                restraint_dictionary["electrostatics"]["lambda_increment"],
+            )
+            sterics = np.arange(
+                0.0,
+                restraint_dictionary["sterics"]["lambda_final"]
+                + restraint_dictionary["sterics"]["lambda_increment"],
+                restraint_dictionary["sterics"]["lambda_increment"],
+            )
+
+        # Decouple, Electrostatics Method 2b
+        if phase == "decouple" and method == "2b":
+            electrostatics = np.arange(
+                1.0,
+                restraint_dictionary["electrostatics"]["lambda_initial"]
+                - restraint_dictionary["electrostatics"]["lambda_increment"],
+                -restraint_dictionary["electrostatics"]["lambda_increment"],
+            )
+            sterics = np.arange(
+                0.0,
+                restraint_dictionary["sterics"]["lambda_final"]
+                + restraint_dictionary["sterics"]["lambda_increment"],
+                restraint_dictionary["sterics"]["lambda_increment"],
+            )
+
+        # Decouple, Target and Force Constant
+        if phase == "decouple":
+            total_length = len(electrostatics) + len(sterics)
+            target_units = restraint_dictionary["target"].units
+            targets = (
+                    np.asarray(
+                        [restraint_dictionary["target"].magnitude] * total_length
+                    )
+                    * units
+            )
+            force_constant_units = restraint_dictionary["fc"].units
+            force_constants = (
+                    np.asarray([restraint_dictionary["fc"].magnitude] * total_length)
+                    * force_constant_units
             )
 
         if force_constants is None and targets is None:
