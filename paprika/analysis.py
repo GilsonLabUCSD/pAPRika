@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import traceback
+import warnings
 from itertools import compress
 
 import numpy as np
@@ -31,10 +32,10 @@ class fe_calc(object):
         It would be great to add unit support here from ``pint``.
 
     .. warning ::
-        This class really ought to be split into a few smaller classes that sublcass a ``BaseAnalysis`` class. There
-        could be separate ``MBARAnalysis`` and ``TIAnalysis`` classes, for example. This would make it much more modular
-        and easy to test where TI and MBAR disagree. This could also be used to benchmark autocorrelation-based and
-        blocking-analysis-based methods for evaluating the statistical inefficiency.
+        This class really ought to be split into a few smaller classes that sublcass a ``BaseAnalysis`` class.
+        There could be separate ``MBARAnalysis`` and ``TIAnalysis`` classes, for example. This would make it much
+        more modular and easy to test where TI and MBAR disagree. This could also be used to benchmark
+        autocorrelation-based and blocking-analysis-based methods for evaluating the statistical inefficiency.
 
     """
 
@@ -112,13 +113,14 @@ class fe_calc(object):
     @property
     def orders(self):
         """
-        The sorted order of windows for analysis. In principle, windows could be out-of-order if subsequent additional
-        sampling was requested.
+        The sorted order of windows for analysis. In principle, windows could be out-of-order if subsequent
+        additional sampling was requested.
 
         .. note ::
-            As far as I know, we have not tested analysis on windows out of order. We imagined that one could add additional
-            λ windows through multiple runs by modifying existing restraints (e.g., restraint values of [0, 0.5, 1.0, 0.8])
-            and this module would be able to correctly sort the simulation directories and restraint targets.
+            As far as I know, we have not tested analysis on windows out of order. We imagined that one could add
+            additional λ windows through multiple runs by modifying existing restraints (e.g., restraint values of
+            [0, 0.5, 1.0, 0.8]) and this module would be able to correctly sort the simulation directories and
+            restraint targets.
 
         .. note ::
             This should probably be a private attribute, as this property is determined automatically.
@@ -148,8 +150,8 @@ class fe_calc(object):
     @property
     def methods(self):
         """
-        list: List of analysis methods to be performed. This is a combination of free energy method (e.g., MBAR, TI, ...)
-        and de-correlation method (blocking, autocorrelation, ...).
+        list: List of analysis methods to be performed. This is a combination of free energy method (e.g., MBAR, TI,
+        ...) and de-correlation method (blocking, autocorrelation, ...).
 
         Implemented methods are:
 
@@ -158,8 +160,8 @@ class fe_calc(object):
             - ``ti-block``
 
         .. note ::
-            This is really fragile. We should definitely use something like an ``ENUM`` here to check for the few combinations
-            that we support.
+            This is really fragile. We should definitely use something like an ``ENUM`` here to check for the few
+            combinations that we support.
 
         .. todo ::
             - Add ``ti-autoc``.
@@ -228,15 +230,15 @@ class fe_calc(object):
     @property
     def ti_matrix(self):
         """
-        str: If ``full``, the TI mean and SEM free energy is computed between all windows (i.e., the energy differences between
-        all windows and all other windows). If ``diagonal``, the mean and SEM of the free energy is computed between the
-        first window and all other windows, as well as between all neighboring windows. If ``endpoints``, the mean and
-        SEM free energy is computed between only the first and the last window.
+        str: If ``full``, the TI mean and SEM free energy is computed between all windows (i.e., the energy differences
+        between all windows and all other windows). If ``diagonal``, the mean and SEM of the free energy is computed
+        between the first window and all other windows, as well as between all neighboring windows. If ``endpoints``,
+        the mean and SEM free energy is computed between only the first and the last window.
 
         For most cases, ``diagonal`` should be sufficient and ``full`` is overkill.
 
         .. note ::
-            This is fragile and we should be checking for the valid strings supported.
+            This is fragile, and we should be checking for the valid strings supported.
 
         """
         return self._ti_matrix
@@ -253,8 +255,8 @@ class fe_calc(object):
     def exact_sem_each_ti_fraction(self):
         """
         bool: Whether the SEM is computed once for the full data set and then the SEM for each fraction is estimated
-        based on the total SEM and the fractional number of uncorrelated data points. If ``True``, the SEM will be recomputed
-        each fraction using just that fraction of the raw data.
+        based on the total SEM and the fractional number of uncorrelated data points. If ``True``, the SEM will be
+        recomputed each fraction using just that fraction of the raw data.
         """
         return self._exact_sem_each_ti_fraction
 
@@ -283,15 +285,15 @@ class fe_calc(object):
     @property
     def results(self):
         """
-        dict: A dictionary containing the results. The results dictionary is indexed first by phase, and then by
+        dict: A dictionary containing the results. The ``results`` dictionary is indexed first by phase, and then by
         method. That is, ``results["attach"]["mbar-block"]`` will contain the results from analyzing the attach
         phase with the MBAR free energy estimator and blocking analysis used to estimate the SEM.
 
         The final free energy and uncertainty estimate is specified in the ``fe`` and ``sem`` keys.
 
-        If multiple fractions of the data are specified, the free energy and SEM from each fraction are stored in a nested
-        dictionary under the keys ``fraction_fe`` and ``fractrion_sem``. The number of frames analyzed for each fraciton
-        is stored under ``fraction_n_frames``.
+        If multiple fractions of the data are specified, the free energy and SEM from each fraction are stored in
+        a nested dictionary under the keys ``fraction_fe`` and ``fraction_sem``. The number of frames analyzed for
+        each fraction is stored under ``fraction_n_frames``.
 
         The full free energy matrix (window-to-window free energy differences) is stored in the ``fe_matrix`` entry.
         Likewise, the full SEM matrix (window-to-window free energy SEMs) is stored in the ``sem_matrix`` entry.
@@ -299,8 +301,8 @@ class fe_calc(object):
         The work to release the guest to standard concentration is stored under ``ref_state_work``, and is
         negative by convention.
 
-        The format of a typical dictionary will resemble this (where I have a omitted the values in the matrices for
-        clarity):
+        The format of a typical dictionary will resemble this (where I have a omitted the values in the matrices
+        for clarity):
 
         ::
 
@@ -527,7 +529,7 @@ class fe_calc(object):
         return orders
 
     def read_trajectories(self, single_topology=False):
-        """For each each phase and window, and for each non-static restraint, parse the trajectories to
+        """For each phase and window, and for each non-static restraint, parse the trajectories to
         get the restraint values.
 
         Parameters
@@ -666,7 +668,8 @@ class fe_calc(object):
 
     def run_mbar(self, phase, prepared_data, method, verbose=False):
         """
-        Compute the free energy matrix for a series of windows. We'll follow the pymbar nomenclature for data structures.
+        Compute the free energy matrix for a series of windows. We'll follow the pymbar nomenclature
+        for data structures.
 
         Parameters
         ----------
@@ -758,7 +761,7 @@ class fe_calc(object):
                 nearest_max = get_nearest_max(N_k[k])
                 sem = get_block_sem(u_kln[k, l, 0:nearest_max])
                 variance = np.var(u_kln[k, l, 0 : N_k[k]])
-                g_k[k] = N_k[k] * (sem ** 2) / variance
+                g_k[k] = N_k[k] * (sem**2) / variance
 
         if method == "mbar-autoc":
             for k in range(num_win):
@@ -1238,47 +1241,104 @@ class fe_calc(object):
                                 max_val = right
                             self.results[phase][method]["largest_neighbor"][i] = max_val
 
-    def compute_ref_state_work(self, restraints):
+    def compute_ref_state_work(self, restraints, state="final"):
         """
-        Compute the work to place a molecule at standard reference state conditions
-        starting from a state defined by up to six restraints. These are Boresch-style restraints.
+        Compute the work to place a molecule at standard reference state conditions starting from a state defined by
+        up to six restraints. These are Boresch-style restraints.
 
         Parameters
         ----------
-        restraints : list
-            A list of :class:`paprika.restraints.DAT_restraint` objects in order of the six translational and
-            orientational restraints needed to describe the configuration of one molecule
-            relative to another. The six restraints are: r, theta, phi, alpha, beta, gamma and they should be passed to
-            this function in that order. If any of these coordinates is not being restrained, use a `None` in place of a
-            :class:`paprika.restraints.DAT_restraint` object.
+        restraints : list or dict
+            A list or dict of :class:`paprika.restraints.DAT_restraint` objects. If a list is specified, the restraints
+            must be in order of the six translational and orientational restraints (Boresch-style). The six restraints
+            are: [r, theta, phi, alpha, beta, gamma] and they should be passed to this function in that order. If any
+            of these coordinates is not being restrained, use a `None` in place of a
+            :class:`paprika.restraints.DAT_restraint` object. For a dictionary, the restraints should have `r`, `theta`,
+            `phi`, `alpha`, `beta`, `gamma`, as the dictionary keys.
 
             See :meth:`paprika.analysis.ref_state_work` for details on the calculation.
+        state : str, optional, default="final"
+            Option to estimate the reference work using the `initial` state (DDM) or `final` pulling state (APR) for
+            `r0` when calculating the reference work of releasing guest restraints in bulk water. See Equation 9 in ref
+            Henriksen et al. (2015).
         """
-
-        if not restraints or restraints[0] is None:
+        # Check input argument
+        state = state.lower()
+        if state not in ["initial", "final"]:
             raise ValueError(
-                "At minimum, a single distance restraint is necesarry to compute the work of releasing"
-                " the guest to standard state."
+                'Function argument `state` can only take values "initial" or "final" as input.'
+            )
+
+        # Convert list to dictionary
+        if isinstance(restraints, list):
+            warnings.warn(
+                "Converting restraint list to dictionary, make sure the restraints are listed "
+                "in the order of [`r`, `theta`,`phi`, `alpha`, `beta`, `gamma`]."
+            )
+            restraints = {
+                "r": restraints[0],
+                "theta": restraints[1],
+                "phi": restraints[2],
+                "alpha": restraints[3],
+                "beta": restraints[4],
+                "gamma": restraints[5],
+            }
+
+        # Raise error if no distance restraint exist
+        if not restraints or restraints["r"] is None:
+            raise ValueError(
+                "At minimum, a single distance restraint is necessary to compute the work of releasing "
+                "the guest to standard state."
             )
 
         fcs = []
         targs = []
 
-        for restraint in restraints:
+        # Distance restraint - special care when extracting `r0`, depends on whether calculating with APR or DDM.
+        for colvar in ["r", "theta", "phi", "alpha", "beta", "gamma"]:
+            restraint = restraints[colvar]
+
+            target_index = -1
+            if colvar == "r" and state == "initial":
+                target_index = 0
+
             if restraint is None:
                 fcs.append(None)
                 targs.append(None)
-            elif restraint.phase["release"]["force_constants"] is not None:
-                fcs.append(np.sort(restraint.phase["release"]["force_constants"])[-1])
-                targs.append(np.sort(restraint.phase["release"]["targets"])[-1])
-            elif restraint.phase["pull"]["force_constants"] is not None:
-                fcs.append(np.sort(restraint.phase["pull"]["force_constants"])[-1])
-                targs.append(np.sort(restraint.phase["pull"]["targets"])[-1])
-            else:
-                raise ValueError(
-                    "Restraints should have pull or release values initialized in order to compute_ref_state_work"
-                )
 
+            else:
+                target_and_force_exist = False
+
+                phases = ["release", "pull"]
+                if state == "initial":
+                    phases = ["attach", "release"]
+
+                for phase in phases:
+                    if restraint.phase[phase]["force_constants"] is not None:
+                        force_index = -1
+                        if phase == "release":
+                            force_index = 0
+
+                        fcs.append(
+                            np.sort(restraint.phase[phase]["force_constants"])[
+                                force_index
+                            ]
+                        )
+                        targs.append(
+                            np.sort(restraint.phase[phase]["targets"])[target_index]
+                        )
+
+                        target_and_force_exist = True
+
+                        break
+
+                if not target_and_force_exist:
+                    raise ValueError(
+                        f"The `{colvar}` restraints should have at least attach/release values (for DDM) or "
+                        "pull/release values (for APR) initialized in order to `compute_ref_state_work`."
+                    )
+
+        # Store reference work of release guest restraints
         self.results["ref_state_work"] = ref_state_work(
             self.temperature,
             fcs[0],
@@ -1702,7 +1762,7 @@ def ref_state_work(
     # Distance Integration Function
     def dist_int(RT, fc, targ):
         def potential(arange, RT, fc, targ):
-            return (arange ** 2) * np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
+            return (arange**2) * np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
 
         arange = np.arange(0.0, 100.0, 0.0001) * unit.angstrom
         return np.trapz(potential(arange, RT, fc, targ), arange)
@@ -1721,6 +1781,7 @@ def ref_state_work(
             return np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
 
         # Note, because of periodicity, I'm gonna wrap +/- pi around target for integration.
+        targ = targ.to(unit.radians).magnitude
         arange = np.arange(targ - np.pi, targ + np.pi, 0.00005) * unit.radians
         return np.trapz(potential(arange, RT, fc, targ), arange)
 
@@ -1761,11 +1822,11 @@ def ref_state_work(
         g_int = tors_int(RT, g_fc, g_tg)
 
     # Concentration term
-    V0 = 1660.5392 * unit.angstrom ** 3
+    V0 = 1660.5392 * unit.angstrom**3
     translational = r_int * th_int * ph_int * (1.0 / V0)  # C^o = 1/V^o
 
     # Orientational term
-    rotational_volume = 8.0 * np.pi ** 2
+    rotational_volume = 8.0 * np.pi**2
     orientational = a_int * b_int * g_int / rotational_volume
 
     # Return the free energy
