@@ -1102,9 +1102,11 @@ def test_extract_guest_restraints():
     r.initialize()
     restraints.append(r)
 
+    # Test list
     guest_restraints = extract_guest_restraints(
         structure, restraints, "BUT", return_type="list"
     )
+    assert isinstance(guest_restraints, list)
 
     assert guest_restraints[0] is not None
     assert guest_restraints[1] is not None
@@ -1112,6 +1114,19 @@ def test_extract_guest_restraints():
     assert guest_restraints[3] is not None
     assert guest_restraints[4] is not None
     assert guest_restraints[5] is not None
+
+    # Test dict
+    guest_restraints = extract_guest_restraints(
+        structure, restraints, "BUT", return_type="dict"
+    )
+    assert isinstance(guest_restraints, dict)
+
+    assert guest_restraints["r"] is not None
+    assert guest_restraints["theta"] is not None
+    assert guest_restraints["phi"] is not None
+    assert guest_restraints["alpha"] is not None
+    assert guest_restraints["beta"] is not None
+    assert guest_restraints["gamma"] is not None
 
 
 def test_restraints_output_modules(clean_files):
