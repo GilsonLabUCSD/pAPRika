@@ -67,3 +67,8 @@ def test_is_file_and_not_empty(clean_files):
     assert os.path.isfile(path)
     assert os.path.getsize(path) != 0
     assert is_file_and_not_empty(path)
+
+
+def test_override_dict():
+    """Test the utility function `override_dict`"""
+    pass

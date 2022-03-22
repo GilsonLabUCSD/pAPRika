@@ -68,7 +68,7 @@ def get_dict_without_keys(dct, *keys):
     return new_dict
 
 
-def override_dict(dct, custom):
+def override_dict(dct, custom, mode=1):
     """Overrides dictionary values from that of a custom dictionary.
 
     Parameters
@@ -77,11 +77,17 @@ def override_dict(dct, custom):
         Python dictionary to override.
     custom: dict
         A custom dictionary which will overwrite the original dictionary.
-
+    mode: int
+        If `1`, then only keys available in `dct` will have its values replaced from `custom`.
+        If `2`, do mode `1` and any keys in `custom` that is not available in `dct` will be added to `dct`.
     """
     for key, value in custom.items():
         if value is not None:
             logger.debug("Overriding {} = {}".format(key, value))
+            dct[key] = value
+
+        if mode == 2 and key not in dct:
+            logger.debug("Adding {} = {}".format(key, value))
             dct[key] = value
 
 

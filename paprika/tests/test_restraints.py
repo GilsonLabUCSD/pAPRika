@@ -20,7 +20,7 @@ import pytest
 from openff.units import unit as pint_unit
 
 from paprika.restraints.openmm import apply_dat_restraint, apply_positional_restraints
-from paprika.restraints.restraints import DAT_restraint, create_window_list
+from paprika.restraints.restraints import DAT_restraint, FECalcType, create_window_list
 from paprika.restraints.utils import (
     extract_guest_restraints,
     get_bias_potential_type,
@@ -631,6 +631,452 @@ def test_DAT_restraint():
     # Test inconsistent windows:
     with pytest.raises(Exception):
         window_list = create_window_list([rest1, rest10])
+
+    # Test decouple - Method 1
+    logger.info("### Testing restraint 11, Method 1")
+    rest11 = DAT_restraint()
+    rest11.fe_method = FECalcType.DDM
+    rest11.amber_index = True
+    rest11.continuous_apr = False
+    rest11.auto_apr = False
+    rest11.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
+    rest11.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
+    rest11.mask2 = ":BUT@C3"
+    rest11.attach["target"] = 3.0
+    rest11.attach["num_windows"] = 4
+    rest11.attach["fc_initial"] = 0.0
+    rest11.attach["fc_final"] = 3.0
+    rest11.decouple["fc"] = rest1.attach["fc_final"]
+    rest11.decouple["target"] = rest1.attach["target"]
+    rest11.decouple["electrostatics"] = {
+        "lambda_initial": 1.0,
+        "lambda_final": 0.0,
+        "num_windows": 6,
+    }
+    rest11.decouple["sterics"] = {
+        "lambda_initial": 0.0,
+        "lambda_final": 1.0,
+        "num_windows": 6,
+    }
+    rest11.release["target"] = 6.0
+    rest11.release["num_windows"] = rest1.attach["num_windows"]
+    rest11.release["fc_initial"] = rest1.attach["fc_initial"]
+    rest11.release["fc_final"] = rest1.attach["fc_final"]
+    rest11.initialize()
+
+    target_units = pint_unit.angstrom
+    force_constant_units = pint_unit.kcal / pint_unit.mole / target_units**2
+    assert np.allclose(
+        rest11.phase["decouple"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([3.0] * 12),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["targets"].to(target_units).magnitude,
+        np.array([3.0] * 12),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["electrostatics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0][::-1]),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["sterics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0]),
+    )
+
+    window_list = create_window_list([rest11])
+    assert window_list == [
+        "a000",
+        "a001",
+        "a002",
+        "a003",
+        "d000",
+        "d001",
+        "d002",
+        "d003",
+        "d004",
+        "d005",
+        "d006",
+        "d007",
+        "d008",
+        "d009",
+        "d010",
+        "d011",
+        "r000",
+        "r001",
+        "r002",
+        "r003",
+    ]
+
+    # Test decouple - Method 1a
+    logger.info("### Testing restraint 11, Method 1a")
+    rest11.decouple["fc"] = rest1.attach["fc_final"]
+    rest11.decouple["target"] = rest1.attach["target"]
+    rest11.decouple["electrostatics"] = {
+        "lambda_final": 0.0,
+        "num_windows": 2,
+    }
+    rest11.decouple["sterics"] = {
+        "lambda_final": 1.0,
+        "num_windows": 6,
+    }
+    rest11.initialize()
+
+    assert np.allclose(
+        rest11.phase["decouple"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([3.0] * 8),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["targets"].to(target_units).magnitude,
+        np.array([3.0] * 8),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["electrostatics"],
+        np.array([0.0, 1.0][::-1]),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["sterics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0]),
+    )
+
+    window_list = create_window_list([rest11])
+    assert window_list == [
+        "a000",
+        "a001",
+        "a002",
+        "a003",
+        "d000",
+        "d001",
+        "d002",
+        "d003",
+        "d004",
+        "d005",
+        "d006",
+        "d007",
+        "r000",
+        "r001",
+        "r002",
+        "r003",
+    ]
+
+    # Test decouple - Method 1b
+    logger.info("### Testing restraint 11, Method 1b")
+    rest11.decouple["fc"] = rest1.attach["fc_final"]
+    rest11.decouple["target"] = rest1.attach["target"]
+    rest11.decouple["electrostatics"] = {
+        "lambda_initial": 0.0,
+        "num_windows": 2,
+    }
+    rest11.decouple["sterics"] = {
+        "lambda_initial": 1.0,
+        "num_windows": 6,
+    }
+    rest11.initialize()
+
+    assert np.allclose(
+        rest11.phase["decouple"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([3.0] * 8),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["targets"].to(target_units).magnitude,
+        np.array([3.0] * 8),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["electrostatics"],
+        np.array([0.0, 1.0]),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["sterics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0][::-1]),
+    )
+
+    window_list = create_window_list([rest11])
+    assert window_list == [
+        "a000",
+        "a001",
+        "a002",
+        "a003",
+        "d000",
+        "d001",
+        "d002",
+        "d003",
+        "d004",
+        "d005",
+        "d006",
+        "d007",
+        "r000",
+        "r001",
+        "r002",
+        "r003",
+    ]
+
+    # Test decouple - Method 2
+    logger.info("### Testing restraint 11, Method 2")
+    rest11.decouple["fc"] = rest1.attach["fc_final"]
+    rest11.decouple["target"] = rest1.attach["target"]
+    rest11.decouple["electrostatics"] = {
+        "lambda_initial": 0.0,
+        "lambda_final": 1.0,
+        "lambda_increment": 0.2,
+    }
+    rest11.decouple["sterics"] = {
+        "lambda_initial": 0.0,
+        "lambda_final": 1.0,
+        "lambda_increment": -0.2,
+    }
+    rest11.initialize()
+
+    assert np.allclose(
+        rest11.phase["decouple"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([3.0] * 12),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["targets"].to(target_units).magnitude,
+        np.array([3.0] * 12),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["electrostatics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0]),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["sterics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0][::-1]),
+    )
+
+    window_list = create_window_list([rest11])
+    assert window_list == [
+        "a000",
+        "a001",
+        "a002",
+        "a003",
+        "d000",
+        "d001",
+        "d002",
+        "d003",
+        "d004",
+        "d005",
+        "d006",
+        "d007",
+        "d008",
+        "d009",
+        "d010",
+        "d011",
+        "r000",
+        "r001",
+        "r002",
+        "r003",
+    ]
+
+    # Test decouple - Method 2a
+    logger.info("### Testing restraint 11, Method 2a")
+    rest11.decouple["fc"] = rest1.attach["fc_final"]
+    rest11.decouple["target"] = rest1.attach["target"]
+    rest11.decouple["electrostatics"] = {
+        "lambda_final": 1.0,
+        "lambda_increment": 0.2,
+    }
+    rest11.decouple["sterics"] = {
+        "lambda_final": 0.0,
+        "lambda_increment": -0.2,
+    }
+    rest11.initialize()
+
+    assert np.allclose(
+        rest11.phase["decouple"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([3.0] * 12),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["targets"].to(target_units).magnitude,
+        np.array([3.0] * 12),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["electrostatics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0]),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["sterics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0][::-1]),
+    )
+
+    window_list = create_window_list([rest11])
+    assert window_list == [
+        "a000",
+        "a001",
+        "a002",
+        "a003",
+        "d000",
+        "d001",
+        "d002",
+        "d003",
+        "d004",
+        "d005",
+        "d006",
+        "d007",
+        "d008",
+        "d009",
+        "d010",
+        "d011",
+        "r000",
+        "r001",
+        "r002",
+        "r003",
+    ]
+
+    # Test decouple - Method 2b
+    logger.info("### Testing restraint 11, Method 2b")
+    rest11.decouple["fc"] = rest1.attach["fc_final"]
+    rest11.decouple["target"] = rest1.attach["target"]
+    rest11.decouple["electrostatics"] = {
+        "lambda_initial": 0.0,
+        "lambda_increment": 0.2,
+    }
+    rest11.decouple["sterics"] = {
+        "lambda_initial": 1.0,
+        "lambda_increment": -0.2,
+    }
+    rest11.initialize()
+
+    assert np.allclose(
+        rest11.phase["decouple"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([3.0] * 12),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["targets"].to(target_units).magnitude,
+        np.array([3.0] * 12),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["electrostatics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0]),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["sterics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0][::-1]),
+    )
+
+    window_list = create_window_list([rest11])
+    assert window_list == [
+        "a000",
+        "a001",
+        "a002",
+        "a003",
+        "d000",
+        "d001",
+        "d002",
+        "d003",
+        "d004",
+        "d005",
+        "d006",
+        "d007",
+        "d008",
+        "d009",
+        "d010",
+        "d011",
+        "r000",
+        "r001",
+        "r002",
+        "r003",
+    ]
+
+    # Test decouple - Method 2c
+    logger.info("### Testing restraint 11, Method 2c")
+    rest11.decouple["fc"] = rest1.attach["fc_final"]
+    rest11.decouple["target"] = rest1.attach["target"]
+    rest11.decouple["electrostatics"] = {
+        "lambda_increment": -0.2,
+    }
+    rest11.decouple["sterics"] = {
+        "lambda_increment": 0.2,
+    }
+    rest11.initialize()
+
+    assert np.allclose(
+        rest11.phase["decouple"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([3.0] * 12),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["targets"].to(target_units).magnitude,
+        np.array([3.0] * 12),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["electrostatics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0][::-1]),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["sterics"],
+        np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0]),
+    )
+
+    window_list = create_window_list([rest11])
+    assert window_list == [
+        "a000",
+        "a001",
+        "a002",
+        "a003",
+        "d000",
+        "d001",
+        "d002",
+        "d003",
+        "d004",
+        "d005",
+        "d006",
+        "d007",
+        "d008",
+        "d009",
+        "d010",
+        "d011",
+        "r000",
+        "r001",
+        "r002",
+        "r003",
+    ]
+
+    # Test decouple - Method 3
+    logger.info("### Testing restraint 11, Method 3")
+    rest11.decouple["fc"] = rest1.attach["fc_final"]
+    rest11.decouple["target"] = rest1.attach["target"]
+    rest11.decouple["electrostatics"] = {
+        "lambda_list": [0.0, 0.5, 1.0][::-1],
+    }
+    rest11.decouple["sterics"] = {
+        "lambda_list": [0.0, 0.5, 1.0],
+    }
+    rest11.initialize()
+
+    assert np.allclose(
+        rest11.phase["decouple"]["force_constants"].to(force_constant_units).magnitude,
+        np.array([3.0] * 6),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["targets"].to(target_units).magnitude,
+        np.array([3.0] * 6),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["electrostatics"],
+        np.array([0.0, 0.5, 1.0][::-1]),
+    )
+    assert np.allclose(
+        rest11.phase["decouple"]["sterics"],
+        np.array([0.0, 0.5, 1.0]),
+    )
+
+    window_list = create_window_list([rest11])
+    assert window_list == [
+        "a000",
+        "a001",
+        "a002",
+        "a003",
+        "d000",
+        "d001",
+        "d002",
+        "d003",
+        "d004",
+        "d005",
+        "r000",
+        "r001",
+        "r002",
+        "r003",
+    ]
 
 
 def test_get_restraint_values():

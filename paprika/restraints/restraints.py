@@ -7,7 +7,7 @@ import pytraj as pt
 from openff.units import unit as pint_unit
 
 from paprika import utils
-from paprika.utils import check_unit
+from paprika.utils import check_unit, override_dict
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class DAT_restraint(object):
 
     @property
     def fe_method(self):
-        """str: The type of free energy method - APR, DDM or SDM."""
+        """str: The free energy method type - APR, DDM or SDM."""
         return self._fe_method
 
     @fe_method.setter
@@ -341,7 +341,12 @@ class DAT_restraint(object):
         self.phase = {
             "attach": {"force_constants": None, "targets": None},
             "pull": {"force_constants": None, "targets": None},
-            "decouple": {"force_constants": None, "targets": None, "electrostatics": None, "sterics": None},
+            "decouple": {
+                "force_constants": None,
+                "targets": None,
+                "electrostatics": None,
+                "sterics": None,
+            },
             "release": {"force_constants": None, "targets": None},
         }
 
@@ -391,7 +396,9 @@ class DAT_restraint(object):
         return True
 
     @staticmethod
-    def _calc_method(phase, restraint_dictionary, method):
+    def _calc_method(
+        phase, restraint_dictionary, method, decouple_phase="electrostatics"
+    ):
         """
         This helper function figures out which values in the restraint dictionary need to be set.
 
@@ -416,8 +423,7 @@ class DAT_restraint(object):
 
         force_constants = None
         targets = None
-        electrostatics = None
-        sterics = None
+        lambda_values = None
 
         # Attach/Release, Force Constant Method 1
         if phase in ("attach", "release") and method == "1":
@@ -597,111 +603,113 @@ class DAT_restraint(object):
                 * units
             )
 
-        # Decouple, Electrostatics Method 1
+        # Decouple, Method 1
         if phase == "decouple" and method == "1":
-            electrostatics = np.linspace(
-                restraint_dictionary["electrostatics"]["lambda_initial"],
-                restraint_dictionary["electrostatics"]["lambda_final"],
-                restraint_dictionary["electrostatics"]["num_windows"],
-            )
-            sterics = np.linspace(
-                restraint_dictionary["sterics"]["lambda_initial"],
-                restraint_dictionary["sterics"]["lambda_final"],
-                restraint_dictionary["sterics"]["num_windows"],
-            )
+            initial = restraint_dictionary[decouple_phase]["lambda_initial"]
+            final = restraint_dictionary[decouple_phase]["lambda_final"]
+            n_window = restraint_dictionary[decouple_phase]["num_windows"]
+            lambda_values = np.linspace(initial, final, n_window)
 
-        # Decouple, Electrostatics Method 1a
-        if phase == "decouple" and method == "1a":
-            electrostatics = np.linspace(
-                0.0,
-                restraint_dictionary["electrostatics"]["lambda_final"],
-                restraint_dictionary["electrostatics"]["num_windows"],
-            )
-            sterics = np.linspace(
-                0.0,
-                restraint_dictionary["sterics"]["lambda_final"],
-                restraint_dictionary["sterics"]["num_windows"],
-            )
+        # Decouple, Method 1a
+        elif phase == "decouple" and method == "1a":
+            initial = 0.0
+            final = restraint_dictionary[decouple_phase]["lambda_final"]
+            if final == 0.0:
+                initial = 1.0
+            n_window = restraint_dictionary[decouple_phase]["num_windows"]
+            lambda_values = np.linspace(initial, final, n_window)
 
-        # Decouple, Electrostatics Method 1b
-        if phase == "decouple" and method == "1b":
-            electrostatics = np.linspace(
-                1.0,
-                restraint_dictionary["electrostatics"]["lambda_initial"],
-                restraint_dictionary["electrostatics"]["num_windows"],
-            )
-            sterics = np.linspace(
-                1.0,
-                restraint_dictionary["sterics"]["lambda_initial"],
-                restraint_dictionary["sterics"]["num_windows"],
-            )
+        # Decouple, Method 1b
+        elif phase == "decouple" and method == "1b":
+            initial = restraint_dictionary[decouple_phase]["lambda_initial"]
+            final = 1.0
+            if initial == 1.0:
+                final = 0.0
+            n_window = restraint_dictionary[decouple_phase]["num_windows"]
+            lambda_values = np.linspace(initial, final, n_window)
 
-        # Decouple, Electrostatics Method 2
-        if phase == "decouple" and method == "2":
-            electrostatics = np.arange(
-                restraint_dictionary["electrostatics"]["lambda_initial"],
-                restraint_dictionary["electrostatics"]["lambda_final"]
-                + restraint_dictionary["electrostatics"]["lambda_increment"],
-                restraint_dictionary["electrostatics"]["lambda_increment"],
-            )
-            sterics = np.arange(
-                restraint_dictionary["sterics"]["lambda_initial"],
-                restraint_dictionary["sterics"]["lambda_final"]
-                + restraint_dictionary["sterics"]["lambda_increment"],
-                restraint_dictionary["sterics"]["lambda_increment"],
-            )
+        # Decouple, Method 2
+        elif phase == "decouple" and method == "2":
+            initial = restraint_dictionary[decouple_phase]["lambda_initial"]
+            final = restraint_dictionary[decouple_phase]["lambda_final"]
+            increment = restraint_dictionary[decouple_phase]["lambda_increment"]
+            if increment < 0.0:
+                initial, final = final, initial
+            final += increment
+            lambda_values = np.arange(initial, final, increment)
 
-        # Decouple, Electrostatics Method 2a
-        if phase == "decouple" and method == "2a":
-            electrostatics = np.arange(
-                0.0,
-                restraint_dictionary["electrostatics"]["lambda_final"]
-                + restraint_dictionary["electrostatics"]["lambda_increment"],
-                restraint_dictionary["electrostatics"]["lambda_increment"],
-            )
-            sterics = np.arange(
-                0.0,
-                restraint_dictionary["sterics"]["lambda_final"]
-                + restraint_dictionary["sterics"]["lambda_increment"],
-                restraint_dictionary["sterics"]["lambda_increment"],
-            )
+        # Decouple, Method 2a
+        elif phase == "decouple" and method == "2a":
+            initial = 0.0
+            final = restraint_dictionary[decouple_phase]["lambda_final"]
+            increment = restraint_dictionary[decouple_phase]["lambda_increment"]
+            if final == 0.0 or increment < 0.0:
+                initial = 1.0
+            final += increment
+            lambda_values = np.arange(initial, final, increment)
 
-        # Decouple, Electrostatics Method 2b
-        if phase == "decouple" and method == "2b":
-            electrostatics = np.arange(
-                1.0,
-                restraint_dictionary["electrostatics"]["lambda_initial"]
-                - restraint_dictionary["electrostatics"]["lambda_increment"],
-                -restraint_dictionary["electrostatics"]["lambda_increment"],
-            )
-            sterics = np.arange(
-                0.0,
-                restraint_dictionary["sterics"]["lambda_final"]
-                + restraint_dictionary["sterics"]["lambda_increment"],
-                restraint_dictionary["sterics"]["lambda_increment"],
+        # Decouple, Method 2b
+        elif phase == "decouple" and method == "2b":
+            initial = restraint_dictionary[decouple_phase]["lambda_initial"]
+            final = 1.0
+            increment = restraint_dictionary[decouple_phase]["lambda_increment"]
+            if initial == 1.0 or increment < 0.0:
+                final = 0.0
+            final += increment
+            lambda_values = np.arange(initial, final, increment)
+
+        # Decouple, Method 2c
+        elif phase == "decouple" and method == "2c":
+            initial = 0.0
+            final = 1.0
+            increment = restraint_dictionary[decouple_phase]["lambda_increment"]
+            if increment < 0:
+                initial = 1.0
+                final = 0.0
+            final += increment
+            lambda_values = np.arange(initial, final, increment)
+
+        # Decouple, Method 3
+        elif phase == "decouple" and method == "3":
+            lambda_values = np.array(
+                restraint_dictionary[decouple_phase]["lambda_list"]
             )
 
         # Decouple, Target and Force Constant
         if phase == "decouple":
-            total_length = len(electrostatics) + len(sterics)
-            target_units = restraint_dictionary["target"].units
             targets = (
-                    np.asarray(
-                        [restraint_dictionary["target"].magnitude] * total_length
-                    )
-                    * units
+                np.asarray(
+                    [restraint_dictionary["target"].magnitude] * len(lambda_values)
+                )
+                * restraint_dictionary["target"].units
             )
-            force_constant_units = restraint_dictionary["fc"].units
             force_constants = (
-                    np.asarray([restraint_dictionary["fc"].magnitude] * total_length)
-                    * force_constant_units
+                np.asarray([restraint_dictionary["fc"].magnitude] * len(lambda_values))
+                * restraint_dictionary["fc"].units
             )
 
-        if force_constants is None and targets is None:
-            logger.error("Unsupported Phase/Method: {} / {}".format(phase, method))
-            raise Exception("Unexpected phase/method combination passed to _calc_meth")
+        # Return values
+        if phase != "decouple":
 
-        return force_constants, targets
+            if force_constants is None and targets is None:
+                logger.error("Unsupported Phase/Method: {} / {}".format(phase, method))
+                raise Exception(
+                    "Unexpected phase/method combination passed to `_calc_meth`"
+                )
+
+            return force_constants, targets
+
+        if lambda_values is None and force_constants is None and targets is None:
+            logger.error(
+                "Unsupported Method for decouple: {} / {}".format(
+                    decouple_phase, method
+                )
+            )
+            raise Exception(
+                "Unexpected decouple method combination passed to `_calc_meth`"
+            )
+
+        return force_constants, targets, lambda_values
 
     def initialize(self):
         """
@@ -731,6 +739,17 @@ class DAT_restraint(object):
             - **Method 3**:   fraction_list, target_final
             - **Method 4**:   fraction_increment, target_final
             - **Method 5**:   target_list
+
+        For decouple,
+
+            - **Method 1**:   num_windows, lambda_initial, lambda_final
+            - **Method 1a**:  num_windows, lambda_final
+            - **Method 1b**:  num_windows, lambda_initial
+            - **Method 2**:   lambda_initial, lambda_final, lambda_increment
+            - **Method 2a**:  lambda_final, lambda_increment
+            - **Method 2b**:  lambda_initial, lambda_increment
+            - **Method 2c**:  lambda_increment
+            - **Method 3**:   lambda_list
 
         .. note ::
             This is unnecessary overengineering.
@@ -782,6 +801,14 @@ class DAT_restraint(object):
                 else:
                     self._custom_restraint_values[key] = None
 
+        # Check decouple units
+        for key in ["fc", "target"]:
+            if self._decouple[key] is not None:
+                self._decouple[key] = check_unit(
+                    self._decouple[key],
+                    base_unit=force_constant_unit if key == "fc" else target_unit,
+                )
+
         # ------------------------------------ ATTACH ------------------------------------ #
         logger.debug("Calculating attach targets and force constants...")
 
@@ -795,10 +822,12 @@ class DAT_restraint(object):
         ):
             if self.attach["fc_initial"] is not None:
                 logger.debug("Attach, Method #1")
-                force_constants, targets = self._calc_method("a", self.attach, "1")
+                force_constants, targets = self._calc_method("attach", self.attach, "1")
             else:
                 logger.debug("Attach, Method #1a")
-                force_constants, targets = self._calc_method("a", self.attach, "1a")
+                force_constants, targets = self._calc_method(
+                    "attach", self.attach, "1a"
+                )
 
         elif (
             self.attach["fc_increment"] is not None
@@ -806,28 +835,30 @@ class DAT_restraint(object):
         ):
             if self.attach["fc_initial"] is not None:
                 logger.debug("Attach, Method #2")
-                force_constants, targets = self._calc_method("a", self.attach, "2")
+                force_constants, targets = self._calc_method("attach", self.attach, "2")
             else:
                 logger.debug("Attach, Method #2a")
-                force_constants, targets = self._calc_method("a", self.attach, "2a")
+                force_constants, targets = self._calc_method(
+                    "attach", self.attach, "2a"
+                )
 
         elif (
             self.attach["fraction_list"] is not None
             and self.attach["fc_final"] is not None
         ):
             logger.debug("Attach, Method #3")
-            force_constants, targets = self._calc_method("a", self.attach, "3")
+            force_constants, targets = self._calc_method("attach", self.attach, "3")
 
         elif (
             self.attach["fraction_increment"] is not None
             and self.attach["fc_final"] is not None
         ):
             logger.debug("Attach, Method #4")
-            force_constants, targets = self._calc_method("a", self.attach, "4")
+            force_constants, targets = self._calc_method("attach", self.attach, "4")
 
         elif self.attach["fc_list"] is not None:
             logger.debug("Attach, Method #5")
-            force_constants, targets = self._calc_method("a", self.attach, "5")
+            force_constants, targets = self._calc_method("attach", self.attach, "5")
 
         elif all(v is None for k, v in self.attach.items()):
             logger.debug("No restraint info set for the attach phase! Skipping...")
@@ -847,71 +878,201 @@ class DAT_restraint(object):
             self.phase["attach"]["targets"] = targets
 
         # ------------------------------------ PULL ------------------------------------ #
-        logger.debug("Calculating pull targets and force constants...")
+        if self.fe_method == FECalcType.APR:
+            logger.debug("Calculating pull targets and force constants...")
 
-        force_constants = None
-        targets = None
+            force_constants = None
+            targets = None
 
-        if self.auto_apr and self.pull["target_final"] is not None:
-            self.pull["fc"] = self.phase["attach"]["force_constants"][-1]
-            self.pull["target_initial"] = self.phase["attach"]["targets"][-1]
+            if self.auto_apr and self.pull["target_final"] is not None:
+                self.pull["fc"] = self.phase["attach"]["force_constants"][-1]
+                self.pull["target_initial"] = self.phase["attach"]["targets"][-1]
 
-        if (
-            self.pull["num_windows"] is not None
-            and self.pull["target_final"] is not None
-        ):
-            if self.pull["target_initial"] is not None:
-                logger.debug("Pull, Method #1")
-                force_constants, targets = self._calc_method("p", self.pull, "1")
+            if (
+                self.pull["num_windows"] is not None
+                and self.pull["target_final"] is not None
+            ):
+                if self.pull["target_initial"] is not None:
+                    logger.debug("Pull, Method #1")
+                    force_constants, targets = self._calc_method("pull", self.pull, "1")
+                else:
+                    logger.debug("Pull, Method #1a")
+                    force_constants, targets = self._calc_method(
+                        "pull", self.pull, "1a"
+                    )
+
+            elif (
+                self.pull["target_increment"] is not None
+                and self.pull["target_final"] is not None
+            ):
+                if self.pull["target_initial"] is not None:
+                    logger.debug("Pull, Method #2")
+                    force_constants, targets = self._calc_method("pull", self.pull, "2")
+                else:
+                    logger.debug("Pull, Method #2a")
+                    force_constants, targets = self._calc_method(
+                        "pull", self.pull, "2a"
+                    )
+
+            elif (
+                self.pull["fraction_list"] is not None
+                and self.pull["target_final"] is not None
+            ):
+                logger.debug("Pull, Method #3")
+                force_constants, targets = self._calc_method("pull", self.pull, "3")
+
+            elif (
+                self.pull["fraction_increment"] is not None
+                and self.pull["target_final"] is not None
+            ):
+                logger.debug("Pull, Method #4")
+                force_constants, targets = self._calc_method("pull", self.pull, "4")
+
+            elif self.pull["target_list"] is not None:
+                logger.debug("Pull, Method #5")
+                force_constants, targets = self._calc_method("pull", self.pull, "5")
+
+            elif all(v is None for k, v in self.pull.items()):
+                logger.debug("No restraint info set for the pull phase! Skipping...")
+
             else:
-                logger.debug("Pull, Method #1a")
-                force_constants, targets = self._calc_method("p", self.pull, "1a")
+                logger.error(
+                    "Pull restraint input did not match one of the supported methods..."
+                )
+                for k, v in self.pull.items():
+                    logger.debug("{} = {}".format(k, v))
+                raise Exception(
+                    "Pull restraint input did not match one of the supported methods..."
+                )
 
-        elif (
-            self.pull["target_increment"] is not None
-            and self.pull["target_final"] is not None
-        ):
-            if self.pull["target_initial"] is not None:
-                logger.debug("Pull, Method #2")
-                force_constants, targets = self._calc_method("p", self.pull, "2")
-            else:
-                logger.debug("Pull, Method #2a")
-                force_constants, targets = self._calc_method("p", self.pull, "2a")
+            if force_constants is not None and targets is not None:
+                self.phase["pull"]["force_constants"] = force_constants
+                self.phase["pull"]["targets"] = targets
 
-        elif (
-            self.pull["fraction_list"] is not None
-            and self.pull["target_final"] is not None
-        ):
-            logger.debug("Pull, Method #3")
-            force_constants, targets = self._calc_method("p", self.pull, "3")
-
-        elif (
-            self.pull["fraction_increment"] is not None
-            and self.pull["target_final"] is not None
-        ):
-            logger.debug("Pull, Method #4")
-            force_constants, targets = self._calc_method("p", self.pull, "4")
-
-        elif self.pull["target_list"] is not None:
-            logger.debug("Pull, Method #5")
-            force_constants, targets = self._calc_method("p", self.pull, "5")
-
-        elif all(v is None for k, v in self.pull.items()):
-            logger.debug("No restraint info set for the pull phase! Skipping...")
-
-        else:
-            logger.error(
-                "Pull restraint input did not match one of the supported methods..."
-            )
-            for k, v in self.pull.items():
-                logger.debug("{} = {}".format(k, v))
-            raise Exception(
-                "Pull restraint input did not match one of the supported methods..."
+        # ------------------------------------ DECOUPLE ------------------------------------ #
+        elif self.fe_method == FECalcType.DDM:
+            logger.debug(
+                "Calculating decouple lambda values, targets and force constants..."
             )
 
-        if force_constants is not None and targets is not None:
-            self.phase["pull"]["force_constants"] = force_constants
-            self.phase["pull"]["targets"] = targets
+            for iphase, decouple_phase in enumerate(["electrostatics", "sterics"]):
+                force_constants = None
+                targets = None
+                lambda_values = None
+
+                default_values = {
+                    "lambda_initial": None,
+                    "lambda_final": None,
+                    "lambda_increment": None,
+                    "lambda_list": None,
+                    "num_windows": None,
+                }
+                override_dict(self.decouple[decouple_phase], default_values, mode=2)
+
+                if self.decouple[decouple_phase]["num_windows"] is not None:
+                    if (
+                        self.decouple[decouple_phase]["lambda_initial"] is not None
+                        and self.decouple[decouple_phase]["lambda_final"] is not None
+                    ):
+                        logger.debug("Decouple, Method #1")
+                        force_constants, targets, lambda_values = self._calc_method(
+                            "decouple", self.decouple, "1", decouple_phase
+                        )
+
+                    elif (
+                        self.decouple[decouple_phase]["lambda_initial"] is None
+                        and self.decouple[decouple_phase]["lambda_final"] is not None
+                    ):
+                        logger.debug("Decouple, Method #1a")
+                        force_constants, targets, lambda_values = self._calc_method(
+                            "decouple", self.decouple, "1a", decouple_phase
+                        )
+
+                    elif (
+                        self.decouple[decouple_phase]["lambda_initial"] is not None
+                        and self.decouple[decouple_phase]["lambda_final"] is None
+                    ):
+                        logger.debug("Decouple, Method #1b")
+                        force_constants, targets, lambda_values = self._calc_method(
+                            "decouple", self.decouple, "1b", decouple_phase
+                        )
+
+                elif self.decouple[decouple_phase]["lambda_increment"] is not None:
+                    if (
+                        self.decouple[decouple_phase]["lambda_initial"] is not None
+                        and self.decouple[decouple_phase]["lambda_final"] is not None
+                    ):
+                        logger.debug("Decouple, Method #2")
+                        force_constants, targets, lambda_values = self._calc_method(
+                            "decouple", self.decouple, "2", decouple_phase
+                        )
+
+                    elif (
+                        self.decouple[decouple_phase]["lambda_initial"] is None
+                        and self.decouple[decouple_phase]["lambda_final"] is not None
+                    ):
+                        logger.debug("Decouple, Method #2a")
+                        force_constants, targets, lambda_values = self._calc_method(
+                            "decouple", self.decouple, "2a", decouple_phase
+                        )
+
+                    elif (
+                        self.decouple[decouple_phase]["lambda_initial"] is not None
+                        and self.decouple[decouple_phase]["lambda_final"] is None
+                    ):
+                        logger.debug("Decouple, Method #2b")
+                        force_constants, targets, lambda_values = self._calc_method(
+                            "decouple", self.decouple, "2b", decouple_phase
+                        )
+                    else:
+                        logger.debug("Decouple, Method #2c")
+                        force_constants, targets, lambda_values = self._calc_method(
+                            "decouple", self.decouple, "2c", decouple_phase
+                        )
+
+                elif self.decouple[decouple_phase]["lambda_list"] is not None:
+                    logger.debug("Decouple, Method #3")
+                    force_constants, targets, lambda_values = self._calc_method(
+                        "decouple", self.decouple, "3", decouple_phase
+                    )
+
+                elif all(v is None for k, v in self.decouple[decouple_phase].items()):
+                    logger.debug(
+                        "No restraint info set for the decouple phase! Skipping..."
+                    )
+
+                else:
+                    logger.error(
+                        f"Decouple-{decouple_phase} restraint input did not match one of the supported methods..."
+                    )
+                    for k, v in self.decouple[decouple_phase].items():
+                        logger.debug("{} = {}".format(k, v))
+                    raise Exception(
+                        f"Decouple-{decouple_phase} restraint input did not match one of the supported methods..."
+                    )
+
+                if (
+                    force_constants is not None
+                    and targets is not None
+                    and lambda_values is not None
+                ):
+                    self.phase["decouple"][decouple_phase] = lambda_values
+                    if iphase == 0:
+                        self.phase["decouple"]["force_constants"] = force_constants
+                        self.phase["decouple"]["targets"] = targets
+                    elif iphase == 1:
+                        self.phase["decouple"]["force_constants"] = np.concatenate(
+                            (
+                                self.phase["decouple"]["force_constants"],
+                                force_constants,
+                            )
+                        )
+                        self.phase["decouple"]["targets"] = np.concatenate(
+                            (
+                                self.phase["decouple"]["targets"],
+                                targets,
+                            )
+                        )
 
         # ------------------------------------ RELEASE ------------------------------------ #
         logger.debug("Calculating release targets and force constants...")
@@ -943,10 +1104,14 @@ class DAT_restraint(object):
         ):
             if self.release["fc_initial"] is not None:
                 logger.debug("Release, Method #1")
-                force_constants, targets = self._calc_method("r", self.release, "1")
+                force_constants, targets = self._calc_method(
+                    "release", self.release, "1"
+                )
             else:
                 logger.debug("Release, Method #1a")
-                force_constants, targets = self._calc_method("r", self.release, "1a")
+                force_constants, targets = self._calc_method(
+                    "release", self.release, "1a"
+                )
 
         elif (
             self.release["fc_increment"] is not None
@@ -954,28 +1119,32 @@ class DAT_restraint(object):
         ):
             if self.release["fc_initial"] is not None:
                 logger.debug("Release, Method #2")
-                force_constants, targets = self._calc_method("r", self.release, "2")
+                force_constants, targets = self._calc_method(
+                    "release", self.release, "2"
+                )
             else:
                 logger.debug("Release, Method #2a")
-                force_constants, targets = self._calc_method("r", self.release, "2a")
+                force_constants, targets = self._calc_method(
+                    "release", self.release, "2a"
+                )
 
         elif (
             self.release["fraction_list"] is not None
             and self.release["fc_final"] is not None
         ):
             logger.debug("Release, Method #3")
-            force_constants, targets = self._calc_method("r", self.release, "3")
+            force_constants, targets = self._calc_method("release", self.release, "3")
 
         elif (
             self.release["fraction_increment"] is not None
             and self.release["fc_final"] is not None
         ):
             logger.debug("Release, Method #4")
-            force_constants, targets = self._calc_method("r", self.release, "4")
+            force_constants, targets = self._calc_method("release", self.release, "4")
 
         elif self.release["fc_list"] is not None:
             logger.debug("Release, Method #5")
-            force_constants, targets = self._calc_method("r", self.release, "5")
+            force_constants, targets = self._calc_method("release", self.release, "5")
 
         elif all(v is None for k, v in self.release.items()):
             logger.debug("No restraint info set for the release phase! Skipping...")
@@ -996,7 +1165,7 @@ class DAT_restraint(object):
 
         # ----------------------------------- WINDOWS ------------------------------------ #
 
-        for phase in ["attach", "pull", "release"]:
+        for phase in ["attach", "pull", "decouple", "release"]:
             if self.phase[phase]["targets"] is not None:
                 window_count = len(self.phase[phase]["targets"])
                 logger.debug("Number of {} windows = {}".format(phase, window_count))
@@ -1043,6 +1212,7 @@ def static_DAT_restraint(
     num_window_list,
     ref_structure,
     force_constant,
+    fe_method=FECalcType.APR,
     continuous_apr=True,
     amber_index=False,
 ):
@@ -1053,13 +1223,17 @@ def static_DAT_restraint(
     ----------
     restraint_mask_list: list
         A list of masks for which this restraint applies.
-    num_window_list: list
-        A list of windows during which this restraint will be applied, which should be in the form: [attach windows,
-        pull windows, release windows].
+    num_window_list: dict
+        A dictionary listing the number of windows during which this restraint will be applied,
+        which should be in the form:
+            * {"attach": ..., "pull": ..., "release": ...}
+            * {"attach": ..., "decouple": {"electrostatics": ..., "sterics": ...}, "release": ...}
     ref_structure: os.PathLike or :class:`parmed.Structure`
         The reference structure that is used to determine the initial, **static** value for this restraint.
     force_constant: float or pint.unit.Quantity
-        The force constant for this restraint. If float, the number will be transformed to kcal/mol/[Angstrom,radians].
+        The force constant for this restraint. If **float**, the number will be transformed to kcal/mol/[Angstrom,radians]^2.
+    fe_method: FECalcType, optional
+        The free energy method type - APR, DDM or SDM.
     continuous_apr: bool, optional
         Whether this restraint uses ``continuous_apr``. This must be consistent with existing restraints.
     amber_index: bool, optional
@@ -1069,21 +1243,16 @@ def static_DAT_restraint(
     -------
     rest: :class:`paprika.restraints.DAT_restraint`
         A static restraint.
-
     """
 
-    # Check num_window_list
-    if len(num_window_list) != 3:
-        raise ValueError(
-            "The num_window_list needs to contain three integers corresponding to the number of windows in the "
-            "attach, pull, and release phase, respectively "
-        )
-
     rest = DAT_restraint()
+    rest.fe_method = fe_method
     rest.continuous_apr = continuous_apr
     rest.amber_index = amber_index
 
-    if isinstance(ref_structure, pmd.amber._amberparm.AmberParm):
+    if isinstance(ref_structure, pmd.amber._amberparm.AmberParm) or isinstance(
+        ref_structure, pmd.structure.Structure
+    ):
         reference_trajectory = pt.load_parmed(ref_structure, traj=True)
         rest.topology = ref_structure
     elif isinstance(ref_structure, str):
@@ -1091,7 +1260,7 @@ def static_DAT_restraint(
         rest.topology = pmd.load_file(ref_structure, structure=True)
     else:
         raise TypeError(
-            "static_DAT_restraint does not support the type associated with ref_structure:"
+            "`static_DAT_restraint` does not support the type associated with ref_structure:"
             + type(ref_structure)
         )
 
@@ -1138,29 +1307,54 @@ def static_DAT_restraint(
     else:
         raise IndexError(
             f"The number of masks -- {len(restraint_mask_list)} -- is not 2, 3, or 4 and thus is not one of the "
-            f"supported types: distance, angle, or dihedral."
+            f"supported types: `distance`, `angle`, or `dihedral`."
         )
 
     # Attach phase
-    if num_window_list[0] is not None and num_window_list[0] != 0:
+    if num_window_list["attach"] is not None and num_window_list["attach"] != 0:
         rest.attach["target"] = target
         rest.attach["fc_initial"] = force_constant
         rest.attach["fc_final"] = force_constant
-        rest.attach["num_windows"] = num_window_list[0]
+        rest.attach["num_windows"] = num_window_list["attach"]
 
     # Pull phase
-    if num_window_list[1] is not None and num_window_list[1] != 0:
+    if (
+        fe_method == FECalcType.APR
+        and num_window_list["pull"] is not None
+        and num_window_list["pull"] != 0
+    ):
         rest.pull["fc"] = force_constant
         rest.pull["target_initial"] = target
         rest.pull["target_final"] = target
-        rest.pull["num_windows"] = num_window_list[1]
+        rest.pull["num_windows"] = num_window_list["pull"]
+
+    # Decouple phase
+    if fe_method == FECalcType.DDM and num_window_list["decouple"] is not None:
+        rest.decouple["fc"] = force_constant
+        rest.decouple["target"] = target
+
+        if (
+            num_window_list["decouple"]["electrostatics"] is not None
+            and num_window_list["decouple"]["electrostatics"] != 0
+        ):
+            rest.decouple["electrostatics"]["num_windows"] = num_window_list[
+                "decouple"
+            ]["electrostatics"]
+
+        if (
+            num_window_list["decouple"]["sterics"] is not None
+            and num_window_list["decouple"]["sterics"] != 0
+        ):
+            rest.decouple["sterics"]["num_windows"] = num_window_list["decouple"][
+                "sterics"
+            ]
 
     # Release phase
-    if num_window_list[2] is not None and num_window_list[2] != 0:
+    if num_window_list["release"] is not None and num_window_list["release"] != 0:
         rest.release["target"] = target
         rest.release["fc_initial"] = force_constant
         rest.release["fc_final"] = force_constant
-        rest.release["num_windows"] = num_window_list[2]
+        rest.release["num_windows"] = num_window_list["release"]
 
     rest.initialize()
 
@@ -1193,7 +1387,7 @@ def check_restraints(restraint_list, create_window_list=False):
         )
 
     window_list = []
-    phases = ["attach", "pull", "release"]
+    phases = ["attach", "pull", "decouple", "release"]
     for phase in phases:
         win_counts = []
         for restraint in restraint_list:
@@ -1227,6 +1421,11 @@ def check_restraints(restraint_list, create_window_list=False):
                         for val in np.arange(0, max_count, 1)
                     ]
                 elif phase == "pull":
+                    window_list += [
+                        phase[0] + str("{:03.0f}".format(val))
+                        for val in np.arange(0, max_count, 1)
+                    ]
+                elif phase == "decouple":
                     window_list += [
                         phase[0] + str("{:03.0f}".format(val))
                         for val in np.arange(0, max_count, 1)
