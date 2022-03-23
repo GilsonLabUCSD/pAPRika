@@ -4,6 +4,7 @@ import os
 import traceback
 import warnings
 from itertools import compress
+from rich.progress import track
 
 import numpy as np
 import pymbar
@@ -788,7 +789,7 @@ class fe_calc(object):
         self.results[phase][method]["fraction_fe_Neffective"] = {}
         self.results[phase][method]["fraction_sem_Neffective"] = {}
 
-        for fraction in self.fractions:
+        for fraction in track(self.fractions, description="Calculating free energy matrix via MBAR..."):
             # Setup mbar calc, and get matrix of free energies, uncertainties
             # To estimate the free energy, we won't do subsampling.  We'll do
             # another MBAR calculation later with subsampling to estimate the
@@ -939,7 +940,7 @@ class fe_calc(object):
         targets_T = np.asarray(targets).T * target_units
 
         # For each window: do dihedral wrapping, compute forces, append dl_intp
-        for k in range(num_win):  # Coordinate windows
+        for k in track(range(num_win), description="Computing forces..."):  # Coordinate windows
 
             # Wrap dihedrals so we get the right potential
             for r, rest in enumerate(active_rest):  # Restraints
@@ -1013,14 +1014,12 @@ class fe_calc(object):
         # Tack on the final value to the dl interpolation
         dl_intp = np.append(dl_intp, dl_vals[-1])
 
-        logger.debug("Running bootstrap calculations...")
-
         # Setup fractions. For simplicity, we'll always do this, even
         # if we're doing the total data, ie self.fractions=[1.0].
         self.results[phase][method]["fraction_fe_matrix"] = {}
         self.results[phase][method]["fraction_sem_matrix"] = {}
 
-        for fraction in self.fractions:
+        for fraction in track(self.fractions, description="Running bootstrap calculations..."):
 
             logger.debug("Working on fraction ... {}".format(fraction))
 
@@ -1072,7 +1071,6 @@ class fe_calc(object):
                 self.results[phase][method]["fraction_fe_matrix"][fraction] *= -1.0
 
         if self.compute_roi:
-            logger.info(phase + ": computing ROI for " + method)
             # Do ROI calc
             max_fraction = np.max(self.fractions)
             # If we didn't compute fe/sem for fraction 1.0 already, do it now
@@ -1089,7 +1087,7 @@ class fe_calc(object):
                 ].magnitude
             self.results[phase][method]["roi"] = np.zeros([num_win], np.float64)
 
-            for k in range(num_win):
+            for k in track(range(num_win), description=f"Computing ROI for {method} in phase {phase}..."):
                 # Compute overall integrated SEM with 10% smaller SEM for dU[k]
                 cnvg_dU_samples = np.array(dU_samples)
                 cnvg_dU_samples[:, k] = np.random.normal(
@@ -1144,7 +1142,7 @@ class fe_calc(object):
                     "The fraction of data to analyze must be 0 < fraction ≤ 1.0."
                 )
 
-        for phase in phases:
+        for phase in track(phases, description="Analyzing..."):
             self.results[phase] = {}
             self.results[phase]["window_order"] = self.orders[phase]
 
@@ -1295,7 +1293,7 @@ class fe_calc(object):
         targs = []
 
         # Distance restraint - special care when extracting `r0`, depends on whether calculating with APR or DDM.
-        for colvar in ["r", "theta", "phi", "alpha", "beta", "gamma"]:
+        for colvar in track(["r", "theta", "phi", "alpha", "beta", "gamma"], description="Computing reference state work..."):
             restraint = restraints[colvar]
 
             target_index = -1
@@ -1506,7 +1504,7 @@ def get_block_sem(data_array):
     sems = np.zeros([len(block_sizes) - 2], np.float64)
 
     # Check each block size except the last two.
-    for size_idx in range(len(block_sizes) - 2):
+    for size_idx in track(range(len(block_sizes) - 2), description="Computing SEM via block method..."):
         # Check each block, the number of which is conveniently found as
         # the other number of the factor pair in block_sizes
         num_blocks = block_sizes[-size_idx - 1]
@@ -1902,7 +1900,7 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix="full"):
     # below with everthing else, but I'll split it out here in case that's faster
     # due to avoiding the if statements.
     if matrix == "endpoints":
-        for cycle in range(cycles):
+        for cycle in track(range(cycles), description="Running integration bootstraps..."):
             intp_func = Akima1DInterpolator(x, ys[cycle])
             y_intp = intp_func(x_intp)
             #            for i in range(0, num_x):
@@ -1910,7 +1908,7 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix="full"):
             #                    int_matrix[i, j, cycle] = np.trapz( y_intp, x_intp )
             int_matrix[0, num_x - 1, cycle] = np.trapz(y_intp, x_intp)
     else:
-        for cycle in range(cycles):
+        for cycle in track(range(cycles), description="Running integration bootstraps..."):
             intp_func = Akima1DInterpolator(x, ys[cycle])
             y_intp = intp_func(x_intp)
             for i in range(0, num_x):
