@@ -1021,8 +1021,6 @@ class fe_calc(object):
 
         for fraction in track(self.fractions, description="Running bootstrap calculations..."):
 
-            logger.debug("Working on fraction ... {}".format(fraction))
-
             # Compute means for this fraction.
             frac_dU_avgs = np.array(
                 [np.mean(dU[k, 0 : int(fraction * n)]) for k, n in enumerate(N_k)]
