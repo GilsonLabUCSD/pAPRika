@@ -4,6 +4,7 @@ import os
 import traceback
 import warnings
 from itertools import compress
+from rich.progress import track
 
 import numpy as np
 import pymbar
@@ -1013,16 +1014,12 @@ class fe_calc(object):
         # Tack on the final value to the dl interpolation
         dl_intp = np.append(dl_intp, dl_vals[-1])
 
-        logger.debug("Running bootstrap calculations...")
-
         # Setup fractions. For simplicity, we'll always do this, even
         # if we're doing the total data, ie self.fractions=[1.0].
         self.results[phase][method]["fraction_fe_matrix"] = {}
         self.results[phase][method]["fraction_sem_matrix"] = {}
 
         for fraction in self.fractions:
-
-            logger.debug("Working on fraction ... {}".format(fraction))
 
             # Compute means for this fraction.
             frac_dU_avgs = np.array(
@@ -1072,7 +1069,6 @@ class fe_calc(object):
                 self.results[phase][method]["fraction_fe_matrix"][fraction] *= -1.0
 
         if self.compute_roi:
-            logger.info(phase + ": computing ROI for " + method)
             # Do ROI calc
             max_fraction = np.max(self.fractions)
             # If we didn't compute fe/sem for fraction 1.0 already, do it now
@@ -1148,7 +1144,7 @@ class fe_calc(object):
             self.results[phase] = {}
             self.results[phase]["window_order"] = self.orders[phase]
 
-            for method in self.methods:
+            for method in track(self.methods, description=f"Running {phase} analysis..."):
                 if seed is not None:
                     np.random.seed(seed)
                     logger.debug(f"Setting random number seed = {seed}")
@@ -1941,3 +1937,4 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix="full"):
             sem_matrix[j, i] = sem_matrix[i, j]
 
     return avg_matrix, sem_matrix
+

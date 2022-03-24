@@ -32,6 +32,9 @@ dependencies:
   - nbsphinx
   - sphinx_rtd_theme
   - sphinxcontrib-bibtex ==1.0.0
+  
+  # Cosmetics
+  - rich
 
   # Testing
   - pytest
