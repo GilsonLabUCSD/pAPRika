@@ -789,7 +789,7 @@ class fe_calc(object):
         self.results[phase][method]["fraction_fe_Neffective"] = {}
         self.results[phase][method]["fraction_sem_Neffective"] = {}
 
-        for fraction in track(self.fractions, description="Calculating free energy matrix via MBAR..."):
+        for fraction in self.fractions:
             # Setup mbar calc, and get matrix of free energies, uncertainties
             # To estimate the free energy, we won't do subsampling.  We'll do
             # another MBAR calculation later with subsampling to estimate the
@@ -940,7 +940,7 @@ class fe_calc(object):
         targets_T = np.asarray(targets).T * target_units
 
         # For each window: do dihedral wrapping, compute forces, append dl_intp
-        for k in track(range(num_win), description="Computing forces..."):  # Coordinate windows
+        for k in range(num_win):  # Coordinate windows
 
             # Wrap dihedrals so we get the right potential
             for r, rest in enumerate(active_rest):  # Restraints
@@ -1019,7 +1019,7 @@ class fe_calc(object):
         self.results[phase][method]["fraction_fe_matrix"] = {}
         self.results[phase][method]["fraction_sem_matrix"] = {}
 
-        for fraction in track(self.fractions, description="Running bootstrap calculations..."):
+        for fraction in self.fractions:
 
             # Compute means for this fraction.
             frac_dU_avgs = np.array(
@@ -1085,7 +1085,7 @@ class fe_calc(object):
                 ].magnitude
             self.results[phase][method]["roi"] = np.zeros([num_win], np.float64)
 
-            for k in track(range(num_win), description=f"Computing ROI for {method} in phase {phase}..."):
+            for k in range(num_win):
                 # Compute overall integrated SEM with 10% smaller SEM for dU[k]
                 cnvg_dU_samples = np.array(dU_samples)
                 cnvg_dU_samples[:, k] = np.random.normal(
@@ -1140,11 +1140,11 @@ class fe_calc(object):
                     "The fraction of data to analyze must be 0 < fraction ≤ 1.0."
                 )
 
-        for phase in track(phases, description="Analyzing..."):
+        for phase in phases:
             self.results[phase] = {}
             self.results[phase]["window_order"] = self.orders[phase]
 
-            for method in self.methods:
+            for method in track(self.methods, description=f"Running {phase} analysis..."):
                 if seed is not None:
                     np.random.seed(seed)
                     logger.debug(f"Setting random number seed = {seed}")
@@ -1291,7 +1291,7 @@ class fe_calc(object):
         targs = []
 
         # Distance restraint - special care when extracting `r0`, depends on whether calculating with APR or DDM.
-        for colvar in track(["r", "theta", "phi", "alpha", "beta", "gamma"], description="Computing reference state work..."):
+        for colvar in ["r", "theta", "phi", "alpha", "beta", "gamma"]:
             restraint = restraints[colvar]
 
             target_index = -1
@@ -1502,7 +1502,7 @@ def get_block_sem(data_array):
     sems = np.zeros([len(block_sizes) - 2], np.float64)
 
     # Check each block size except the last two.
-    for size_idx in track(range(len(block_sizes) - 2), description="Computing SEM via block method..."):
+    for size_idx in range(len(block_sizes) - 2):
         # Check each block, the number of which is conveniently found as
         # the other number of the factor pair in block_sizes
         num_blocks = block_sizes[-size_idx - 1]
@@ -1898,7 +1898,7 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix="full"):
     # below with everthing else, but I'll split it out here in case that's faster
     # due to avoiding the if statements.
     if matrix == "endpoints":
-        for cycle in track(range(cycles), description="Running integration bootstraps..."):
+        for cycle in range(cycles):
             intp_func = Akima1DInterpolator(x, ys[cycle])
             y_intp = intp_func(x_intp)
             #            for i in range(0, num_x):
@@ -1906,7 +1906,7 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix="full"):
             #                    int_matrix[i, j, cycle] = np.trapz( y_intp, x_intp )
             int_matrix[0, num_x - 1, cycle] = np.trapz(y_intp, x_intp)
     else:
-        for cycle in track(range(cycles), description="Running integration bootstraps..."):
+        for cycle in range(cycles):
             intp_func = Akima1DInterpolator(x, ys[cycle])
             y_intp = intp_func(x_intp)
             for i in range(0, num_x):
@@ -1937,3 +1937,4 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix="full"):
             sem_matrix[j, i] = sem_matrix[i, j]
 
     return avg_matrix, sem_matrix
+
