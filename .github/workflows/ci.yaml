@@ -24,15 +24,18 @@ jobs:
       PACKAGE: paprika
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3.0.2
 
-    - uses: conda-incubator/setup-miniconda@v2
+    - uses: conda-incubator/setup-miniconda@v2.1.1
       with:
         python-version: ${{ matrix.python-version }}
         activate-environment: paprika-dev
         channel-priority: true
         environment-file: devtools/conda-envs/test_env.yaml
         auto-activate-base: false
+        miniforge-version: latest
+        miniforge-variant: Mambaforce
+        use-mamba: true
 
     - name: Additional info about the build
       shell: bash
@@ -59,7 +62,7 @@ jobs:
         pytest $PYTEST_ARGS $PACKAGE
 
     - name: Codecov
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v3.1.0
       with:
         file: ./coverage.xml
         fail_ci_if_error: true
