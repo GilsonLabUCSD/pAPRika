@@ -93,7 +93,7 @@ def setup_free_energy_calculation():
     fecalc.trajectory = "*.nc"
     fecalc.path = os.path.join(os.path.dirname(__file__), "../data/cb6-but-apr/")
     fecalc.restraint_list = [rest1, rest2, rest3]
-    fecalc.methods = ["mbar-block", "ti-block", "mbar-autoc"]
+    fecalc.methods = ["mbar-block", "ti-block"]  # , "mbar-autoc", "mbar-boot"]
     fecalc.bootcycles = 100
     fecalc.ti_matrix = "diagonal"
     fecalc.compute_largest_neighbor = True
