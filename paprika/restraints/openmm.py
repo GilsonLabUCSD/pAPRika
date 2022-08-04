@@ -11,7 +11,7 @@ except ImportError:
     import simtk.unit as openmm_unit
 
 import parmed as pmd
-from openff.units import unit as pint_unit
+from openff.units import unit as openff_unit
 from openff.units.simtk import to_simtk
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ def apply_positional_restraints(
                 )
             elif isinstance(kpos, openmm_unit.Quantity):
                 k = kpos
-            elif isinstance(kpos, pint_unit.Quantity):
+            elif isinstance(kpos, openff_unit.Quantity):
                 k = to_simtk(kpos)
 
             x0 = 0.1 * atom.xx * openmm_unit.nanometers

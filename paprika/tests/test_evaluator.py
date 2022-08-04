@@ -9,7 +9,7 @@ import numpy as np
 import parmed as pmd
 import pytest
 import pytraj as pt
-from openff.units import unit
+from openff.units import unit as openff_unit
 
 from paprika.evaluator import Analyze, Setup
 from paprika.evaluator.amber import generate_gaff
@@ -202,7 +202,9 @@ def test_evaluator_analyze(clean_files):
     guest_restraints = [rest1, rest2, rest3]
     ref_state_work = Analyze.compute_ref_state_work(temperature, guest_restraints)
     assert (
-        pytest.approx(ref_state_work.to(unit.kcal / unit.mole).magnitude, abs=1e-3)
+        pytest.approx(
+            ref_state_work.to(openff_unit.kcal / openff_unit.mole).magnitude, abs=1e-3
+        )
         == -7.14151
     )
 

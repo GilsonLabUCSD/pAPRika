@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 import parmed as pmd
-from openff.units import unit as pint_unit
+from openff.units import unit as openff_unit
 from paprika.utils import check_unit
 
 logger = logging.getLogger(__name__)
@@ -190,7 +190,7 @@ def rotate_around_axis(structure, axis, angle):
     axis = _return_array(axis)
 
     # Convert angle to radians (temporary until Pint integration)
-    angle = check_unit(angle, base_unit=pint_unit.radians).to(pint_unit.radians).magnitude
+    angle = check_unit(angle, base_unit=openff_unit.radians).to(openff_unit.radians).magnitude
 
     if np.array_equal(axis, np.array([1.0, 0.0, 0.0])):
         rotation_matrix = np.array(
@@ -300,7 +300,7 @@ def get_theta(structure, mask1, mask2, axis):
         np.dot(vector, axis) / (np.linalg.norm(vector) * np.linalg.norm(axis))
     )
 
-    return pint_unit.Quantity(theta, units=pint_unit.radians)
+    return openff_unit.Quantity(theta, units=openff_unit.radians)
 
 
 def get_rotation_matrix(vector, ref_vector):
@@ -462,9 +462,9 @@ def offset_structure(structure, offset, dimension=None):
     else:
         mask = _return_array(dimension)
 
-    offset = check_unit(offset, base_unit=pint_unit.angstrom)
+    offset = check_unit(offset, base_unit=openff_unit.angstrom)
     offset *= mask
-    offset = offset.to(pint_unit.angstrom).magnitude
+    offset = offset.to(openff_unit.angstrom).magnitude
 
     # Offset coordinates
     offset_coords = np.empty_like(structure.coordinates)

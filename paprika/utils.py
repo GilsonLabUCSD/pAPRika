@@ -7,7 +7,7 @@ from functools import lru_cache
 import numpy as np
 import parmed as pmd
 import pytraj as pt
-from openff.units import unit
+from openff.units import unit as openff_unit
 from parmed.structure import Structure as ParmedStructureClass
 
 logger = logging.getLogger(__name__)
@@ -321,31 +321,31 @@ def is_file_and_not_empty(file_path):
 
 def check_unit(variable, base_unit):
     """
-    Run a check if variable is a float or unit.Quantity. If float, assign
-    the unit of ``base_unit``, if unit.Quantity, check the dimensionality.
+    Run a check if variable is a float or openff_unit.Quantity. If float, assign
+    the unit of ``base_unit``, if openff_unit.Quantity, check the dimensionality.
 
-    variable: float or unit.Quantity
-    base_unit: unit.Quantity
+    variable: float or openff_unit.Quantity
+    base_unit: openff_unit.Quantity
     """
     quantity = variable
     if isinstance(variable, float):
-        quantity = unit.Quantity(variable, units=base_unit)
-    elif isinstance(variable, unit.Quantity):
+        quantity = openff_unit.Quantity(variable, units=base_unit)
+    elif isinstance(variable, openff_unit.Quantity):
         assert variable.dimensionality == base_unit.dimensionality
     elif isinstance(variable, list):
         if all(isinstance(x, float) for x in variable):
-            quantity = unit.Quantity(variable, units=base_unit)
-        elif all(isinstance(x, unit.Quantity) for x in variable):
+            quantity = openff_unit.Quantity(variable, units=base_unit)
+        elif all(isinstance(x, openff_unit.Quantity) for x in variable):
             assert all(
                 variable[x].dimensionality == base_unit.dimensionality for x in variable
             )
         else:
             raise KeyError(
-                "Please make my life easier by either specifying a list of all float or all unit.Quantity."
+                "Please make my life easier by either specifying a list of all float or all openff.unit.Quantity."
             )
     elif isinstance(variable, np.ndarray):
-        quantity = unit.Quantity(variable, units=base_unit)
+        quantity = openff_unit.Quantity(variable, units=base_unit)
     else:
-        raise KeyError("``variable`` should be a float or unit.Quantity.")
+        raise KeyError("``variable`` should be a float or openff.unit.Quantity.")
 
     return quantity
