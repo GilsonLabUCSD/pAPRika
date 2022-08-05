@@ -10,10 +10,10 @@ dependencies:
   - scipy
   - parmed
   - mdtraj
-  - pymbar >=3.0.5
+  - pymbar >=4.0.1
   - openmm >=7.6.0
   - yank
-  - ambertools >=20.0
+  - ambertools >=22.0
   - pyyaml
   - plumed
   - intermol

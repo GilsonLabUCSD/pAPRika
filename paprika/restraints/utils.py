@@ -86,11 +86,8 @@ def get_restraint_values(restraint, phase, window_number):
         "rk2": restraint.phase[phase]["force_constants"][window_number],
         "rk3": restraint.phase[phase]["force_constants"][window_number],
     }
-    print(restraint_values)
 
     override_dict(restraint_values, restraint.custom_restraint_values)
-
-    print(restraint_values)
 
     return restraint_values
 

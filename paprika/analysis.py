@@ -157,6 +157,7 @@ class fe_calc(object):
 
             - ``mbar-autoc``
             - ``mbar-block``
+            - ``mbar-boot``
             - ``ti-block``
 
         .. note ::
@@ -763,9 +764,9 @@ class fe_calc(object):
                 variance = np.var(u_kln[k, l, 0 : N_k[k]])
                 g_k[k] = N_k[k] * (sem**2) / variance
 
-        if method == "mbar-autoc":
+        if method == "mbar-autoc" or method == "mbar-boot":
             for k in range(num_win):
-                [t0, g_k[k], Neff_max] = timeseries.detectEquilibration(
+                [t0, g_k[k], Neff_max] = timeseries.detect_equilibration(
                     N_k[k]
                 )  # compute indices of uncorrelated
                 # timeseries
@@ -796,40 +797,49 @@ class fe_calc(object):
             frac_N_k = np.array([int(fraction * n) for n in N_k], dtype=np.int32)
 
             mbar = pymbar.MBAR(u_kln, frac_N_k, verbose=verbose)
-            mbar_results = mbar.getFreeEnergyDifferences(
-                compute_uncertainty=True, return_dict=True
+            mbar_results = mbar.compute_free_energy_differences(
+                compute_uncertainty=True
             )
 
             Deltaf_ij = mbar_results["Delta_f"]
             dDeltaf_ij = mbar_results["dDelta_f"]
 
-            Deltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
+            Deltaf_ij_N_eff = mbar.compute_effective_sample_number()
 
-            if method == "mbar-block" or "mbar-autoc":
-                # Create subsampled indices and count their lengths
-                frac_N_ss = np.array([int(fraction * n) for n in N_ss], dtype=np.int32)
+            # Estimate uncertainty from decorrelated samples
+            # Create subsampled indices and count their lengths
+            frac_N_ss = np.array([int(fraction * n) for n in N_ss], dtype=np.int32)
 
-                # Create a new potential array for the uncertainty calculation
-                # (are we using too much memory?)
-                u_kln_err = np.zeros([num_win, num_win, np.max(frac_N_ss)], np.float64)
+            # Create a new potential array for the uncertainty calculation
+            # (are we using too much memory?)
+            u_kln_err = np.zeros([num_win, num_win, np.max(frac_N_ss)], np.float64)
 
-                # Populate the subsampled array, drawing the appropriate
-                # fraction of subsamples from the original
-                for k in range(num_win):
-                    for l in range(num_win):
-                        u_kln_err[k, l, 0 : frac_N_ss[k]] = u_kln[
-                            k, l, ss_indices[k][0 : frac_N_ss[k]]
-                        ]
+            # Populate the subsampled array, drawing the appropriate
+            # fraction of subsamples from the original
+            for k in range(num_win):
+                for l in range(num_win):
+                    u_kln_err[k, l, 0 : frac_N_ss[k]] = u_kln[
+                        k, l, ss_indices[k][0 : frac_N_ss[k]]
+                    ]
 
-                # We toss junk_Deltaf_ij, because we got a better estimate for it from above using all data.
-                # But dDeltaf_ij will replace the previous, because it correctly accounts for the
-                # correlation in the data.
-                mbar = pymbar.MBAR(u_kln_err, frac_N_ss, verbose=verbose)
-                mbar_results = mbar.getFreeEnergyDifferences(
-                    compute_uncertainty=True, return_dict=True
+            # We toss junk_Deltaf_ij, because we got a better estimate for it from above using all data.
+            # But dDeltaf_ij will replace the previous, because it correctly accounts for the
+            # correlation in the data.
+            if method == "mbar-boot":
+                mbar = pymbar.MBAR(
+                    u_kln_err, frac_N_ss, verbose=verbose, n_bootstraps=self.bootcycles
                 )
-                dDeltaf_ij = mbar_results["dDelta_f"]
-                dDeltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
+                mbar_results = mbar.compute_free_energy_differences(
+                    compute_uncertainty=True, uncertainty_method="bootstrap"
+                )
+            else:
+                mbar = pymbar.MBAR(u_kln_err, frac_N_ss, verbose=verbose)
+                mbar_results = mbar.compute_free_energy_differences(
+                    compute_uncertainty=True
+                )
+
+            dDeltaf_ij = mbar_results["dDelta_f"]
+            dDeltaf_ij_N_eff = mbar.compute_effective_sample_number()
 
             # Put back into kcal/mol
             Deltaf_ij /= self.beta
@@ -1166,7 +1176,11 @@ class fe_calc(object):
                     "Running {} analysis on {} phase ...".format(method, phase)
                 )
 
-                if method == "mbar-block" or method == "mbar-autoc":
+                if (
+                    method == "mbar-block"
+                    or method == "mbar-autoc"
+                    or method == "mbar-boot"
+                ):
                     self.run_mbar(phase, prepared_data, method)
                 elif method == "ti-block":
                     self.run_ti(phase, prepared_data, method)
