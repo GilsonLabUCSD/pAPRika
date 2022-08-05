@@ -4,7 +4,7 @@ import logging as log
 import os
 
 import numpy as np
-from openff.units import unit
+from openff.units import unit as openff_unit
 from parmed import Structure
 from parmed.amber import AmberParm
 
@@ -16,19 +16,19 @@ from paprika.restraints import DAT_restraint
 
 
 def serialize_quantity(quantity):
-    """Serializes a openff.units.unit.Quantity into a dictionary of the form
+    """Serializes a `openff.units.unit.Quantity` into a dictionary of the form
     `{'value': quantity.value_in_unit(quantity.unit), 'unit': quantity.unit}`
     This copied from openff-evaluator.
 
     Parameters
     ----------
-    quantity : openff.evaluator.unit.Quantity
+    quantity : openff.units.unit.Quantity
         The quantity to serialize
 
     Returns
     -------
     dict of str and str
-        A dictionary representation of a openff.units.unit.Quantity
+        A dictionary representation of a `openff.units.unit.Quantity`
         with keys of {"value", "unit"}
     """
 
@@ -41,13 +41,13 @@ def serialize_quantity(quantity):
 
 
 def deserialize_quantity(serialized):
-    """Deserialize a openff.units.unit.Quantity from a dictionary.
+    """Deserialize a `openff.units.unit.Quantity` from a dictionary.
     This copied from openff-evaluator.
 
     Parameters
     ----------
     serialized : dict of str and str
-        A dictionary representation of a openff.units.unit.Quantity
+        A dictionary representation of a `openff.units.unit.Quantity`
         which must have keys {"value", "unit"}
 
     Returns
@@ -59,10 +59,10 @@ def deserialize_quantity(serialized):
     if "@type" in serialized:
         serialized.pop("@type")
 
-    value_unit = unit.dimensionless
+    value_unit = openff_unit.dimensionless
 
     if serialized["unit"] is not None:
-        value_unit = unit(serialized["unit"])
+        value_unit = openff_unit(serialized["unit"])
 
     return serialized["value"] * value_unit
 
@@ -71,7 +71,7 @@ class PaprikaEncoder(json.JSONEncoder):
     """Save :class:`DAT_restraint` as JSON by re-encoding :class:`numpy` arrays."""
 
     def default(self, obj):
-        """If input object is an ndarray it will be converted into a dict
+        """If input object is a ndarray it will be converted into a dict
         holding dtype, shape and the data, base64 encoded.
 
         Parameters
@@ -126,7 +126,7 @@ class PaprikaEncoder(json.JSONEncoder):
             return float(obj)
         elif isinstance(obj, (np.ndarray,)):
             return obj.tolist()
-        elif isinstance(obj, unit.Quantity):
+        elif isinstance(obj, openff_unit.Quantity):
             return serialize_quantity(obj)
 
         # Let the base class default method raise the TypeError
@@ -137,7 +137,7 @@ class PaprikaEncoder(json.JSONEncoder):
 class PaprikaDecoder(json.JSONDecoder):
     """
     Decodes a previously encoded :class:`numpy.ndarray` with proper shape and `dtype`,
-    and for unit.Quantity variables.
+    and for `openff.units.unit.Quantity` variables.
     """
 
     def __init__(self, *args, **kwargs):

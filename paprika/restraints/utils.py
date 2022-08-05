@@ -1,7 +1,7 @@
 import logging
 
 import numpy as np
-from openff.units import unit as pint_unit
+from openff.units import unit as openff_unit
 
 from paprika.utils import override_dict
 
@@ -61,21 +61,47 @@ def get_restraint_values(restraint, phase, window_number):
         Dictionary containing the Amber NMR-style values
 
     """
-
     # Amber NMR bounds
-    lower_bound = 0.0 * pint_unit.angstrom
-    upper_bound = 999.0 * pint_unit.angstrom
+    lower_bound = 0.0
+    upper_bound = 999.0
 
+    # Distance
+    if not restraint.mask3 and not restraint.mask4:
+        # Convert to Amber base units (r = angstrom, fc_r = kcal/mol/angstrom**2
+        restraint.phase[phase]["targets"][window_number].to(openff_unit.angstrom)
+        restraint.phase[phase]["force_constants"][window_number].to(
+            openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+        )
+        # Upper and lower bounds
+        lower_bound = 0.0 * openff_unit.angstrom
+        upper_bound = 999.0 * openff_unit.angstrom
+
+    # Angle
     if restraint.mask3 and not restraint.mask4:
-        lower_bound = 0.0 * pint_unit.degrees
-        upper_bound = 180.0 * pint_unit.degrees
+        # Convert to Amber base units (theta = degrees, fc_theta = kcal/mol/radian**2
+        restraint.phase[phase]["targets"][window_number].to(openff_unit.degrees)
+        restraint.phase[phase]["force_constants"][window_number].to(
+            openff_unit.kcal / openff_unit.mole / openff_unit.radian**2
+        )
+        # Upper and lower bounds
+        lower_bound = 0.0 * openff_unit.degrees
+        upper_bound = 180.0 * openff_unit.degrees
 
+    # Torsion
     if restraint.mask3 and restraint.mask4:
+        # Convert to Amber base units (phi = degrees, fc_phi = kcal/mol/radian**2
+        restraint.phase[phase]["targets"][window_number].to(openff_unit.degrees)
+        restraint.phase[phase]["force_constants"][window_number].to(
+            openff_unit.kcal / openff_unit.mole / openff_unit.radian**2
+        )
+        # Upper and lower bounds
         lower_bound = (
-            restraint.phase[phase]["targets"][window_number] - 180.0 * pint_unit.degrees
+            restraint.phase[phase]["targets"][window_number]
+            - 180.0 * openff_unit.degrees
         )
         upper_bound = (
-            restraint.phase[phase]["targets"][window_number] + 180.0 * pint_unit.degrees
+            restraint.phase[phase]["targets"][window_number]
+            + 180.0 * openff_unit.degrees
         )
 
     restraint_values = {

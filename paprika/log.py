@@ -7,7 +7,7 @@ import os
 
 def config_root_logger(verbose, log_file_path=None):
     """
-    Setup the the root logger's configuration.
+    Set up the root logger's configuration.
     The log messages are printed in the terminal and saved in the file specified
     by log_file_path (if not `None`) and printed. Note that logging use sys.stdout
     to print ``logging.INFO`` messages, and stderr for the others. The root logger's

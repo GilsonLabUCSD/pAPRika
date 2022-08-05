@@ -237,15 +237,14 @@ class Setup:
             * a ``force_constant`` entry which specifies the force constant of the
               restraint.
 
-        These 'schemas` map directly to the 'restraints -> static -> restraint'
+        These `schemas` map directly to the 'restraints -> static -> restraint'
         dictionaries specified in the `taproom` host YAML files.
 
         Parameters
         ----------
         coordinate_path
             The path to the coordinate file which the restraints will be applied to.
-            This should contain either the host or the complex, the dummy atoms and
-            and solvent.
+            This should contain either the host or the complex, the dummy atoms and solvent.
         n_attach_windows
             The total number of attach windows being used in the APR calculation.
         n_pull_windows
@@ -306,15 +305,14 @@ class Setup:
               restraint.
             * a ``target`` entry which specifies the target value of the restraint.
 
-        These 'schemas` map directly to the 'restraints -> conformational -> restraint'
+        These `schemas` map directly to the 'restraints -> conformational -> restraint'
         dictionaries specified in the ``taproom`` host YAML files.
 
         Parameters
         ----------
         coordinate_path
             The path to the coordinate file which the restraints will be applied to.
-            This should contain either the host or the complex, the dummy atoms and
-            and solvent.
+            This should contain either the host or the complex, the dummy atoms and solvent.
         attach_lambdas
             The values 'lambda' being used during the attach phase of the APR
             calculation.

@@ -3,7 +3,7 @@ import shutil
 
 import parmed as pmd
 import pytest
-from openff.units import unit
+from openff.units import unit as openff_unit
 
 from paprika import restraints
 from paprika.restraints import amber
@@ -87,7 +87,7 @@ def test_amber_single_window_gbmin(clean_files):
                     restraint.phase["pull"]["targets"][int(window[1:])]
                     - restraint.phase["pull"]["targets"][0]
                 )
-                .to(unit.angstrom)
+                .to(openff_unit.angstrom)
                 .magnitude
             )
 

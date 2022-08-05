@@ -38,7 +38,7 @@ class Analyze:
             ``'release'``.
         restraints
             A list of the restraints which were used as part of the phase being
-            analysed.
+            analyzed.
         windows_directory
             The directory which contains the final trajectories and topologies
             from the simulated phase.
@@ -65,7 +65,7 @@ class Analyze:
         analysis.restraint_list = restraints
 
         analysis.methods = [analysis_method]
-        analysis.bootcycles = bootstrap_cycles
+        analysis.boot_cycles = bootstrap_cycles
 
         analysis.collect_data(single_topology=False)
         analysis.compute_free_energy(phases=[phase])

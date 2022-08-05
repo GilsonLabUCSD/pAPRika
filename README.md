@@ -802,7 +802,7 @@ free_energy.restraint_list = guest_restraints
 free_energy.collect_data()
 free_energy.methods = ['ti-block']
 free_energy.ti_matrix = "full"
-free_energy.bootcycles = 1000
+free_energy.boot_cycles = 1000
 free_energy.compute_free_energy()
 ```
 

@@ -17,7 +17,7 @@ except ImportError:
 
 import parmed as pmd
 import pytest
-from openff.units import unit as pint_unit
+from openff.units import unit as openff_unit
 
 from paprika.restraints.openmm import apply_dat_restraint, apply_positional_restraints
 from paprika.restraints.restraints import DAT_restraint, create_window_list
@@ -57,8 +57,8 @@ def test_DAT_restraint():
     rest1.release["fc_final"] = rest1.attach["fc_final"]
     rest1.initialize()
 
-    target_units = pint_unit.angstrom
-    force_constant_units = pint_unit.kcal / pint_unit.mole / target_units**2
+    target_units = openff_unit.angstrom
+    force_constant_units = openff_unit.kcal / openff_unit.mole / target_units**2
     assert rest1.index1 == [13, 31, 49, 67, 85, 103]
     assert rest1.index2 == [119]
     assert rest1.index3 is None
@@ -126,8 +126,10 @@ def test_DAT_restraint():
     rest2.release["fc_final"] = rest2.attach["fc_final"]
     rest2.initialize()
 
-    target_units = pint_unit.degrees
-    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.radians**2
+    target_units = openff_unit.degrees
+    force_constant_units = (
+        openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
+    )
     assert rest2.index1 == [13, 31, 49, 67, 85, 103]
     assert rest2.index2 == [119]
     assert rest2.index3 == [109]
@@ -194,8 +196,10 @@ def test_DAT_restraint():
     rest3.release["fc_final"] = 75.0
     rest3.initialize()
 
-    target_units = pint_unit.degrees
-    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.radians**2
+    target_units = openff_unit.degrees
+    force_constant_units = (
+        openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
+    )
     assert rest3.index1 == [31]
     assert rest3.index2 == [13]
     assert rest3.index3 == [119]
@@ -264,8 +268,10 @@ def test_DAT_restraint():
     rest4.release["fc_final"] = 75.0
     rest4.initialize()
 
-    target_units = pint_unit.degrees
-    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.radians**2
+    target_units = openff_unit.degrees
+    force_constant_units = (
+        openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
+    )
     assert rest4.index1 == [31]
     assert rest4.index2 == [13]
     assert rest4.index3 == [119]
@@ -332,8 +338,10 @@ def test_DAT_restraint():
     rest5.release["fc_final"] = rest5.attach["fc_final"]
     rest5.initialize()
 
-    target_units = pint_unit.angstrom
-    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom**2
+    target_units = openff_unit.angstrom
+    force_constant_units = (
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+    )
     assert rest5.index1 == [13, 31, 49, 67, 85, 103]
     assert rest5.index2 == [109, 113, 115, 119]
     assert rest5.index3 is None
@@ -399,8 +407,10 @@ def test_DAT_restraint():
     rest6.release["fc_final"] = rest6.attach["fc_final"]
     rest6.initialize()
 
-    target_units = pint_unit.angstrom
-    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom**2
+    target_units = openff_unit.angstrom
+    force_constant_units = (
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+    )
     assert rest6.index1 == [13, 31, 49, 67, 85, 103]
     assert rest6.index2 == [109, 113, 115, 119]
     assert rest6.index3 is None
@@ -466,8 +476,10 @@ def test_DAT_restraint():
     rest7.release["fc_list"] = [0.0, 0.66, 1.2, 2.0]
     rest7.initialize()
 
-    target_units = pint_unit.angstrom
-    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom**2
+    target_units = openff_unit.angstrom
+    force_constant_units = (
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+    )
     assert rest7.index1 == [13, 14, 111]
     assert rest7.index2 == [3]
     assert rest7.index3 is None
@@ -527,8 +539,10 @@ def test_DAT_restraint():
     rest8.attach["fc_final"] = 3.0
     rest8.initialize()
 
-    target_units = pint_unit.angstrom
-    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom**2
+    target_units = openff_unit.angstrom
+    force_constant_units = (
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+    )
     assert rest8.index1 == [13]
     assert rest8.index2 == [119]
     assert rest8.index3 is None
@@ -565,8 +579,10 @@ def test_DAT_restraint():
     rest9.pull["target_final"] = 3.0
     rest9.initialize()
 
-    target_units = pint_unit.angstrom
-    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom**2
+    target_units = openff_unit.angstrom
+    force_constant_units = (
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+    )
     assert rest9.index1 == [13]
     assert rest9.index2 == [119]
     assert rest9.index3 is None
@@ -603,8 +619,10 @@ def test_DAT_restraint():
     rest10.release["fc_final"] = 2.0
     rest10.initialize()
 
-    target_units = pint_unit.angstrom
-    force_constant_units = pint_unit.kcal / pint_unit.mole / pint_unit.angstrom**2
+    target_units = openff_unit.angstrom
+    force_constant_units = (
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+    )
     assert rest10.index1 == [13]
     assert rest10.index2 == [119]
     assert rest10.index3 is None

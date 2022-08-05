@@ -11,10 +11,10 @@ import numpy as np
 
 try:
     import openmm
-    import openmm.unit as unit
+    import openmm.unit as openmm_unit
 except ImportError:
     import simtk.openmm as openmm
-    import simtk.unit as unit
+    import simtk.unit as openmm_unit
 
 import parmed as pmd
 import pytest
@@ -146,11 +146,12 @@ def test_solvation_bind3p(clean_files):
     ][0]
     oxygen = nonbonded.getParticleParameters(water_index[0])
     assert (
-        pytest.approx(oxygen[1].value_in_unit(unit.angstrom) - 3.1319, abs=1e-3) == 0.0
+        pytest.approx(oxygen[1].value_in_unit(openmm_unit.angstrom) - 3.1319, abs=1e-3)
+        == 0.0
     )
     assert (
         pytest.approx(
-            oxygen[2].value_in_unit(unit.kilocalorie_per_mole) - 0.1818, abs=1e-3
+            oxygen[2].value_in_unit(openmm_unit.kilocalorie_per_mole) - 0.1818, abs=1e-3
         )
         == 0.0
     )
@@ -158,7 +159,7 @@ def test_solvation_bind3p(clean_files):
 
 @pytest.mark.slow
 def test_solvation_spatial_size(clean_files):
-    """Test that we can solvate CB6-BUT with an buffer size in Angstroms."""
+    """Test that we can solvate CB6-BUT with a buffer size in Angstroms."""
     random_int = np.random.randint(10, 20)
     random_size = random_int * np.random.random_sample(1) + random_int
     logger.debug("Trying buffer size of {} A...".format(random_size[0]))

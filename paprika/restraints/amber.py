@@ -1,6 +1,6 @@
 import logging
 
-from openff.units import unit as pint_unit
+from openff.units import unit as openff_unit
 
 from paprika.restraints.utils import get_restraint_values, parse_window
 
@@ -83,15 +83,15 @@ def amber_restraint_line(restraint, window):
     amber_restraint_values = get_restraint_values(restraint, phase, window)
 
     # Amber units
-    energy_unit = pint_unit.kcal / pint_unit.mole
+    energy_unit = openff_unit.kcal / openff_unit.mole
     target_unit = (
-        pint_unit.angstrom
+        openff_unit.angstrom
         if restraint.restraint_type == "distance"
-        else pint_unit.degrees
+        else openff_unit.degrees
     )
     force_constant_unit = energy_unit / target_unit**2
     if not restraint.restraint_type == "distance":
-        force_constant_unit = energy_unit / pint_unit.radians**2
+        force_constant_unit = energy_unit / openff_unit.radians**2
 
     # Prepare AMBER NMR-style restraint
     atoms = "".join([iat1, iat2, iat3, iat4])
