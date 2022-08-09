@@ -12,7 +12,7 @@ except ImportError:
 
 import parmed as pmd
 from openff.units import unit as openff_unit
-from openff.units.simtk import to_simtk
+from openff.units.openmm import to_openmm
 
 logger = logging.getLogger(__name__)
 _PI_ = np.pi
@@ -68,7 +68,7 @@ def apply_positional_restraints(
             elif isinstance(kpos, openmm_unit.Quantity):
                 k = kpos
             elif isinstance(kpos, openff_unit.Quantity):
-                k = to_simtk(kpos)
+                k = to_openmm(kpos)
 
             x0 = 0.1 * atom.xx * openmm_unit.nanometers
             y0 = 0.1 * atom.xy * openmm_unit.nanometers
@@ -115,7 +115,7 @@ def apply_dat_restraint(
         flat_bottom_force.addPerAngleParameter("theta_0")
 
         theta_0 = 91.0 * openmm_unit.degrees
-        k = to_simtk(restraint.phase[phase]["force_constants"][window_number])
+        k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
 
         flat_bottom_force.addAngle(
             restraint.index1[0],
@@ -138,8 +138,8 @@ def apply_dat_restraint(
         flat_bottom_force.addPerBondParameter("k")
         flat_bottom_force.addPerBondParameter("r_0")
 
-        r_0 = to_simtk(restraint.phase[phase]["targets"][window_number])
-        k = to_simtk(restraint.phase[phase]["force_constants"][window_number])
+        r_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
+        k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
 
         flat_bottom_force.addBond(
             restraint.index1[0],
@@ -165,8 +165,8 @@ def apply_dat_restraint(
             bond_restraint.addPerBondParameter("k")
             bond_restraint.addPerBondParameter("r_0")
 
-            r_0 = to_simtk(restraint.phase[phase]["targets"][window_number])
-            k = to_simtk(restraint.phase[phase]["force_constants"][window_number])
+            r_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
+            k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
 
             bond_restraint.addBond(restraint.index1[0], restraint.index2[0], [k, r_0])
             system.addForce(bond_restraint)
@@ -177,8 +177,8 @@ def apply_dat_restraint(
             bond_restraint.addPerBondParameter("k")
             bond_restraint.addPerBondParameter("r_0")
 
-            r_0 = to_simtk(restraint.phase[phase]["targets"][window_number])
-            k = to_simtk(restraint.phase[phase]["force_constants"][window_number])
+            r_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
+            k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
 
             g1 = bond_restraint.addGroup(restraint.index1)
             g2 = bond_restraint.addGroup(restraint.index2)
@@ -196,8 +196,8 @@ def apply_dat_restraint(
             angle_restraint.addPerAngleParameter("k")
             angle_restraint.addPerAngleParameter("theta_0")
 
-            theta_0 = to_simtk(restraint.phase[phase]["targets"][window_number])
-            k = to_simtk(restraint.phase[phase]["force_constants"][window_number])
+            theta_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
+            k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
 
             angle_restraint.addAngle(
                 restraint.index1[0],
@@ -228,8 +228,8 @@ def apply_dat_restraint(
             dihedral_restraint.addPerTorsionParameter("k")
             dihedral_restraint.addPerTorsionParameter("theta_0")
 
-            theta_0 = to_simtk(restraint.phase[phase]["targets"][window_number])
-            k = to_simtk(restraint.phase[phase]["force_constants"][window_number])
+            theta_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
+            k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
 
             dihedral_restraint.addTorsion(
                 restraint.index1[0],
