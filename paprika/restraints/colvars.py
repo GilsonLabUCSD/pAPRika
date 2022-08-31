@@ -141,6 +141,18 @@ class Colvars(Plumed):
                         restraint.phase[phase]["force_constants"][window_number]
                         * self.k_factor
                     )
+
+                    # Determine bias type for half-harmonic potentials
+                    bias_type, restraint_values = get_bias_potential_type(
+                        restraint, phase, window, return_values=True
+                    )
+                    if bias_type == "upper_walls":
+                        target = restraint_values["r3"]
+                        force_constant = restraint_values["rk3"] * self.k_factor
+                    elif bias_type == "lower_walls":
+                        target = restraint_values["r2"]
+                        force_constant = restraint_values["rk2"] * self.k_factor
+
                 except TypeError:
                     continue
 
@@ -163,9 +175,6 @@ class Colvars(Plumed):
                     force_constant = force_constant.to(
                         energy_units / openff_unit.degrees**2
                     )
-
-                # Determine bias type for this restraint
-                bias_type = get_bias_potential_type(restraint, phase, window_number)
 
                 # Append cv to list
                 # The code below prevents duplicate cv definition.

@@ -61,40 +61,17 @@ def get_restraint_values(restraint, phase, window_number):
         Dictionary containing the Amber NMR-style values
 
     """
-    # Amber NMR bounds
-    lower_bound = 0.0
-    upper_bound = 999.0
+    # Distance bounds
+    lower_bound = 0.0 * openff_unit.angstrom
+    upper_bound = 999.0 * openff_unit.angstrom
 
-    # Distance
-    if not restraint.mask3 and not restraint.mask4:
-        # Convert to Amber base units (r = angstrom, fc_r = kcal/mol/angstrom**2
-        restraint.phase[phase]["targets"][window_number].to(openff_unit.angstrom)
-        restraint.phase[phase]["force_constants"][window_number].to(
-            openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
-        )
-        # Upper and lower bounds
-        lower_bound = 0.0 * openff_unit.angstrom
-        upper_bound = 999.0 * openff_unit.angstrom
-
-    # Angle
+    # Angle bounds
     if restraint.mask3 and not restraint.mask4:
-        # Convert to Amber base units (theta = degrees, fc_theta = kcal/mol/radian**2
-        restraint.phase[phase]["targets"][window_number].to(openff_unit.degrees)
-        restraint.phase[phase]["force_constants"][window_number].to(
-            openff_unit.kcal / openff_unit.mole / openff_unit.radian**2
-        )
-        # Upper and lower bounds
         lower_bound = 0.0 * openff_unit.degrees
         upper_bound = 180.0 * openff_unit.degrees
 
-    # Torsion
+    # Torsion bounds
     if restraint.mask3 and restraint.mask4:
-        # Convert to Amber base units (phi = degrees, fc_phi = kcal/mol/radian**2
-        restraint.phase[phase]["targets"][window_number].to(openff_unit.degrees)
-        restraint.phase[phase]["force_constants"][window_number].to(
-            openff_unit.kcal / openff_unit.mole / openff_unit.radian**2
-        )
-        # Upper and lower bounds
         lower_bound = (
             restraint.phase[phase]["targets"][window_number]
             - 180.0 * openff_unit.degrees
@@ -118,7 +95,7 @@ def get_restraint_values(restraint, phase, window_number):
     return restraint_values
 
 
-def get_bias_potential_type(restraint, phase, window_number):
+def get_bias_potential_type(restraint, phase, window_number, return_values=False):
     """
     Function to determine the bias potential type for a particular restraint.
     The possible types of biases are: ``restraint``, ``upper_walls`` and ``lower_walls``.
@@ -131,12 +108,15 @@ def get_bias_potential_type(restraint, phase, window_number):
         Current phase of the window
     window_number: int
         Current window number.
+    return_values: bool
+        Option to return the restraint values in Amber NMR format.
 
     Returns
     -------
     bias_type: str
         type of bias potential
-
+    amber_restraint_values: dict, optional
+        restraint values as a dict in Amber NMR format.
     """
 
     bias_type = None
@@ -190,6 +170,9 @@ def get_bias_potential_type(restraint, phase, window_number):
 
     if bias_type is None:
         raise Exception("Could not determine bias potential type from restraint.")
+
+    if return_values:
+        bias_type, amber_restraint_values
 
     return bias_type
 
