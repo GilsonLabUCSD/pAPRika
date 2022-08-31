@@ -10,7 +10,7 @@ except ImportError:
     import simtk.openmm as openmm
     import simtk.unit as openmm_unit
 
-from typing import Optional
+from typing import Optional, Union
 
 import parmed as pmd
 from openff.units import unit as openff_unit
@@ -28,7 +28,7 @@ def apply_positional_restraints(
     system: openmm.System,
     atom_name: Optional[str] = "DUM",
     force_group: Optional[int] = 15,
-    k_pos: Optional[float, openmm_unit.Quantity, openff_unit.Quantity] = 50.0,
+    k_pos: Optional[Union[float, openmm_unit.Quantity, openff_unit.Quantity]] = 50.0,
 ):
     """A utility function which will add OpenMM harmonic positional restraints to
     any dummy atoms found within a system to restrain them to their initial

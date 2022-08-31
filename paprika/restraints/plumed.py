@@ -231,7 +231,7 @@ class Plumed:
         # Loop over APR windows
         for windows in self.window_list:
 
-            window, phase = parse_window(windows)
+            window_number, phase = parse_window(windows)
 
             # Check if file exist and write header line
             with open(os.path.join(self.path, windows, self.file_name), "w") as file:
@@ -250,22 +250,11 @@ class Plumed:
                 # Skip restraint if the target or force constant is not defined.
                 # Example: wall restraints only used during the attach phase.
                 try:
-                    target = restraint.phase[phase]["targets"][window]
+                    target = restraint.phase[phase]["targets"][window_number]
                     force_constant = (
-                        restraint.phase[phase]["force_constants"][window]
+                        restraint.phase[phase]["force_constants"][window_number]
                         * self.k_factor
                     )
-
-                    # Determine bias type for half-harmonic potentials
-                    bias_type, restraint_values = get_bias_potential_type(
-                        restraint, phase, window, return_values=True
-                    )
-                    if bias_type == "upper_walls":
-                        target = restraint_values["r3"]
-                        force_constant = restraint_values["rk3"] * self.k_factor
-                    elif bias_type == "lower_walls":
-                        target = restraint_values["r2"]
-                        force_constant = restraint_values["rk2"] * self.k_factor
 
                 except TypeError:
                     continue
@@ -273,6 +262,17 @@ class Plumed:
                 # Convert list to comma-separated string
                 atom_index = self._get_atom_indices(restraint)
                 atom_string = ",".join(map(str, atom_index))
+
+                # Determine bias type for half-harmonic potentials
+                bias_type, restraint_values = get_bias_potential_type(
+                    restraint, phase, window_number, return_values=True
+                )
+                if bias_type == "upper_walls":
+                    target = restraint_values["r3"]
+                    force_constant = restraint_values["rk3"] * self.k_factor
+                elif bias_type == "lower_walls":
+                    target = restraint_values["r2"]
+                    force_constant = restraint_values["rk2"] * self.k_factor
 
                 # Convert units to the correct type for PLUMED module
                 if restraint.restraint_type == "distance":

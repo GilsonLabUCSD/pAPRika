@@ -141,24 +141,23 @@ class Colvars(Plumed):
                         restraint.phase[phase]["force_constants"][window_number]
                         * self.k_factor
                     )
-
-                    # Determine bias type for half-harmonic potentials
-                    bias_type, restraint_values = get_bias_potential_type(
-                        restraint, phase, window, return_values=True
-                    )
-                    if bias_type == "upper_walls":
-                        target = restraint_values["r3"]
-                        force_constant = restraint_values["rk3"] * self.k_factor
-                    elif bias_type == "lower_walls":
-                        target = restraint_values["r2"]
-                        force_constant = restraint_values["rk2"] * self.k_factor
-
                 except TypeError:
                     continue
 
                 # Get atom indices in space separated string
                 atom_index = self._get_atom_indices(restraint)
                 atom_string = " ".join(map(str, atom_index))
+
+                # Determine bias type for half-harmonic potentials
+                bias_type, restraint_values = get_bias_potential_type(
+                    restraint, phase, window_number, return_values=True
+                )
+                if bias_type == "upper_walls":
+                    target = restraint_values["r3"]
+                    force_constant = restraint_values["rk3"] * self.k_factor
+                elif bias_type == "lower_walls":
+                    target = restraint_values["r2"]
+                    force_constant = restraint_values["rk2"] * self.k_factor
 
                 # Convert units to the correct type for COLVAR module
                 energy_units = openff_unit.kcal / openff_unit.mole

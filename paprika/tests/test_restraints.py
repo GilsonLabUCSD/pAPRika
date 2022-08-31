@@ -1271,11 +1271,11 @@ def test_restraints_output_modules(clean_files):
     )
 
     # Create restraints for OpenMM system
-    kpos = 50.0 * openmm_unit.kilocalories_per_mole / openmm_unit.angstrom**2
+    k_pos = 50.0 * openmm_unit.kilocalories_per_mole / openmm_unit.angstrom**2
     apply_positional_restraints(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         system,
-        kpos=kpos,
+        k_pos=k_pos,
     )
     for restraint in guest_restraints:
         apply_dat_restraint(system, restraint, phase=phase, window_number=window_number)
@@ -1296,7 +1296,7 @@ def test_restraints_output_modules(clean_files):
     # Test dummy atom positional restraint
     for i, force in enumerate(positional_restraints):
         particle, parameters = force.getParticleParameters(0)
-        assert pytest.approx(parameters[0], abs=1e-3) == kpos.value_in_unit(
+        assert pytest.approx(parameters[0], abs=1e-3) == k_pos.value_in_unit(
             openmm_unit.kilojoule_per_mole / openmm_unit.nanometer**2
         )
         assert pytest.approx(parameters[1], abs=1e-3) == dummy_atoms[i]["x"] / 10

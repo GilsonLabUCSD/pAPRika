@@ -172,7 +172,7 @@ def get_bias_potential_type(restraint, phase, window_number, return_values=False
         raise Exception("Could not determine bias potential type from restraint.")
 
     if return_values:
-        bias_type, amber_restraint_values
+        return bias_type, amber_restraint_values
 
     return bias_type
 
