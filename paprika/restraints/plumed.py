@@ -234,7 +234,7 @@ class Plumed:
             window_number, phase = parse_window(window)
 
             # Check if file exist and write header line
-            with open(os.path.join(self.path, windows, self.file_name), "w") as file:
+            with open(os.path.join(self.path, window, self.file_name), "w") as file:
                 file.write(self.header_line + "\n")
 
             cv_index = 1
@@ -315,7 +315,7 @@ class Plumed:
                 cv_index += 1
 
             # Write collective variables to file
-            self._write_colvar_to_file(windows, cv_lines, bias_lines)
+            self._write_colvar_to_file(window, cv_lines, bias_lines)
 
     def _write_colvar_to_file(self, window, cv_list, bias_list):
         with open(os.path.join(self.path, window, self.file_name), "a") as file:
