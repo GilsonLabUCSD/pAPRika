@@ -396,7 +396,7 @@ class Plumed:
 
         return atom_index
 
-    def add_dummy_atom_restraints(self, structure, window, path=None):
+    def add_dummy_atom_restraints(self, structure, window, resname=["DM1", "DM2", "DM3"], path=None):
         """
         Add positional restraints on dummy atoms to the restraint files.
 
@@ -406,6 +406,8 @@ class Plumed:
             The reference structure that is used to determine the absolute coordinate of the dummy atoms.
         window: str
             APR window where the structure is stored for extracting the dummy atom positions.
+        resname: list
+            A list of residue name for the dummy atoms
         path: os.PathLike, optional, default=None
             Path of the restraint file. If set to ``None`` (default) self.path will be used.
 
@@ -422,7 +424,7 @@ class Plumed:
             )
 
         # Extract dummy atoms
-        dummy_atoms = extract_dummy_atoms(structure, serial=True)
+        dummy_atoms = extract_dummy_atoms(structure, resname=resname, serial=True)
 
         # Write dummy atom info to plumed file
         if path is not None:
