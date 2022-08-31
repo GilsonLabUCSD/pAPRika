@@ -396,7 +396,9 @@ class Plumed:
 
         return atom_index
 
-    def add_dummy_atom_restraints(self, structure, window, resname=["DM1", "DM2", "DM3"], path=None):
+    def add_dummy_atom_restraints(
+        self, structure, window, resname=["DM1", "DM2", "DM3"], path=None
+    ):
         """
         Add positional restraints on dummy atoms to the restraint files.
 
