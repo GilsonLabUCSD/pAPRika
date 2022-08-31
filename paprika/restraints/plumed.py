@@ -229,9 +229,9 @@ class Plumed:
         self._initialize()
 
         # Loop over APR windows
-        for windows in self.window_list:
+        for window in self.window_list:
 
-            window_number, phase = parse_window(windows)
+            window_number, phase = parse_window(window)
 
             # Check if file exist and write header line
             with open(os.path.join(self.path, windows, self.file_name), "w") as file:
