@@ -5,14 +5,16 @@ loadamberparams but.frcmod
 BUT = loadmol2 but.mol2
 loadamberparams dummy.frcmod
 DM1 = loadmol2 dm1.mol2
+DM2 = loadmol2 dm2.mol2
+DM3 = loadmol2 dm3.mol2
 
 model = loadpdb cb6-but-dum.pdb
 
 check model
 
 
-solvatebox model TIP3PBOX {10.0 10.0 []}
-savepdb model cb6-but-dum.pdb
+#solvatebox model TIP3PBOX {10.0 10.0 []}
+#savepdb model cb6-but-dum.pdb
 saveamberparm model cb6-but-dum.prmtop cb6-but-dum.rst7
 desc model
 quit

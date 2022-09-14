@@ -1161,10 +1161,10 @@ def test_restraints_output_modules(clean_files):
 
     # Test OpenMM restraint modules
     prmtop_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.prmtop")
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.prmtop")
     )
     inpcrd_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.rst7")
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.rst7")
     )
 
     # Add Dummy atoms
@@ -1175,14 +1175,6 @@ def test_restraints_output_modules(clean_files):
         1: {"resname": "DM2", "x": 0.0, "y": 0.0, "z": -9.0},
         2: {"resname": "DM3", "x": 0.0, "y": 2.2, "z": -11.2},
     }
-    for i in dummy_atoms:
-        structure = dummy.add_dummy(
-            structure,
-            residue_name=dummy_atoms[i]["resname"],
-            x=dummy_atoms[i]["x"],
-            y=dummy_atoms[i]["y"],
-            z=dummy_atoms[i]["z"],
-        )
 
     # Create DAT restraints
     guest_restraints = []
@@ -1344,13 +1336,13 @@ def test_restraints_output_modules(clean_files):
     plumed.file_name = "plumed.dat"
     plumed.window_list = [window]
     plumed.restraint_list = guest_restraints
-    # plumed.add_dummy_atom_restraints(structure, window)
     plumed.dump_to_file()
+    plumed.add_dummy_atom_restraints(structure, window)
 
     with open(os.path.join(plumed.path, window, "plumed.dat"), "r") as f:
         plumed_string = f.readlines()
 
-    for line in plumed_string:
+    for iline, line in enumerate(plumed_string):
         if "DISTANCE" in line:
             restraint_line = line.split()
             if restraint_line[0] == ":c1":
@@ -1360,7 +1352,15 @@ def test_restraints_output_modules(clean_files):
             elif restraint_line[1] == ":c3":
                 assert restraint_line[2] == "ATOMS=124,123,119"
 
-        if line.startswith("RESTRAINT"):
+        if line.startswith("RESTRAINT ..."):
+            line = plumed_string[iline + 2]
+            restraint_line = line.split(",")
+            assert float(restraint_line[2]) == dummy_atoms[0]["z"]
+            assert float(restraint_line[5]) == dummy_atoms[1]["z"]
+            assert float(restraint_line[7]) == dummy_atoms[2]["y"]
+            assert float(restraint_line[8]) == dummy_atoms[2]["z"]
+
+        elif line.startswith("RESTRAINT"):
             restraint_line = line.split()
             if "c1" in restraint_line[1]:
                 assert float(restraint_line[2].split("=")[1]) == 6.0
