@@ -155,10 +155,10 @@ def apply_dat_restraint(
 
             # Need to use geometrical instead of mass centers (all weights=1.0)
             g1 = bond_restraint.addGroup(
-                restraint.index1, [1.0 for i in range(restraint.index1)]
+                restraint.index1, [1.0 for i in range(len(restraint.index1))]
             )
             g2 = bond_restraint.addGroup(
-                restraint.index2, [1.0 for i in range(restraint.index2)]
+                restraint.index2, [1.0 for i in range(len(restraint.index2))]
             )
 
             bond_restraint.addBond([g1, g2], [k, r_0])
@@ -211,13 +211,13 @@ def apply_dat_restraint(
 
             # Need to use geometrical instead of mass centers (all weights=1.0)
             g1 = angle_restraint.addGroup(
-                restraint.index1, [1.0 for i in range(restraint.index1)]
+                restraint.index1, [1.0 for i in range(len(restraint.index1))]
             )
             g2 = angle_restraint.addGroup(
-                restraint.index2, [1.0 for i in range(restraint.index2)]
+                restraint.index2, [1.0 for i in range(len(restraint.index2))]
             )
             g3 = angle_restraint.addGroup(
-                restraint.index3, [1.0 for i in range(restraint.index3)]
+                restraint.index3, [1.0 for i in range(len(restraint.index3))]
             )
 
             angle_restraint.addBond([g1, g2, g3], [k, theta_0])
@@ -279,16 +279,16 @@ def apply_dat_restraint(
 
             # Need to use geometrical instead of mass centers (all weights=1.0)
             g1 = dihedral_restraint.addGroup(
-                restraint.index1, [1.0 for i in range(restraint.index1)]
+                restraint.index1, [1.0 for i in range(len(restraint.index1))]
             )
             g2 = dihedral_restraint.addGroup(
-                restraint.index2, [1.0 for i in range(restraint.index2)]
+                restraint.index2, [1.0 for i in range(len(restraint.index2))]
             )
             g3 = dihedral_restraint.addGroup(
-                restraint.index3, [1.0 for i in range(restraint.index3)]
+                restraint.index3, [1.0 for i in range(len(restraint.index3))]
             )
             g4 = dihedral_restraint.addGroup(
-                restraint.index4, [1.0 for i in range(restraint.index4)]
+                restraint.index4, [1.0 for i in range(len(restraint.index4))]
             )
 
             dihedral_restraint.addBond([g1, g2, g3, g4], [k, theta_0])
