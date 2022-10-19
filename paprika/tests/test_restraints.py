@@ -1427,3 +1427,283 @@ def test_restraints_output_modules(clean_files):
             assert line.strip() == "centers 180.0000"
             line = f.readline()
             assert line.strip() == "forceConstant 0.0609"
+
+
+def test_openmm_centroid_and_wall(clean_files):
+    # Create OpenMM System
+    prmtop_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.prmtop")
+    )
+    prmtop = app.AmberPrmtopFile(prmtop_path)
+    system = prmtop.createSystem(
+        nonbondedCutoff=app.NoCutoff,
+        constraints=app.HBonds,
+    )
+
+    logger.info("### Testing OpenMM distance centroid selection.")
+
+    distance_target = 3.0 * openff_unit.angstrom
+    k_initial = 0.0 * openff_unit.kcal / openff_unit.mol / openff_unit.angstrom**2
+    k_final = 3.0 * openff_unit.kcal / openff_unit.mol / openff_unit.angstrom**2
+
+    rest1 = DAT_restraint()
+    rest1.amber_index = False
+    rest1.continuous_apr = False
+    rest1.auto_apr = False
+    rest1.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
+    rest1.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
+    rest1.mask2 = ":BUT@C"
+
+    rest1.attach["target"] = distance_target
+    rest1.attach["num_windows"] = 4
+    rest1.attach["fc_initial"] = k_initial
+    rest1.attach["fc_final"] = k_final
+    rest1.initialize()
+
+    assert rest1.index1 == [12, 30, 48, 66, 84, 102]
+    assert rest1.index2 == [108]
+
+    apply_dat_restraint(system, rest1, "attach", 3, force_group=1)
+
+    bond_force = [force for force in system.getForces() if force.getForceGroup() == 1][
+        0
+    ]
+    assert bond_force.getNumBonds() == 1
+    assert bond_force.getNumGroups() == 2
+    assert bond_force.getNumPerBondParameters() == 2
+
+    bond_energy_expression = "k_bond * (r - r_0)^2;r = distance(g1, g2);"
+    assert bond_force.getEnergyFunction() == bond_energy_expression
+
+    groups, params = bond_force.getBondParameters(0)
+    assert groups == (0, 1)
+    assert (
+        pytest.approx(params[0], abs=1e-3)
+        == k_final.to(
+            openff_unit.kJ / openff_unit.mol / openff_unit.nanometer**2
+        ).magnitude
+    )
+    assert (
+        pytest.approx(params[1], abs=1e-3)
+        == distance_target.to(openff_unit.nanometer).magnitude
+    )
+
+    particles, weights = bond_force.getGroupParameters(0)
+    assert particles == (12, 30, 48, 66, 84, 102)
+    assert weights == (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+    particles, weights = bond_force.getGroupParameters(1)
+    assert particles == (108,)
+    assert weights == (1.0,)
+
+    logger.info("### Testing OpenMM distance upper wall selection.")
+
+    rest1.custom_restraint_values["r2"] = 0.0
+    rest1.custom_restraint_values["rk2"] = 0.0
+    rest1.initialize()
+
+    apply_dat_restraint(system, rest1, "attach", 3, force_group=2)
+    bond_wall_force = [
+        force for force in system.getForces() if force.getForceGroup() == 2
+    ][0]
+    assert "step(r - r_0)" in bond_wall_force.getEnergyFunction()
+
+    logger.info("### Testing OpenMM distance lower wall selection.")
+
+    rest1.custom_restraint_values = {}
+    rest1.custom_restraint_values["r3"] = 0.0
+    rest1.custom_restraint_values["r4"] = 0.0
+    rest1.initialize()
+
+    apply_dat_restraint(system, rest1, "attach", 3, force_group=3)
+    bond_wall_force = [
+        force for force in system.getForces() if force.getForceGroup() == 3
+    ][0]
+    assert "step(r_0 - r)" in bond_wall_force.getEnergyFunction()
+
+    logger.info("### Testing OpenMM angle centroid selection.")
+
+    angle_target = 180.0 * openff_unit.degrees
+    k_initial = 0.0 * openff_unit.kcal / openff_unit.mol / openff_unit.radians**2
+    k_final = 100.0 * openff_unit.kcal / openff_unit.mol / openff_unit.radians**2
+
+    rest2 = DAT_restraint()
+    rest2.amber_index = False
+    rest2.continuous_apr = False
+    rest2.auto_apr = False
+    rest2.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
+    rest2.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
+    rest2.mask2 = ":BUT@C"
+    rest2.mask3 = ":BUT@C3"
+
+    rest2.attach["target"] = angle_target
+    rest2.attach["num_windows"] = 4
+    rest2.attach["fc_initial"] = k_initial
+    rest2.attach["fc_final"] = k_final
+    rest2.initialize()
+
+    assert rest2.index1 == [12, 30, 48, 66, 84, 102]
+    assert rest2.index2 == [108]
+    assert rest2.index3 == [118]
+
+    apply_dat_restraint(system, rest2, "attach", 3, force_group=4)
+
+    angle_force = [force for force in system.getForces() if force.getForceGroup() == 4][
+        0
+    ]
+    assert angle_force.getNumBonds() == 1
+    assert angle_force.getNumGroups() == 3
+    assert angle_force.getNumPerBondParameters() == 2
+
+    angle_energy_expression = "k_angle * (theta - theta_0)^2;theta = angle(g1, g2, g3);"
+    assert angle_force.getEnergyFunction() == angle_energy_expression
+
+    groups, params = angle_force.getBondParameters(0)
+    assert groups == (0, 1, 2)
+    assert (
+        pytest.approx(params[0], abs=1e-3)
+        == k_final.to(
+            openff_unit.kJ / openff_unit.mol / openff_unit.radians**2
+        ).magnitude
+    )
+    assert (
+        pytest.approx(params[1], abs=1e-3)
+        == angle_target.to(openff_unit.radians).magnitude
+    )
+
+    particles, weights = angle_force.getGroupParameters(0)
+    assert particles == (12, 30, 48, 66, 84, 102)
+    assert weights == (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+    particles, weights = angle_force.getGroupParameters(1)
+    assert particles == (108,)
+    assert weights == (1.0,)
+
+    particles, weights = angle_force.getGroupParameters(2)
+    assert particles == (118,)
+    assert weights == (1.0,)
+
+    logger.info("### Testing OpenMM angle upper wall selection.")
+
+    rest2.custom_restraint_values["r2"] = 0.0
+    rest2.custom_restraint_values["rk2"] = 0.0
+    rest2.initialize()
+
+    apply_dat_restraint(system, rest2, "attach", 3, force_group=5)
+    angle_wall_force = [
+        force for force in system.getForces() if force.getForceGroup() == 5
+    ][0]
+    assert "step(theta - theta_0)" in angle_wall_force.getEnergyFunction()
+
+    logger.info("### Testing OpenMM angle lower wall selection.")
+
+    rest2.custom_restraint_values = {}
+    rest2.custom_restraint_values["r3"] = 0.0
+    rest2.custom_restraint_values["r4"] = 0.0
+    rest2.initialize()
+
+    apply_dat_restraint(system, rest2, "attach", 3, force_group=6)
+    angle_wall_force = [
+        force for force in system.getForces() if force.getForceGroup() == 6
+    ][0]
+    assert "step(theta_0 - theta)" in angle_wall_force.getEnergyFunction()
+
+    logger.info("### Testing OpenMM dihedral centroid selection.")
+
+    rest3 = DAT_restraint()
+    rest3.amber_index = False
+    rest3.continuous_apr = False
+    rest3.auto_apr = False
+    rest3.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
+    rest3.mask1 = ":CB6@C"
+    rest3.mask2 = ":CB6@O,O2,O4,O6,O8,O10"
+    rest3.mask3 = ":BUT@C"
+    rest3.mask4 = ":BUT@C3"
+
+    rest3.attach["target"] = angle_target
+    rest3.attach["num_windows"] = 4
+    rest3.attach["fc_initial"] = k_initial
+    rest3.attach["fc_final"] = k_final
+    rest3.initialize()
+
+    assert rest3.index1 == [0]
+    assert rest3.index2 == [12, 30, 48, 66, 84, 102]
+    assert rest3.index3 == [108]
+    assert rest3.index4 == [118]
+
+    apply_dat_restraint(system, rest3, "attach", 3, force_group=7)
+
+    dihedral_force = [
+        force for force in system.getForces() if force.getForceGroup() == 7
+    ][0]
+    assert dihedral_force.getNumBonds() == 1
+    assert dihedral_force.getNumGroups() == 4
+    assert dihedral_force.getNumPerBondParameters() == 2
+
+    _PI_ = np.pi
+    dihedral_energy_expression = (
+        f"k_torsion * min(min(abs(theta - theta_0), abs(theta - theta_0 + "
+        f"2 * {_PI_})), abs(theta - theta_0 - 2 * {_PI_}))^2;"
+        "theta = dihedral(g1,g2,g3,g4);"
+    )
+    assert dihedral_force.getEnergyFunction() == dihedral_energy_expression
+
+    groups, params = dihedral_force.getBondParameters(0)
+    assert groups == (0, 1, 2, 3)
+    assert (
+        pytest.approx(params[0], abs=1e-3)
+        == k_final.to(
+            openff_unit.kJ / openff_unit.mol / openff_unit.radians**2
+        ).magnitude
+    )
+    assert (
+        pytest.approx(params[1], abs=1e-3)
+        == angle_target.to(openff_unit.radians).magnitude
+    )
+
+    particles, weights = dihedral_force.getGroupParameters(0)
+    assert particles == (0,)
+    assert weights == (1.0,)
+
+    particles, weights = dihedral_force.getGroupParameters(1)
+    assert particles == (12, 30, 48, 66, 84, 102)
+    assert weights == (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+    particles, weights = dihedral_force.getGroupParameters(2)
+    assert particles == (108,)
+    assert weights == (1.0,)
+
+    particles, weights = dihedral_force.getGroupParameters(3)
+    assert particles == (118,)
+    assert weights == (1.0,)
+
+    logger.info("### Testing OpenMM dihedral upper wall selection.")
+
+    rest3.custom_restraint_values["r2"] = 0.0
+    rest3.custom_restraint_values["rk2"] = 0.0
+    rest3.initialize()
+
+    apply_dat_restraint(system, rest3, "attach", 3, force_group=8)
+    dihedral_wall_force = [
+        force for force in system.getForces() if force.getForceGroup() == 8
+    ][0]
+    assert "step(theta - theta_0)" in dihedral_wall_force.getEnergyFunction()
+
+    logger.info("### Testing OpenMM dihedral lower wall selection.")
+
+    rest3.custom_restraint_values = {}
+    rest3.custom_restraint_values["r3"] = 0.0
+    rest3.custom_restraint_values["r4"] = 0.0
+    rest3.initialize()
+
+    apply_dat_restraint(system, rest3, "attach", 3, force_group=9)
+    dihedral_wall_force = [
+        force for force in system.getForces() if force.getForceGroup() == 9
+    ][0]
+    assert "step(theta_0 - theta)" in dihedral_wall_force.getEnergyFunction()
