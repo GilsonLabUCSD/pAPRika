@@ -30,7 +30,7 @@ Although ``GROMACS`` is available in conda, a version that is patched with Plume
 Installing a stable version from source
 ---------------------------------------
 
-To install the a stable version of `paprika` download the source code from `Github <https://github.com/slochower/pAPRika/releases>`_.
+To install the a stable version of `paprika` download the source code from `Github <https://github.com/GilsonLabUCSD/pAPRika/releases>`_.
 Then, unzip the files and change to the ``paprika`` directory::
 
     tar -xvzf paprika-version.tgz

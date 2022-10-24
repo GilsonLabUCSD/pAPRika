@@ -2,11 +2,11 @@
 pAPRika is a toolkit for setting up, running, and analyzing free energy molecular dynamics simulations.
 
 # Badges
-[![Build Status](https://github.com/slochower/pAPRika/workflows/ci/badge.svg)](https://github.com/slochower/pAPRika/actions?query=branch%3Amaster+workflow%3Aci)
+[![Build Status](https://github.com/GilsonLabUCSD/pAPRika/workflows/ci/badge.svg)](https://github.com/slochower/pAPRika/actions?query=branch%3Amaster+workflow%3Aci)
 [![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=latest)](https://paprika.readthedocs.io/en/latest/?badge=latest)
-[![Anaconda-Server Badge](https://anaconda.org/conda-forge/paprika/badges/installer/conda.svg)](https://conda.anaconda.org/conda-forge)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/paprika/badges/version.svg)](https://conda.anaconda.org/conda-forge)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/slochower/pAPRika.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/slochower/pAPRika/context:python)
-[![codecov](https://codecov.io/gh/slochower/pAPRika/branch/master/graph/badge.svg)](https://codecov.io/gh/slochower/pAPRika)
+[![codecov](https://codecov.io/gh/GilsonLabUCSD/pAPRika/branch/master/graph/badge.svg?token=ZTjfSd3WK2)](https://codecov.io/gh/GilsonLabUCSD/pAPRika)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 # Contributors

@@ -18,8 +18,8 @@ except IOError:
 setup(
     # Self-descriptive entries which should always be present
     name="paprika",
-    author="David R. Slochower and Niel M. Henriksen",
-    author_email="slochower@gmail.com, shireham@gmail.com",
+    author="David R. Slochower, Niel M. Henriksen, and Jeffry Setiadi",
+    author_email="slochower@gmail.com, shireham@gmail.com, pea231@gmail.com",
     description=short_description[0],
     long_description=long_description,
     long_description_content_type="text/markdown",

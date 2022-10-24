@@ -39,7 +39,7 @@ keywords:
   - "attach-pull-release"
 license: "BSD-3-Clause"
 message: "If you use this software, please cite it using these metadata."
-repository-code: "https://github.com/slochower/pAPRika"
+repository-code: "https://github.com/GilsonLabUCSD/pAPRika"
 title: pAPRika
 version: "1.1.0"
 ...
