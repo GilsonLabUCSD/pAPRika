@@ -148,6 +148,17 @@ class Colvars(Plumed):
                 atom_index = self._get_atom_indices(restraint)
                 atom_string = " ".join(map(str, atom_index))
 
+                # Determine bias type for half-harmonic potentials
+                bias_type, restraint_values = get_bias_potential_type(
+                    restraint, phase, window_number, return_values=True
+                )
+                if bias_type == "upper_walls":
+                    target = restraint_values["r3"]
+                    force_constant = restraint_values["rk3"] * self.k_factor
+                elif bias_type == "lower_walls":
+                    target = restraint_values["r2"]
+                    force_constant = restraint_values["rk2"] * self.k_factor
+
                 # Convert units to the correct type for COLVAR module
                 energy_units = openff_unit.kcal / openff_unit.mole
                 if restraint.restraint_type == "distance":
@@ -163,9 +174,6 @@ class Colvars(Plumed):
                     force_constant = force_constant.to(
                         energy_units / openff_unit.degrees**2
                     )
-
-                # Determine bias type for this restraint
-                bias_type = get_bias_potential_type(restraint, phase, window_number)
 
                 # Append cv to list
                 # The code below prevents duplicate cv definition.

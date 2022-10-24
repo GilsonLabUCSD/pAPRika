@@ -10,16 +10,25 @@ except ImportError:
     import simtk.openmm as openmm
     import simtk.unit as openmm_unit
 
+from typing import Optional, Union
+
 import parmed as pmd
 from openff.units import unit as openff_unit
 from openff.units.openmm import to_openmm
+
+from paprika.restraints import DAT_restraint
+from paprika.restraints.utils import get_bias_potential_type
 
 logger = logging.getLogger(__name__)
 _PI_ = np.pi
 
 
 def apply_positional_restraints(
-    coordinate_path: str, system, atom_name="DUM", force_group: int = 15, kpos=50.0
+    coordinate_path: str,
+    system: openmm.System,
+    atom_name: Optional[str] = "DUM",
+    force_group: Optional[int] = 15,
+    k_pos: Optional[Union[float, openmm_unit.Quantity, openff_unit.Quantity]] = 50.0,
 ):
     """A utility function which will add OpenMM harmonic positional restraints to
     any dummy atoms found within a system to restrain them to their initial
@@ -30,14 +39,14 @@ def apply_positional_restraints(
     coordinate_path : str
         The path to the coordinate file which the restraints will be applied to.
         This should contain either the host or the complex, the dummy atoms and
-        and solvent.
+        solvent.
     system : :class:`openmm.System`
         The system object to add the positional restraints to.
     atom_name : str
         The name of the atom to restrain.
     force_group : int, optional
         The force group to add the positional restraints to.
-    kpos : float, openmm.unit.Quantity or pint.unit.Quantity, optional
+    k_pos : float, openmm.unit.Quantity or openff.unit.Quantity, optional
         The force constant for restraining the dummy atoms (kcal/mol/Å^2 if float).
     """
 
@@ -59,17 +68,18 @@ def apply_positional_restraints(
             # ParmEd correctly reports `atom.positions` as units of Ångstroms.
             # But then we can't access atom indices. Using `atom.xx` works for
             # coordinates, but is unitless.
-            if isinstance(kpos, float):
+            if isinstance(k_pos, float):
                 k = (
-                    kpos
+                    k_pos
                     * openmm_unit.kilocalories_per_mole
                     / openmm_unit.angstroms**2
                 )
-            elif isinstance(kpos, openmm_unit.Quantity):
-                k = kpos
-            elif isinstance(kpos, openff_unit.Quantity):
-                k = to_openmm(kpos)
+            elif isinstance(k_pos, openmm_unit.Quantity):
+                k = k_pos
+            elif isinstance(k_pos, openff_unit.Quantity):
+                k = to_openmm(k_pos)
 
+            # Convert position to nanometers
             x0 = 0.1 * atom.xx * openmm_unit.nanometers
             y0 = 0.1 * atom.xy * openmm_unit.nanometers
             z0 = 0.1 * atom.xz * openmm_unit.nanometers
@@ -80,23 +90,25 @@ def apply_positional_restraints(
 
 
 def apply_dat_restraint(
-    system, restraint, phase, window_number, flat_bottom=False, force_group=None
+    system: openmm.System,
+    restraint: DAT_restraint,
+    phase: str,
+    window_number: int,
+    force_group: Optional[int] = None,
 ):
-    """A utility function which takes in pAPRika restraints and applies the
-    restraints to an OpenMM System object.
+    """A utility function which takes in pAPRika DAT restraints and applies
+    the restraints to an OpenMM System object.
 
     Parameters
     ----------
     system : :class:`openmm.System`
         The system object to add the positional restraints to.
-    restraint : list
-        List of pAPRika defined restraints
+    restraint : :class:`DAT_restraint`
+        DAT_restraint to apply to `openmm.System`.
     phase : str
         Phase of calculation ("attach", "pull" or "release")
     window_number : int
         The corresponding window number of the current phase
-    flat_bottom : bool, optional
-        Specify whether the restraint is a flat bottom potential
     force_group : int, optional
         The force group to add the positional restraints to.
 
@@ -104,133 +116,151 @@ def apply_dat_restraint(
 
     assert phase in {"attach", "pull", "release"}
 
-    # Angular flat-bottom potential
-    if flat_bottom and phase == "attach" and restraint.mask3:
-        flat_bottom_force = openmm.CustomAngleForce(
-            "step(-(theta - theta_0)) * k * (theta - theta_0)^2"
-        )
-        # If theta is greater than theta_0, then the argument to step is negative,
-        # which means the force is off.
-        flat_bottom_force.addPerAngleParameter("k")
-        flat_bottom_force.addPerAngleParameter("theta_0")
-
-        theta_0 = 91.0 * openmm_unit.degrees
-        k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
-
-        flat_bottom_force.addAngle(
-            restraint.index1[0],
-            restraint.index2[0],
-            restraint.index3[0],
-            [k, theta_0],
-        )
-        system.addForce(flat_bottom_force)
-
-        if force_group:
-            flat_bottom_force.setForceGroup(force_group)
-
-        return
-
-    # Distance flat-bottom potential
-    elif flat_bottom and phase == "attach" and not restraint.mask3:
-        flat_bottom_force = openmm.CustomBondForce("step((r - r_0)) * k * (r - r_0)^2")
-        # If x is greater than x_0, then the argument to step is positive, which means
-        # the force is on.
-        flat_bottom_force.addPerBondParameter("k")
-        flat_bottom_force.addPerBondParameter("r_0")
-
-        r_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
-        k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
-
-        flat_bottom_force.addBond(
-            restraint.index1[0],
-            restraint.index2[0],
-            [k, r_0],
-        )
-        system.addForce(flat_bottom_force)
-
-        if force_group:
-            flat_bottom_force.setForceGroup(force_group)
-
-        return
-
-    elif flat_bottom and phase == "pull":
-        return
-    elif flat_bottom and phase == "release":
-        return
+    # Get bias potential type - restraint, upper_walls, lower_walls
+    bias_type, restraint_values = get_bias_potential_type(
+        restraint, phase, window_number, return_values=True
+    )
 
     # Distance restraints
     if restraint.mask2 and not restraint.mask3:
+        # colvar values
+        r_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
+        k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
+
+        # Energy expression
+        bond_energy_expression = "k_bond * (r - r_0)^2;"
+        if bias_type == "upper_walls":
+            bond_energy_expression = "step(r - r_0) * " + bond_energy_expression
+            r_0 = to_openmm(restraint_values["r3"])
+            k = to_openmm(restraint_values["rk3"])
+        elif bias_type == "lower_walls":
+            bond_energy_expression = "step(r_0 - r) * " + bond_energy_expression
+            r_0 = to_openmm(restraint_values["r2"])
+            k = to_openmm(restraint_values["rk2"])
+
+        # Single particles
         if not restraint.group1 and not restraint.group2:
-            bond_restraint = openmm.CustomBondForce("k * (r - r_0)^2")
-            bond_restraint.addPerBondParameter("k")
+            bond_restraint = openmm.CustomBondForce(bond_energy_expression)
+            bond_restraint.addPerBondParameter("k_bond")
             bond_restraint.addPerBondParameter("r_0")
-
-            r_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
-            k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
-
             bond_restraint.addBond(restraint.index1[0], restraint.index2[0], [k, r_0])
-            system.addForce(bond_restraint)
+
+        # Group of particles
         else:
             bond_restraint = openmm.CustomCentroidBondForce(
-                2, "k * (distance(g1, g2) - r_0)^2"
+                2, bond_energy_expression + "r = distance(g1, g2);"
             )
-            bond_restraint.addPerBondParameter("k")
+            bond_restraint.addPerBondParameter("k_bond")
             bond_restraint.addPerBondParameter("r_0")
 
-            r_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
-            k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
-
-            g1 = bond_restraint.addGroup(restraint.index1)
-            g2 = bond_restraint.addGroup(restraint.index2)
+            # Need to use geometrical instead of mass centers (all weights=1.0)
+            g1 = bond_restraint.addGroup(
+                restraint.index1, [1.0 for i in range(len(restraint.index1))]
+            )
+            g2 = bond_restraint.addGroup(
+                restraint.index2, [1.0 for i in range(len(restraint.index2))]
+            )
 
             bond_restraint.addBond([g1, g2], [k, r_0])
-            system.addForce(bond_restraint)
+
+        system.addForce(bond_restraint)
 
         if force_group:
             bond_restraint.setForceGroup(force_group)
 
     # Angle restraints
     elif restraint.mask3 and not restraint.mask4:
+        # colvar values
+        theta_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
+        k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
+
+        # energy expression
+        angle_energy_expression = "k_angle * (theta - theta_0)^2;"
+        if bias_type == "upper_walls":
+            angle_energy_expression = (
+                "step(theta - theta_0) * "
+            ) + angle_energy_expression
+            theta_0 = to_openmm(restraint_values["r3"])
+            k = to_openmm(restraint_values["rk3"])
+        elif bias_type == "lower_walls":
+            angle_energy_expression = (
+                "step(theta_0 - theta) * "
+            ) + angle_energy_expression
+            theta_0 = to_openmm(restraint_values["r2"])
+            k = to_openmm(restraint_values["rk2"])
+
+        # Single particles
         if not restraint.group1 and not restraint.group2 and not restraint.group3:
-            angle_restraint = openmm.CustomAngleForce("k * (theta - theta_0)^2")
-            angle_restraint.addPerAngleParameter("k")
+            angle_restraint = openmm.CustomAngleForce(angle_energy_expression)
+            angle_restraint.addPerAngleParameter("k_angle")
             angle_restraint.addPerAngleParameter("theta_0")
-
-            theta_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
-            k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
-
             angle_restraint.addAngle(
                 restraint.index1[0],
                 restraint.index2[0],
                 restraint.index3[0],
                 [k, theta_0],
             )
-            system.addForce(angle_restraint)
+
+        # Group of particles
         else:
-            # Probably needs openmm.CustomCentroidAngleForce (?)
-            raise NotImplementedError
+            angle_restraint = openmm.CustomCentroidBondForce(
+                3, angle_energy_expression + "theta = angle(g1, g2, g3);"
+            )
+            angle_restraint.addPerBondParameter("k_angle")
+            angle_restraint.addPerBondParameter("theta_0")
+
+            # Need to use geometrical instead of mass centers (all weights=1.0)
+            g1 = angle_restraint.addGroup(
+                restraint.index1, [1.0 for i in range(len(restraint.index1))]
+            )
+            g2 = angle_restraint.addGroup(
+                restraint.index2, [1.0 for i in range(len(restraint.index2))]
+            )
+            g3 = angle_restraint.addGroup(
+                restraint.index3, [1.0 for i in range(len(restraint.index3))]
+            )
+
+            angle_restraint.addBond([g1, g2, g3], [k, theta_0])
+
+        system.addForce(angle_restraint)
 
         if force_group:
             angle_restraint.setForceGroup(force_group)
 
     # Torsion restraints
     elif restraint.mask4:
+        # colvar values
+        theta_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
+        k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
+
+        # energy expression
+        dihedral_energy_expression = (
+            f"k_torsion * min(min(abs(theta - theta_0), abs(theta - theta_0 + "
+            f"2 * {_PI_})), abs(theta - theta_0 - 2 * {_PI_}))^2;"
+        )
+        if bias_type == "upper_walls":
+            dihedral_energy_expression = (
+                "step(theta - theta_0) * "
+            ) + dihedral_energy_expression
+            theta_0 = to_openmm(restraint_values["r3"])
+            k = to_openmm(restraint_values["rk3"])
+        elif bias_type == "lower_walls":
+            dihedral_energy_expression = (
+                "step(theta_0 - theta) * "
+            ) + dihedral_energy_expression
+            theta_0 = to_openmm(restraint_values["r2"])
+            k = to_openmm(restraint_values["rk2"])
+
+        # Single particles
         if (
             not restraint.group1
             and not restraint.group2
             and not restraint.group3
             and not restraint.group4
         ):
-            dihedral_restraint = openmm.CustomTorsionForce(
-                f"k * min(min(abs(theta - theta_0), abs(theta - theta_0 + 2 * "
-                f"{_PI_})), abs(theta - theta_0 - 2 * {_PI_}))^2"
-            )
-            dihedral_restraint.addPerTorsionParameter("k")
+            dihedral_restraint = openmm.CustomTorsionForce(dihedral_energy_expression)
+            dihedral_restraint.addPerTorsionParameter("k_torsion")
             dihedral_restraint.addPerTorsionParameter("theta_0")
-
-            theta_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
-            k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
-
             dihedral_restraint.addTorsion(
                 restraint.index1[0],
                 restraint.index2[0],
@@ -238,10 +268,32 @@ def apply_dat_restraint(
                 restraint.index4[0],
                 [k, theta_0],
             )
-            system.addForce(dihedral_restraint)
+
+        # Group of particles
         else:
-            # Probably needs openmm.CustomCentroidTorsionForce (?)
-            raise NotImplementedError
+            dihedral_restraint = openmm.CustomCentroidBondForce(
+                4, dihedral_energy_expression + "theta = dihedral(g1,g2,g3,g4);"
+            )
+            dihedral_restraint.addPerBondParameter("k_torsion")
+            dihedral_restraint.addPerBondParameter("theta_0")
+
+            # Need to use geometrical instead of mass centers (all weights=1.0)
+            g1 = dihedral_restraint.addGroup(
+                restraint.index1, [1.0 for i in range(len(restraint.index1))]
+            )
+            g2 = dihedral_restraint.addGroup(
+                restraint.index2, [1.0 for i in range(len(restraint.index2))]
+            )
+            g3 = dihedral_restraint.addGroup(
+                restraint.index3, [1.0 for i in range(len(restraint.index3))]
+            )
+            g4 = dihedral_restraint.addGroup(
+                restraint.index4, [1.0 for i in range(len(restraint.index4))]
+            )
+
+            dihedral_restraint.addBond([g1, g2, g3, g4], [k, theta_0])
+
+        system.addForce(dihedral_restraint)
 
         if force_group:
             dihedral_restraint.setForceGroup(force_group)

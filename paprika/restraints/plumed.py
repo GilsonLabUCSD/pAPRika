@@ -229,12 +229,12 @@ class Plumed:
         self._initialize()
 
         # Loop over APR windows
-        for windows in self.window_list:
+        for window in self.window_list:
 
-            window, phase = parse_window(windows)
+            window_number, phase = parse_window(window)
 
             # Check if file exist and write header line
-            with open(os.path.join(self.path, windows, self.file_name), "w") as file:
+            with open(os.path.join(self.path, window, self.file_name), "w") as file:
                 file.write(self.header_line + "\n")
 
             cv_index = 1
@@ -250,17 +250,29 @@ class Plumed:
                 # Skip restraint if the target or force constant is not defined.
                 # Example: wall restraints only used during the attach phase.
                 try:
-                    target = restraint.phase[phase]["targets"][window]
+                    target = restraint.phase[phase]["targets"][window_number]
                     force_constant = (
-                        restraint.phase[phase]["force_constants"][window]
+                        restraint.phase[phase]["force_constants"][window_number]
                         * self.k_factor
                     )
+
                 except TypeError:
                     continue
 
                 # Convert list to comma-separated string
                 atom_index = self._get_atom_indices(restraint)
                 atom_string = ",".join(map(str, atom_index))
+
+                # Determine bias type for half-harmonic potentials
+                bias_type, restraint_values = get_bias_potential_type(
+                    restraint, phase, window_number, return_values=True
+                )
+                if bias_type == "upper_walls":
+                    target = restraint_values["r3"]
+                    force_constant = restraint_values["rk3"] * self.k_factor
+                elif bias_type == "lower_walls":
+                    target = restraint_values["r2"]
+                    force_constant = restraint_values["rk2"] * self.k_factor
 
                 # Convert units to the correct type for PLUMED module
                 if restraint.restraint_type == "distance":
@@ -276,9 +288,6 @@ class Plumed:
                     force_constant = force_constant.to(
                         self.output_units["energy"] / openff_unit.radians**2
                     )
-
-                # Determine bias type for this restraint
-                bias_type = get_bias_potential_type(restraint, phase, window)
 
                 # Append cv strings to lists
                 # The code below prevents duplicate cv definition.
@@ -306,7 +315,7 @@ class Plumed:
                 cv_index += 1
 
             # Write collective variables to file
-            self._write_colvar_to_file(windows, cv_lines, bias_lines)
+            self._write_colvar_to_file(window, cv_lines, bias_lines)
 
     def _write_colvar_to_file(self, window, cv_list, bias_list):
         with open(os.path.join(self.path, window, self.file_name), "a") as file:
@@ -387,7 +396,9 @@ class Plumed:
 
         return atom_index
 
-    def add_dummy_atom_restraints(self, structure, window, path=None):
+    def add_dummy_atom_restraints(
+        self, structure, window, resname=["DM1", "DM2", "DM3"], path=None
+    ):
         """
         Add positional restraints on dummy atoms to the restraint files.
 
@@ -397,6 +408,8 @@ class Plumed:
             The reference structure that is used to determine the absolute coordinate of the dummy atoms.
         window: str
             APR window where the structure is stored for extracting the dummy atom positions.
+        resname: list
+            A list of residue name for the dummy atoms
         path: os.PathLike, optional, default=None
             Path of the restraint file. If set to ``None`` (default) self.path will be used.
 
@@ -413,7 +426,7 @@ class Plumed:
             )
 
         # Extract dummy atoms
-        dummy_atoms = extract_dummy_atoms(structure, serial=True)
+        dummy_atoms = extract_dummy_atoms(structure, resname=resname, serial=True)
 
         # Write dummy atom info to plumed file
         if path is not None:
