@@ -368,7 +368,7 @@ def test_hydrogen_mass_repartitioning(clean_files):
 def test_multiple_pdb_files(clean_files):
     """
     Test that multiple `loadpdb` lines are carried through.
-    Reference: https://github.com/slochower/pAPRika/issues/141
+    Reference: https://github.com/GilsonLabUCSD/pAPRika/issues/141
     """
     temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
     sys = TLeap()
