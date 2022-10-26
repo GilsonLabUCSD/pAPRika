@@ -1,6 +1,18 @@
 Release History
 ===============
 
+v1.2.0
+------
+**(10/26/2022)**
+
+This release adds minor new features bug fixes to the paprika code.
+
+* Integrate OpenFF-units (a wrapper for Pint units) used in defining restraints.
+* Enhances the `restraints/openmm` module to include centroid-based anchor atom selection.
+* Updates the analysis module for pymbar v4.0
+* Minor bug fixes
+
+
 v1.1.0
 ------
 **(02/17/2021)**

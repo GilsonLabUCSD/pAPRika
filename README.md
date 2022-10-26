@@ -2,12 +2,16 @@
 pAPRika is a toolkit for setting up, running, and analyzing free energy molecular dynamics simulations.
 
 # Badges
-[![Build Status](https://github.com/GilsonLabUCSD/pAPRika/workflows/ci/badge.svg)](https://github.com/slochower/pAPRika/actions?query=branch%3Amaster+workflow%3Aci)
-[![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=latest)](https://paprika.readthedocs.io/en/latest/?badge=latest)
-[![Anaconda-Server Badge](https://anaconda.org/conda-forge/paprika/badges/version.svg)](https://conda.anaconda.org/conda-forge)
-[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/slochower/pAPRika.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/slochower/pAPRika/context:python)
+[![Build Status](https://github.com/GilsonLabUCSD/pAPRika/workflows/ci/badge.svg)](https://github.com/GilsonLabUCSD/pAPRika/actions?query=branch%3Amaster+workflow%3Aci)
 [![codecov](https://codecov.io/gh/GilsonLabUCSD/pAPRika/branch/master/graph/badge.svg?token=ZTjfSd3WK2)](https://codecov.io/gh/GilsonLabUCSD/pAPRika)
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![CodeQL](https://github.com/GilsonLabUCSD/pAPRika/actions/workflows/codeql.yml/badge.svg)](https://github.com/GilsonLabUCSD/pAPRika/actions/workflows/codeql.yml)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/GilsonLabUCSD/pAPRika.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/GilsonLabUCSD/pAPRika/context:python)
+
+[![Last release tag](https://img.shields.io/github/release/GilsonLabUCSD/paprika.svg)](https://github.com/GilsonLabUCSD/paprika/releases)
+[![Commits since release](https://img.shields.io/github/commits-since/GilsonLabUCSD/pAPRika/v1.1.0.svg)](https://github.com/GilsonLabUCSD/pAPRika/releases/tag/v1.1.0)
+[![Releases](https://img.shields.io/badge/obtain-latest-green.svg)](https://github.com/GilsonLabUCSD/pAPRika/releases) [![Conda](https://img.shields.io/conda/v/conda-forge/paprika.svg)](https://anaconda.org/conda-forge/paprika) [![Last updated](https://anaconda.org/conda-forge/paprika/badges/latest_release_relative_date.svg)](https://anaconda.org/conda-forge/paprika) [![Anaconda Cloud downloads](https://anaconda.org/conda-forge/paprika/badges/downloads.svg)](https://anaconda.org/conda-forge/paprika)
+
+[![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=latest)](https://paprika.readthedocs.io/en/latest/?badge=latest) [![platforms](https://img.shields.io/badge/Platforms-Linux%2C%20MacOS-orange.svg)](https://paprika.readthedocs.io/en/latest/install.html) [![python](https://img.shields.io/badge/python-3.8%2C%203.9-blue.svg)](https://paprika.readthedocs.io/en/latest/install.html) [![License](https://img.shields.io/badge/License-BSD%203--Clause-green.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 # Contributors
 - Niel Henriksen (UCSD, Atomwise Inc.)
@@ -22,8 +26,8 @@ We recommend installing pAPRika in a fresh `conda` environment if possible. Ther
 
 1. The latest release on `conda-forge`:
     1. `conda install -c conda-forge paprika`
-    2. To use all features of pAPRika, you must either have [AmberTools](http://ambermd.org/AmberTools.php) in your `$PATH` or separately install AmberTools with `conda install -c conda-forge ambertools=20`.
-    3. To use OpenMM features: `conda install -c omnia openmm`.
+    2. To use all features of pAPRika, you must either have [AmberTools](http://ambermd.org/AmberTools.php) in your `$PATH` or separately install AmberTools with `conda install -c conda-forge ambertools=22`.
+    3. To use OpenMM features: `conda install -c conda-forge openmm`.
     4. To use Plumed restraints: `conda install -c conda-forge plumed`
 
 2. The master branch on GitHub:
@@ -34,7 +38,7 @@ We recommend installing pAPRika in a fresh `conda` environment if possible. Ther
     5. Install `paprika` in the environment: `pip install .`
     
 3. The latest release on GitHub:
-    1. Download [the latest release](https://github.com/slochower/pAPRika/releases), extract it, and change to the `paprika` directory:
+    1. Download [the latest release](https://github.com/GilsonLabUCSD/pAPRika/releases), extract it, and change to the `paprika` directory:
     2. Change the `name` field in `devtools/conda-envs/test_env.yaml` to be `paprika`.
     3. Create the environment: `conda env create -f devtools/conda-envs/test_env.yaml`.
     4. Activate the environment: `conda activate paprika`
