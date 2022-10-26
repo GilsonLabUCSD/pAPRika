@@ -4,7 +4,7 @@ channels:
 dependencies:
   
   # Base depends
-  - python >=3.8,<3.10
+  - python
   - pip
   - numpy
   - scipy
