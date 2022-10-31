@@ -432,16 +432,24 @@ class Setup:
 
             restraint.attach["fc_final"] = restraint_schema["force_constant"]
             restraint.attach["fraction_list"] = [1.0] * n_attach_windows
+            restraint.attach["target"] = restraint_schema["target"]
 
-            # This target will be overridden by the custom values.
-            restraint.attach["target"] = 91 * openff_unit.degrees
-            restraint.custom_restraint_values["r2"] = restraint.attach["target"]
-            restraint.custom_restraint_values["r3"] = restraint.attach["target"]
-
-            # 0 force constant between 91 degrees and 180 degrees.
-            restraint.custom_restraint_values["rk3"] = (
-                0.0 * restraint_schema["force_constant"].units
+            # Set upper bounds to zero
+            restraint.custom_restraint_values["r3"] = (
+                0 * restraint.attach["target"].units
             )
+            restraint.custom_restraint_values["r4"] = (
+                0 * restraint.attach["target"].units
+            )
+
+            # Harmonic force constant beyond target distance.
+            restraint.custom_restraint_values["rk2"] = restraint_schema[
+                "force_constant"
+            ]
+            restraint.custom_restraint_values["rk3"] = restraint_schema[
+                "force_constant"
+            ]
+
             restraint.initialize()
 
             restraints.append(restraint)
