@@ -234,7 +234,10 @@ def test_evaluator_gaff(clean_files):
     )
 
     # fmt: off
-    butane_atom_type = ["c3", "hc", "hc", "hc", "c3", "hc", "c3", "hc", "hc", "hc", "c3", "hc", "hc", "hc"]
+    butane_atom_type = [
+        "c3", "hc", "hc", "hc", "c3", "hc", "c3",
+        "hc", "hc", "hc", "c3", "hc", "hc", "hc",
+    ]
     # fmt: on
 
     residue_names = []

@@ -315,7 +315,7 @@ class Setup:
             The path to the coordinate file which the restraints will be applied to.
             This should contain either the host or the complex, the dummy atoms and solvent.
         attach_lambdas
-            The values 'lambda' being used during the attach phase of the APR
+            The values 'lambda' being used during the 'attach' phase of the APR
             calculation.
         n_pull_windows
             The total number of pull windows being used in the APR calculation.
@@ -394,7 +394,7 @@ class Setup:
             * a ``force_constant`` entry which specifies the force constant of the
               restraint.
 
-        These 'schemas` map directly to the 'restraints -> symmetry_correction
+        These `schemas` map directly to the 'restraints -> symmetry_correction
         -> restraint' dictionaries specified in the `taproom` guest YAML files.
 
         Parameters
@@ -402,7 +402,7 @@ class Setup:
         coordinate_path
             The path to the coordinate file which the restraints will be applied to.
             This should contain either the host or the complex, the dummy atoms and
-            and solvent.
+            solvent.
         n_attach_windows
             The total number of attach windows being used in the APR calculation.
         restraint_schemas
@@ -435,12 +435,12 @@ class Setup:
 
             # This target will be overridden by the custom values.
             restraint.attach["target"] = 91 * openff_unit.degrees
-            restraint.custom_restraint_values["r2"] = 91 * openff_unit.degrees
-            restraint.custom_restraint_values["r3"] = 91 * openff_unit.degrees
+            restraint.custom_restraint_values["r2"] = restraint.attach["target"]
+            restraint.custom_restraint_values["r3"] = restraint.attach["target"]
 
             # 0 force constant between 91 degrees and 180 degrees.
             restraint.custom_restraint_values["rk3"] = (
-                0.0 * openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
+                0.0 * restraint_schema["force_constant"].units
             )
             restraint.initialize()
 
@@ -467,7 +467,7 @@ class Setup:
               restraint.
             * a ``target`` entry which specifies the target value of the restraint.
 
-        These 'schemas` map directly to the 'restraints -> wall_restraints -> restraint'
+        These `schemas` map directly to the 'restraints -> wall_restraints -> restraint'
         dictionaries specified in the `taproom` guest YAML files.
 
         Parameters
@@ -475,7 +475,7 @@ class Setup:
         coordinate_path
             The path to the coordinate file which the restraints will be applied to.
             This should contain either the host or the complex, the dummy atoms and
-            and solvent.
+            solvent.
         n_attach_windows
             The total number of attach windows being used in the APR calculation.
         restraint_schemas
@@ -494,21 +494,29 @@ class Setup:
 
         for restraint_schema in restraint_schemas:
 
+            mask = restraint_schema["atoms"].split()
+
             restraint = DAT_restraint()
             restraint.auto_apr = True
             restraint.continuous_apr = False
             restraint.amber_index = use_amber_indices
             restraint.topology = coordinate_path
-            restraint.mask1 = restraint_schema["atoms"].split()[0]
-            restraint.mask2 = restraint_schema["atoms"].split()[1]
+            restraint.mask1 = mask[0]
+            restraint.mask2 = mask[1]
+            restraint.mask3 = mask[2] if len(mask) > 2 else None
+            restraint.mask4 = mask[3] if len(mask) > 3 else None
 
             restraint.attach["fc_final"] = restraint_schema["force_constant"]
             restraint.attach["fraction_list"] = [1.0] * n_attach_windows
             restraint.attach["target"] = restraint_schema["target"]
 
-            # Minimum distance is 0 Angstrom
-            restraint.custom_restraint_values["r1"] = 0 * openff_unit.degrees
-            restraint.custom_restraint_values["r2"] = 0 * openff_unit.degrees
+            # Set lower bounds to zero
+            restraint.custom_restraint_values["r1"] = (
+                0 * restraint.attach["target"].units
+            )
+            restraint.custom_restraint_values["r2"] = (
+                0 * restraint.attach["target"].units
+            )
 
             # Harmonic force constant beyond target distance.
             restraint.custom_restraint_values["rk2"] = restraint_schema[
@@ -546,7 +554,7 @@ class Setup:
               restraint.
             * a ``target`` entry which specifies the target value of the restraint.
 
-        These 'schemas` map directly to the 'restraints -> guest -> restraint'
+        These `schemas` map directly to the 'restraints -> guest -> restraint'
         dictionaries specified in the `taproom` guest YAML files.
 
         Parameters
@@ -554,9 +562,9 @@ class Setup:
         coordinate_path
             The path to the coordinate file which the restraints will be applied to.
             This should contain either the host or the complex, the dummy atoms and
-            and solvent.
+            solvent.
         attach_lambdas
-            The values 'lambda' being used during the attach phase of the APR
+            The values 'lambda' being used during the 'attach' phase of the APR
             calculation.
         n_pull_windows
             The total number of pull windows being used in the APR calculation.
