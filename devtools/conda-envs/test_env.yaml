@@ -12,12 +12,11 @@ dependencies:
   - mdtraj
   - pymbar >=4.0.1
   - openmm >=7.6.0
-  - yank
   - ambertools >=22.0
   - pyyaml
   - plumed
   - intermol
-  - pint >=0.19,<0.20
+  - pint >=0.19, <0.20
   - openff-units >=0.1.7
   - openff-utilities
 
