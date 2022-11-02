@@ -9,11 +9,17 @@ import numpy as np
 import parmed as pmd
 import pytest
 import pytraj as pt
+import yaml
 from openff.units import unit as openff_unit
 
 from paprika.evaluator import Analyze, Setup
 from paprika.evaluator.amber import generate_gaff
 from paprika.restraints import DAT_restraint
+from paprika.restraints.taproom import (
+    convert_string_to_quantity,
+    de_alias,
+    read_yaml_schema,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +33,300 @@ def clean_files(directory=os.path.join(os.path.dirname(__file__), "tmp")):
     yield
     # This happens after the test function call
     shutil.rmtree(directory)
+
+
+@pytest.fixture()
+def complex_file():
+    complex_pdb = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
+
+    butane_molecule = []
+    structure = pmd.load_file(complex_pdb, structure=True)
+    for atom in structure.topology.atoms():
+        if atom.residue.name == "BUT":
+            butane_molecule.append(atom.index)
+
+    G1 = ":BUT@C"
+    G2 = ":BUT@C3"
+
+    host_guest = Setup.prepare_complex_structure(
+        complex_pdb,
+        butane_molecule,
+        f"{G1} {G2}",
+        24.0,
+        0,
+        46,
+    )
+
+    Setup.add_dummy_atoms_to_structure(
+        host_guest,
+        [
+            np.array([0, 0, 0]),
+            np.array([0, 0, -3.0]),
+            np.array([0, 2.2, -5.2]),
+        ],
+        np.zeros(3),
+    )
+
+    return host_guest
+
+
+@pytest.fixture(scope="module")
+def yaml_restraint_schema():
+    yaml_file = """name: bam
+structure: bam.mol2
+complex: a-bam.pdb
+net_charge: +1e
+aliases:
+    - D1: :DM1
+    - D2: :DM2
+    - D3: :DM3
+    - G1: :BAM@C4
+    - G2: :BAM@N1
+restraints:
+  guest:
+    - restraint:
+        atoms: D1 G1
+        attach:
+          # During the 'attach' phase, the `force_constant` argument is the
+          # final force constant.
+          force_constant: 5.0 * kilocalorie / mole / angstrom**2
+          target: 6.0 * angstrom
+        pull:
+          # During the 'pull' phase, the `target` argument is the final value of
+          # the restraint.
+          force_constant: 5.0 * kilocalorie / mole / angstrom**2
+          target: 24.0 * angstrom
+    - restraint:
+        atoms: D2 D1 G1
+        attach:
+          force_constant: 100.0 * kilocalorie / mole / radians**2
+          target: 180.0 * degrees
+        pull:
+          force_constant: 100.0 * kilocalorie / mole / radians**2
+          target: 180.0 * degrees
+    - restraint:
+        atoms: D1 G1 G2
+        attach:
+          force_constant: 100.0 * kilocalorie / mole / radians**2
+          target: 180.0 * degrees
+        pull:
+          force_constant: 100.0 * kilocalorie / mole / radians**2
+          target: 180.0 * degrees
+
+  wall_restraints:
+    - restraint:
+        atoms: ":1@O2 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 9.3 * angstrom
+    - restraint:
+        atoms: ":2@O2 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 9.3 * angstrom
+    - restraint:
+        atoms: ":3@O2 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 9.3 * angstrom
+    - restraint:
+        atoms: ":4@O2 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 9.3 * angstrom
+    - restraint:
+        atoms: ":5@O2 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 9.3 * angstrom
+    - restraint:
+        atoms: ":6@O2 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 9.3 * angstrom
+    - restraint:
+        atoms: ":1@O6 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 11.3 * angstrom
+    - restraint:
+        atoms: ":2@O6 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 11.3 * angstrom
+    - restraint:
+        atoms: ":3@O6 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 11.3 * angstrom
+    - restraint:
+        atoms: ":4@O6 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 11.3 * angstrom
+    - restraint:
+        atoms: ":5@O6 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 11.3 * angstrom
+    - restraint:
+        atoms: ":6@O6 G1"
+        force_constant: 50.0 * kilocalorie / mole / angstrom**2
+        target: 11.3 * angstrom
+
+symmetry_correction:
+  restraints:
+    - restraint:
+        atoms: D2 G1 G2
+        force_constant: 200.0 * kilocalorie / mole / radian**2
+        target: 91 * degrees
+  # Do not attempt to automatically correct for the symmetry restraint by adding -RT \ln (microstates).
+  # Instead, we will apply the symmetry restraint, which locks in a particular binding orientation, and then
+  # perform separate calculations.
+  microstates: 1"""
+    return yaml_file
+
+
+@pytest.fixture(scope="module")
+def restraints_schema():
+    schema = {
+        "static": [
+            {
+                "atoms": ":DM1 :CB6@O",
+                "force_constant": 5.0
+                * openff_unit.kcal
+                / openff_unit.mol
+                / openff_unit.angstrom**2,
+            }
+        ],
+        "conformational": [
+            {
+                "atoms": ":CB6@O :CB6@O2 :CB6@O4 :CB6@O6",
+                "force_constant": 6.0
+                * openff_unit.kcal
+                / openff_unit.mol
+                / openff_unit.radians**2,
+                "target": 104.3 * openff_unit.degrees,
+            }
+        ],
+        "symmetry": [
+            {
+                "atoms": ":DM2 :BUT@C :BUT@C3",
+                "force_constant": 50.0
+                * openff_unit.kcal
+                / openff_unit.mol
+                / openff_unit.radians**2,
+                "target": 11.0 * openff_unit.degrees,
+            }
+        ],
+        "wall": [
+            {
+                "atoms": ":CB6@O :BUT@C",
+                "force_constant": 50.0
+                * openff_unit.kcal
+                / openff_unit.mol
+                / openff_unit.angstrom**2,
+                "target": 11.0 * openff_unit.angstrom,
+            }
+        ],
+        "guest": [
+            {
+                "atoms": ":DM1 :BUT@C",
+                "attach": {
+                    "force_constant": 5.0
+                    * openff_unit.kcal
+                    / openff_unit.mol
+                    / openff_unit.angstrom**2,
+                    "target": 6.0 * openff_unit.angstrom,
+                },
+                "pull": {
+                    "force_constant": 5.0
+                    * openff_unit.kcal
+                    / openff_unit.mol
+                    / openff_unit.angstrom**2,
+                    "target": 24.0 * openff_unit.angstrom,
+                },
+            }
+        ],
+    }
+    return schema
+
+
+def test_taproom_yaml(clean_files, yaml_restraint_schema):
+    temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
+
+    k_dist = 5.0 * openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+    k_wall = 50.0 * openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+    k_angle = 100.0 * openff_unit.kcal / openff_unit.mole / openff_unit.radian**2
+    r_initial = 6.0 * openff_unit.angstrom
+    r_final = 24.0 * openff_unit.angstrom
+    angle = 180.0 * openff_unit.degrees
+
+    # Write yaml string to file
+    with open(f"{temporary_directory}/guest.yaml", "w") as f:
+        f.write(yaml_restraint_schema)
+
+    # Check de_alias
+    with open(f"{temporary_directory}/guest.yaml", "r") as f:
+        yaml_data = yaml.safe_load(f)
+
+    if "aliases" in yaml_data.keys():
+        yaml_data = de_alias(yaml_data)
+
+    distance_restraint = yaml_data["restraints"]["guest"][0]["restraint"]
+    theta_restraint = yaml_data["restraints"]["guest"][1]["restraint"]
+    beta_restraint = yaml_data["restraints"]["guest"][2]["restraint"]
+    symmetry_restraint = yaml_data["symmetry_correction"]["restraints"][0]["restraint"]
+
+    assert distance_restraint["atoms"] == ":DM1 :BAM@C4"
+    assert theta_restraint["atoms"] == ":DM2 :DM1 :BAM@C4"
+    assert beta_restraint["atoms"] == ":DM1 :BAM@C4 :BAM@N1"
+    assert symmetry_restraint["atoms"] == ":DM2 :BAM@C4 :BAM@N1"
+
+    # Check convert string to quantity
+    convert_string_to_quantity(yaml_data)
+
+    assert distance_restraint["attach"]["force_constant"] == k_dist
+    assert theta_restraint["attach"]["force_constant"] == k_angle
+    assert beta_restraint["attach"]["force_constant"] == k_angle
+
+    assert distance_restraint["pull"]["force_constant"] == k_dist
+    assert theta_restraint["pull"]["force_constant"] == k_angle
+    assert beta_restraint["pull"]["force_constant"] == k_angle
+
+    assert distance_restraint["attach"]["target"] == r_initial
+    assert distance_restraint["pull"]["target"] == r_final
+
+    assert theta_restraint["attach"]["target"] == angle
+    assert theta_restraint["pull"]["target"] == angle
+    assert beta_restraint["attach"]["target"] == angle
+    assert beta_restraint["pull"]["target"] == angle
+
+    for i, restraint in enumerate(yaml_data["restraints"]["wall_restraints"]):
+        assert restraint["restraint"]["force_constant"] == k_wall
+        if i < 6:
+            assert restraint["restraint"]["target"] == 9.3 * openff_unit.angstrom
+        else:
+            assert restraint["restraint"]["target"] == 11.3 * openff_unit.angstrom
+
+    # Check full conversion
+    guest_spec = read_yaml_schema(f"{temporary_directory}/guest.yaml")
+
+    distance_restraint = guest_spec["restraints"]["guest"][0]["restraint"]
+    theta_restraint = guest_spec["restraints"]["guest"][1]["restraint"]
+    beta_restraint = guest_spec["restraints"]["guest"][2]["restraint"]
+
+    assert distance_restraint["attach"]["force_constant"] == k_dist
+    assert theta_restraint["attach"]["force_constant"] == k_angle
+    assert beta_restraint["attach"]["force_constant"] == k_angle
+
+    assert distance_restraint["pull"]["force_constant"] == k_dist
+    assert theta_restraint["pull"]["force_constant"] == k_angle
+    assert beta_restraint["pull"]["force_constant"] == k_angle
+
+    assert distance_restraint["attach"]["target"] == r_initial
+    assert distance_restraint["pull"]["target"] == r_final
+
+    assert theta_restraint["attach"]["target"] == angle
+    assert theta_restraint["pull"]["target"] == angle
+    assert beta_restraint["attach"]["target"] == angle
+    assert beta_restraint["pull"]["target"] == angle
+
+    for i, restraint in enumerate(guest_spec["restraints"]["wall_restraints"]):
+        assert restraint["restraint"]["force_constant"] == k_wall
+        if i < 6:
+            assert restraint["restraint"]["target"] == 9.3 * openff_unit.angstrom
+        else:
+            assert restraint["restraint"]["target"] == 11.3 * openff_unit.angstrom
 
 
 def test_evaluator_setup_structure(clean_files):
@@ -119,6 +419,127 @@ def test_evaluator_setup_structure(clean_files):
     assert pytest.approx(host_structure[":DM2"].coordinates[0][2], abs=1e-3) == -3.0
     assert pytest.approx(host_structure[":DM3"].coordinates[0][1], abs=1e-3) == 2.2
     assert pytest.approx(host_structure[":DM3"].coordinates[0][2], abs=1e-3) == -5.2
+
+
+def test_evaluator_setup_restraints(clean_files, complex_file, restraints_schema):
+    complex_file_path = os.path.join(os.path.dirname(__file__), "complex.pdb")
+    complex_file.save(complex_file_path, overwrite=True)
+
+    attach_lambdas = list(np.linspace(0, 1, 15))
+    n_attach = 15
+
+    static_restraints = Setup.build_static_restraints(
+        complex_file_path,
+        n_attach,
+        None,
+        None,
+        restraints_schema["static"],
+        use_amber_indices=False,
+    )
+    assert static_restraints[0].mask1 == ":DM1"
+    assert static_restraints[0].mask2 == ":CB6@O"
+    for k in static_restraints[0].phase["attach"]["force_constants"]:
+        assert k == restraints_schema["static"][0]["force_constant"]
+
+    conformational_restraint = Setup.build_conformational_restraints(
+        complex_file_path,
+        attach_lambdas,
+        None,
+        None,
+        restraints_schema["conformational"],
+        use_amber_indices=False,
+    )
+    assert conformational_restraint[0].mask1 == ":CB6@O"
+    assert conformational_restraint[0].mask2 == ":CB6@O2"
+    assert conformational_restraint[0].mask3 == ":CB6@O4"
+    assert conformational_restraint[0].mask4 == ":CB6@O6"
+    for i, (k, target) in enumerate(
+        zip(
+            conformational_restraint[0].phase["attach"]["force_constants"],
+            conformational_restraint[0].phase["attach"]["targets"],
+        )
+    ):
+        assert (
+            k
+            == attach_lambdas[i]
+            * restraints_schema["conformational"][0]["force_constant"]
+        )
+        assert target == restraints_schema["conformational"][0]["target"]
+
+    symmetry_restraints = Setup.build_symmetry_restraints(
+        complex_file_path,
+        n_attach,
+        restraints_schema["symmetry"],
+        use_amber_indices=False,
+    )
+    assert symmetry_restraints[0].mask1 == ":DM2"
+    assert symmetry_restraints[0].mask2 == ":BUT@C"
+    assert symmetry_restraints[0].mask3 == ":BUT@C3"
+    assert symmetry_restraints[0].custom_restraint_values["r1"] is None
+    assert symmetry_restraints[0].custom_restraint_values["r2"] is None
+    assert (
+        symmetry_restraints[0].custom_restraint_values["r3"]
+        == 0.0 * openff_unit.degrees
+    )
+    assert (
+        symmetry_restraints[0].custom_restraint_values["r4"]
+        == 0.0 * openff_unit.degrees
+    )
+    assert (
+        symmetry_restraints[0].custom_restraint_values["rk2"]
+        == restraints_schema["symmetry"][0]["force_constant"]
+    )
+    assert (
+        symmetry_restraints[0].custom_restraint_values["rk3"]
+        == restraints_schema["symmetry"][0]["force_constant"]
+    )
+
+    wall_restraints = Setup.build_wall_restraints(
+        complex_file_path,
+        n_attach,
+        restraints_schema["wall"],
+        use_amber_indices=False,
+    )
+    assert wall_restraints[0].mask1 == ":CB6@O"
+    assert wall_restraints[0].mask2 == ":BUT@C"
+    assert (
+        wall_restraints[0].custom_restraint_values["r1"] == 0.0 * openff_unit.angstrom
+    )
+    assert (
+        wall_restraints[0].custom_restraint_values["r2"] == 0.0 * openff_unit.angstrom
+    )
+    assert wall_restraints[0].custom_restraint_values["r3"] is None
+    assert wall_restraints[0].custom_restraint_values["r4"] is None
+    assert (
+        wall_restraints[0].custom_restraint_values["rk2"]
+        == restraints_schema["wall"][0]["force_constant"]
+    )
+    assert (
+        wall_restraints[0].custom_restraint_values["rk3"]
+        == restraints_schema["wall"][0]["force_constant"]
+    )
+
+    guest_restraints = Setup.build_guest_restraints(
+        complex_file_path,
+        attach_lambdas,
+        None,
+        restraints_schema["guest"],
+        use_amber_indices=False,
+    )
+    assert guest_restraints[0].mask1 == ":DM1"
+    assert guest_restraints[0].mask2 == ":BUT@C"
+    for i, (k, target) in enumerate(
+        zip(
+            guest_restraints[0].phase["attach"]["force_constants"],
+            guest_restraints[0].phase["attach"]["targets"],
+        )
+    ):
+        assert (
+            k
+            == attach_lambdas[i]
+            * restraints_schema["guest"][0]["attach"]["force_constant"]
+        )
+        assert target == restraints_schema["guest"][0]["attach"]["target"]
 
 
 def test_evaluator_analyze(clean_files):
