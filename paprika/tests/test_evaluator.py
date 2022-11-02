@@ -569,6 +569,13 @@ def test_evaluator_analyze(clean_files):
         np.zeros(3),
     )
 
+    angle = 180 * openff_unit.degrees
+    k_angle = 100 * openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
+    r_initial = 6.0 * openff_unit.angstrom
+    r_final = 24.0 * openff_unit.angstrom
+    k_r = 5.0 * openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+    attach_fractions = [0.00, 0.04, 0.181, 0.496, 1.000]
+
     # Distance restraint
     rest1 = DAT_restraint()
     rest1.continuous_apr = True
@@ -576,12 +583,12 @@ def test_evaluator_analyze(clean_files):
     rest1.topology = host_guest_structure
     rest1.mask1 = ":DM1"
     rest1.mask2 = ":BUT@C"
-    rest1.attach["target"] = 6.0
-    rest1.attach["fraction_list"] = [0.00, 0.04, 0.181, 0.496, 1.000]
-    rest1.attach["fc_final"] = 5.0
+    rest1.attach["target"] = r_initial
+    rest1.attach["fraction_list"] = attach_fractions
+    rest1.attach["fc_final"] = k_r
     rest1.pull["fc"] = rest1.attach["fc_final"]
     rest1.pull["target_initial"] = rest1.attach["target"]
-    rest1.pull["target_final"] = 24.0
+    rest1.pull["target_final"] = r_final
     rest1.pull["num_windows"] = 19
     rest1.initialize()
 
@@ -593,9 +600,9 @@ def test_evaluator_analyze(clean_files):
     rest2.mask1 = ":DM2"
     rest2.mask2 = ":DM1"
     rest2.mask3 = ":BUT@C"
-    rest2.attach["target"] = 180.0
-    rest2.attach["fraction_list"] = [0.00, 0.04, 0.181, 0.496, 1.000]
-    rest2.attach["fc_final"] = 100.0
+    rest2.attach["target"] = angle
+    rest2.attach["fraction_list"] = attach_fractions
+    rest2.attach["fc_final"] = k_angle
     rest2.pull["fc"] = rest2.attach["fc_final"]
     rest2.pull["target_initial"] = rest2.attach["target"]
     rest2.pull["target_final"] = rest2.attach["target"]
@@ -610,17 +617,19 @@ def test_evaluator_analyze(clean_files):
     rest3.mask1 = ":DM1"
     rest3.mask2 = ":BUT@C"
     rest3.mask3 = ":BUT@C3"
-    rest3.attach["target"] = 180.0
-    rest3.attach["fraction_list"] = [0.00, 0.04, 0.181, 0.496, 1.000]
-    rest3.attach["fc_final"] = 100.0
+    rest3.attach["target"] = angle
+    rest3.attach["fraction_list"] = attach_fractions
+    rest3.attach["fc_final"] = k_angle
     rest3.pull["fc"] = rest2.attach["fc_final"]
     rest3.pull["target_initial"] = rest2.attach["target"]
     rest3.pull["target_final"] = rest2.attach["target"]
     rest3.pull["num_windows"] = 19
     rest3.initialize()
 
-    temperature = 298.15
+    temperature = 298.15 * openff_unit.kelvin
     guest_restraints = [rest1, rest2, rest3]
+
+    # Test reference state work
     ref_state_work = Analyze.compute_ref_state_work(temperature, guest_restraints)
     assert (
         pytest.approx(
@@ -629,10 +638,39 @@ def test_evaluator_analyze(clean_files):
         == -7.14151
     )
 
+    # Test symmetry correction
     fe_sym = Analyze.symmetry_correction(n_microstates=1, temperature=298.15)
     assert fe_sym == 0.0
     fe_sym = Analyze.symmetry_correction(n_microstates=2, temperature=298.15)
     assert pytest.approx(fe_sym, abs=1e-3) == -0.410679
+
+    # Test APR phase
+    guest_restraints[0].mask1 = ":CB6@O"
+    guest_restraints[1].mask1 = ":CB6@O2"
+    guest_restraints[1].mask2 = ":CB6@O"
+    guest_restraints[2].mask1 = ":CB6@O"
+    for restraint in guest_restraints:
+        restraint.initialize()
+
+    apr_data_path = os.path.join(os.path.dirname(__file__), "../data/cb6-but-apr/")
+    tmp_path = os.path.join(os.path.dirname(__file__), "tmp")
+    window_list = ["a000", "a001", "a002", "a003"] + [f"p{i:03}" for i in range(19)]
+    for window in window_list:
+        shutil.copytree(f"{apr_data_path}/{window}", f"{tmp_path}/{window}")
+        shutil.copy(f"{apr_data_path}/vac.pdb", f"{tmp_path}/{window}/vac.pdb")
+
+    results = Analyze.compute_phase_free_energy(
+        phase="attach",
+        restraints=guest_restraints,
+        windows_directory=tmp_path,
+        topology_name="vac.pdb",
+        trajectory_mask="*.nc",
+        analysis_method="ti-block",
+    )
+
+    # loose comparison due to short trajectory
+    assert pytest.approx(results["attach"]["ti-block"]["fe"].magnitude, abs=2) == 946
+    assert pytest.approx(results["attach"]["ti-block"]["sem"].magnitude, abs=2) == 10
 
 
 def test_evaluator_gaff(clean_files):
