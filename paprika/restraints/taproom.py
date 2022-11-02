@@ -1,13 +1,14 @@
 import logging
-import re
 
 import yaml
 from openff.units import unit as openff_unit
 
+from paprika.utils import multiple_replace
+
 logger = logging.getLogger(__name__)
 
 
-def read_taproom_yaml(file):
+def read_yaml_schema(file):
     """
     Read `Taproom <https://github.com/slochower/host-guest-benchmarks>`_ -style YAML-formatted instructions for
     preparing host-guest systems.
@@ -39,18 +40,6 @@ def read_taproom_yaml(file):
     convert_string_to_quantity(yaml_data)
 
     return yaml_data
-
-
-def multiple_replace(dct, text):
-    """
-    Create a regular expression to do multiple find and replace.
-    """
-
-    # Create a regular expression from the dictionary keys
-    regex = re.compile("(%s)" % "|".join(map(re.escape, dct.keys())))
-
-    # For each match, look-up corresponding value in dictionary
-    return regex.sub(lambda mo: dct[mo.string[mo.start() : mo.end()]], text)
 
 
 def de_alias(yaml_data):

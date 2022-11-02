@@ -1,5 +1,6 @@
 import logging
 import os as os
+import re
 import shutil
 from datetime import datetime
 from functools import lru_cache
@@ -349,3 +350,15 @@ def check_unit(variable, base_unit):
         raise KeyError("``variable`` should be a float or openff.unit.Quantity.")
 
     return quantity
+
+
+def multiple_replace(dct, text):
+    """
+    Create a regular expression to do multiple find and replace.
+    """
+
+    # Create a regular expression from the dictionary keys
+    regex = re.compile("(%s)" % "|".join(map(re.escape, dct.keys())))
+
+    # For each match, look-up corresponding value in dictionary
+    return regex.sub(lambda mo: dct[mo.string[mo.start() : mo.end()]], text)
