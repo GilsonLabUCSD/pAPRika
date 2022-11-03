@@ -16,8 +16,7 @@ dependencies:
   - pyyaml
   - plumed
   - intermol
-  - pint >=0.19, <0.20
-  - openff-units >=0.1.7
+  - openff-units >=0.2.0
   - openff-utilities
 
   # devtools
