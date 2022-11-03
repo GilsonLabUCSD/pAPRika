@@ -646,7 +646,9 @@ class fe_calc(object):
 
     def prepare_data(self, phase):
         number_of_windows = len(self.simulation_data[phase])
-        data_points = [len(np.asarray(x).T) for x in self.simulation_data[phase]]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            data_points = [len(np.asarray(x).T) for x in self.simulation_data[phase]]
         max_data_points = max(data_points)
         active_restraints = list(
             compress(self.restraint_list, self.changing_restraints[phase])
@@ -728,8 +730,10 @@ class fe_calc(object):
             [force_constants[r][0].units for r in range(len(active_rest))]
         )
 
-        force_constants_T = np.asarray(force_constants).T * force_units
-        targets_T = np.asarray(targets).T * target_units
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            force_constants_T = np.asarray(force_constants).T * force_units
+            targets_T = np.asarray(targets).T * target_units
 
         # Note, the organization of k = coordinate windows, l = potential windows
         # seems to be opposite of the documentation. But I got wrong numbers
@@ -970,8 +974,10 @@ class fe_calc(object):
         # Transpose force_constants and targets into "per window" format, instead of
         # the "per restraint" format.
         # print(targets)
-        force_constants_T = np.asarray(force_constants).T * force_units
-        targets_T = np.asarray(targets).T * target_units
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            force_constants_T = np.asarray(force_constants).T * force_units
+            targets_T = np.asarray(targets).T * target_units
 
         # For each window: do dihedral wrapping, compute forces, append dl_intp
         for k in range(num_win):  # Coordinate windows
