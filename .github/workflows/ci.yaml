@@ -18,15 +18,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [macOS-latest, ubuntu-latest]
-        python-version: [3.8, 3.9]
+        python-version: ["3.8", "3.9", "3.10"]
     env:
       PYVER: ${{ matrix.python-version }}
       PACKAGE: paprika
 
     steps:
-    - uses: actions/checkout@v3.0.2
+    - uses: actions/checkout@v3
 
-    - uses: conda-incubator/setup-miniconda@v2.1.1
+    - uses: conda-incubator/setup-miniconda@v2
       with:
         python-version: ${{ matrix.python-version }}
         environment-file: devtools/conda-envs/test_env.yaml
@@ -65,7 +65,7 @@ jobs:
         pytest $PYTEST_ARGS $PACKAGE
 
     - name: Codecov
-      uses: codecov/codecov-action@v3.1.0
+      uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
         fail_ci_if_error: true
