@@ -230,7 +230,6 @@ class Plumed:
 
         # Loop over APR windows
         for window in self.window_list:
-
             window_number, phase = parse_window(window)
 
             # Check if file exist and write header line

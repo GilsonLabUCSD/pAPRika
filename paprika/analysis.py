@@ -248,7 +248,6 @@ class fe_calc(object):
 
     @ti_matrix.setter
     def ti_matrix(self, value):
-
         if value not in ["full", "diagonal", "endpoints"]:
             raise ValueError(f"{value} is not a supported integration scheme.")
 
@@ -276,7 +275,6 @@ class fe_calc(object):
 
     @fractions.setter
     def fractions(self, value):
-
         for fraction in value:
             if fraction < 0.0 or fraction > 1.0:
                 raise ValueError(
@@ -381,7 +379,6 @@ class fe_calc(object):
         self._temperature_unit = value
 
     def __init__(self):
-
         self._energy_unit = openff_unit.kcal / openff_unit.mole
         self._distance_unit = openff_unit.angstrom
         self._angle_unit = openff_unit.radian
@@ -736,7 +733,6 @@ class fe_calc(object):
         # the other way around.
         for k in range(num_win):  # Coordinate windows
             for l in range(num_win):  # Potential Windows
-
                 for r, rest in enumerate(active_rest):  # Restraints
                     # If this is a dihedral, we need to shift around restraint value
                     # on the periodic axis to make sure the lowest potential is
@@ -975,7 +971,6 @@ class fe_calc(object):
 
         # For each window: do dihedral wrapping, compute forces, append dl_intp
         for k in range(num_win):  # Coordinate windows
-
             # Wrap dihedrals so we get the right potential
             for r, rest in enumerate(active_rest):  # Restraints
                 # If this is a dihedral, we need to shift around restraint value
@@ -1064,7 +1059,6 @@ class fe_calc(object):
         self.results[phase][method]["fraction_sem_matrix"] = {}
 
         for fraction in self.fractions:
-
             logger.debug("Working on fraction ... {}".format(fraction))
 
             # Compute means for this fraction.

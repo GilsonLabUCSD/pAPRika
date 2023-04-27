@@ -238,7 +238,6 @@ class GROMACS(Simulation, abc.ABC):
         self._grompp_maxwarn = value
 
     def __init__(self):
-
         super().__init__()
 
         # I/O
@@ -593,7 +592,6 @@ class GROMACS(Simulation, abc.ABC):
             # create executable list for GROMPP
             # gmx grompp -f npt.mdp -c coordinates.gro -p topology.top -t checkpoint.cpt -o npt.tpr -n index.ndx
             if run_grompp:
-
                 # Clean previously generated files
                 for file in glob.glob(os.path.join(self.path, f"{self.prefix}*")):
                     os.remove(file)

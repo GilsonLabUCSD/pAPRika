@@ -92,7 +92,6 @@ class Colvars(Plumed):
         self._output_freq = value
 
     def __init__(self):
-
         super().__init__()
 
         self._file_name = "colvars.dat"
@@ -119,7 +118,6 @@ class Colvars(Plumed):
 
         # Loop over APR windows
         for window in self.window_list:
-
             window_number, phase = parse_window(window)
 
             # Check if file exist and write header line

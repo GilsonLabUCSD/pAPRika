@@ -227,7 +227,6 @@ class DAT_restraint(object):
     instances = []
 
     def __init__(self):
-
         self._restraint_type = None
 
         self._topology = None

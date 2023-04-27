@@ -131,7 +131,6 @@ class Analyze:
         )
 
         if not distance_restraint or not theta_restraint or not beta_restraint:
-
             raise RuntimeError(
                 "Could not determine the r, θ, or β restraint for computing the "
                 "analytic release step."

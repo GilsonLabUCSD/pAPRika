@@ -67,9 +67,9 @@ def de_alias(yaml_data):
 
     if "symmetry_correction" in yaml_data.keys():
         for restraint in yaml_data["symmetry_correction"]["restraints"]:
-            atoms = restraint["atoms"]
+            atoms = restraint["restraint"]["atoms"]
             mapped_atoms = multiple_replace(mapping_dictionary, atoms)
             logger.info(f"{atoms} → {mapped_atoms}")
-            restraint["atoms"] = mapped_atoms
+            restraint["restraint"]["atoms"] = mapped_atoms
 
     return yaml_data
