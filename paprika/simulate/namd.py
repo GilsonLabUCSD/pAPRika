@@ -261,7 +261,6 @@ class NAMD(Simulation, abc.ABC):
         self._qmForces = value
 
     def __init__(self):
-
         super().__init__()
 
         # I/O

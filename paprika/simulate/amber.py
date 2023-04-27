@@ -237,7 +237,6 @@ class AMBER(Simulation, abc.ABC):
         self._smd = value
 
     def __init__(self):
-
         super().__init__()
 
         # I/O
@@ -563,7 +562,6 @@ class AMBER(Simulation, abc.ABC):
         """
 
         if overwrite or not self.check_complete():
-
             # These settings hardcoded at the moment ... possibly expose for
             # editing in the future
             if soft_minimize:
