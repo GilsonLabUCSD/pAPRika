@@ -5,13 +5,12 @@ pAPRika is a toolkit for setting up, running, and analyzing free energy molecula
 [![Build Status](https://github.com/GilsonLabUCSD/pAPRika/workflows/ci/badge.svg)](https://github.com/GilsonLabUCSD/pAPRika/actions?query=branch%3Amaster+workflow%3Aci)
 [![codecov](https://codecov.io/gh/GilsonLabUCSD/pAPRika/branch/master/graph/badge.svg?token=ZTjfSd3WK2)](https://codecov.io/gh/GilsonLabUCSD/pAPRika)
 [![CodeQL](https://github.com/GilsonLabUCSD/pAPRika/actions/workflows/codeql.yml/badge.svg)](https://github.com/GilsonLabUCSD/pAPRika/actions/workflows/codeql.yml)
-[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/GilsonLabUCSD/pAPRika.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/GilsonLabUCSD/pAPRika/context:python)
 
 [![Last release tag](https://img.shields.io/github/release/GilsonLabUCSD/paprika.svg)](https://github.com/GilsonLabUCSD/paprika/releases)
 [![Commits since release](https://img.shields.io/github/commits-since/GilsonLabUCSD/pAPRika/latest.svg)](https://github.com/GilsonLabUCSD/pAPRika/releases/tag/latest)
 [![Releases](https://img.shields.io/badge/obtain-latest-green.svg)](https://github.com/GilsonLabUCSD/pAPRika/releases) [![Conda](https://img.shields.io/conda/v/conda-forge/paprika.svg)](https://anaconda.org/conda-forge/paprika) [![Last updated](https://anaconda.org/conda-forge/paprika/badges/latest_release_relative_date.svg)](https://anaconda.org/conda-forge/paprika) [![Anaconda Cloud downloads](https://anaconda.org/conda-forge/paprika/badges/downloads.svg)](https://anaconda.org/conda-forge/paprika)
 
-[![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=latest)](https://paprika.readthedocs.io/en/latest/?badge=latest) [![platforms](https://img.shields.io/badge/Platforms-Linux%2C%20MacOS-orange.svg)](https://paprika.readthedocs.io/en/latest/install.html) [![python](https://img.shields.io/badge/python-3.8%2C%203.9-blue.svg)](https://paprika.readthedocs.io/en/latest/install.html) [![License](https://img.shields.io/badge/License-BSD%203--Clause-green.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![Documentation Status](https://readthedocs.org/projects/paprika/badge/?version=latest)](https://paprika.readthedocs.io/en/latest/?badge=latest) [![platforms](https://img.shields.io/badge/Platforms-Linux%2C%20MacOS-orange.svg)](https://paprika.readthedocs.io/en/latest/install.html) [![python](https://img.shields.io/badge/python-3.8%2C%203.9%2C%203.10-blue.svg)](https://paprika.readthedocs.io/en/latest/install.html) [![License](https://img.shields.io/badge/License-BSD%203--Clause-green.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 # Contributors
 - Niel Henriksen (UCSD, Atomwise Inc.)
@@ -26,9 +25,7 @@ We recommend installing pAPRika in a fresh `conda` environment if possible. Ther
 
 1. The latest release on `conda-forge`:
     1. `conda install -c conda-forge paprika`
-    2. To use all features of pAPRika, you must either have [AmberTools](http://ambermd.org/AmberTools.php) in your `$PATH` or separately install AmberTools with `conda install -c conda-forge ambertools=22`.
-    3. To use OpenMM features: `conda install -c conda-forge openmm`.
-    4. To use Plumed restraints: `conda install -c conda-forge plumed`
+    2. To use all features of pAPRika, you must either have [AmberTools](http://ambermd.org/AmberTools.php) in your `$PATH` or separately install AmberTools with `conda install -c conda-forge ambertools`.
 
 2. The master branch on GitHub:
     1. Clone this `git` repository, then inside the `paprika` directory:
@@ -46,7 +43,7 @@ We recommend installing pAPRika in a fresh `conda` environment if possible. Ther
 
 # Example
 
-In this example, we will setup and simulate butane (BUT) as a guest molecule for the host [cucurbit[6]uril](https://en.wikipedia.org/wiki/Cucurbituril) (CB6). CBs are rigid, symmetric, cyclic host molecules with oxygen atoms around the portal edge of the cavity. We will run the simulation in implicit solvent, using the [Generalized-Born](https://en.wikipedia.org/wiki/Implicit_solvation#Generalized_Born) model, for speed and simplicity, using AMBER. This tutorial assumes familiarity with basic MD procedures.
+In this example, we will configure and simulate butane (BUT) as a guest molecule for the host [cucurbit[6]uril](https://en.wikipedia.org/wiki/Cucurbituril) (CB6). CBs are rigid, symmetric, cyclic host molecules with oxygen atoms around the portal edge of the cavity. We will run the simulation in implicit solvent, using the [Generalized-Born](https://en.wikipedia.org/wiki/Implicit_solvation#Generalized_Born) model, for speed and simplicity, using AMBER. This tutorial assumes familiarity with basic MD procedures.
 
 The `cb6-but` folder referred to below are located in the directory `paprika/data`. 
 

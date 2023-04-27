@@ -92,7 +92,6 @@ class Colvars(Plumed):
         self._output_freq = value
 
     def __init__(self):
-
         super().__init__()
 
         self._file_name = "colvars.dat"
@@ -119,7 +118,6 @@ class Colvars(Plumed):
 
         # Loop over APR windows
         for window in self.window_list:
-
             window_number, phase = parse_window(window)
 
             # Check if file exist and write header line
@@ -164,7 +162,7 @@ class Colvars(Plumed):
                 if restraint.restraint_type == "distance":
                     target = target.to(openff_unit.angstrom)
                     force_constant = force_constant.to(
-                        energy_units / openff_unit.angstrom**2
+                        energy_units / openff_unit.angstrom ** 2
                     )
                 elif (
                     restraint.restraint_type == "angle"
@@ -172,7 +170,7 @@ class Colvars(Plumed):
                 ):
                     target = target.to(openff_unit.degrees)
                     force_constant = force_constant.to(
-                        energy_units / openff_unit.degrees**2
+                        energy_units / openff_unit.degrees ** 2
                     )
 
                 # Append cv to list
@@ -348,7 +346,7 @@ class Colvars(Plumed):
         # Check k units
         kpos = check_unit(
             kpos,
-            base_unit=openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2,
+            base_unit=openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2,
         )
 
         # Get dummy atom indices

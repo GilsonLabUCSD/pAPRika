@@ -230,7 +230,6 @@ class Plumed:
 
         # Loop over APR windows
         for window in self.window_list:
-
             window_number, phase = parse_window(window)
 
             # Check if file exist and write header line
@@ -286,7 +285,7 @@ class Plumed:
                 ):
                     target = target.to(openff_unit.radians)
                     force_constant = force_constant.to(
-                        self.output_units["energy"] / openff_unit.radians**2
+                        self.output_units["energy"] / openff_unit.radians ** 2
                     )
 
                 # Append cv strings to lists

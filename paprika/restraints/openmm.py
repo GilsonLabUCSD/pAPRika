@@ -54,7 +54,6 @@ def apply_positional_restraints(
     structure: pmd.Structure = pmd.load_file(coordinate_path, structure=True)
 
     for atom in structure.atoms:
-
         if atom.name == atom_name:
             positional_restraint = openmm.CustomExternalForce(
                 "k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)"
@@ -72,7 +71,7 @@ def apply_positional_restraints(
                 k = (
                     k_pos
                     * openmm_unit.kilocalories_per_mole
-                    / openmm_unit.angstroms**2
+                    / openmm_unit.angstroms ** 2
                 )
             elif isinstance(k_pos, openmm_unit.Quantity):
                 k = k_pos

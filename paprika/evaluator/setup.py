@@ -272,7 +272,6 @@ class Setup:
         n_windows = [n_attach_windows, n_pull_windows, n_release_windows]
 
         for restraint_schema in restraint_schemas:
-
             static = static_DAT_restraint(
                 restraint_mask_list=restraint_schema["atoms"].split(),
                 num_window_list=n_windows,
@@ -340,7 +339,6 @@ class Setup:
         restraints = []
 
         for restraint_schema in restraint_schemas:
-
             mask = restraint_schema["atoms"].split()
 
             restraint = DAT_restraint()
@@ -354,18 +352,15 @@ class Setup:
             restraint.continuous_apr = False
 
             if attach_lambdas:
-
                 restraint.attach["target"] = restraint_schema["target"]
                 restraint.attach["fc_final"] = restraint_schema["force_constant"]
                 restraint.attach["fraction_list"] = attach_lambdas
 
             if n_pull_windows:
-
                 restraint.pull["target_final"] = restraint_schema["target"]
                 restraint.pull["num_windows"] = n_pull_windows
 
             if release_lambdas:
-
                 restraint.auto_apr = False
                 restraint.release["target"] = restraint_schema["target"]
                 restraint.release["fc_final"] = restraint_schema["force_constant"]
@@ -420,7 +415,6 @@ class Setup:
         restraints = []
 
         for restraint_schema in restraint_schemas:
-
             restraint = DAT_restraint()
             restraint.auto_apr = True
             restraint.continuous_apr = False
@@ -591,7 +585,6 @@ class Setup:
         restraints = []
 
         for restraint_schema in restraint_schemas:
-
             mask = restraint_schema["atoms"].split()
 
             guest_restraint = DAT_restraint()
@@ -611,7 +604,6 @@ class Setup:
             guest_restraint.attach["fraction_list"] = attach_lambdas
 
             if n_pull_windows:
-
                 guest_restraint.pull["target_final"] = restraint_schema["pull"][
                     "target"
                 ]

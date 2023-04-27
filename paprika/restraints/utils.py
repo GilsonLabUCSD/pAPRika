@@ -240,7 +240,6 @@ def extract_guest_restraints(
     gamma = None
 
     for restraint in restraints:
-
         mask2_residue_name = structure[restraint.mask2].residues[0].name
 
         # Distance

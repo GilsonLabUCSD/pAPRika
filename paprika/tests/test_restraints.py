@@ -58,7 +58,7 @@ def test_DAT_restraint():
     rest1.initialize()
 
     target_units = openff_unit.angstrom
-    force_constant_units = openff_unit.kcal / openff_unit.mole / target_units**2
+    force_constant_units = openff_unit.kcal / openff_unit.mole / target_units ** 2
     assert rest1.index1 == [13, 31, 49, 67, 85, 103]
     assert rest1.index2 == [119]
     assert rest1.index3 is None
@@ -128,7 +128,7 @@ def test_DAT_restraint():
 
     target_units = openff_unit.degrees
     force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
+        openff_unit.kcal / openff_unit.mole / openff_unit.radians ** 2
     )
     assert rest2.index1 == [13, 31, 49, 67, 85, 103]
     assert rest2.index2 == [119]
@@ -198,7 +198,7 @@ def test_DAT_restraint():
 
     target_units = openff_unit.degrees
     force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
+        openff_unit.kcal / openff_unit.mole / openff_unit.radians ** 2
     )
     assert rest3.index1 == [31]
     assert rest3.index2 == [13]
@@ -270,7 +270,7 @@ def test_DAT_restraint():
 
     target_units = openff_unit.degrees
     force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
+        openff_unit.kcal / openff_unit.mole / openff_unit.radians ** 2
     )
     assert rest4.index1 == [31]
     assert rest4.index2 == [13]
@@ -340,7 +340,7 @@ def test_DAT_restraint():
 
     target_units = openff_unit.angstrom
     force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2
     )
     assert rest5.index1 == [13, 31, 49, 67, 85, 103]
     assert rest5.index2 == [109, 113, 115, 119]
@@ -409,7 +409,7 @@ def test_DAT_restraint():
 
     target_units = openff_unit.angstrom
     force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2
     )
     assert rest6.index1 == [13, 31, 49, 67, 85, 103]
     assert rest6.index2 == [109, 113, 115, 119]
@@ -478,7 +478,7 @@ def test_DAT_restraint():
 
     target_units = openff_unit.angstrom
     force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2
     )
     assert rest7.index1 == [13, 14, 111]
     assert rest7.index2 == [3]
@@ -541,7 +541,7 @@ def test_DAT_restraint():
 
     target_units = openff_unit.angstrom
     force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2
     )
     assert rest8.index1 == [13]
     assert rest8.index2 == [119]
@@ -581,7 +581,7 @@ def test_DAT_restraint():
 
     target_units = openff_unit.angstrom
     force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2
     )
     assert rest9.index1 == [13]
     assert rest9.index2 == [119]
@@ -621,7 +621,7 @@ def test_DAT_restraint():
 
     target_units = openff_unit.angstrom
     force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2
     )
     assert rest10.index1 == [13]
     assert rest10.index2 == [119]
@@ -1263,7 +1263,7 @@ def test_restraints_output_modules(clean_files):
     )
 
     # Create restraints for OpenMM system
-    k_pos = 50.0 * openmm_unit.kilocalories_per_mole / openmm_unit.angstrom**2
+    k_pos = 50.0 * openmm_unit.kilocalories_per_mole / openmm_unit.angstrom ** 2
     apply_positional_restraints(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         system,
@@ -1289,7 +1289,7 @@ def test_restraints_output_modules(clean_files):
     for i, force in enumerate(positional_restraints):
         particle, parameters = force.getParticleParameters(0)
         assert pytest.approx(parameters[0], abs=1e-3) == k_pos.value_in_unit(
-            openmm_unit.kilojoule_per_mole / openmm_unit.nanometer**2
+            openmm_unit.kilojoule_per_mole / openmm_unit.nanometer ** 2
         )
         assert pytest.approx(parameters[1], abs=1e-3) == dummy_atoms[i]["x"] / 10
         assert pytest.approx(parameters[2], abs=1e-3) == dummy_atoms[i]["y"] / 10
@@ -1443,8 +1443,8 @@ def test_openmm_centroid_and_wall(clean_files):
     logger.info("### Testing OpenMM distance centroid selection.")
 
     distance_target = 3.0 * openff_unit.angstrom
-    k_initial = 0.0 * openff_unit.kcal / openff_unit.mol / openff_unit.angstrom**2
-    k_final = 3.0 * openff_unit.kcal / openff_unit.mol / openff_unit.angstrom**2
+    k_initial = 0.0 * openff_unit.kcal / openff_unit.mol / openff_unit.angstrom ** 2
+    k_final = 3.0 * openff_unit.kcal / openff_unit.mol / openff_unit.angstrom ** 2
 
     rest1 = DAT_restraint()
     rest1.amber_index = False
@@ -1482,7 +1482,7 @@ def test_openmm_centroid_and_wall(clean_files):
     assert (
         pytest.approx(params[0], abs=1e-3)
         == k_final.to(
-            openff_unit.kJ / openff_unit.mol / openff_unit.nanometer**2
+            openff_unit.kJ / openff_unit.mol / openff_unit.nanometer ** 2
         ).magnitude
     )
     assert (
@@ -1526,8 +1526,8 @@ def test_openmm_centroid_and_wall(clean_files):
     logger.info("### Testing OpenMM angle centroid selection.")
 
     angle_target = 180.0 * openff_unit.degrees
-    k_initial = 0.0 * openff_unit.kcal / openff_unit.mol / openff_unit.radians**2
-    k_final = 100.0 * openff_unit.kcal / openff_unit.mol / openff_unit.radians**2
+    k_initial = 0.0 * openff_unit.kcal / openff_unit.mol / openff_unit.radians ** 2
+    k_final = 100.0 * openff_unit.kcal / openff_unit.mol / openff_unit.radians ** 2
 
     rest2 = DAT_restraint()
     rest2.amber_index = False
@@ -1567,7 +1567,7 @@ def test_openmm_centroid_and_wall(clean_files):
     assert (
         pytest.approx(params[0], abs=1e-3)
         == k_final.to(
-            openff_unit.kJ / openff_unit.mol / openff_unit.radians**2
+            openff_unit.kJ / openff_unit.mol / openff_unit.radians ** 2
         ).magnitude
     )
     assert (
@@ -1659,7 +1659,7 @@ def test_openmm_centroid_and_wall(clean_files):
     assert (
         pytest.approx(params[0], abs=1e-3)
         == k_final.to(
-            openff_unit.kJ / openff_unit.mol / openff_unit.radians**2
+            openff_unit.kJ / openff_unit.mol / openff_unit.radians ** 2
         ).magnitude
     )
     assert (
