@@ -4,9 +4,10 @@ import numpy as np
 import openmm.unit as openmm_unit
 from openff.units import unit
 from openff.units.openmm import from_openmm
+from scipy import stats as statistics
 from scipy.interpolate import Akima1DInterpolator
 
-from paprika.analysis.utils import summarize_statistics
+from paprika.utils import check_unit
 
 R_gas = from_openmm(
     openmm_unit.AVOGADRO_CONSTANT_NA * openmm_unit.BOLTZMANN_CONSTANT_kB
@@ -79,7 +80,7 @@ def integrate_bootstraps(x, ys, x_intp=None, matrix="full"):
     int_matrix = np.zeros([num_x, num_x, cycles], np.float64)
 
     # Do the integration bootstraps. Originally, I had matrix=endpoints in the loop
-    # below with everthing else, but I'll split it out here in case that's faster
+    # below with everything else, but I'll split it out here in case that's faster
     # due to avoiding the if statements.
     if matrix == "endpoints":
         for cycle in range(cycles):
@@ -153,6 +154,7 @@ def regression_bootstrap(
     -------
     Returns the mean, sem, ci_low, ci_high for [slope, intercept, R, R^2, RMSE, MSE, MUE, Kendall's Tau]
     """
+
     summary_statistics = np.empty((cycles, 8))
 
     # Bootstrapping
@@ -235,8 +237,9 @@ def dG_bootstrap(
     y_data: Union[List, np.array],
     y_sem: Union[List, np.array],
     cycles: int = 1000,
-    temperature: unit.Quantity = 298.15 * unit.kelvin,
+    temperature: Union[float, unit.Quantity] = 298.15 * unit.kelvin,
     with_uncertainty: bool = True,
+    energy_units: unit.Quantity = None,
 ):
     """
     Combine dG when for multiple binding poses. This is from Eq(A12) and Eq(A13) from
@@ -254,18 +257,27 @@ def dG_bootstrap(
         Array of error for y data
     cycles: int
         Number of bootstrap cycles
-    temperature: openff.units.unit.Quantity
+    temperature: float or openff.units.unit.Quantity
         Temperature of the simulation
     with_uncertainty: bool
         If true, generate samples from normal distribution based on mean=data, mu=sem
+    energy_units: unit.Quantity
+        If true, return values as openff.units.unit.Quantity. Default is kcal/mol.
 
     Return
     ------
     results: Dict
         Returns the mean, standard deviation and confidence interval from bootstrapping.
     """
+
+    x_data = check_unit(x_data, base_unit=unit.kilocalorie_per_mole).magnitude
+    x_sem = check_unit(x_sem, base_unit=unit.kilocalorie_per_mole).magnitude
+    y_data = check_unit(y_data, base_unit=unit.kilocalorie_per_mole).magnitude
+    y_sem = check_unit(y_sem, base_unit=unit.kilocalorie_per_mole).magnitude
+    temperature = check_unit(temperature, base_unit=unit.kelvin)
+
     summary_statistics = np.empty((cycles))
-    RT = (R_gas * temperature).to(unit.kcal / unit.mole).magnitude
+    RT = (R_gas * temperature).to(unit.kilocalorie_per_mole).magnitude
     beta = 1.0 / RT
 
     ci = np.empty((2))
@@ -290,11 +302,17 @@ def dG_bootstrap(
         ci[0] = sorted_statistic[int(0.025 * cycles)]
         ci[1] = sorted_statistic[int(0.975 * cycles)]
 
-    return {
+    results = {
         "mean": np.mean(summary_statistics),
         "sem": np.std(summary_statistics),
         "ci": ci,
     }
+
+    if energy_units is not None:
+        for stat in results:
+            results[stat] *= energy_units
+
+    return results
 
 
 def dH_bootstrap(
@@ -309,6 +327,7 @@ def dH_bootstrap(
     cycles=1000,
     temperature=298.15 * unit.kelvin,
     with_uncertainty=True,
+    energy_units: unit.Quantity = None,
 ):
     """
     Combine dH when for multiple binding poses. This is from Eq(A16) and Eq(A17) from
@@ -334,10 +353,12 @@ def dH_bootstrap(
         Array of error for y data
     cycles: int
         Number of bootstrap cycles
-    temperature: openff.units.unit.Quantity
+    temperature: float or openff.units.unit.Quantity
         Temperature of the simulation
     with_uncertainty: bool
         If true, generate samples from normal distribution based on mean=data, mu=sem
+    energy_units: unit.Quantity
+        If true, return values as openff.units.unit.Quantity. Default is kcal/mol.
 
     Return
     ------
@@ -345,8 +366,18 @@ def dH_bootstrap(
         Returns the mean, standard deviation and confidence interval from bootstrapping.
     """
 
+    dH_x_data = check_unit(dH_x_data, base_unit=unit.kilocalorie_per_mole).magnitude
+    dH_x_sem = check_unit(dH_x_sem, base_unit=unit.kilocalorie_per_mole).magnitude
+    dH_y_data = check_unit(dH_y_data, base_unit=unit.kilocalorie_per_mole).magnitude
+    dH_y_sem = check_unit(dH_y_sem, base_unit=unit.kilocalorie_per_mole).magnitude
+    dG_x_data = check_unit(dG_x_data, base_unit=unit.kilocalorie_per_mole).magnitude
+    dG_x_sem = check_unit(dG_x_sem, base_unit=unit.kilocalorie_per_mole).magnitude
+    dG_y_data = check_unit(dG_y_data, base_unit=unit.kilocalorie_per_mole).magnitude
+    dG_y_sem = check_unit(dG_y_sem, base_unit=unit.kilocalorie_per_mole).magnitude
+    temperature = check_unit(temperature, base_unit=unit.kelvin)
+
     summary_statistics = np.empty((cycles))
-    RT = (R_gas * temperature).to(unit.kcal / unit.mole)
+    RT = (R_gas * temperature).to(unit.kcal / unit.mole).magnitude
     beta = 1.0 / RT
 
     ci = np.empty((2))
@@ -386,8 +417,65 @@ def dH_bootstrap(
     ci[0] = sorted_statistic[int(0.025 * cycles)]
     ci[1] = sorted_statistic[int(0.975 * cycles)]
 
-    return {
+    results = {
         "mean": np.mean(summary_statistics),
         "sem": np.std(summary_statistics),
         "ci": ci,
     }
+
+    if energy_units is not None:
+        for stat in results:
+            results[stat] *= energy_units
+
+    return results
+
+
+def summarize_statistics(x, y):
+    """
+    Summarize statistics for linear regression of "y vs x".
+
+    Parameters
+    ----------
+    x: np.array
+        X data
+    y: np.array
+        Y data
+
+    Returns
+    -------
+    summary_statistics: List
+        * slope
+        * intercept
+        * R - Pearson's correlation coefficient
+        * R^2 - coefficient of determination
+        * RMSE - Root-Mean-Squared-Error
+        * MSE - Mean Signed Error
+        * MUE - Mean Unsigned Error or Mean Absolute Error
+        * Tau - Kendall's Tau
+    """
+    summary_statistics = np.empty(8)
+    # Slope, intercept, R - Pearson correlation coefficient
+    (
+        summary_statistics[0],
+        summary_statistics[1],
+        summary_statistics[2],
+        pval,
+        stderr,
+    ) = statistics.linregress(x, y)
+
+    # R^2 - coefficient of determination
+    summary_statistics[3] = summary_statistics[2] ** 2
+
+    # RMSE - Root-Mean-Squared-Error
+    summary_statistics[4] = np.sqrt(np.mean((y - x) ** 2))
+
+    # MSE - Mean Signed Error
+    summary_statistics[5] = np.mean(y - x)
+
+    # MUE - Mean Unsigned Error
+    summary_statistics[6] = np.mean(np.absolute(y - x))
+
+    # Tau - Kendall's Tau
+    summary_statistics[7], prob = statistics.kendalltau(x, y)
+
+    return summary_statistics

@@ -1,9 +1,11 @@
 import base64
 import json
-import logging as log
+import logging
 import os
+import traceback
 
 import numpy as np
+import pytraj as pt
 from openff.units import unit as openff_unit
 from parmed import Structure
 from parmed.amber import AmberParm
@@ -13,58 +15,7 @@ from paprika.restraints import DAT_restraint
 # https://stackoverflow.com/questions/27909658/json-encoder-and-decoder-for-complex-numpy-arrays
 # https://stackoverflow.com/a/24375113/901925
 # https://stackoverflow.com/questions/3488934/simplejson-and-numpy-array/24375113#24375113
-
-
-def serialize_quantity(quantity):
-    """Serializes a `openff.units.unit.Quantity` into a dictionary of the form
-    `{'value': quantity.value_in_unit(quantity.unit), 'unit': quantity.unit}`
-    This copied from openff-evaluator.
-
-    Parameters
-    ----------
-    quantity : openff.units.unit.Quantity
-        The quantity to serialize
-
-    Returns
-    -------
-    dict of str and str
-        A dictionary representation of a `openff.units.unit.Quantity`
-        with keys of {"value", "unit"}
-    """
-
-    value = quantity.magnitude
-    return {
-        "@type": "openff.units.unit.Quantity",
-        "value": value,
-        "unit": str(quantity.units),
-    }
-
-
-def deserialize_quantity(serialized):
-    """Deserialize a `openff.units.unit.Quantity` from a dictionary.
-    This copied from openff-evaluator.
-
-    Parameters
-    ----------
-    serialized : dict of str and str
-        A dictionary representation of a `openff.units.unit.Quantity`
-        which must have keys {"value", "unit"}
-
-    Returns
-    -------
-    openff.units.unit.Quantity
-        The deserialized quantity.
-    """
-
-    if "@type" in serialized:
-        serialized.pop("@type")
-
-    value_unit = openff_unit.dimensionless
-
-    if serialized["unit"] is not None:
-        value_unit = openff_unit(serialized["unit"])
-
-    return serialized["value"] * value_unit
+logger = logging.getLogger(__name__)
 
 
 class PaprikaEncoder(json.JSONEncoder):
@@ -85,10 +36,10 @@ class PaprikaEncoder(json.JSONEncoder):
             Encoded object.
         """
         if isinstance(obj, AmberParm):
-            log.info("Encountered AmberParm, returning name.")
+            logging.info("Encountered AmberParm, returning name.")
             return obj.name
         if isinstance(obj, Structure):
-            log.warning("Encountered Structure, which does not store filename.")
+            logging.warning("Encountered Structure, which does not store filename.")
             return ""
 
         if isinstance(obj, np.ndarray):
@@ -156,6 +107,59 @@ class PaprikaDecoder(json.JSONDecoder):
         return obj
 
 
+def serialize_quantity(quantity):
+    """Serializes a `openff.units.unit.Quantity` into a dictionary of the form
+    `{'value': quantity.value_in_unit(quantity.unit), 'unit': quantity.unit}`
+    This copied from openff-evaluator.
+
+    Parameters
+    ----------
+    quantity : openff.units.unit.Quantity
+        The quantity to serialize
+
+    Returns
+    -------
+    dict of str and str
+        A dictionary representation of a `openff.units.unit.Quantity`
+        with keys of {"value", "unit"}
+    """
+
+    value = quantity.magnitude
+
+    return {
+        "@type": "openff.units.unit.Quantity",
+        "value": value,
+        "unit": str(quantity.units),
+    }
+
+
+def deserialize_quantity(serialized):
+    """Deserialize a `openff.units.unit.Quantity` from a dictionary.
+    This copied from openff-evaluator.
+
+    Parameters
+    ----------
+    serialized : dict of str and str
+        A dictionary representation of a `openff.units.unit.Quantity`
+        which must have keys {"value", "unit"}
+
+    Returns
+    -------
+    openff.units.unit.Quantity
+        The deserialized quantity.
+    """
+
+    if "@type" in serialized:
+        serialized.pop("@type")
+
+    value_unit = openff_unit.dimensionless
+
+    if serialized["unit"] is not None:
+        value_unit = openff_unit(serialized["unit"])
+
+    return serialized["value"] * value_unit
+
+
 def save_restraints(restraint_list, filepath="restraints.json"):
     """Save a list of :class:`paprika.restraints.DAT_restraint` to a JSON file.
 
@@ -166,7 +170,7 @@ def save_restraints(restraint_list, filepath="restraints.json"):
     filepath: os.PathLike
         The name of the JSON file to write to.
     """
-    log.debug("Saving restraint information as JSON.")
+    logging.debug("Saving restraint information as JSON.")
     with open(os.path.join(filepath), "w") as f:
         for restraint in restraint_list:
             dumped = json.dumps(restraint.__dict__, cls=PaprikaEncoder)
@@ -175,7 +179,7 @@ def save_restraints(restraint_list, filepath="restraints.json"):
 
 
 def load_restraints(filepath="restraints.json"):
-    """Load restraints from a JSON file.
+    """Load pAPRika (`DAT_restraint`) restraints from a JSON file.
 
     Parameters
     ----------
@@ -187,7 +191,7 @@ def load_restraints(filepath="restraints.json"):
     restraints: list
         List of :class:`paprika.restraints.DAT_restraint`.
     """
-    log.debug("Loading restraint information from JSON.")
+    logging.debug("Loading restraint information from JSON.")
     with open(os.path.join(filepath), "r") as f:
         json_data = f.read()
 
@@ -225,3 +229,126 @@ def load_restraints(filepath="restraints.json"):
         restraints.append(tmp)
 
     return restraints
+
+
+def load_trajectory(window, trajectory, topology, single_topology=False):
+    """Load a trajectory (or trajectories) and return a pytraj ``trajectory`` object.
+
+    Parameters
+    ----------
+    window: str
+        The simulation window to analyze
+    trajectory: str or list
+        The name or names of the trajectory
+    topology: str or :class:`parmed.Structure`
+        The topology the simulation
+    single_topology: bool
+        Whether a single topology is read for all windows
+
+    Returns
+    -------
+    traj: pytraj.Trajectory
+        The trajectory of stored as a pytraj object.
+    """
+
+    logger.debug("Load trajectories from {}/{}...".format(window, trajectory))
+    if isinstance(trajectory, str):
+        trajectory_path = os.path.join(window, trajectory)
+    elif isinstance(trajectory, list):
+        trajectory_path = [os.path.join(window, i) for i in trajectory]
+        logger.debug("Received list of trajectories: {}".format(trajectory_path))
+    else:
+        raise RuntimeError("Trajectory path should be a `str` or `list`.")
+
+    traj = None
+
+    if isinstance(topology, str) and not single_topology:
+        if not os.path.isfile(os.path.join(window, topology)):
+            raise FileNotFoundError(
+                f"Cannot find `topology` file: {os.path.join(window, topology)}"
+            )
+        logger.debug(f"Loading {os.path.join(window, topology)} and {trajectory_path}")
+        try:
+            traj = pt.iterload(trajectory_path, os.path.join(window, topology))
+        except ValueError as e:
+            formatted_exception = traceback.format_exception(None, e, e.__traceback__)
+            logger.info(
+                f"Failed trying to load {os.path.join(window, topology)} and {trajectory_path}: "
+                f"{formatted_exception}"
+            )
+    elif isinstance(topology, str) and single_topology:
+        traj = pt.iterload(trajectory_path, os.path.join(topology))
+    else:
+        try:
+            traj = pt.iterload(trajectory_path, topology)
+        except BaseException:
+            raise Exception("Tried to load `topology` object directly and failed.")
+
+    logger.debug("Loaded {} frames...".format(traj.n_frames))
+
+    return traj
+
+
+def read_restraint_data(
+    trajectory,
+    restraint,
+    distance_unit=openff_unit.angstrom,
+    angle_unit=openff_unit.degree,
+):
+    """Given a trajectory and restraint, read the restraint and return the DAT values.
+
+    Parameters
+    ----------
+    trajectory: :class:`pytraj.trajectory`
+        A trajectory, probably loaded by load_trajectory
+    restraint: :class:`DAT_restraint`
+        The restraint to analyze
+    distance_unit: openff.unit.Quantity
+        The unit for the returned distance values
+    angle_unit: openff.unit.Quantity
+        The unit for the returned angle values
+
+    Returns
+    -------
+    data: :class:`np.array`
+        The values for this restraint in this window
+    """
+
+    data = None
+
+    if (
+        restraint.mask1
+        and restraint.mask2
+        and not restraint.mask3
+        and not restraint.mask4
+    ):
+        data = openff_unit.Quantity(
+            pt.distance(
+                trajectory, " ".join([restraint.mask1, restraint.mask2]), image=True
+            ),
+            units=openff_unit.angstrom,
+        ).to(distance_unit)
+
+    elif (
+        restraint.mask1 and restraint.mask2 and restraint.mask3 and not restraint.mask4
+    ):
+        data = openff_unit.Quantity(
+            pt.angle(
+                trajectory,
+                " ".join([restraint.mask1, restraint.mask2, restraint.mask3]),
+            ),
+            units=openff_unit.degrees,
+        ).to(angle_unit)
+
+    elif restraint.mask1 and restraint.mask2 and restraint.mask3 and restraint.mask4:
+        data = openff_unit.Quantity(
+            pt.dihedral(
+                trajectory,
+                " ".join(
+                    [restraint.mask1, restraint.mask2, restraint.mask3, restraint.mask4]
+                ),
+            ),
+            units=openff_unit.degrees,
+        ).to(angle_unit)
+
+    return data

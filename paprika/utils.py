@@ -321,14 +321,16 @@ def is_file_and_not_empty(file_path):
 
 def check_unit(variable, base_unit):
     """
-    Run a check if variable is a float or openff_unit.Quantity. If float, assign
-    the unit of ``base_unit``, if openff_unit.Quantity, check the dimensionality.
+    Run a check if variable is a float or openff_unit.Quantity. If float or int,
+    assign the unit of ``base_unit``, if openff_unit.Quantity, check the dimensionality.
 
-    variable: float or openff_unit.Quantity
+    Parameters
+    ----------
+    variable: int or float or openff_unit.Quantity
     base_unit: openff_unit.Quantity
     """
     quantity = variable
-    if isinstance(variable, float):
+    if isinstance(variable, float) or isinstance(variable, int):
         quantity = openff_unit.Quantity(variable, units=base_unit)
     elif isinstance(variable, openff_unit.Quantity):
         assert variable.dimensionality == base_unit.dimensionality

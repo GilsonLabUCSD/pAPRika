@@ -20,10 +20,13 @@ from paprika.analysis.utils import (
     get_block_sem,
     get_nearest_max,
     get_subsampled_indices,
+)
+from paprika.io import (
+    PaprikaDecoder,
+    PaprikaEncoder,
     load_trajectory,
     read_restraint_data,
 )
-from paprika.io import PaprikaDecoder, PaprikaEncoder
 from paprika.utils import check_unit
 
 logger = logging.getLogger(__name__)
@@ -876,8 +879,13 @@ class fe_calc(object):
                         compute_uncertainty=True, uncertainty_method="bootstrap"
                     )
                 except AttributeError:
-                    raise (
-                        "MBAR-Bootstrapping method not available. Only available with PyMBAR >= 4."
+                    logger.warning(
+                        "MBAR with bootstrapping is not available, this feature is only available with PyMBAR >= 4. "
+                        "Reverting to `mbar-autoc` for PyMBAR >=3,<4."
+                    )
+                    mbar = pymbar.MBAR(u_kln_err, frac_N_ss, verbose=verbose)
+                    mbar_results = mbar.getFreeEnergyDifferences(
+                        compute_uncertainty=True, return_dict=True
                     )
             else:
                 mbar = pymbar.MBAR(u_kln_err, frac_N_ss, verbose=verbose)
