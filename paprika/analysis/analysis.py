@@ -1,17 +1,28 @@
 import json
 import logging
 import os
-import traceback
 import warnings
 from itertools import compress
 
 import numpy as np
 import pymbar
-import pytraj as pt
 from openff.units import unit as openff_unit
-from pymbar import timeseries
-from scipy.interpolate import Akima1DInterpolator
 
+try:  # pymbar >= 4
+    from pymbar.timeseries import detect_equilibration
+except ImportError:
+    from pymbar.timeseries import (
+        detectEquilibration as detect_equilibration,
+    )
+
+from paprika.analysis.bootstrap import integrate_bootstraps
+from paprika.analysis.utils import (
+    get_block_sem,
+    get_nearest_max,
+    get_subsampled_indices,
+    load_trajectory,
+    read_restraint_data,
+)
 from paprika.io import PaprikaDecoder, PaprikaEncoder
 from paprika.utils import check_unit
 
@@ -42,7 +53,7 @@ class fe_calc(object):
     @property
     def temperature(self):
         """
-        float or openff.unit.Quantity: The temperature used during the simulation. This will update β (1/kT) as well.
+        float or openff.units.unit.Quantity: The temperature used during the simulation. This will update β (1/kT) as well.
         """
         return self._temperature
 
@@ -787,10 +798,9 @@ class fe_calc(object):
 
         if method == "mbar-autoc" or method == "mbar-boot":
             for k in range(num_win):
-                [t0, g_k[k], Neff_max] = timeseries.detect_equilibration(
+                [t0, g_k[k], Neff_max] = detect_equilibration(
                     N_k[k]
-                )  # compute indices of uncorrelated
-                # timeseries
+                )  # compute indices of uncorrelated using timeseries
 
         # Create subsampled indices and count their lengths. If g=1, ie no correlation,
         # then subsampling will return identical indices to original
@@ -818,14 +828,22 @@ class fe_calc(object):
             frac_N_k = np.array([int(fraction * n) for n in N_k], dtype=np.int32)
 
             mbar = pymbar.MBAR(u_kln, frac_N_k, verbose=verbose)
-            mbar_results = mbar.compute_free_energy_differences(
-                compute_uncertainty=True
-            )
+            try:  # pymbar >= 4
+                mbar_results = mbar.compute_free_energy_differences(
+                    compute_uncertainty=True
+                )
+            except AttributeError:
+                mbar_results = mbar.getFreeEnergyDifferences(
+                    compute_uncertainty=True, return_dict=True
+                )
 
             Deltaf_ij = mbar_results["Delta_f"]
             dDeltaf_ij = mbar_results["dDelta_f"]
 
-            Deltaf_ij_N_eff = mbar.compute_effective_sample_number()
+            try:  # pymbar >= 4
+                Deltaf_ij_N_eff = mbar.compute_effective_sample_number()
+            except AttributeError:
+                Deltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             # Estimate uncertainty from decorrelated samples
             # Create subsampled indices and count their lengths
@@ -847,20 +865,36 @@ class fe_calc(object):
             # But dDeltaf_ij will replace the previous, because it correctly accounts for the
             # correlation in the data.
             if method == "mbar-boot":
-                mbar = pymbar.MBAR(
-                    u_kln_err, frac_N_ss, verbose=verbose, n_bootstraps=self.boot_cycles
-                )
-                mbar_results = mbar.compute_free_energy_differences(
-                    compute_uncertainty=True, uncertainty_method="bootstrap"
-                )
+                try:  # pymbar >= 4
+                    mbar = pymbar.MBAR(
+                        u_kln_err,
+                        frac_N_ss,
+                        verbose=verbose,
+                        n_bootstraps=self.boot_cycles,
+                    )
+                    mbar_results = mbar.compute_free_energy_differences(
+                        compute_uncertainty=True, uncertainty_method="bootstrap"
+                    )
+                except AttributeError:
+                    raise (
+                        "MBAR-Bootstrapping method not available. Only available with PyMBAR >= 4."
+                    )
             else:
                 mbar = pymbar.MBAR(u_kln_err, frac_N_ss, verbose=verbose)
-                mbar_results = mbar.compute_free_energy_differences(
-                    compute_uncertainty=True
-                )
+                try:  # pymbar >= 4
+                    mbar_results = mbar.compute_free_energy_differences(
+                        compute_uncertainty=True
+                    )
+                except AttributeError:
+                    mbar_results = mbar.getFreeEnergyDifferences(
+                        compute_uncertainty=True, return_dict=True
+                    )
 
             dDeltaf_ij = mbar_results["dDelta_f"]
-            dDeltaf_ij_N_eff = mbar.compute_effective_sample_number()
+            try:  # pymbar >= 4
+                dDeltaf_ij_N_eff = mbar.compute_effective_sample_number()
+            except AttributeError:
+                dDeltaf_ij_N_eff = mbar.computeEffectiveSampleNumber()
 
             # Put back into kcal/mol
             Deltaf_ij /= self.beta
@@ -1458,271 +1492,6 @@ class fe_calc(object):
             f.write(dumped)
 
 
-def get_factors(n):
-    """
-    Return a list of integer factors for a number.
-
-    Parameters
-    ----------
-    n: int or float
-        Number to factor
-
-    Returns
-    -------
-    sorted: list
-        A list of sorted factors.
-
-    """
-    factors = []
-    sqrt_n = int(round(np.sqrt(n) + 0.5))
-    i = 1
-    while i <= sqrt_n:
-        if n % i == 0:
-            factors.append(int(i))
-            j = n / i
-            if j != i:
-                factors.append(int(j))
-        i += 1
-    return sorted(factors, key=int)
-
-
-def get_nearest_max(n):
-    """
-    Return the number with the largest number of factors between n − 100 and n.
-
-    Parameters
-    ----------
-    n: int
-        Desired number to factor.
-
-    Returns
-    -------
-    most_factors: int
-        The number with the most factors.
-
-    """
-    max_factors = 0
-    if n % 2 == 0:
-        beg = n - 100
-        end = n
-    else:
-        beg = n - 101
-        end = n - 1
-    if beg < 0:
-        beg = 0
-    for i in range(beg, end + 2, 2):
-        num_factors = len(get_factors(i))
-        if num_factors >= max_factors:
-            max_factors = num_factors
-            most_factors = i
-    return most_factors
-
-
-def get_block_sem(data_array):
-    """
-    Compute the standard error of the mean (SEM) using the blocking method.
-
-    Note
-    ----
-        This is a conservative approach. Here, we report the maximum SEM determined from blocking analysis (cf. the
-        "plateau" on the blocking curve).
-
-    Parameters
-    ----------
-    data_array: :class:`np.array`
-        Array containing data values.
-
-    Returns
-    -------
-    np.max(sems): float
-        The maximum SEM obtained from te blocking curve.
-
-    """
-    # Get the integer factors for the number of data points. These
-    # are equivalent to the block sizes we will check.
-    block_sizes = get_factors(len(data_array))
-
-    # An array to store means for each block ... make it bigger than we need.
-    block_means = np.zeros([block_sizes[-1]], np.float64)
-
-    # Store the SEM for each block size, except the last two size for which
-    # there will only be two or one blocks total and thus very noisy.
-    sems = np.zeros([len(block_sizes) - 2], np.float64)
-
-    # Check each block size except the last two.
-    for size_idx in range(len(block_sizes) - 2):
-        # Check each block, the number of which is conveniently found as
-        # the other number of the factor pair in block_sizes
-        num_blocks = block_sizes[-size_idx - 1]
-        for blk_idx in range(num_blocks):
-            # Find the index for beg and end of data points for each block
-            data_beg_idx = blk_idx * block_sizes[size_idx]
-            data_end_idx = (blk_idx + 1) * block_sizes[size_idx]
-            # Compute the mean of this block and store in array
-            block_means[blk_idx] = np.mean(data_array[data_beg_idx:data_end_idx])
-        # Compute the standard deviation across all blocks, devide by
-        # num_blocks-1 for SEM
-        sems[size_idx] = np.std(block_means[0:num_blocks], ddof=0) / np.sqrt(
-            num_blocks - 1
-        )
-        # Hmm or should ddof=1? I think 0, see Flyvbjerg -----^
-
-    return np.max(sems)
-
-
-def get_subsampled_indices(N, g, conservative=False):
-    """Get the indices of independent (subsampled) frames. This is adapted from the implementation in `pymbar`.
-
-    Parameters
-    ----------
-    N: int
-        The length of the array to be indexed.
-    g: int
-        The statistical inefficiency of the data.
-    conservative: bool, optional, default=False
-        Whether `g` should be rounded up to the nearest integer.
-
-    Returns
-    -------
-    indices: list
-        A list of indices that can be used to pull out de-correlated frames from a time series.
-
-    """
-
-    # g should not be less than 1.0
-    if g < 1.0:
-        g = 1.0
-
-    # if conservative, assume integer g and round up
-    if conservative:
-        g = np.ceil(g)
-
-    # initialize
-    indices = [0]
-    g_idx = 1.0
-    int_step = int(np.round(g_idx * g))
-
-    while int_step < N:
-        indices.append(int_step)
-        g_idx += 1.0
-        int_step = int(np.round(g_idx * g))
-
-    return indices
-
-
-def load_trajectory(window, trajectory, topology, single_topology=False):
-    """Load a trajectory (or trajectories) and return a pytraj ``trajectory`` object.
-
-    Parameters
-    ----------
-    window: str
-        The simulation window to analyze
-    trajectory: str or list
-        The name or names of the trajectory
-    topology: str or :class:`parmed.Structure`
-        The topology the simulation
-    single_topology: bool
-        Whether a single topology is read for all windows
-
-    Returns
-    -------
-    traj: pytraj.trajectory
-        The trajectory of stored as a pytraj object.
-    """
-
-    logger.debug("Load trajectories from {}/{}...".format(window, trajectory))
-    if isinstance(trajectory, str):
-        trajectory_path = os.path.join(window, trajectory)
-    elif isinstance(trajectory, list):
-        trajectory_path = [os.path.join(window, i) for i in trajectory]
-        logger.debug("Received list of trajectories: {}".format(trajectory_path))
-    else:
-        raise RuntimeError("Trajectory path should be a `str` or `list`.")
-
-    if isinstance(topology, str) and not single_topology:
-        if not os.path.isfile(os.path.join(window, topology)):
-            raise FileNotFoundError(
-                f"Cannot find `topology` file: {os.path.join(window, topology)}"
-            )
-        logger.debug(f"Loading {os.path.join(window, topology)} and {trajectory_path}")
-        try:
-            traj = pt.iterload(trajectory_path, os.path.join(window, topology))
-        except ValueError as e:
-            formatted_exception = traceback.format_exception(None, e, e.__traceback__)
-            logger.info(
-                f"Failed trying to load {os.path.join(window, topology)} and {trajectory_path}: "
-                f"{formatted_exception}"
-            )
-    elif isinstance(topology, str) and single_topology:
-        traj = pt.iterload(trajectory_path, os.path.join(topology))
-    else:
-        try:
-            traj = pt.iterload(trajectory_path, topology)
-        except BaseException:
-            raise Exception("Tried to load `topology` object directly and failed.")
-
-    logger.debug("Loaded {} frames...".format(traj.n_frames))
-
-    return traj
-
-
-def read_restraint_data(
-    traj, restraint, distance_unit=openff_unit.angstrom, angle_unit=openff_unit.degree
-):
-    """Given a trajectory and restraint, read the restraint and return the DAT values.
-
-    Parameters
-    ----------
-    traj: :class:`pytraj.trajectory`
-        A trajectory, probably loaded by load_trajectory
-    restraint: :class:`DAT_restraint`
-        The restraint to analyze
-    distance_unit: openff.unit.Quantity
-        The unit for the returned distance values
-    angle_unit: openff.unit.Quantity
-        The unit for the returned angle values
-
-    Returns
-    -------
-    data: :class:`np.array`
-        The values for this restraint in this window
-    """
-
-    if (
-        restraint.mask1
-        and restraint.mask2
-        and not restraint.mask3
-        and not restraint.mask4
-    ):
-        data = openff_unit.Quantity(
-            pt.distance(traj, " ".join([restraint.mask1, restraint.mask2]), image=True),
-            units=openff_unit.angstrom,
-        ).to(distance_unit)
-
-    elif (
-        restraint.mask1 and restraint.mask2 and restraint.mask3 and not restraint.mask4
-    ):
-        data = openff_unit.Quantity(
-            pt.angle(
-                traj, " ".join([restraint.mask1, restraint.mask2, restraint.mask3])
-            ),
-            units=openff_unit.degrees,
-        ).to(angle_unit)
-
-    elif restraint.mask1 and restraint.mask2 and restraint.mask3 and restraint.mask4:
-        data = openff_unit.Quantity(
-            pt.dihedral(
-                traj,
-                " ".join(
-                    [restraint.mask1, restraint.mask2, restraint.mask3, restraint.mask4]
-                ),
-            ),
-            units=openff_unit.degrees,
-        ).to(angle_unit)
-
-    return data
-
-
 def ref_state_work(
     temperature,
     r_fc,
@@ -1774,38 +1543,38 @@ def ref_state_work(
 
     Parameters
     ----------
-    temperature : openff.unit.Quantity
+    temperature : openff.units.unit.Quantity
         The temperature (in Kelvin) at which the reference state calculation will take place.
-    r_fc: openff.unit.Quantity
+    r_fc: openff.units.unit.Quantity
         The distance, :math:`r`, restraint force constant (kcal/mol-Å²).
-    r_tg : openff.unit.Quantity
+    r_tg : openff.units.unit.Quantity
         The distance, :math:`r`, restraint target values (Å). The target range is 0 to infinity.
-    th_fc : openff.unit.Quantity
+    th_fc : openff.units.unit.Quantity
         The angle, :math:`θ`, restraint force constant (kcal/mol-radian²).
-    th_tg : openff.unit.Quantity
+    th_tg : openff.units.unit.Quantity
         The angle, :math:`θ`, restraint target values (radian). The target range is 0 to π.
-    ph_fc : openff.unit.Quantity
+    ph_fc : openff.units.unit.Quantity
         The torsion, :math:`\\phi`, restraint force constant (kcal/mol-radian²).
-    ph_tg : openff.unit.Quantity
+    ph_tg : openff.units.unit.Quantity
         The torsion, :math:`\\phi`, restraint target values (radian). The target range is 0 to 2π.
-    a_fc : openff.unit.Quantity
+    a_fc : openff.units.unit.Quantity
         The torsion, :math:`α`, restraint force constant (kcal/mol-radian²).
-    a_tg: openff.unit.Quantity
+    a_tg: openff.units.unit.Quantity
         The torsion, :math:`α`, restraint target values (radian). The target range is 0 to 2π.
-    b_fc : openff.unit.Quantity
+    b_fc : openff.units.unit.Quantity
         The angle, :math:`β`, restraint force (kcal/mol-radian²).
-    b_tg : openff.unit.Quantity
+    b_tg : openff.units.unit.Quantity
         The angle, :math:`β`, restraint target values (radian). The target range is 0 to π.
-    g_fc: openff.unit.Quantity
+    g_fc: openff.units.unit.Quantity
         The angle, :math:`γ`, restraint force (kcal/mol-radian²).
-    g_tg: openff.unit.Quantity
+    g_tg: openff.units.unit.Quantity
         The angle, :math:`γ`, restraint target values (radian). The target range is 0 to 2π.
-    energy_unit: openff.unit.Quantity
+    energy_unit: openff.units.unit.Quantity
         The unit for the output free energy.
 
     Returns
     -------
-    RT * np.log(trans * orient): openff.unit.Quantity
+    RT * np.log(trans * orient): openff.units.unit.Quantity
         The free energy associated with releasing the restraints (in kcal/mol openff units).
     """
 
@@ -1901,113 +1670,3 @@ def ref_state_work(
 
     # Return the free energy
     return RT * np.log(translational * orientational)
-
-
-def integrate_bootstraps(x, ys, x_intp=None, matrix="full"):
-    """
-    Integrate splines created via bootstrapping.
-
-    Parameters
-    ----------
-    x: :class:`np.array`
-        The x coordinate of the curve to be integrated.
-    ys: :class:`np.array`
-        Two dimensional array in which the first dimension is boot_cycles and the second
-        dimension contains the arrays of y values which correspond to the x values and will
-        be used for integration. The shape of this is :code:`(boot_cycles, len(x))`.
-    x_intp: :class:`np.array`, optional, default=None
-        An array which finely interpolates the x values. If not provided, it will be generated
-        by adding 100 evenly spaced points between each x value. Default: None.
-    matrix: str, optional, default='full`
-        If ``full``, the mean and SEM integration is computed between x values. If ``diagonal``,
-        the mean and SEM integration is computed between the first value and all other values,
-        as well as the neighboring values to each value. If ``endpoints``, the integration
-        is computed between only the first and last x value.
-
-    Returns
-    -------
-    avg_matrix: :class:`np.array`
-        Matrix of the integration mean between each x value (as specified by 'matrix')
-    sem_matrix: :class:`np.array`
-        Matrix of the uncertainty (SEM) between each x value (as specified by 'matrix')
-
-    """
-
-    num_x = len(x)
-
-    # Prepare to store the index location of the x values in the x_intp array
-    x_idxs = np.zeros([num_x], np.int32)
-
-    # If not provided, generate x interpolation with 100 inpolated points between
-    # each x value. Store the index locations of the x values in the x_intp
-    # array.
-    if x_intp is None:
-        x_intp = np.zeros([0], np.float64)
-        for i in range(1, num_x):
-            x_intp = np.append(
-                x_intp, np.linspace(x[i - 1], x[i], num=100, endpoint=False)
-            )
-            x_idxs = len(x_intp)
-        # Tack on the final value onto the interpolation
-        x_intp = np.append(x_intp, x[-1])
-    # If x_intp is provided, find the locations of x values in x_intp
-    else:
-        i = 0
-        for j in range(len(x_intp)):
-            if np.isclose(x[i], x_intp[j]):
-                x_idxs[i] = j
-                i += 1
-        if i != num_x:
-            raise Exception(
-                "One or more x values seem to be missing in the x_intp array,"
-                + " or one of the lists is not monotonically increasing!"
-            )
-
-    cycles = len(ys)
-
-    # Setup array to store integration bootstraps
-    int_matrix = np.zeros([num_x, num_x, cycles], np.float64)
-
-    # Do the integration bootstraps. Originally, I had matrix=endpoints in the loop
-    # below with everthing else, but I'll split it out here in case that's faster
-    # due to avoiding the if statements.
-    if matrix == "endpoints":
-        for cycle in range(cycles):
-            intp_func = Akima1DInterpolator(x, ys[cycle])
-            y_intp = intp_func(x_intp)
-            #            for i in range(0, num_x):
-            #                for j in range(i+1, num_x):
-            #                    int_matrix[i, j, cycle] = np.trapz( y_intp, x_intp )
-            int_matrix[0, num_x - 1, cycle] = np.trapz(y_intp, x_intp)
-    else:
-        for cycle in range(cycles):
-            intp_func = Akima1DInterpolator(x, ys[cycle])
-            y_intp = intp_func(x_intp)
-            for i in range(0, num_x):
-                for j in range(i + 1, num_x):
-                    if matrix == "diagonal" and i != 0 and j - i > 1:
-                        continue
-                    beg = x_idxs[i]
-                    end = x_idxs[j]
-                    int_matrix[i, j, cycle] = np.trapz(y_intp[beg:end], x_intp[beg:end])
-
-    # Setup matrices to store the average/sem values.
-    # Is it bad that the default is 0.0 rather than None?
-    avg_matrix = np.zeros([num_x, num_x], np.float64)
-    sem_matrix = np.zeros([num_x, num_x], np.float64)
-
-    # Second pass to compute the mean and standard deviation.
-    for i in range(0, num_x):
-        for j in range(i + 1, num_x):
-            # If quick_ti_matrix, only populate first row and neighbors in
-            # matrix
-            if matrix == "diagonal" and i != 0 and j - i > 1:
-                continue
-            if matrix == "endpoints" and i != 0 and j != num_x - 1:
-                continue
-            avg_matrix[i, j] = np.mean(int_matrix[i, j])
-            avg_matrix[j, i] = -1.0 * avg_matrix[i, j]
-            sem_matrix[i, j] = np.std(int_matrix[i, j])
-            sem_matrix[j, i] = sem_matrix[i, j]
-
-    return avg_matrix, sem_matrix
