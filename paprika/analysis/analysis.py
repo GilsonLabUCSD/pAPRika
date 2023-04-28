@@ -678,13 +678,13 @@ class fe_calc(object):
             if rest.mask3 is None and rest.mask4 is None:
                 ordered_targets[i] = ordered_targets[i].to(self.distance_unit)
                 ordered_force_constants[i] = ordered_force_constants[i].to(
-                    self.energy_unit / self.distance_unit ** 2
+                    self.energy_unit / self.distance_unit**2
                 )
             # Angles
             elif rest.mask3 is not None or rest.mask4 is not None:
                 ordered_targets[i] = ordered_targets[i].to(self.angle_unit)
                 ordered_force_constants[i] = ordered_force_constants[i].to(
-                    self.energy_unit / self.angle_unit ** 2
+                    self.energy_unit / self.angle_unit**2
                 )
 
         return (
@@ -801,7 +801,7 @@ class fe_calc(object):
                 nearest_max = get_nearest_max(N_k[k])
                 sem = get_block_sem(u_kln[k, l, 0:nearest_max])
                 variance = np.var(u_kln[k, l, 0 : N_k[k]])
-                g_k[k] = N_k[k] * (sem ** 2) / variance
+                g_k[k] = N_k[k] * (sem**2) / variance
 
         if method == "mbar-autoc" or method == "mbar-boot":
             for k in range(num_win):
@@ -1602,10 +1602,10 @@ def ref_state_work(
     # Distance Integration Function
     def dist_int(RT, fc, targ):
         def potential(arange, RT, fc, targ):
-            return (arange ** 2) * np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
+            return (arange**2) * np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
 
         targ = targ.to(distance_unit)
-        fc = fc.to(energy_unit / distance_unit ** 2)
+        fc = fc.to(energy_unit / distance_unit**2)
         arange = (np.arange(0.0, 100.0, 0.0001) * openff_unit.angstrom).to(
             distance_unit
         )
@@ -1618,7 +1618,7 @@ def ref_state_work(
             return np.sin(arange) * np.exp((-1.0 / RT) * fc * (arange - targ) ** 2)
 
         targ = targ.to(angle_unit)
-        fc = fc.to(energy_unit / angle_unit ** 2)
+        fc = fc.to(energy_unit / angle_unit**2)
         arange = (np.arange(0.0, np.pi, 0.00005) * openff_unit.radians).to(angle_unit)
 
         return np.trapz(potential(arange, RT, fc, targ), arange)
@@ -1630,7 +1630,7 @@ def ref_state_work(
 
         # Note, because of periodicity, I'm gonna wrap +/- pi around target for integration.
         targ = targ.to(angle_unit)
-        fc = fc.to(energy_unit / angle_unit ** 2)
+        fc = fc.to(energy_unit / angle_unit**2)
         arange = (
             np.arange(targ.magnitude - np.pi, targ.magnitude + np.pi, 0.00005)
             * openff_unit.radians
@@ -1675,11 +1675,11 @@ def ref_state_work(
         g_int = tors_int(RT, g_fc, g_tg)
 
     # Concentration term
-    V0 = 1660.5392 * openff_unit.angstrom ** 3
+    V0 = 1660.5392 * openff_unit.angstrom**3
     translational = r_int * th_int * ph_int * (1.0 / V0)  # C^o = 1/V^o
 
     # Orientational term
-    rotational_volume = 8.0 * np.pi ** 2
+    rotational_volume = 8.0 * np.pi**2
     orientational = a_int * b_int * g_int / rotational_volume
 
     # Return the free energy

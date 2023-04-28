@@ -578,10 +578,10 @@ class DAT_restraint(object):
         # Set default units (Based on Amber)
         energy_unit = openff_unit.kcal / openff_unit.mole
         target_unit = openff_unit.angstrom
-        force_constant_unit = energy_unit / openff_unit.angstrom ** 2
+        force_constant_unit = energy_unit / openff_unit.angstrom**2
         if self.mask3 or self.mask4:
             target_unit = openff_unit.degrees
-            force_constant_unit = energy_unit / openff_unit.radians ** 2
+            force_constant_unit = energy_unit / openff_unit.radians**2
 
         # Check attach/release units
         for phase in [self._attach, self._release]:
@@ -946,9 +946,9 @@ def static_DAT_restraint(
     force_constant = check_unit(
         force_constant,
         base_unit=(
-            openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2
+            openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
             if len(restraint_mask_list) == 2
-            else openff_unit.kcal / openff_unit.mole / openff_unit.radians ** 2
+            else openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
         ),
     )
 

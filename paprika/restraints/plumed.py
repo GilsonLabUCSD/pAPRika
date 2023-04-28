@@ -285,7 +285,7 @@ class Plumed:
                 ):
                     target = target.to(openff_unit.radians)
                     force_constant = force_constant.to(
-                        self.output_units["energy"] / openff_unit.radians ** 2
+                        self.output_units["energy"] / openff_unit.radians**2
                     )
 
                 # Append cv strings to lists

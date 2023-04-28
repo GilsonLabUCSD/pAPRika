@@ -495,7 +495,6 @@ class Setup:
         restraints = []
 
         for restraint_schema in restraint_schemas:
-
             mask = restraint_schema["atoms"].split()
 
             restraint = DAT_restraint()

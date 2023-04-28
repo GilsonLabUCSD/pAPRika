@@ -185,7 +185,7 @@ def restraints_schema():
                 "force_constant": 5.0
                 * openff_unit.kcal
                 / openff_unit.mol
-                / openff_unit.angstrom ** 2,
+                / openff_unit.angstrom**2,
             }
         ],
         "conformational": [
@@ -194,7 +194,7 @@ def restraints_schema():
                 "force_constant": 6.0
                 * openff_unit.kcal
                 / openff_unit.mol
-                / openff_unit.radians ** 2,
+                / openff_unit.radians**2,
                 "target": 104.3 * openff_unit.degrees,
             }
         ],
@@ -204,7 +204,7 @@ def restraints_schema():
                 "force_constant": 50.0
                 * openff_unit.kcal
                 / openff_unit.mol
-                / openff_unit.radians ** 2,
+                / openff_unit.radians**2,
                 "target": 11.0 * openff_unit.degrees,
             }
         ],
@@ -214,7 +214,7 @@ def restraints_schema():
                 "force_constant": 50.0
                 * openff_unit.kcal
                 / openff_unit.mol
-                / openff_unit.angstrom ** 2,
+                / openff_unit.angstrom**2,
                 "target": 11.0 * openff_unit.angstrom,
             }
         ],
@@ -225,14 +225,14 @@ def restraints_schema():
                     "force_constant": 5.0
                     * openff_unit.kcal
                     / openff_unit.mol
-                    / openff_unit.angstrom ** 2,
+                    / openff_unit.angstrom**2,
                     "target": 6.0 * openff_unit.angstrom,
                 },
                 "pull": {
                     "force_constant": 5.0
                     * openff_unit.kcal
                     / openff_unit.mol
-                    / openff_unit.angstrom ** 2,
+                    / openff_unit.angstrom**2,
                     "target": 24.0 * openff_unit.angstrom,
                 },
             }
@@ -244,9 +244,9 @@ def restraints_schema():
 def test_taproom_yaml(clean_files, yaml_restraint_schema):
     temporary_directory = os.path.join(os.path.dirname(__file__), "tmp")
 
-    k_dist = 5.0 * openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2
-    k_wall = 50.0 * openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2
-    k_angle = 100.0 * openff_unit.kcal / openff_unit.mole / openff_unit.radian ** 2
+    k_dist = 5.0 * openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+    k_wall = 50.0 * openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
+    k_angle = 100.0 * openff_unit.kcal / openff_unit.mole / openff_unit.radian**2
     r_initial = 6.0 * openff_unit.angstrom
     r_final = 24.0 * openff_unit.angstrom
     angle = 180.0 * openff_unit.degrees
@@ -570,10 +570,10 @@ def test_evaluator_analyze(clean_files):
     )
 
     angle = 180 * openff_unit.degrees
-    k_angle = 100 * openff_unit.kcal / openff_unit.mole / openff_unit.radians ** 2
+    k_angle = 100 * openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
     r_initial = 6.0 * openff_unit.angstrom
     r_final = 24.0 * openff_unit.angstrom
-    k_r = 5.0 * openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2
+    k_r = 5.0 * openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
     attach_fractions = [0.00, 0.04, 0.181, 0.496, 1.000]
 
     # Distance restraint

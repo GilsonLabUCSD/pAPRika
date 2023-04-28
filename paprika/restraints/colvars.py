@@ -162,7 +162,7 @@ class Colvars(Plumed):
                 if restraint.restraint_type == "distance":
                     target = target.to(openff_unit.angstrom)
                     force_constant = force_constant.to(
-                        energy_units / openff_unit.angstrom ** 2
+                        energy_units / openff_unit.angstrom**2
                     )
                 elif (
                     restraint.restraint_type == "angle"
@@ -170,7 +170,7 @@ class Colvars(Plumed):
                 ):
                     target = target.to(openff_unit.degrees)
                     force_constant = force_constant.to(
-                        energy_units / openff_unit.degrees ** 2
+                        energy_units / openff_unit.degrees**2
                     )
 
                 # Append cv to list
@@ -346,7 +346,7 @@ class Colvars(Plumed):
         # Check k units
         kpos = check_unit(
             kpos,
-            base_unit=openff_unit.kcal / openff_unit.mole / openff_unit.angstrom ** 2,
+            base_unit=openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2,
         )
 
         # Get dummy atom indices
