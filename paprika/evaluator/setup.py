@@ -6,8 +6,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-import parmed as pmd
-from openff.units import unit as openff_unit
+import parmed
 
 from paprika.build import align
 from paprika.restraints import DAT_restraint, static_DAT_restraint
@@ -25,7 +24,7 @@ class Setup:
     @classmethod
     def prepare_host_structure(
         cls, coordinate_path: str, host_atom_indices: Optional[List[int]] = None
-    ) -> pmd.Structure:
+    ) -> parmed.Structure:
         """Prepares the coordinates of a host molecule ready for the release phase of
         an APR calculation.
         This currently involves aligning the cavity of the host along the z-axis, and
@@ -53,7 +52,7 @@ class Setup:
         """
 
         # noinspection PyTypeChecker
-        structure = pmd.load_file(coordinate_path, structure=True)
+        structure = parmed.load_file(coordinate_path, structure=True)
 
         # Extract the host from the full structure.
         if not host_atom_indices:
@@ -64,7 +63,7 @@ class Setup:
         ]
 
         # noinspection PyTypeChecker
-        center_of_mass: np.ndarray = pmd.geometry.center_of_mass(
+        center_of_mass: np.ndarray = parmed.geometry.center_of_mass(
             host_structure.coordinates, masses=np.ones(len(host_structure.coordinates))
         )
 
@@ -100,7 +99,7 @@ class Setup:
         # have not been changed and dummy atoms not added.
 
         # noinspection PyTypeChecker
-        structure: pmd.Structure = pmd.load_file(coordinate_path, structure=True)
+        structure: parmed.Structure = parmed.load_file(coordinate_path, structure=True)
         structure.coordinates = aligned_structure["!:DM1&!:DM2"].coordinates
 
         return structure
@@ -114,7 +113,7 @@ class Setup:
         pull_distance: float,
         pull_window_index: int,
         n_pull_windows: int,
-    ) -> pmd.Structure:
+    ) -> parmed.Structure:
         """Prepares the coordinates of a host molecule ready for the pull (+ attach)
         phase of an APR calculation.
 
@@ -158,7 +157,7 @@ class Setup:
         # Align the host-guest complex so the first guest atom is at (0, 0, 0) and the
         # second guest atom lies along the positive z-axis.
         # noinspection PyTypeChecker
-        structure: pmd.Structure = pmd.load_file(coordinate_path, structure=True)
+        structure: parmed.Structure = parmed.load_file(coordinate_path, structure=True)
 
         (
             guest_orientation_mask_0,
@@ -181,7 +180,7 @@ class Setup:
 
     @staticmethod
     def add_dummy_atoms_to_structure(
-        structure: pmd.Structure,
+        structure: parmed.Structure,
         dummy_atom_offsets: List[np.ndarray],
         offset_coordinates: Optional[np.ndarray] = None,
     ):
@@ -214,7 +213,7 @@ class Setup:
         )
 
         for index in range(len(dummy_atom_offsets)):
-            structure.add_atom(pmd.Atom(name="DUM"), f"DM{index + 1}", 1)
+            structure.add_atom(parmed.Atom(name="DUM"), f"DM{index + 1}", 1)
 
         structure.positions = full_coordinates
 

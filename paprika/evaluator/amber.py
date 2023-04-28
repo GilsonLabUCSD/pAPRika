@@ -8,7 +8,7 @@ import subprocess
 from typing import Optional
 
 import numpy as np
-import parmed as pmd
+import parmed
 
 logger = logging.getLogger(__name__)
 _PI_ = np.pi
@@ -59,7 +59,7 @@ def generate_gaff(
             "Checking to see if we have a multi-residue MOL2 file that should be converted "
             "to single-residue..."
         )
-        structure = pmd.load_file(
+        structure = parmed.load_file(
             os.path.join(directory_path, f"{output_name}.{gaff_version}.mol2"),
             structure=True,
         )

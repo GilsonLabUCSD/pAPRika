@@ -77,7 +77,7 @@ class Analyze:
     @classmethod
     def compute_ref_state_work(
         cls,
-        temperature: [float, openff_unit.Quantity],
+        temperature: Union[float, openff_unit.Quantity],
         guest_restraints: List[DAT_restraint],
     ) -> openff_unit.Quantity:
         """Computes the reference state work of the 'attach' phase.
