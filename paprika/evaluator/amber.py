@@ -7,11 +7,11 @@ import os
 import subprocess
 from typing import Optional
 
-import numpy as np
+import numpy
 import parmed
 
 logger = logging.getLogger(__name__)
-_PI_ = np.pi
+_PI_ = numpy.pi
 
 
 def generate_gaff(
@@ -129,7 +129,6 @@ def _generate_gaff_atom_types(
         cwd=directory_path,
     )
     p.communicate()
-    print(p)
 
     remove_files = [
         "ANTECHAMBER_AC.AC",

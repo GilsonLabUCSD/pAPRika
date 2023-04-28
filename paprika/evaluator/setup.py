@@ -5,14 +5,14 @@ This class contains a simulation setup wrapper for use with the OpenFF Evaluator
 import logging
 from typing import Any, Dict, List, Optional
 
-import numpy as np
+import numpy
 import parmed
 
 from paprika.build import align
 from paprika.restraints import DAT_restraint, static_DAT_restraint
 
 logger = logging.getLogger(__name__)
-_PI_ = np.pi
+_PI_ = numpy.pi
 
 
 class Setup:
@@ -63,8 +63,9 @@ class Setup:
         ]
 
         # noinspection PyTypeChecker
-        center_of_mass: np.ndarray = parmed.geometry.center_of_mass(
-            host_structure.coordinates, masses=np.ones(len(host_structure.coordinates))
+        center_of_mass: numpy.ndarray = parmed.geometry.center_of_mass(
+            host_structure.coordinates,
+            masses=numpy.ones(len(host_structure.coordinates)),
         )
 
         # Remove the COM from the host coordinates to make alignment easier.
@@ -74,19 +75,21 @@ class Setup:
         # Find the principal components of the host, take the two largest, and find
         # the vector orthogonal to that. Use that vector to align with the z-axis.
         # This may not generalize to non-radially-symmetric host molecules.
-        inertia_tensor = np.dot(
+        inertia_tensor = numpy.dot(
             host_structure.coordinates.transpose(), host_structure.coordinates
         )
 
-        eigenvalues, eigenvectors = np.linalg.eig(inertia_tensor)
-        order = np.argsort(eigenvalues)
+        eigenvalues, eigenvectors = numpy.linalg.eig(inertia_tensor)
+        order = numpy.argsort(eigenvalues)
 
         _, axis_2, axis_1 = eigenvectors[:, order].transpose()
 
-        cavity_axis = np.cross(axis_1, axis_2)
+        cavity_axis = numpy.cross(axis_1, axis_2)
 
         # Add dummy atoms which will be used to align the structure.
-        cls.add_dummy_atoms_to_structure(structure, [np.array([0, 0, 0]), cavity_axis])
+        cls.add_dummy_atoms_to_structure(
+            structure, [numpy.array([0, 0, 0]), cavity_axis]
+        )
 
         # Give atoms uniform mass so that the align code uses the center
         # of geometry rather than the center of mass.
@@ -168,7 +171,7 @@ class Setup:
             structure, guest_orientation_mask_0, guest_orientation_mask_1
         )
 
-        target_distance = np.linspace(0.0, pull_distance, n_pull_windows)[
+        target_distance = numpy.linspace(0.0, pull_distance, n_pull_windows)[
             pull_window_index
         ]
         target_difference = target_distance
@@ -181,8 +184,8 @@ class Setup:
     @staticmethod
     def add_dummy_atoms_to_structure(
         structure: parmed.Structure,
-        dummy_atom_offsets: List[np.ndarray],
-        offset_coordinates: Optional[np.ndarray] = None,
+        dummy_atom_offsets: List[numpy.ndarray],
+        offset_coordinates: Optional[numpy.ndarray] = None,
     ):
         """A convenience method to add a number of dummy atoms to an existing
         ParmEd structure, and to position those atoms at a specified set of positions.
@@ -200,9 +203,9 @@ class Setup:
         """
 
         if offset_coordinates is None:
-            offset_coordinates = np.zeros(3)
+            offset_coordinates = numpy.zeros(3)
 
-        full_coordinates = np.vstack(
+        full_coordinates = numpy.vstack(
             [
                 structure.coordinates,
                 *[

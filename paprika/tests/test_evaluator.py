@@ -5,10 +5,10 @@ import logging
 import os
 import shutil
 
-import numpy as np
-import parmed as pmd
+import numpy
+import parmed
 import pytest
-import pytraj as pt
+import pytraj
 import yaml
 from openff.units import unit as openff_unit
 
@@ -40,7 +40,7 @@ def complex_file():
     complex_pdb = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
 
     butane_molecule = []
-    structure = pmd.load_file(complex_pdb, structure=True)
+    structure = parmed.load_file(complex_pdb, structure=True)
     for atom in structure.topology.atoms():
         if atom.residue.name == "BUT":
             butane_molecule.append(atom.index)
@@ -60,11 +60,11 @@ def complex_file():
     Setup.add_dummy_atoms_to_structure(
         host_guest,
         [
-            np.array([0, 0, 0]),
-            np.array([0, 0, -3.0]),
-            np.array([0, 2.2, -5.2]),
+            numpy.array([0, 0, 0]),
+            numpy.array([0, 0, -3.0]),
+            numpy.array([0, 2.2, -5.2]),
         ],
-        np.zeros(3),
+        numpy.zeros(3),
     )
 
     return host_guest
@@ -338,7 +338,7 @@ def test_evaluator_setup_structure(clean_files):
     # Test prepare_complex_structure
     host_guest_pdb = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     guest_atom_indices = []
-    structure = pmd.load_file(host_guest_pdb, structure=True)
+    structure = parmed.load_file(host_guest_pdb, structure=True)
     for atom in structure.topology.atoms():
         if atom.residue.name == "BUT":
             guest_atom_indices.append(atom.index)
@@ -367,12 +367,14 @@ def test_evaluator_setup_structure(clean_files):
     cG1 = host_guest_structure_final[G1].coordinates[0]
     cG2 = host_guest_structure_final[G2].coordinates[0]
     vec = cG2 - cG1
-    axis = np.array([0, 0, 1])
-    theta = np.arccos(np.dot(vec, axis) / (np.linalg.norm(vec) * np.linalg.norm(axis)))
+    axis = numpy.array([0, 0, 1])
+    theta = numpy.arccos(
+        numpy.dot(vec, axis) / (numpy.linalg.norm(vec) * numpy.linalg.norm(axis))
+    )
     assert theta == 0.0
 
     # Test prepare_host_structure
-    structure = pmd.load_file(host_guest_pdb, structure=True)
+    structure = parmed.load_file(host_guest_pdb, structure=True)
     structure[":CB6"].save(os.path.join(temporary_directory, "cb6.pdb"))
     host_pdb = os.path.join(temporary_directory, "cb6.pdb")
     host_atom_indices = []
@@ -384,17 +386,17 @@ def test_evaluator_setup_structure(clean_files):
         host_pdb,
         host_atom_indices,
     )
-    center_of_mass = pmd.geometry.center_of_mass(
-        host_structure.coordinates, masses=np.ones(len(host_structure.coordinates))
+    center_of_mass = parmed.geometry.center_of_mass(
+        host_structure.coordinates, masses=numpy.ones(len(host_structure.coordinates))
     )
     assert pytest.approx(center_of_mass[0], abs=1e-3) == 0.0
     assert pytest.approx(center_of_mass[1], abs=1e-3) == 0.0
     assert pytest.approx(center_of_mass[2], abs=1e-3) == 0.0
 
-    inertia_tensor = np.dot(
+    inertia_tensor = numpy.dot(
         host_structure.coordinates.transpose(), host_structure.coordinates
     )
-    eig_val, eig_vec = np.linalg.eig(inertia_tensor)
+    eig_val, eig_vec = numpy.linalg.eig(inertia_tensor)
     assert pytest.approx(eig_vec[0, -1], abs=1e-3) == 0.0
     assert pytest.approx(eig_vec[1, -1], abs=1e-3) == 0.0
     assert pytest.approx(eig_vec[2, -1], abs=1e-3) == 1.0
@@ -403,11 +405,11 @@ def test_evaluator_setup_structure(clean_files):
     Setup.add_dummy_atoms_to_structure(
         host_structure,
         [
-            np.array([0, 0, 0]),
-            np.array([0, 0, -3.0]),
-            np.array([0, 2.2, -5.2]),
+            numpy.array([0, 0, 0]),
+            numpy.array([0, 0, -3.0]),
+            numpy.array([0, 2.2, -5.2]),
         ],
-        np.zeros(3),
+        numpy.zeros(3),
     )
     dummy_atoms = []
     for atom in host_structure.topology.atoms():
@@ -425,7 +427,7 @@ def test_evaluator_setup_restraints(clean_files, complex_file, restraints_schema
     complex_file_path = os.path.join(os.path.dirname(__file__), "complex.pdb")
     complex_file.save(complex_file_path, overwrite=True)
 
-    attach_lambdas = list(np.linspace(0, 1, 15))
+    attach_lambdas = list(numpy.linspace(0, 1, 15))
     n_attach = 15
 
     static_restraints = Setup.build_static_restraints(
@@ -544,7 +546,7 @@ def test_evaluator_setup_restraints(clean_files, complex_file, restraints_schema
 
 def test_evaluator_analyze(clean_files):
     input_pdb = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
-    structure = pmd.load_file(input_pdb, structure=True)
+    structure = parmed.load_file(input_pdb, structure=True)
 
     guest_atom_indices = []
     for atom in structure.topology.atoms():
@@ -562,11 +564,11 @@ def test_evaluator_analyze(clean_files):
     Setup.add_dummy_atoms_to_structure(
         host_guest_structure,
         [
-            np.array([0, 0, 0]),
-            np.array([0, 0, -3.0]),
-            np.array([0, 2.2, -5.2]),
+            numpy.array([0, 0, 0]),
+            numpy.array([0, 0, -3.0]),
+            numpy.array([0, 2.2, -5.2]),
         ],
-        np.zeros(3),
+        numpy.zeros(3),
     )
 
     angle = 180 * openff_unit.degrees
@@ -688,7 +690,7 @@ def test_evaluator_gaff(clean_files):
         directory_path=temporary_directory,
     )
 
-    structure = pt.iterload(
+    structure = pytraj.iterload(
         os.path.join(temporary_directory, f"but.{gaff_version}.mol2")
     )
 

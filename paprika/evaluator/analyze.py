@@ -5,7 +5,7 @@ This class contains a simulation analysis wrapper for use with the OpenFF Evalua
 import logging
 from typing import Any, Dict, List, Union
 
-import numpy as np
+import numpy
 from openff.units import unit as openff_unit
 
 from paprika.analysis import fe_calc
@@ -174,4 +174,4 @@ class Analyze:
         k_B = 1.987204118e-3 * openff_unit.kcal / openff_unit.mol / openff_unit.kelvin
         temperature = check_unit(temperature, base_unit=openff_unit.kelvin)
 
-        return -temperature * k_B * np.log(n_microstates)
+        return -temperature * k_B * numpy.log(n_microstates)
