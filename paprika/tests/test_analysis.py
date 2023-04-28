@@ -8,6 +8,7 @@ import pytest
 from pytest import approx
 
 from paprika import analysis, log, restraints
+from paprika.analysis import utils
 
 log.config_root_logger(verbose=True)
 logger = logging.getLogger(__name__)
@@ -290,3 +291,77 @@ def test_temperature(clean_files):
     assert (
         pytest.approx(fecalc.results["ref_state_work"].magnitude, abs=1e-3) == -6.75834
     )
+
+
+def test_bootstrap():
+    """Test the utility modules in `analysis`"""
+
+    # Test regression statistics
+    x = np.linspace(0, 10, 11)
+    y = np.linspace(0, 10, 11)
+    stats = analysis.summarize_statistics(x, y)
+
+    assert all(stats == np.array([1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0]))
+
+    # Test Regression bootstrap
+    x_sem = np.ones_like(x)
+    y_sem = np.ones_like(y)
+
+    np.random.seed(0)
+    results = analysis.regression_bootstrap(x, x_sem, y, y_sem, cycles=1)
+    compare = {
+        "slope": 0.7703030693742714,
+        "intercept": 0.7777706430286471,
+        "R": 0.9184956779750857,
+        "R**2": 0.8436343104589124,
+        "RMSE": 1.637675285465762,
+        "MSE": -0.40918918963339473,
+        "MUE": 1.2814477376354574,
+        "Tau": 0.8545454545454545,
+    }
+
+    for stat in results["mean"]:
+        assert pytest.approx(results["mean"][stat], abs=1e-3) == compare[stat]
+
+    # Test dG Bootstrap
+    np.random.seed(0)
+    results = analysis.dG_bootstrap(-12, 2, -12, 2, cycles=1, with_uncertainty=True)
+    assert pytest.approx(results["mean"], abs=1e-3) == -11.205587976469898
+    assert pytest.approx(results["sem"], abs=1e-3) == 0.0
+    assert pytest.approx(results["ci"][0], abs=1e-3) == -11.20558798
+    assert pytest.approx(results["ci"][1], abs=1e-3) == -11.20558798
+
+    results = analysis.dG_bootstrap(-12, 2, -12, 2, cycles=1, with_uncertainty=False)
+    assert pytest.approx(results["mean"], abs=1e-3) == -0.4106792724182964
+    assert pytest.approx(results["sem"], abs=1e-3) == 0.0
+    assert pytest.approx(results["ci"][0], abs=1e-3) == -0.41067927
+    assert pytest.approx(results["ci"][1], abs=1e-3) == -0.41067927
+
+    # Test dH Bootstrap
+    np.random.seed(0)
+    results = analysis.dH_bootstrap(
+        -15,
+        2,
+        -15,
+        2,
+        -10,
+        2,
+        -10,
+        2,
+        cycles=1,
+        with_uncertainty=True,
+    )
+    assert pytest.approx(results["mean"], abs=1e-3) == -11.50986102184404
+    assert pytest.approx(results["sem"], abs=1e-3) == 0.0
+    assert pytest.approx(results["ci"][0], abs=1e-3) == -11.5098610
+    assert pytest.approx(results["ci"][1], abs=1e-3) == -11.5098610
+
+
+def test_utils():
+    """Test the utility modules in `analysis`"""
+    assert utils.get_factors(10) == [1, 2, 5, 10]
+    assert utils.get_nearest_max(100) == 90
+    np.random.seed(0)
+    results = utils.get_block_sem(np.random.normal(10.0, 2.0, 100))
+    assert pytest.approx(results, abs=1e-3) == 0.3916368835724714
+    assert utils.get_subsampled_indices(10, 2.0) == [0, 2, 4, 6, 8]

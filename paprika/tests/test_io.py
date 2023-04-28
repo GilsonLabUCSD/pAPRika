@@ -6,7 +6,12 @@ import shutil
 
 import pytest
 
-from paprika.io import load_restraints, save_restraints
+from paprika.io import (
+    load_restraints,
+    load_trajectory,
+    read_restraint_data,
+    save_restraints,
+)
 from paprika.restraints import DAT_restraint
 
 
@@ -50,7 +55,7 @@ def test_save_and_load_single_restraint(clean_files):
     assert rest == restraints[0]
 
 
-def test_save_and_load_list_restraint(clean_files):
+def test_save_and_load_list_restraints(clean_files):
     """Test we can save and load a list of restraints"""
     rest1 = DAT_restraint()
     rest1.amber_index = True
@@ -100,3 +105,32 @@ def test_save_and_load_list_restraint(clean_files):
     restraints = load_restraints(os.path.join("tmp", "restraints.json"))
     assert rest1 == restraints[0]
     assert rest2 == restraints[1]
+
+
+def test_load_trajectory_and_restraints():
+    window = os.path.join(os.path.dirname(__file__), "../data/cb6-but-apr/a000")
+    trajectory_name = "md.nc"
+    topology = "../vac.prmtop"
+    trajectory = load_trajectory(
+        window, trajectory_name, topology, single_topology=False
+    )
+    assert trajectory is not None
+
+    restraint = DAT_restraint()
+    restraint.amber_index = True
+    restraint.continuous_apr = False
+    restraint.auto_apr = False
+    restraint.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+    )
+    restraint.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
+    restraint.mask2 = ":BUT@C3"
+    restraint.attach["target"] = 3.0
+    restraint.attach["num_windows"] = 4
+    restraint.attach["fc_initial"] = 0.0
+    restraint.attach["fc_final"] = 3.0
+    restraint.initialize()
+
+    value = read_restraint_data(trajectory, restraint)
+
+    assert value is not None
