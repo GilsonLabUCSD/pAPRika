@@ -4,7 +4,7 @@ Tests the restraints utilities.
 import logging
 import os
 
-import numpy as np
+import numpy
 
 try:
     import openmm
@@ -15,7 +15,7 @@ except ImportError:
     import simtk.openmm.app as app
     import simtk.unit as openmm_unit
 
-import parmed as pmd
+import parmed
 import pytest
 from openff.units import unit as openff_unit
 
@@ -63,29 +63,29 @@ def test_DAT_restraint():
     assert rest1.index2 == [119]
     assert rest1.index3 is None
     assert rest1.index4 is None
-    assert np.allclose(
+    assert numpy.allclose(
         rest1.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 1.0, 2.0, 3.0]),
+        numpy.array([0.0, 1.0, 2.0, 3.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest1.phase["attach"]["targets"].to(target_units).magnitude,
-        np.array([3.0, 3.0, 3.0, 3.0]),
+        numpy.array([3.0, 3.0, 3.0, 3.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest1.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([3.0, 3.0, 3.0, 3.0]),
+        numpy.array([3.0, 3.0, 3.0, 3.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest1.phase["pull"]["targets"].to(target_units).magnitude,
-        np.array([3.0, 4.0, 5.0, 6.0]),
+        numpy.array([3.0, 4.0, 5.0, 6.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest1.phase["release"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 1.0, 2.0, 3.0]),
+        numpy.array([0.0, 1.0, 2.0, 3.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest1.phase["release"]["targets"].to(target_units).magnitude,
-        np.array([6.0, 6.0, 6.0, 6.0]),
+        numpy.array([6.0, 6.0, 6.0, 6.0]),
     )
     window_list = create_window_list([rest1])
     assert window_list == [
@@ -134,29 +134,29 @@ def test_DAT_restraint():
     assert rest2.index2 == [119]
     assert rest2.index3 == [109]
     assert rest2.index4 is None
-    assert np.allclose(
+    assert numpy.allclose(
         rest2.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 25.0, 50.0, 75.0]),
+        numpy.array([0.0, 25.0, 50.0, 75.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest2.phase["attach"]["targets"].to(target_units).magnitude,
-        np.array([180.0, 180.0, 180.0, 180.0]),
+        numpy.array([180.0, 180.0, 180.0, 180.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest2.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([75.0, 75.0, 75.0, 75.0]),
+        numpy.array([75.0, 75.0, 75.0, 75.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest2.phase["pull"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 60.0, 120.0, 180.0]),
+        numpy.array([0.0, 60.0, 120.0, 180.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest2.phase["release"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 25.0, 50.0, 75.0]),
+        numpy.array([0.0, 25.0, 50.0, 75.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest2.phase["release"]["targets"].to(target_units).magnitude,
-        np.array([180.0, 180.0, 180.0, 180.0]),
+        numpy.array([180.0, 180.0, 180.0, 180.0]),
     )
     window_list = create_window_list([rest2])
     assert window_list == [
@@ -204,29 +204,29 @@ def test_DAT_restraint():
     assert rest3.index2 == [13]
     assert rest3.index3 == [119]
     assert rest3.index4 == [109]
-    assert np.allclose(
+    assert numpy.allclose(
         rest3.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 25.0, 50.0, 75.0]),
+        numpy.array([0.0, 25.0, 50.0, 75.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest3.phase["attach"]["targets"].to(target_units).magnitude,
-        np.array([90.0, 90.0, 90.0, 90.0]),
+        numpy.array([90.0, 90.0, 90.0, 90.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest3.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([75.0, 75.0, 75.0, 75.0]),
+        numpy.array([75.0, 75.0, 75.0, 75.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest3.phase["pull"]["targets"].to(target_units).magnitude,
-        np.array([90.0, 91.0, 92.0, 93.0]),
+        numpy.array([90.0, 91.0, 92.0, 93.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest3.phase["release"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 25.0, 50.0, 75.0]),
+        numpy.array([0.0, 25.0, 50.0, 75.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest3.phase["release"]["targets"].to(target_units).magnitude,
-        np.array([93.0, 93.0, 93.0, 93.0]),
+        numpy.array([93.0, 93.0, 93.0, 93.0]),
     )
     window_list = create_window_list([rest3])
     assert window_list == [
@@ -276,29 +276,29 @@ def test_DAT_restraint():
     assert rest4.index2 == [13]
     assert rest4.index3 == [119]
     assert rest4.index4 == [109]
-    assert np.allclose(
+    assert numpy.allclose(
         rest4.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 25.0, 50.0, 75.0]),
+        numpy.array([0.0, 25.0, 50.0, 75.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest4.phase["attach"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 0.0, 0.0, 0.0]),
+        numpy.array([0.0, 0.0, 0.0, 0.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest4.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([75.0, 75.0, 75.0, 75.0]),
+        numpy.array([75.0, 75.0, 75.0, 75.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest4.phase["pull"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 1.0, 2.0, 3.0]),
+        numpy.array([0.0, 1.0, 2.0, 3.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest4.phase["release"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 25.0, 50.0, 75.0]),
+        numpy.array([0.0, 25.0, 50.0, 75.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest4.phase["release"]["targets"].to(target_units).magnitude,
-        np.array([3.0, 3.0, 3.0, 3.0]),
+        numpy.array([3.0, 3.0, 3.0, 3.0]),
     )
     window_list = create_window_list([rest4])
     assert window_list == [
@@ -346,29 +346,29 @@ def test_DAT_restraint():
     assert rest5.index2 == [109, 113, 115, 119]
     assert rest5.index3 is None
     assert rest5.index4 is None
-    assert np.allclose(
+    assert numpy.allclose(
         rest5.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 1.0, 2.5, 5.0]),
+        numpy.array([0.0, 1.0, 2.5, 5.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest5.phase["attach"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 0.0, 0.0, 0.0]),
+        numpy.array([0.0, 0.0, 0.0, 0.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest5.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([5.0, 5.0, 5.0]),
+        numpy.array([5.0, 5.0, 5.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest5.phase["pull"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 0.5, 1.0]),
+        numpy.array([0.0, 0.5, 1.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest5.phase["release"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 1.5, 3.0, 5.0]),
+        numpy.array([0.0, 1.5, 3.0, 5.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest5.phase["release"]["targets"].to(target_units).magnitude,
-        np.array([1.0, 1.0, 1.0, 1.0]),
+        numpy.array([1.0, 1.0, 1.0, 1.0]),
     )
     window_list = create_window_list([rest5])
     assert window_list == [
@@ -415,30 +415,29 @@ def test_DAT_restraint():
     assert rest6.index2 == [109, 113, 115, 119]
     assert rest6.index3 is None
     assert rest6.index4 is None
-    assert np.allclose(
+    assert numpy.allclose(
         rest6.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 1.25, 2.5, 3.75, 5.0]),
+        numpy.array([0.0, 1.25, 2.5, 3.75, 5.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest6.phase["attach"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
+        numpy.array([0.0, 0.0, 0.0, 0.0, 0.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest6.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([5.0, 5.0, 5.0]),
+        numpy.array([5.0, 5.0, 5.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest6.phase["pull"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 0.5, 1.0]),
+        numpy.array([0.0, 0.5, 1.0]),
     )
-    ### Note, the 6.6 in the following test is wrong ... needs to get fixed.
-    assert np.allclose(
+    assert numpy.allclose(
         rest6.phase["release"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 1.65, 3.3, 4.95, 6.6]),
+        numpy.array([0.0, 1.65, 3.3, 5.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest6.phase["release"]["targets"].to(target_units).magnitude,
-        np.array([1.0, 1.0, 1.0, 1.0, 1.0]),
+        numpy.array([1.0, 1.0, 1.0, 1.0]),
     )
     window_list = create_window_list([rest6])
     assert window_list == [
@@ -454,7 +453,6 @@ def test_DAT_restraint():
         "r001",
         "r002",
         "r003",
-        "r004",
     ]
 
     # Method 5 (Note continuous_apr = True)
@@ -484,29 +482,29 @@ def test_DAT_restraint():
     assert rest7.index2 == [3]
     assert rest7.index3 is None
     assert rest7.index4 is None
-    assert np.allclose(
+    assert numpy.allclose(
         rest7.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 0.5, 1.0, 2.0]),
+        numpy.array([0.0, 0.5, 1.0, 2.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest7.phase["attach"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 0.0, 0.0, 0.0]),
+        numpy.array([0.0, 0.0, 0.0, 0.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest7.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([2.0, 2.0, 2.0, 2.0]),
+        numpy.array([2.0, 2.0, 2.0, 2.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest7.phase["pull"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 0.5, 1.0, 1.5]),
+        numpy.array([0.0, 0.5, 1.0, 1.5]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest7.phase["release"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 0.66, 1.2, 2.0]),
+        numpy.array([0.0, 0.66, 1.2, 2.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest7.phase["release"]["targets"].to(target_units).magnitude,
-        np.array([1.5, 1.5, 1.5, 1.5]),
+        numpy.array([1.5, 1.5, 1.5, 1.5]),
     )
     window_list = create_window_list([rest7])
     assert window_list == [
@@ -547,13 +545,13 @@ def test_DAT_restraint():
     assert rest8.index2 == [119]
     assert rest8.index3 is None
     assert rest8.index4 is None
-    assert np.allclose(
+    assert numpy.allclose(
         rest8.phase["attach"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 1.0, 2.0, 3.0]),
+        numpy.array([0.0, 1.0, 2.0, 3.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest8.phase["attach"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 0.0, 0.0, 0.0]),
+        numpy.array([0.0, 0.0, 0.0, 0.0]),
     )
     assert rest8.phase["pull"]["force_constants"] is None
     assert rest8.phase["pull"]["targets"] is None
@@ -589,13 +587,13 @@ def test_DAT_restraint():
     assert rest9.index4 is None
     assert rest9.phase["attach"]["force_constants"] is None
     assert rest9.phase["attach"]["targets"] is None
-    assert np.allclose(
+    assert numpy.allclose(
         rest9.phase["pull"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([3.0, 3.0, 3.0, 3.0]),
+        numpy.array([3.0, 3.0, 3.0, 3.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest9.phase["pull"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 1.0, 2.0, 3.0]),
+        numpy.array([0.0, 1.0, 2.0, 3.0]),
     )
     assert rest9.phase["release"]["force_constants"] is None
     assert rest9.phase["release"]["targets"] is None
@@ -631,13 +629,13 @@ def test_DAT_restraint():
     assert rest10.phase["attach"]["targets"] is None
     assert rest10.phase["pull"]["force_constants"] is None
     assert rest10.phase["pull"]["targets"] is None
-    assert np.allclose(
+    assert numpy.allclose(
         rest10.phase["release"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 1.0, 2.0]),
+        numpy.array([0.0, 1.0, 2.0]),
     )
-    assert np.allclose(
+    assert numpy.allclose(
         rest10.phase["release"]["targets"].to(target_units).magnitude,
-        np.array([0.0, 0.0, 0.0]),
+        numpy.array([0.0, 0.0, 0.0]),
     )
     window_list = create_window_list([rest10])
     assert window_list == ["r000", "r001", "r002"]
@@ -653,9 +651,9 @@ def test_DAT_restraint():
 
 def test_get_restraint_values():
     # Test Harmonic restraint
-    attach_fractions = np.linspace(0, 1.0, 25)
+    attach_fractions = numpy.linspace(0, 1.0, 25)
     initial_distance = 2.65
-    pull_distances = np.linspace(0 + initial_distance, 16.0 + initial_distance, 40)
+    pull_distances = numpy.linspace(0 + initial_distance, 16.0 + initial_distance, 40)
 
     restraint = DAT_restraint()
     restraint.continuous_apr = True
@@ -751,9 +749,9 @@ def test_get_restraint_values():
 
 def test_get_bias_potential_type():
     # Test Harmonic restraint
-    attach_fractions = np.linspace(0, 1.0, 25)
+    attach_fractions = numpy.linspace(0, 1.0, 25)
     initial_distance = 2.65
-    pull_distances = np.linspace(0 + initial_distance, 16.0 + initial_distance, 40)
+    pull_distances = numpy.linspace(0 + initial_distance, 16.0 + initial_distance, 40)
 
     restraint = DAT_restraint()
     restraint.continuous_apr = True
@@ -1002,7 +1000,7 @@ def test_extract_guest_restraints():
     r.initialize()
     restraints.append(r)
 
-    structure = pmd.load_file(
+    structure = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         structure=True,
     )
@@ -1168,7 +1166,7 @@ def test_restraints_output_modules(clean_files):
     )
 
     # Add Dummy atoms
-    structure = pmd.load_file(prmtop_path, inpcrd_path, structure=True)
+    structure = parmed.load_file(prmtop_path, inpcrd_path, structure=True)
 
     dummy_atoms = {
         0: {"resname": "DM1", "x": 0.0, "y": 0.0, "z": -6.0},
@@ -1302,11 +1300,11 @@ def test_restraints_output_modules(clean_files):
 
     atom1, atom2, atom3, parameters = DAT_restraint_list[1].getAngleParameters(0)
     assert pytest.approx(parameters[0]) == 418.4
-    assert pytest.approx(parameters[1]) == np.pi
+    assert pytest.approx(parameters[1]) == numpy.pi
 
     atom1, atom2, atom3, parameters = DAT_restraint_list[2].getAngleParameters(0)
     assert pytest.approx(parameters[0]) == 418.4
-    assert pytest.approx(parameters[1]) == np.pi
+    assert pytest.approx(parameters[1]) == numpy.pi
 
     # Test Amber restraints
     r_string = amber_restraint_line(guest_restraints[0], window)
@@ -1646,7 +1644,7 @@ def test_openmm_centroid_and_wall(clean_files):
     assert dihedral_force.getNumGroups() == 4
     assert dihedral_force.getNumPerBondParameters() == 2
 
-    _PI_ = np.pi
+    _PI_ = numpy.pi
     dihedral_energy_expression = (
         f"k_torsion * min(min(abs(theta - theta_0), abs(theta - theta_0 + "
         f"2 * {_PI_})), abs(theta - theta_0 - 2 * {_PI_}))^2;"
