@@ -431,14 +431,13 @@ def test_DAT_restraint():
         rest6.phase["pull"]["targets"].to(target_units).magnitude,
         np.array([0.0, 0.5, 1.0]),
     )
-    ### Note, the 6.6 in the following test is wrong ... needs to get fixed.
     assert np.allclose(
         rest6.phase["release"]["force_constants"].to(force_constant_units).magnitude,
-        np.array([0.0, 1.65, 3.3, 4.95, 6.6]),
+        np.array([0.0, 1.65, 3.3, 5.0]),
     )
     assert np.allclose(
         rest6.phase["release"]["targets"].to(target_units).magnitude,
-        np.array([1.0, 1.0, 1.0, 1.0, 1.0]),
+        np.array([1.0, 1.0, 1.0, 1.0]),
     )
     window_list = create_window_list([rest6])
     assert window_list == [
@@ -454,7 +453,6 @@ def test_DAT_restraint():
         "r001",
         "r002",
         "r003",
-        "r004",
     ]
 
     # Method 5 (Note continuous_apr = True)

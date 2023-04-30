@@ -418,6 +418,14 @@ class DAT_restraint(object):
                 1.0 + restraint_dictionary["fraction_increment"],
                 restraint_dictionary["fraction_increment"],
             )
+            # Delete if last element is greater than 1.0
+            if fractions[-1] > 1.0:
+                fractions = np.delete(fractions, -1)
+
+            # Round up last element if it does not equal to 1.0
+            if not np.isclose(fractions[-1], 1.0):
+                fractions[-1] = 1.0
+
             units = restraint_dictionary["fc_final"].units
             force_constants = np.asarray(
                 [
