@@ -1,8 +1,8 @@
 import logging
 
-import numpy as np
-import parmed as pmd
-import pytraj as pt
+import numpy
+import parmed
+import pytraj
 from openff.units import unit as openff_unit
 
 from paprika import utils
@@ -300,7 +300,7 @@ class DAT_restraint(object):
             # Skip checking topology.
             # It is difficult to check topology for two reasons.
             # One, there are numerical variances in the numeric parameters.
-            # We can use `np.allcose()` but it needs to be done manually on the
+            # We can use `numpy.allcose()` but it needs to be done manually on the
             # nested ParmEd AmberParm or Structure classes.
             # Two, sometimes the dummy atoms seem to be encoded with index `-1`.
             # This can happen if the structure used to setup the restraint
@@ -325,7 +325,7 @@ class DAT_restraint(object):
                         ):
                             continue
                         else:
-                            assert np.allclose(
+                            assert numpy.allclose(
                                 self_dictionary["phase"][phs][value],
                                 other_dictionary["phase"][phs][value],
                             )
@@ -360,7 +360,7 @@ class DAT_restraint(object):
 
         # Attach/Release, Force Constant Method 1
         if phase in ("a", "r") and method == "1":
-            force_constants = np.linspace(
+            force_constants = numpy.linspace(
                 restraint_dictionary["fc_initial"],
                 restraint_dictionary["fc_final"],
                 restraint_dictionary["num_windows"],
@@ -368,7 +368,7 @@ class DAT_restraint(object):
 
         # Attach/Release, Force Constant Method 1a
         elif phase in ("a", "r") and method == "1a":
-            force_constants = np.linspace(
+            force_constants = numpy.linspace(
                 0.0,
                 restraint_dictionary["fc_final"],
                 restraint_dictionary["num_windows"],
@@ -378,7 +378,7 @@ class DAT_restraint(object):
         elif phase in ("a", "r") and method == "2":
             units = restraint_dictionary["fc_initial"].units
             force_constants = (
-                np.arange(
+                numpy.arange(
                     restraint_dictionary["fc_initial"].magnitude,
                     restraint_dictionary["fc_final"].magnitude
                     + restraint_dictionary["fc_increment"].magnitude,
@@ -391,7 +391,7 @@ class DAT_restraint(object):
         elif phase in ("a", "r") and method == "2a":
             units = restraint_dictionary["fc_final"].units
             force_constants = (
-                np.arange(
+                numpy.arange(
                     0.0,
                     restraint_dictionary["fc_final"].magnitude
                     + restraint_dictionary["fc_increment"].magnitude,
@@ -403,7 +403,7 @@ class DAT_restraint(object):
         # Attach/Release, Force Constant Method 3
         elif phase in ("a", "r") and method == "3":
             units = restraint_dictionary["fc_final"].units
-            force_constants = np.asarray(
+            force_constants = numpy.asarray(
                 [
                     fraction * restraint_dictionary["fc_final"].magnitude
                     for fraction in restraint_dictionary["fraction_list"]
@@ -413,13 +413,21 @@ class DAT_restraint(object):
 
         # Attach/Release, Force Constant Method 4
         elif phase in ("a", "r") and method == "4":
-            fractions = np.arange(
+            fractions = numpy.arange(
                 0,
                 1.0 + restraint_dictionary["fraction_increment"],
                 restraint_dictionary["fraction_increment"],
             )
+            # Delete if last element is greater than 1.0
+            if fractions[-1] > 1.0:
+                fractions = numpy.delete(fractions, -1)
+
+            # Round up last element if it does not equal to 1.0
+            if not numpy.isclose(fractions[-1], 1.0):
+                fractions[-1] = 1.0
+
             units = restraint_dictionary["fc_final"].units
-            force_constants = np.asarray(
+            force_constants = numpy.asarray(
                 [
                     fraction * restraint_dictionary["fc_final"].magnitude
                     for fraction in fractions
@@ -430,7 +438,7 @@ class DAT_restraint(object):
         # Attach/Release, Force Constant Method 5
         elif phase in ("a", "r") and method == "5":
             units = restraint_dictionary["fc_list"][0].units
-            force_constants = np.asarray(
+            force_constants = numpy.asarray(
                 [x.magnitude for x in restraint_dictionary["fc_list"]]
             )
             force_constants *= units
@@ -439,7 +447,7 @@ class DAT_restraint(object):
         if phase in ("a", "r"):
             units = restraint_dictionary["target"].units
             targets = (
-                np.asarray(
+                numpy.asarray(
                     [restraint_dictionary["target"].magnitude] * len(force_constants)
                 )
                 * units
@@ -447,7 +455,7 @@ class DAT_restraint(object):
 
         # Pull, Target Method 1
         if phase == "p" and method == "1":
-            targets = np.linspace(
+            targets = numpy.linspace(
                 restraint_dictionary["target_initial"],
                 restraint_dictionary["target_final"],
                 restraint_dictionary["num_windows"],
@@ -455,7 +463,7 @@ class DAT_restraint(object):
 
         # Pull, Target Method 1a
         elif phase == "p" and method == "1a":
-            targets = np.linspace(
+            targets = numpy.linspace(
                 0.0,
                 restraint_dictionary["target_final"],
                 restraint_dictionary["num_windows"],
@@ -465,7 +473,7 @@ class DAT_restraint(object):
         elif phase == "p" and method == "2":
             units = restraint_dictionary["target_initial"].units
             targets = (
-                np.arange(
+                numpy.arange(
                     restraint_dictionary["target_initial"].magnitude,
                     (
                         restraint_dictionary["target_final"]
@@ -480,7 +488,7 @@ class DAT_restraint(object):
         elif phase == "p" and method == "2a":
             units = restraint_dictionary["target_final"].units
             targets = (
-                np.arange(
+                numpy.arange(
                     0.0,
                     restraint_dictionary["target_final"].magnitude
                     + restraint_dictionary["target_increment"].magnitude,
@@ -493,7 +501,7 @@ class DAT_restraint(object):
         elif phase == "p" and method == "3":
             units = restraint_dictionary["target_final"].units
             targets = (
-                np.asarray(
+                numpy.asarray(
                     [
                         fraction * restraint_dictionary["target_final"].magnitude
                         for fraction in restraint_dictionary["fraction_list"]
@@ -504,14 +512,14 @@ class DAT_restraint(object):
 
         # Pull, Target Method 4
         elif phase == "p" and method == "4":
-            fractions = np.arange(
+            fractions = numpy.arange(
                 0,
                 1.0 + restraint_dictionary["fraction_increment"],
                 restraint_dictionary["fraction_increment"],
             )
             units = restraint_dictionary["target_final"].units
             targets = (
-                np.asarray(
+                numpy.asarray(
                     [
                         fraction * restraint_dictionary["target_final"].magnitude
                         for fraction in fractions
@@ -524,7 +532,9 @@ class DAT_restraint(object):
         elif phase == "p" and method == "5":
             units = restraint_dictionary["target_list"][0].units
             targets = (
-                np.asarray([x.magnitude for x in restraint_dictionary["target_list"]])
+                numpy.asarray(
+                    [x.magnitude for x in restraint_dictionary["target_list"]]
+                )
                 * units
             )
 
@@ -532,7 +542,7 @@ class DAT_restraint(object):
         if phase == "p":
             units = restraint_dictionary["fc"].units
             force_constants = (
-                np.asarray([restraint_dictionary["fc"].magnitude] * len(targets))
+                numpy.asarray([restraint_dictionary["fc"].magnitude] * len(targets))
                 * units
             )
 
@@ -897,7 +907,7 @@ def static_DAT_restraint(
         pull windows, release windows].
     ref_structure: os.PathLike or :class:`parmed.Structure`
         The reference structure that is used to determine the initial, **static** value for this restraint.
-    force_constant: float or openff.unit.Quantity
+    force_constant: float or openff.units.unit.Quantity
         The force constant for this restraint. If float, the number will be transformed to kcal/mol/[Angstrom,radians].
     continuous_apr: bool, optional
         Whether this restraint uses ``continuous_apr``. This must be consistent with existing restraints.
@@ -922,12 +932,14 @@ def static_DAT_restraint(
     rest.continuous_apr = continuous_apr
     rest.amber_index = amber_index
 
-    if isinstance(ref_structure, pmd.amber._amberparm.AmberParm):
-        reference_trajectory = pt.load_parmed(ref_structure, traj=True)
+    # Amber format
+    if isinstance(ref_structure, parmed.amber._amberparm.AmberParm):
+        reference_trajectory = pytraj.load_parmed(ref_structure, traj=True)
         rest.topology = ref_structure
+    # String
     elif isinstance(ref_structure, str):
-        reference_trajectory = pt.iterload(ref_structure, traj=True)
-        rest.topology = pmd.load_file(ref_structure, structure=True)
+        reference_trajectory = pytraj.iterload(ref_structure, traj=True)
+        rest.topology = parmed.load_file(ref_structure, structure=True)
     else:
         raise TypeError(
             "static_DAT_restraint does not support the type associated with ref_structure:"
@@ -942,7 +954,7 @@ def static_DAT_restraint(
     if len(restraint_mask_list) == 4:
         rest.mask4 = restraint_mask_list[3]
 
-    # Force constant - convert to openff.unit.Quantity
+    # Force constant - convert to openff.units.unit.Quantity
     force_constant = check_unit(
         force_constant,
         base_unit=(
@@ -953,31 +965,41 @@ def static_DAT_restraint(
     )
 
     # Target value
+    rest_type = "distance"
     mask_string = " ".join(restraint_mask_list)
     if len(restraint_mask_list) == 2:
         # Distance restraint
         if reference_trajectory.top.has_box():
-            target = pt.distance(reference_trajectory, mask_string, image=True)[0]
+            target = pytraj.distance(reference_trajectory, mask_string, image=True)[0]
             logger.debug("Calculating distance with 'image = True' ...")
         else:
-            target = pt.distance(reference_trajectory, mask_string, image=False)[0]
+            target = pytraj.distance(reference_trajectory, mask_string, image=False)[0]
             logger.debug("Calculating distance with 'image = False' ...")
         target = openff_unit.Quantity(target, units=openff_unit.angstrom)
 
     elif len(restraint_mask_list) == 3:
         # Angle restraint
-        target = pt.angle(reference_trajectory, mask_string)[0]
+        target = pytraj.angle(reference_trajectory, mask_string)[0]
         target = openff_unit.Quantity(target, units=openff_unit.degrees)
+
+        rest_type = "angle"
 
     elif len(restraint_mask_list) == 4:
         # Dihedral restraint
-        target = pt.dihedral(reference_trajectory, mask_string)[0]
+        target = pytraj.dihedral(reference_trajectory, mask_string)[0]
         target = openff_unit.Quantity(target, units=openff_unit.degrees)
+
+        rest_type = "dihedral"
 
     else:
         raise IndexError(
             f"The number of masks -- {len(restraint_mask_list)} -- is not 2, 3, or 4 and thus is not one of the "
             f"supported types: distance, angle, or dihedral."
+        )
+
+    if numpy.isnan(target):
+        raise ValueError(
+            f"Target for {rest_type} restraint is a NaN. Check topology file."
         )
 
     # Attach phase
@@ -1040,7 +1062,7 @@ def check_restraints(restraint_list, create_window_list=False):
                 win_counts.append(len(restraint.phase[phase]["targets"]))
             else:
                 win_counts.append(0)
-        max_count = np.max(win_counts)
+        max_count = numpy.max(win_counts)
 
         if max_count > 999:
             logger.info("Window name zero padding only applied up to 999.")
@@ -1058,27 +1080,27 @@ def check_restraints(restraint_list, create_window_list=False):
                 if phase == "attach" and all_continuous_apr:
                     window_list += [
                         phase[0] + str("{:03.0f}".format(val))
-                        for val in np.arange(0, max_count - 1, 1)
+                        for val in numpy.arange(0, max_count - 1, 1)
                     ]
                 elif phase == "attach" and not all_continuous_apr:
                     window_list += [
                         phase[0] + str("{:03.0f}".format(val))
-                        for val in np.arange(0, max_count, 1)
+                        for val in numpy.arange(0, max_count, 1)
                     ]
                 elif phase == "pull":
                     window_list += [
                         phase[0] + str("{:03.0f}".format(val))
-                        for val in np.arange(0, max_count, 1)
+                        for val in numpy.arange(0, max_count, 1)
                     ]
                 elif phase == "release" and all_continuous_apr:
                     window_list += [
                         phase[0] + str("{:03.0f}".format(val))
-                        for val in np.arange(1, max_count, 1)
+                        for val in numpy.arange(1, max_count, 1)
                     ]
                 elif phase == "release" and not all_continuous_apr:
                     window_list += [
                         phase[0] + str("{:03.0f}".format(val))
-                        for val in np.arange(0, max_count, 1)
+                        for val in numpy.arange(0, max_count, 1)
                     ]
         else:
             logger.error(
