@@ -28,6 +28,10 @@ def test_mkdirs():
     for window in window_list:
         assert os.path.exists(os.path.join("tmp", "windows", window))
 
+    make_window_dirs(window_list, stash_existing=True, path="tmp")
+    for window in window_list:
+        assert os.path.exists(os.path.join("tmp", "windows", window))
+
 
 def test_strip_prmtop():
     """Test that we can remove items from structures."""

@@ -432,23 +432,6 @@ class fe_calc(object):
         self.orders = self.determine_window_order()
         self.simulation_data = self.read_trajectories(single_topology=single_topology)
 
-    def collect_data_from_json(self, filepath):
-        """
-        Read in simulation data from a JSON file.
-
-        Parameters
-        ----------
-        filepath: os.PathLike
-            The name of the JSON file.
-        """
-        with open(filepath, "r") as f:
-            json_data = f.read()
-            data = json.loads(json_data, cls=PaprikaDecoder)
-
-        self.changing_restraints = data["changing_restraints"]
-        self.orders = data["orders"]
-        self.simulation_data = data["simulation_data"]
-
     def identify_changing_restraints(self):
         """Figure out which restraints change during each phase of the calculation.
 
@@ -1089,7 +1072,7 @@ class fe_calc(object):
             g[k] = N_k[k] / dU_Nunc[k]
 
             # Create the interpolation by appending 100 points between each window.
-            # Start with k=1 so we don't double count.
+            # Start with k=1, so we don't double count.
             if k > 0:
                 dl_intp = np.append(
                     dl_intp,
@@ -1118,12 +1101,12 @@ class fe_calc(object):
             # rather than estimating it from the standard deviation (dU_stdv) and number of
             # uncorrelated data points (dU_Nunc) from the total data set.
             if method == "ti-block" and self.exact_sem_each_ti_fraction:
-                frac_dU_sems = np.zero([k], np.float64)
+                frac_dU_sems = np.zeros([num_win], np.float64)
                 for k in range(num_win):
                     nearest_max = get_nearest_max(int(fraction * N_k[k]))
                     frac_dU_sems[k] = get_block_sem(dU[k, 0:nearest_max])
             elif method == "ti-nocor" and self.exact_sem_each_ti_fraction:
-                frac_dU_sems = np.zero([k], np.float64)
+                frac_dU_sems = np.zeros([num_win], np.float64)
                 for k in range(num_win):
                     frac_dU_sems[k] = np.std(
                         dU[k, 0 : int(fraction * N_k[k])]
@@ -1257,7 +1240,7 @@ class fe_calc(object):
                     or method == "mbar-boot"
                 ):
                     self.run_mbar(phase, prepared_data, method)
-                elif method == "ti-block":
+                elif method == "ti-block" or method == "ti-nocor":
                     self.run_ti(phase, prepared_data, method)
                 else:
                     raise NotImplementedError(
@@ -1465,8 +1448,7 @@ class fe_calc(object):
             dumped = json.dumps(self.results, cls=PaprikaEncoder)
             f.write(dumped)
 
-    @staticmethod
-    def load_results(filepath):
+    def load_results(self, filepath):
         """
         Read in a JSON file for the results.
 
@@ -1478,9 +1460,11 @@ class fe_calc(object):
         with open(filepath, "r") as f:
             data = f.read()
 
-        return json.loads(data, cls=PaprikaDecoder)
+        self.results = json.loads(data, cls=PaprikaDecoder)
 
-    def save_data(self, filepath="simulation_data.json", overwrite=False):
+    def save_simulation_data_to_json(
+        self, filepath="simulation_data.json", overwrite=False
+    ):
         """
         Save the simulation data (DAT values) to a JSON file.
 
@@ -1504,6 +1488,23 @@ class fe_calc(object):
                 cls=PaprikaEncoder,
             )
             f.write(dumped)
+
+    def load_simulation_data_from_json(self, filepath):
+        """
+        Read in simulation data from a JSON file.
+
+        Parameters
+        ----------
+        filepath: os.PathLike
+            The name of the JSON file.
+        """
+        with open(filepath, "r") as f:
+            json_data = f.read()
+            data = json.loads(json_data, cls=PaprikaDecoder)
+
+        self.changing_restraints = data["changing_restraints"]
+        self.orders = data["orders"]
+        self.simulation_data = data["simulation_data"]
 
 
 def ref_state_work(

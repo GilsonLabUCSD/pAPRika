@@ -393,6 +393,17 @@ def test_evaluator_setup_structure(clean_files):
     assert pytest.approx(center_of_mass[1], abs=1e-3) == 0.0
     assert pytest.approx(center_of_mass[2], abs=1e-3) == 0.0
 
+    host_structure = Setup.prepare_host_structure(
+        host_pdb,
+        host_atom_indices=None,
+    )
+    center_of_mass = parmed.geometry.center_of_mass(
+        host_structure.coordinates, masses=numpy.ones(len(host_structure.coordinates))
+    )
+    assert pytest.approx(center_of_mass[0], abs=1e-3) == 0.0
+    assert pytest.approx(center_of_mass[1], abs=1e-3) == 0.0
+    assert pytest.approx(center_of_mass[2], abs=1e-3) == 0.0
+
     inertia_tensor = numpy.dot(
         host_structure.coordinates.transpose(), host_structure.coordinates
     )
@@ -429,12 +440,14 @@ def test_evaluator_setup_restraints(clean_files, complex_file, restraints_schema
 
     attach_lambdas = list(numpy.linspace(0, 1, 15))
     n_attach = 15
+    n_pull = 46
+    n_release = 15
 
     static_restraints = Setup.build_static_restraints(
         complex_file_path,
         n_attach,
-        None,
-        None,
+        n_pull,
+        n_release,
         restraints_schema["static"],
         use_amber_indices=False,
     )
@@ -545,6 +558,9 @@ def test_evaluator_setup_restraints(clean_files, complex_file, restraints_schema
 
 
 def test_evaluator_analyze(clean_files):
+    # ---------------------------------------------------------------- #
+    # Configure system and restraints
+    # ---------------------------------------------------------------- #
     input_pdb = os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     structure = parmed.load_file(input_pdb, structure=True)
 
@@ -628,25 +644,58 @@ def test_evaluator_analyze(clean_files):
     rest3.pull["num_windows"] = 19
     rest3.initialize()
 
+    # Angle 2
+    rest4 = DAT_restraint()
+    rest4.continuous_apr = True
+    rest4.amber_index = True
+    rest4.topology = input_pdb
+    rest4.mask1 = ":DM1"
+    rest4.mask2 = ":BUT@C"
+    rest4.mask3 = ":BUT@C2"
+    rest4.mask4 = ":BUT@C3"
+    rest4.attach["target"] = angle
+    rest4.attach["fraction_list"] = attach_fractions
+    rest4.attach["fc_final"] = k_angle
+    rest4.pull["fc"] = rest2.attach["fc_final"]
+    rest4.pull["target_initial"] = rest2.attach["target"]
+    rest4.pull["target_final"] = rest2.attach["target"]
+    rest4.pull["num_windows"] = 19
+    rest4.initialize()
+
     temperature = 298.15 * openff_unit.kelvin
     guest_restraints = [rest1, rest2, rest3]
 
+    # ---------------------------------------------------------------- #
     # Test reference state work
-    ref_state_work = Analyze.compute_ref_state_work(temperature, guest_restraints)
+    # ---------------------------------------------------------------- #
+    ref_state_work = Analyze.compute_ref_state_work(temperature, [rest1, rest2, rest3])
     assert (
         pytest.approx(
             ref_state_work.to(openff_unit.kcal / openff_unit.mole).magnitude, abs=1e-3
         )
         == -7.14151
     )
+    ref_state_work = Analyze.compute_ref_state_work(
+        temperature, [rest1, rest2, rest3, rest4]
+    )
+    assert (
+        pytest.approx(
+            ref_state_work.to(openff_unit.kcal / openff_unit.mole).magnitude, abs=1e-3
+        )
+        == -9.41062
+    )
 
+    # ---------------------------------------------------------------- #
     # Test symmetry correction
+    # ---------------------------------------------------------------- #
     fe_sym = Analyze.symmetry_correction(n_microstates=1, temperature=298.15)
     assert fe_sym == 0.0
     fe_sym = Analyze.symmetry_correction(n_microstates=2, temperature=298.15)
     assert pytest.approx(fe_sym, abs=1e-3) == -0.410679
 
+    # ---------------------------------------------------------------- #
     # Test APR phase
+    # ---------------------------------------------------------------- #
     guest_restraints[0].mask1 = ":CB6@O"
     guest_restraints[1].mask1 = ":CB6@O2"
     guest_restraints[1].mask2 = ":CB6@O"
