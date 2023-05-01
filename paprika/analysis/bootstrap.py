@@ -2,7 +2,7 @@ from typing import Dict, List, Union
 
 import numpy
 import openmm.unit as openmm_unit
-from openff.units import unit
+from openff.units import unit as openff_unit
 from openff.units.openmm import from_openmm
 from scipy import stats as statistics
 from scipy.interpolate import Akima1DInterpolator
@@ -239,9 +239,9 @@ def dG_bootstrap(
     y_data: Union[List, numpy.array],
     y_sem: Union[List, numpy.array],
     cycles: int = 1000,
-    temperature: Union[float, unit.Quantity] = 298.15 * unit.kelvin,
+    temperature: Union[float, openff_unit.Quantity] = 298.15 * openff_unit.kelvin,
     with_uncertainty: bool = True,
-    energy_units: unit.Quantity = None,
+    energy_units: openff_unit.Quantity = None,
 ):
     """
     Combine dG when for multiple binding poses. This is from Eq(A12) and Eq(A13) from
@@ -263,7 +263,7 @@ def dG_bootstrap(
         Temperature of the simulation
     with_uncertainty: bool
         If true, generate samples from normal distribution based on mean=data, mu=sem
-    energy_units: unit.Quantity
+    energy_units: openff.units.unit.Quantity
         If true, return values as openff.units.unit.Quantity. Default is kcal/mol.
 
     Return
@@ -272,14 +272,14 @@ def dG_bootstrap(
         Returns the mean, standard deviation and confidence interval from bootstrapping.
     """
 
-    x_data = check_unit(x_data, base_unit=unit.kilocalorie_per_mole).magnitude
-    x_sem = check_unit(x_sem, base_unit=unit.kilocalorie_per_mole).magnitude
-    y_data = check_unit(y_data, base_unit=unit.kilocalorie_per_mole).magnitude
-    y_sem = check_unit(y_sem, base_unit=unit.kilocalorie_per_mole).magnitude
-    temperature = check_unit(temperature, base_unit=unit.kelvin)
+    x_data = check_unit(x_data, base_unit=openff_unit.kilocalorie_per_mole).magnitude
+    x_sem = check_unit(x_sem, base_unit=openff_unit.kilocalorie_per_mole).magnitude
+    y_data = check_unit(y_data, base_unit=openff_unit.kilocalorie_per_mole).magnitude
+    y_sem = check_unit(y_sem, base_unit=openff_unit.kilocalorie_per_mole).magnitude
+    temperature = check_unit(temperature, base_unit=openff_unit.kelvin)
 
     summary_statistics = numpy.empty((cycles))
-    RT = (R_gas * temperature).to(unit.kilocalorie_per_mole).magnitude
+    RT = (R_gas * temperature).to(openff_unit.kilocalorie_per_mole).magnitude
     beta = 1.0 / RT
 
     ci = numpy.empty((2))
@@ -327,9 +327,9 @@ def dH_bootstrap(
     dG_y_data,
     dG_y_sem,
     cycles=1000,
-    temperature=298.15 * unit.kelvin,
+    temperature=298.15 * openff_unit.kelvin,
     with_uncertainty=True,
-    energy_units: unit.Quantity = None,
+    energy_units: openff_unit.Quantity = None,
 ):
     """
     Combine dH when for multiple binding poses. This is from Eq(A16) and Eq(A17) from
@@ -359,7 +359,7 @@ def dH_bootstrap(
         Temperature of the simulation
     with_uncertainty: bool
         If true, generate samples from normal distribution based on mean=data, mu=sem
-    energy_units: unit.Quantity
+    energy_units: openff.units.unit.Quantity
         If true, return values as openff.units.unit.Quantity. Default is kcal/mol.
 
     Return
@@ -368,18 +368,34 @@ def dH_bootstrap(
         Returns the mean, standard deviation and confidence interval from bootstrapping.
     """
 
-    dH_x_data = check_unit(dH_x_data, base_unit=unit.kilocalorie_per_mole).magnitude
-    dH_x_sem = check_unit(dH_x_sem, base_unit=unit.kilocalorie_per_mole).magnitude
-    dH_y_data = check_unit(dH_y_data, base_unit=unit.kilocalorie_per_mole).magnitude
-    dH_y_sem = check_unit(dH_y_sem, base_unit=unit.kilocalorie_per_mole).magnitude
-    dG_x_data = check_unit(dG_x_data, base_unit=unit.kilocalorie_per_mole).magnitude
-    dG_x_sem = check_unit(dG_x_sem, base_unit=unit.kilocalorie_per_mole).magnitude
-    dG_y_data = check_unit(dG_y_data, base_unit=unit.kilocalorie_per_mole).magnitude
-    dG_y_sem = check_unit(dG_y_sem, base_unit=unit.kilocalorie_per_mole).magnitude
-    temperature = check_unit(temperature, base_unit=unit.kelvin)
+    dH_x_data = check_unit(
+        dH_x_data, base_unit=openff_unit.kilocalorie_per_mole
+    ).magnitude
+    dH_x_sem = check_unit(
+        dH_x_sem, base_unit=openff_unit.kilocalorie_per_mole
+    ).magnitude
+    dH_y_data = check_unit(
+        dH_y_data, base_unit=openff_unit.kilocalorie_per_mole
+    ).magnitude
+    dH_y_sem = check_unit(
+        dH_y_sem, base_unit=openff_unit.kilocalorie_per_mole
+    ).magnitude
+    dG_x_data = check_unit(
+        dG_x_data, base_unit=openff_unit.kilocalorie_per_mole
+    ).magnitude
+    dG_x_sem = check_unit(
+        dG_x_sem, base_unit=openff_unit.kilocalorie_per_mole
+    ).magnitude
+    dG_y_data = check_unit(
+        dG_y_data, base_unit=openff_unit.kilocalorie_per_mole
+    ).magnitude
+    dG_y_sem = check_unit(
+        dG_y_sem, base_unit=openff_unit.kilocalorie_per_mole
+    ).magnitude
+    temperature = check_unit(temperature, base_unit=openff_unit.kelvin)
 
     summary_statistics = numpy.empty((cycles))
-    RT = (R_gas * temperature).to(unit.kcal / unit.mole).magnitude
+    RT = (R_gas * temperature).to(openff_unit.kcal / openff_unit.mole).magnitude
     beta = 1.0 / RT
 
     ci = numpy.empty((2))
