@@ -1,7 +1,7 @@
 import logging
 import os
 
-import numpy as np
+import numpy
 from openff.units import unit as openff_unit
 from parmed.structure import Structure as ParmedStructureClass
 
@@ -11,7 +11,7 @@ from paprika.utils import get_key, return_parmed_structure
 
 logger = logging.getLogger(__name__)
 
-_PI_ = np.pi
+_PI_ = numpy.pi
 
 _plumed_unit_dict = {
     openff_unit.kcal / openff_unit.mole: "kcal/mol",

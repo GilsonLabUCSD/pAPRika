@@ -3,8 +3,8 @@ import os
 import shutil
 from copy import deepcopy
 
-import numpy as np
-import parmed as pmd
+import numpy
+import parmed
 import pytest
 from openff.units import unit as openff_unit
 from pytest import approx
@@ -28,12 +28,12 @@ def clean_files(directory="tmp"):
     os.makedirs(directory)
     yield
     # This happens after the test function call
-    # shutil.rmtree(directory)
+    shutil.rmtree(directory)
 
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_free_energy_calculation():
-    input_pdb = pmd.load_file(
+    input_pdb = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     )
 
@@ -99,7 +99,6 @@ def setup_free_energy_calculation():
     fecalc.trajectory = "*.nc"
     fecalc.path = os.path.join(os.path.dirname(__file__), "../data/cb6-but-apr/")
     fecalc.restraint_list = [rest1, rest2, rest3]
-    # fecalc.methods = ["ti-block", "mbar-block", "mbar-autoc", "mbar-boot"]
     fecalc.boot_cycles = 100
     fecalc.ti_matrix = "diagonal"
     fecalc.compute_largest_neighbor = True
@@ -112,7 +111,6 @@ def setup_free_energy_calculation():
     fecalc.angle_unit = openff_unit.degrees
     fecalc.temperature_unit = openff_unit.kelvin
     fecalc.collect_data(single_topology=True)
-    # fecalc.compute_free_energy(seed=seed)
     fecalc.compute_ref_state_work([rest1, rest2, rest3, None, None, None])
 
     return fecalc
@@ -157,48 +155,36 @@ def test_setup(clean_files, setup_free_energy_calculation):
 def test_mbar_block(clean_files, setup_free_energy_calculation):
     method = "mbar-block"
 
+    # Estimate FE with `mbar-block`
     setup_free_energy_calculation.methods = [method]
     setup_free_energy_calculation.compute_free_energy(seed=random_seed)
     results = setup_free_energy_calculation.results
 
-    # Test mbar-block free energies and uncertainties
+    # Test `mbar-block` free energies and uncertainties
     test_vals = [
         results["attach"][method]["fe"].magnitude,
         results["attach"][method]["sem"].magnitude,
         results["pull"][method]["fe"].magnitude,
         results["pull"][method]["sem"].magnitude,
     ]
-    reference_values = [13.267731176, 0.16892084090, -2.1791430735, 0.93638948302]
+    reference_values = [13.2677, 0.1689, -2.1791, 0.9364]
     assert reference_values == approx(test_vals, abs=0.01)
 
-    # Test attach mbar-block largest_neighbor values
+    # Test attach `mbar-block` largest_neighbor values
     test_vals = results["attach"][method]["largest_neighbor"].magnitude
-    reference_values = np.array([0.0198918, 0.0451676, 0.0564517, 0.1079282, 0.1079282])
+    reference_values = numpy.array([0.0199, 0.0452, 0.0565, 0.1079, 0.1079])
     assert reference_values == approx(test_vals, abs=0.01)
 
-    # Test pull mbar-block largest_neighbor values
+    # Test pull `mbar-block` largest_neighbor values
     test_vals = results["pull"][method]["largest_neighbor"].magnitude
-    reference_values = np.array(
+    reference_values = numpy.array(
         [
-            0.2053769,
-            0.2053769,
-            0.1617423,
-            0.1747668,
-            0.5255023,
-            0.5255023,
-            0.1149945,
-            0.1707901,
-            0.2129136,
-            0.2129136,
-            0.1942189,
-            0.1768906,
-            0.1997338,
-            0.1997338,
-            0.2014766,
-            0.2014766,
-            0.1470727,
-            0.1442517,
-            0.1434395,
+            # fmt: off
+            0.20538, 0.20538, 0.16174, 0.17477, 0.52550,
+            0.52550, 0.11499, 0.17079, 0.21291, 0.21291,
+            0.19422, 0.17689, 0.19973, 0.19973, 0.20148,
+            0.20148, 0.14707, 0.14425, 0.14344
+            # fmt: on
         ]
     )
     assert reference_values == approx(test_vals, abs=0.01)
@@ -211,45 +197,32 @@ def test_mbar_autoc(clean_files, setup_free_energy_calculation):
     setup_free_energy_calculation.compute_free_energy(seed=random_seed)
     results = setup_free_energy_calculation.results
 
-    # Test mbar-autoc free energies and uncertainties
+    # Test `mbar-autoc` free energies and uncertainties
     test_vals = [
         results["attach"][method]["fe"].magnitude,
         results["attach"][method]["sem"].magnitude,
         results["pull"][method]["fe"].magnitude,
         results["pull"][method]["sem"].magnitude,
     ]
-    reference_values = [13.267731176, 0.080830, -2.1791430735, 0.696944]
+    reference_values = [13.26773, 0.0808, -2.1791, 0.6969]
     assert reference_values == approx(test_vals, abs=0.01)
 
-    # Test attach mbar-autoc largest_neighbor values
+    # Test attach `mbar-autoc` largest_neighbor values
     test_vals = results["attach"][method]["largest_neighbor"].magnitude
-    reference_values = np.array([0.0198918, 0.0259152, 0.0336971, 0.0383718, 0.0383718])
+    reference_values = numpy.array([0.0199, 0.0259, 0.0336, 0.0383, 0.0383])
     assert reference_values == approx(test_vals, abs=0.01)
 
-    # Test pull mbar-autoc largest_neighbor values
+    # Test pull `mbar-autoc` largest_neighbor values
     test_vals = results["pull"][method]["largest_neighbor"].magnitude
-    np.savetxt("tmp/test.txt", test_vals, fmt="%.5f")
-    reference_values = np.array(
+    numpy.savetxt("tmp/test.txt", test_vals, fmt="%.5f")
+    reference_values = numpy.array(
         [
-            0.10274,
-            0.11361,
-            0.13074,
-            0.14136,
-            0.38928,
-            0.38928,
-            0.11215,
-            0.12951,
-            0.13145,
-            0.13145,
-            0.13113,
-            0.13113,
-            0.13751,
-            0.14186,
-            0.14186,
-            0.12847,
-            0.13550,
-            0.13550,
-            0.13404,
+            # fmt: off
+            0.10274, 0.11361, 0.13074, 0.14136, 0.38928,
+            0.38928, 0.11215, 0.12951, 0.13145, 0.13145,
+            0.13113, 0.13113, 0.13751, 0.14186, 0.14186,
+            0.12847, 0.13550, 0.13550, 0.13404
+            # fmt: on
         ]
     )
     assert reference_values == approx(test_vals, abs=0.01)
@@ -258,6 +231,7 @@ def test_mbar_autoc(clean_files, setup_free_energy_calculation):
 def test_ti_block(clean_files, setup_free_energy_calculation):
     method = "ti-block"
 
+    # Estimate FE with exact sem
     setup_free_energy_calculation.methods = [method]
     setup_free_energy_calculation.exact_sem_each_ti_fraction = True
     setup_free_energy_calculation.compute_free_energy(seed=random_seed)
@@ -270,46 +244,32 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
         results["pull"][method]["fe"].magnitude,
         results["pull"][method]["sem"].magnitude,
     ]
-    # reference_values = np.array([13.35, 0.26, -1.85, 0.78])
-    reference_values = np.array([13.31, 0.25, -1.62, 0.87])
+    reference_values = numpy.array([13.31, 0.25, -1.62, 0.87])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # ROI only runs during TI.
 
     # Test attach ti-block largest_neighbor values
     test_vals = results["attach"][method]["largest_neighbor"].magnitude
-    reference_values = np.array([0.03, 0.07, 0.10, 0.18, 0.18])
+    reference_values = numpy.array([0.03, 0.07, 0.10, 0.18, 0.18])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # Test pull ti-block largest_neighbor values
     test_vals = results["pull"][method]["largest_neighbor"].magnitude
 
-    reference_values = np.array(
+    reference_values = numpy.array(
         [
-            0.33156402,
-            0.33156402,
-            0.2150947,
-            0.2219127,
-            0.2219127,
-            0.10746089,
-            0.13514015,
-            0.15078472,
-            0.15078472,
-            0.15518025,
-            0.10678047,
-            0.10678047,
-            0.10157904,
-            0.14122943,
-            0.16608568,
-            0.16608568,
-            0.14718857,
-            0.14090383,
-            0.11005729,
+            # fmt: off
+            0.33156, 0.33156, 0.21509, 0.22191, 0.22191,
+            0.10746, 0.13514, 0.15078, 0.15078, 0.15518,
+            0.10678, 0.10678, 0.10158, 0.14123, 0.16609,
+            0.16609, 0.14719, 0.14090, 0.11006
+            # fmt: on
         ]
     )
     assert reference_values == approx(test_vals, abs=0.01)
 
-    # No-exact sem
+    # Estimate FE without exact sem
     setup_free_energy_calculation.exact_sem_each_ti_fraction = False
     setup_free_energy_calculation.compute_free_energy(seed=random_seed)
     results = setup_free_energy_calculation.results
@@ -321,41 +281,27 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
         results["pull"][method]["fe"].magnitude,
         results["pull"][method]["sem"].magnitude,
     ]
-    # reference_values = np.array([13.35, 0.26, -1.85, 0.78])
-    reference_values = np.array([13.31, 0.25, -1.62, 0.87])
+    reference_values = numpy.array([13.31, 0.25, -1.62, 0.87])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # ROI only runs during TI.
 
     # Test attach ti-block largest_neighbor values
     test_vals = results["attach"][method]["largest_neighbor"].magnitude
-    reference_values = np.array([0.03, 0.07, 0.10, 0.18, 0.18])
+    reference_values = numpy.array([0.03, 0.07, 0.10, 0.18, 0.18])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # Test pull ti-block largest_neighbor values
     test_vals = results["pull"][method]["largest_neighbor"].magnitude
 
-    reference_values = np.array(
+    reference_values = numpy.array(
         [
-            0.33156402,
-            0.33156402,
-            0.2150947,
-            0.2219127,
-            0.2219127,
-            0.10746089,
-            0.13514015,
-            0.15078472,
-            0.15078472,
-            0.15518025,
-            0.10678047,
-            0.10678047,
-            0.10157904,
-            0.14122943,
-            0.16608568,
-            0.16608568,
-            0.14718857,
-            0.14090383,
-            0.11005729,
+            # fmt: off
+            0.33156, 0.33156, 0.21509, 0.22191, 0.22191,
+            0.10746, 0.13514, 0.15078, 0.15078, 0.15518,
+            0.10678, 0.10678, 0.10157, 0.14122, 0.16608,
+            0.16608, 0.14718, 0.14090, 0.11005
+            # fmt: on
         ]
     )
     assert reference_values == approx(test_vals, abs=0.01)
@@ -364,52 +310,40 @@ def test_ti_block(clean_files, setup_free_energy_calculation):
 def test_ti_nocor(clean_files, setup_free_energy_calculation):
     method = "ti-nocor"
 
+    # Estimate FE with exact sem
     setup_free_energy_calculation.methods = [method]
     setup_free_energy_calculation.exact_sem_each_ti_fraction = True
     setup_free_energy_calculation.compute_free_energy(seed=random_seed)
     results = setup_free_energy_calculation.results
 
-    # Test ti-block free energies and uncertainties
+    # Test `ti-nocor` free energies and uncertainties
     test_vals = [
         results["attach"][method]["fe"].magnitude,
         results["attach"][method]["sem"].magnitude,
         results["pull"][method]["fe"].magnitude,
         results["pull"][method]["sem"].magnitude,
     ]
-    reference_values = np.array([13.34, 0.09, -1.71, 0.56])
+    reference_values = numpy.array([13.34, 0.09, -1.71, 0.56])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # ROI only runs during TI.
 
-    # Test attach ti-nocor largest_neighbor values
+    # Test attach `ti-nocor` largest_neighbor values
     test_vals = results["attach"][method]["largest_neighbor"].magnitude
-    reference_values = np.array([0.014, 0.036, 0.055, 0.066, 0.066])
+    reference_values = numpy.array([0.014, 0.036, 0.055, 0.066, 0.066])
     assert reference_values == approx(test_vals, abs=0.01)
 
-    # Test pull ti-block largest_neighbor values
+    # Test pull `ti-nocor` largest_neighbor values
     test_vals = results["pull"][method]["largest_neighbor"].magnitude
 
-    reference_values = np.array(
+    reference_values = numpy.array(
         [
-            0.09991857695378108,
-            0.09991857695378108,
-            0.08597658940932379,
-            0.10866283883728353,
-            0.10866283883728353,
-            0.08704110657500748,
-            0.10761246555307555,
-            0.10761246555307555,
-            0.11871918480320433,
-            0.11871918480320433,
-            0.10678047,
-            0.10678047,
-            0.10157904,
-            0.09111759946004389,
-            0.1034237670447086,
-            0.1034237670447086,
-            0.10319382363600771,
-            0.10607790116613745,
-            0.11005729,
+            # fmt: off
+            0.09992, 0.09992, 0.08598, 0.10866, 0.10866,
+            0.08704, 0.10761, 0.10761, 0.11872, 0.11872,
+            0.10678, 0.10678, 0.10158, 0.09112, 0.10342,
+            0.10342, 0.10319, 0.10608, 0.11005
+            # fmt: on
         ]
     )
     assert reference_values == approx(test_vals, abs=0.01)
@@ -419,48 +353,34 @@ def test_ti_nocor(clean_files, setup_free_energy_calculation):
     setup_free_energy_calculation.compute_free_energy(seed=random_seed)
     results = setup_free_energy_calculation.results
 
-    # Test ti-block free energies and uncertainties
+    # Test `ti-nocor` free energies and uncertainties
     test_vals = [
         results["attach"][method]["fe"].magnitude,
         results["attach"][method]["sem"].magnitude,
         results["pull"][method]["fe"].magnitude,
         results["pull"][method]["sem"].magnitude,
     ]
-    # reference_values = np.array([13.35, 0.26, -1.85, 0.78])
-    reference_values = np.array([13.34, 0.098, -1.71, 0.56])
+    reference_values = numpy.array([13.34, 0.098, -1.71, 0.56])
     assert reference_values == approx(test_vals, abs=0.01)
 
     # ROI only runs during TI.
 
-    # Test attach ti-block largest_neighbor values
+    # Test attach `ti-nocor` largest_neighbor values
     test_vals = results["attach"][method]["largest_neighbor"].magnitude
-    reference_values = np.array([0.0138, 0.0362, 0.055, 0.0657, 0.0657])
+    reference_values = numpy.array([0.0138, 0.0362, 0.055, 0.0657, 0.0657])
     assert reference_values == approx(test_vals, abs=0.01)
 
-    # Test pull ti-block largest_neighbor values
+    # Test pull `ti-nocor` largest_neighbor values
     test_vals = results["pull"][method]["largest_neighbor"].magnitude
 
-    reference_values = np.array(
+    reference_values = numpy.array(
         [
-            0.09991857695378108,
-            0.09991857695378108,
-            0.08597658940932379,
-            0.10866283883728353,
-            0.10866283883728353,
-            0.08704110657500748,
-            0.10761246555307555,
-            0.10761246555307555,
-            0.11871918480320433,
-            0.11871918480320433,
-            0.10678047,
-            0.10678047,
-            0.10157904,
-            0.09111759946004389,
-            0.1034237670447086,
-            0.1034237670447086,
-            0.10319382363600771,
-            0.10607790116613745,
-            0.11005729,
+            # fmt: off
+            0.09992, 0.09992, 0.08598, 0.10867, 0.10866,
+            0.08704, 0.10761, 0.10761, 0.11872, 0.11872,
+            0.10678, 0.10678, 0.10158, 0.09112, 0.10342,
+            0.10342, 0.10319, 0.10608, 0.11006
+            # fmt: on
         ]
     )
     assert reference_values == approx(test_vals, abs=0.01)
@@ -468,11 +388,11 @@ def test_ti_nocor(clean_files, setup_free_energy_calculation):
 
 def test_reference_state_work(clean_files, setup_free_energy_calculation):
     results = setup_free_energy_calculation.results
-    assert np.isclose(-4.34372240, results["ref_state_work"].magnitude)
+    assert numpy.isclose(-4.34372, results["ref_state_work"].magnitude)
 
 
 def test_temperature(clean_files):
-    input_pdb = pmd.load_file(
+    input_pdb = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb")
     )
 
@@ -555,71 +475,69 @@ def test_bootstrap():
     """Test the utility modules in `analysis`"""
 
     # Test regression statistics
-    x = np.linspace(0, 10, 11)
-    y = np.linspace(0, 10, 11)
+    x = numpy.linspace(0, 10, 11)
+    y = numpy.linspace(0, 10, 11)
     stats = analysis.summarize_statistics(x, y)
 
-    assert all(stats == np.array([1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0]))
+    assert all(stats == numpy.array([1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0]))
 
     # Test Regression bootstrap
-    x_sem = np.ones_like(x)
-    y_sem = np.ones_like(y)
+    x_sem = numpy.ones_like(x)
+    y_sem = numpy.ones_like(y)
 
-    np.random.seed(0)
+    numpy.random.seed(0)
     results = analysis.regression_bootstrap(x, x_sem, y, y_sem, cycles=1)
+    # fmt: off
     compare = {
-        "slope": 0.7703030693742714,
-        "intercept": 0.7777706430286471,
-        "R": 0.9184956779750857,
-        "R**2": 0.8436343104589124,
-        "RMSE": 1.637675285465762,
-        "MSE": -0.40918918963339473,
-        "MUE": 1.2814477376354574,
-        "Tau": 0.8545454545454545,
+        "slope": 0.77030,
+        "intercept": 0.77778,
+        "R": 0.91850,
+        "R**2": 0.84363,
+        "RMSE": 1.63768,
+        "MSE": -0.40919,
+        "MUE": 1.28145,
+        "Tau": 0.85454,
     }
+    # fmt: on
 
     for stat in results["mean"]:
         assert pytest.approx(results["mean"][stat], abs=1e-3) == compare[stat]
 
     # Test dG Bootstrap
-    np.random.seed(0)
+    numpy.random.seed(0)
     results = analysis.dG_bootstrap(-12, 2, -12, 2, cycles=1, with_uncertainty=True)
-    assert pytest.approx(results["mean"], abs=1e-3) == -11.205587976469898
+    assert pytest.approx(results["mean"], abs=1e-3) == -11.20559
     assert pytest.approx(results["sem"], abs=1e-3) == 0.0
-    assert pytest.approx(results["ci"][0], abs=1e-3) == -11.20558798
-    assert pytest.approx(results["ci"][1], abs=1e-3) == -11.20558798
+    assert pytest.approx(results["ci"][0], abs=1e-3) == -11.20559
+    assert pytest.approx(results["ci"][1], abs=1e-3) == -11.20559
 
     results = analysis.dG_bootstrap(-12, 2, -12, 2, cycles=1, with_uncertainty=False)
-    assert pytest.approx(results["mean"], abs=1e-3) == -0.4106792724182964
+    assert pytest.approx(results["mean"], abs=1e-3) == -0.41068
     assert pytest.approx(results["sem"], abs=1e-3) == 0.0
-    assert pytest.approx(results["ci"][0], abs=1e-3) == -0.41067927
-    assert pytest.approx(results["ci"][1], abs=1e-3) == -0.41067927
+    assert pytest.approx(results["ci"][0], abs=1e-3) == -0.41068
+    assert pytest.approx(results["ci"][1], abs=1e-3) == -0.41068
 
     # Test dH Bootstrap
-    np.random.seed(0)
+    numpy.random.seed(0)
+    # fmt: off
     results = analysis.dH_bootstrap(
-        -15,
-        2,
-        -15,
-        2,
-        -10,
-        2,
-        -10,
-        2,
+        -15, 2, -15, 2, -10, 2, -10, 2,
         cycles=1,
         with_uncertainty=True,
     )
-    assert pytest.approx(results["mean"], abs=1e-3) == -11.50986102184404
+    # fmt: on
+    assert pytest.approx(results["mean"], abs=1e-3) == -11.50986
     assert pytest.approx(results["sem"], abs=1e-3) == 0.0
-    assert pytest.approx(results["ci"][0], abs=1e-3) == -11.5098610
-    assert pytest.approx(results["ci"][1], abs=1e-3) == -11.5098610
+    assert pytest.approx(results["ci"][0], abs=1e-3) == -11.50986
+    assert pytest.approx(results["ci"][1], abs=1e-3) == -11.50986
 
 
 def test_utils():
     """Test the utility modules in `analysis`"""
     assert utils.get_factors(10) == [1, 2, 5, 10]
     assert utils.get_nearest_max(100) == 90
-    np.random.seed(0)
-    results = utils.get_block_sem(np.random.normal(10.0, 2.0, 100))
-    assert pytest.approx(results, abs=1e-3) == 0.3916368835724714
+
+    numpy.random.seed(0)
+    results = utils.get_block_sem(numpy.random.normal(10.0, 2.0, 100))
+    assert pytest.approx(results, abs=1e-3) == 0.39164
     assert utils.get_subsampled_indices(10, 2.0) == [0, 2, 4, 6, 8]

@@ -1,7 +1,7 @@
 import abc
 import logging
 import os
-import subprocess as sp
+import subprocess
 from collections import OrderedDict
 from enum import Enum
 
@@ -633,11 +633,11 @@ class AMBER(Simulation, abc.ABC):
             logger.debug("Exec line: " + " ".join(exec_list))
 
             # Execute
-            amber_output = sp.Popen(
+            amber_output = subprocess.Popen(
                 exec_list,
                 cwd=self.path,
-                stdout=sp.PIPE,
-                stderr=sp.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 env=os.environ,
             )
 

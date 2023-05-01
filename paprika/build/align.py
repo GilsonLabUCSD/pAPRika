@@ -1,7 +1,7 @@
 import logging
 
-import numpy as np
-import parmed as pmd
+import numpy
+import parmed
 from openff.units import unit as openff_unit
 from paprika.utils import check_unit
 
@@ -47,15 +47,15 @@ def zalign(structure, mask1, mask2, axis="z", save=False, filename=None):
     # Mask1
     mask1_coordinates = structure[mask1].coordinates
     mask1_masses = [atom.mass for atom in structure[mask1].atoms]
-    mask1_com = pmd.geometry.center_of_mass(
-        np.asarray(mask1_coordinates), np.asarray(mask1_masses)
+    mask1_com = parmed.geometry.center_of_mass(
+        numpy.asarray(mask1_coordinates), numpy.asarray(mask1_masses)
     )
 
     # Mask2
     mask2_coordinates = structure[mask2].coordinates
     mask2_masses = [atom.mass for atom in structure[mask2].atoms]
-    mask2_com = pmd.geometry.center_of_mass(
-        np.asarray(mask2_coordinates), np.asarray(mask2_masses)
+    mask2_com = parmed.geometry.center_of_mass(
+        numpy.asarray(mask2_coordinates), numpy.asarray(mask2_masses)
     )
 
     logger.info(
@@ -74,10 +74,10 @@ def zalign(structure, mask1, mask2, axis="z", save=False, filename=None):
     rotation_matrix = get_rotation_matrix(mask2_com, axis)
 
     # This is certainly not the fastest approach, but it is explicit.
-    aligned_coords = np.empty_like(structure.coordinates)
+    aligned_coords = numpy.empty_like(structure.coordinates)
     for atom in range(len(structure.atoms)):
         aligned_coords[atom] = structure.coordinates[atom] + -1.0 * mask1_com
-        aligned_coords[atom] = np.dot(rotation_matrix, aligned_coords[atom])
+        aligned_coords[atom] = numpy.dot(rotation_matrix, aligned_coords[atom])
     structure.coordinates = aligned_coords
 
     if save:
@@ -150,10 +150,10 @@ def align_principal_axes(structure, atom_mask=None, principal_axis=1, axis="z"):
     rotation_matrix = get_rotation_matrix(p_axis, axis)
 
     # Align the principal axis to specified axis
-    aligned_coords = np.empty_like(structure.coordinates)
+    aligned_coords = numpy.empty_like(structure.coordinates)
     for atom in range(len(structure.atoms)):
         aligned_coords[atom] = structure.coordinates[atom]
-        aligned_coords[atom] = np.dot(rotation_matrix, aligned_coords[atom])
+        aligned_coords[atom] = numpy.dot(rotation_matrix, aligned_coords[atom])
     structure.coordinates = aligned_coords
 
     return structure
@@ -192,63 +192,63 @@ def rotate_around_axis(structure, axis, angle):
     # Convert angle to radians (temporary until Pint integration)
     angle = check_unit(angle, base_unit=openff_unit.radians).to(openff_unit.radians).magnitude
 
-    if np.array_equal(axis, np.array([1.0, 0.0, 0.0])):
-        rotation_matrix = np.array(
+    if numpy.array_equal(axis, numpy.array([1.0, 0.0, 0.0])):
+        rotation_matrix = numpy.array(
             [
                 [1, 0, 0],
-                [0, np.cos(angle), -np.sin(angle)],
-                [0, np.sin(angle), np.cos(angle)],
+                [0, numpy.cos(angle), -numpy.sin(angle)],
+                [0, numpy.sin(angle), numpy.cos(angle)],
             ]
         )
-    elif np.array_equal(axis, np.array([0.0, 1.0, 0.0])):
-        rotation_matrix = np.array(
+    elif numpy.array_equal(axis, numpy.array([0.0, 1.0, 0.0])):
+        rotation_matrix = numpy.array(
             [
-                [np.cos(angle), 0, np.sin(angle)],
+                [numpy.cos(angle), 0, numpy.sin(angle)],
                 [0, 1, 0],
-                [-np.sin(angle), 0, np.cos(angle)],
+                [-numpy.sin(angle), 0, numpy.cos(angle)],
             ]
         )
-    elif np.array_equal(axis, np.array([0.0, 0.0, 1.0])):
-        rotation_matrix = np.array(
+    elif numpy.array_equal(axis, numpy.array([0.0, 0.0, 1.0])):
+        rotation_matrix = numpy.array(
             [
-                [np.cos(angle), -np.sin(angle), 0],
-                [np.sin(angle), np.cos(angle), 0],
+                [numpy.cos(angle), -numpy.sin(angle), 0],
+                [numpy.sin(angle), numpy.cos(angle), 0],
                 [0, 0, 1],
             ]
         )
     else:
         # Normalize axis vector
-        axis = axis / np.linalg.norm(axis)
+        axis = axis / numpy.linalg.norm(axis)
 
         u_x = axis[0]
         u_y = axis[1]
         u_z = axis[2]
 
-        rotation_matrix = np.array(
+        rotation_matrix = numpy.array(
             [
                 [
-                    np.cos(angle) + u_x ** 2 * (1 - np.cos(angle)),
-                    u_x * u_y * (1 - np.cos(angle)) - u_z * np.sin(angle),
-                    u_x * u_z * (1 - np.cos(angle)) + u_y * np.sin(angle),
+                    numpy.cos(angle) + u_x ** 2 * (1 - numpy.cos(angle)),
+                    u_x * u_y * (1 - numpy.cos(angle)) - u_z * numpy.sin(angle),
+                    u_x * u_z * (1 - numpy.cos(angle)) + u_y * numpy.sin(angle),
                 ],
                 [
-                    u_y * u_x * (1 - np.cos(angle)) + u_z * np.sin(angle),
-                    np.cos(angle) + u_y ** 2 * (1 - np.cos(angle)),
-                    u_y * u_z * (1 - np.cos(angle)) - u_x * np.sin(angle),
+                    u_y * u_x * (1 - numpy.cos(angle)) + u_z * numpy.sin(angle),
+                    numpy.cos(angle) + u_y ** 2 * (1 - numpy.cos(angle)),
+                    u_y * u_z * (1 - numpy.cos(angle)) - u_x * numpy.sin(angle),
                 ],
                 [
-                    u_z * u_x * (1 - np.cos(angle)) - u_y * np.sin(angle),
-                    u_z * u_y * (1 - np.cos(angle)) + u_x * np.sin(angle),
-                    np.cos(angle) + u_z ** 2 * (1 - np.cos(angle)),
+                    u_z * u_x * (1 - numpy.cos(angle)) - u_y * numpy.sin(angle),
+                    u_z * u_y * (1 - numpy.cos(angle)) + u_x * numpy.sin(angle),
+                    numpy.cos(angle) + u_z ** 2 * (1 - numpy.cos(angle)),
                 ],
             ]
         )
 
     # Align the principal axis to specified axis
-    aligned_coords = np.empty_like(structure.coordinates)
+    aligned_coords = numpy.empty_like(structure.coordinates)
     for atom in range(len(structure.atoms)):
         aligned_coords[atom] = structure.coordinates[atom]
-        aligned_coords[atom] = np.dot(rotation_matrix, aligned_coords[atom])
+        aligned_coords[atom] = numpy.dot(rotation_matrix, aligned_coords[atom])
     structure.coordinates = aligned_coords
 
     return structure
@@ -281,23 +281,23 @@ def get_theta(structure, mask1, mask2, axis):
     # Centroid of mask1
     mask1_coordinates = structure[mask1].coordinates
     mask1_masses = [atom.mass for atom in structure[mask1].atoms]
-    mask1_com = pmd.geometry.center_of_mass(
-        np.asarray(mask1_coordinates), np.asarray(mask1_masses)
+    mask1_com = parmed.geometry.center_of_mass(
+        numpy.asarray(mask1_coordinates), numpy.asarray(mask1_masses)
     )
 
     # Centroid of mask2
     mask2_coordinates = structure[mask2].coordinates
     mask2_masses = [atom.mass for atom in structure[mask2].atoms]
-    mask2_com = pmd.geometry.center_of_mass(
-        np.asarray(mask2_coordinates), np.asarray(mask2_masses)
+    mask2_com = parmed.geometry.center_of_mass(
+        numpy.asarray(mask2_coordinates), numpy.asarray(mask2_masses)
     )
 
     # Vector mask1-mask2
     vector = mask2_com + -1.0 * mask1_com
 
     # Angle between vectors
-    theta = np.arccos(
-        np.dot(vector, axis) / (np.linalg.norm(vector) * np.linalg.norm(axis))
+    theta = numpy.arccos(
+        numpy.dot(vector, axis) / (numpy.linalg.norm(vector) * numpy.linalg.norm(axis))
     )
 
     return openff_unit.Quantity(theta, units=openff_unit.radians)
@@ -321,28 +321,28 @@ def get_rotation_matrix(vector, ref_vector):
     """
 
     # If the structures are already aligned (cross product is zero), return 3x3 identity matrix
-    if np.linalg.norm(np.cross(vector, ref_vector)) == 0:
+    if numpy.linalg.norm(numpy.cross(vector, ref_vector)) == 0:
         logger.info("The structure is already aligned and the denominator is invalid, returning identity matrix.")
-        return np.identity(3)
+        return numpy.identity(3)
 
     # Find axis between the mask vector and the axis using cross and dot products.
-    x = np.cross(vector, ref_vector) / np.linalg.norm(np.cross(vector, ref_vector))
+    x = numpy.cross(vector, ref_vector) / numpy.linalg.norm(numpy.cross(vector, ref_vector))
 
-    theta = np.arccos(
-        np.dot(vector, ref_vector)
-        / (np.linalg.norm(vector) * np.linalg.norm(ref_vector))
+    theta = numpy.arccos(
+        numpy.dot(vector, ref_vector)
+        / (numpy.linalg.norm(vector) * numpy.linalg.norm(ref_vector))
     )
 
     # https://math.stackexchange.com/questions/293116/rotating-one-3d-vector-to-another
-    A = np.array(
+    A = numpy.array(
         [[0, -1.0 * x[2], x[1]], [x[2], 0, -1.0 * x[0]], [-1.0 * x[1], x[0], 0]]
     )
 
     # Rotation matrix
     rotation_matrix = (
-        np.identity(3)
-        + np.dot(np.sin(theta), A)
-        + np.dot((1.0 - np.cos(theta)), np.dot(A, A))
+        numpy.identity(3)
+        + numpy.dot(numpy.sin(theta), A)
+        + numpy.dot((1.0 - numpy.cos(theta)), numpy.dot(A, A))
     )
 
     return rotation_matrix
@@ -369,13 +369,13 @@ def get_principal_axis_vector(structure, principal_axis=1, atom_mask=None):
     """
     # Get coordinates and masses
     coordinates = structure.coordinates
-    masses = np.asarray([atom.mass for atom in structure.atoms])
+    masses = numpy.asarray([atom.mass for atom in structure.atoms])
     if atom_mask:
         coordinates = structure[atom_mask].coordinates
-        masses = np.asarray([atom.mass for atom in structure[atom_mask].atoms])
+        masses = numpy.asarray([atom.mass for atom in structure[atom_mask].atoms])
 
     # Calculate center of mass
-    centroid = pmd.geometry.center_of_mass(coordinates, masses)
+    centroid = parmed.geometry.center_of_mass(coordinates, masses)
 
     # Construct Inertia tensor
     Ixx = Ixy = Ixz = Iyy = Iyz = Izz = 0
@@ -388,10 +388,10 @@ def get_principal_axis_vector(structure, principal_axis=1, atom_mask=None):
         Iyz -= mass * (xyz[1] * xyz[2])
         Izz += mass * (xyz[0] * xyz[0] + xyz[1] * xyz[1])
 
-    inertia = np.array([[Ixx, Ixy, Ixz], [Ixy, Iyy, Iyz], [Ixz, Iyz, Izz]])
+    inertia = numpy.array([[Ixx, Ixy, Ixz], [Ixy, Iyy, Iyz], [Ixz, Iyz, Izz]])
 
     # Principal axis
-    evals, evecs = np.linalg.eig(inertia)
+    evals, evecs = numpy.linalg.eig(inertia)
     evecs = evecs[
         :, evals.argsort()[::-1]
     ]  # <-- Numpy may not sort the eigenvalues properly
@@ -412,15 +412,15 @@ def check_coordinates(structure, mask):
 
     Returns
     -------
-    mask_com : :class:`np.array`
+    mask_com : :class:`numpy.array`
         Coordinates of the selection center of mass.
 
     """
 
     mask_coordinates = structure[mask].coordinates
     mask_masses = [atom.mass for atom in structure[mask].atoms]
-    mask_com = pmd.geometry.center_of_mass(
-        np.asarray(mask_coordinates), np.asarray(mask_masses)
+    mask_com = parmed.geometry.center_of_mass(
+        numpy.asarray(mask_coordinates), numpy.asarray(mask_masses)
     )
     return mask_com
 
@@ -452,13 +452,13 @@ def offset_structure(structure, offset, dimension=None):
         >>> structure = offset_structure(structure, 3.0, dimension='z')
         >>>
         >>> # Offset a structure using a numpy array
-        >>> offset = np.array([0.0, 5.0, 2.0])
+        >>> offset = numpy.array([0.0, 5.0, 2.0])
         >>> structure = offset_structure(structure, offset)
     """
 
     # Dimension mask
     if dimension is None:
-        mask = np.array([1, 1, 1])
+        mask = numpy.array([1, 1, 1])
     else:
         mask = _return_array(dimension)
 
@@ -467,7 +467,7 @@ def offset_structure(structure, offset, dimension=None):
     offset = offset.to(openff_unit.angstrom).magnitude
 
     # Offset coordinates
-    offset_coords = np.empty_like(structure.coordinates)
+    offset_coords = numpy.empty_like(structure.coordinates)
     for atom in range(len(structure.atoms)):
         offset_coords[atom] = structure.coordinates[atom] + offset
     structure.coordinates = offset_coords
@@ -513,30 +513,30 @@ def translate_to_origin(structure, weight="mass", atom_mask=None, dimension=None
 
     # Dimension mask
     if dimension is None:
-        mask = np.array([1, 1, 1])
+        mask = numpy.array([1, 1, 1])
     else:
         mask = _return_array(dimension)
 
     # Atomic coordinates and masses
     if atom_mask is None:
         coordinates = structure.coordinates
-        masses = np.asarray([atom.mass for atom in structure.atoms])
+        masses = numpy.asarray([atom.mass for atom in structure.atoms])
     else:
         coordinates = structure[atom_mask].coordinates
-        masses = np.asarray([atom.mass for atom in structure[atom_mask].atoms])
+        masses = numpy.asarray([atom.mass for atom in structure[atom_mask].atoms])
 
     # Equal weights if geometric center is preferred
     if weight == "geo":
-        masses = np.ones(len(coordinates))
+        masses = numpy.ones(len(coordinates))
 
     # Centroid coordinates
-    centroid = pmd.geometry.center_of_mass(coordinates, masses)
+    centroid = parmed.geometry.center_of_mass(coordinates, masses)
 
     if mask is not None:
         centroid *= mask
 
     # Translate coordinates
-    aligned_coords = np.empty_like(structure.coordinates)
+    aligned_coords = numpy.empty_like(structure.coordinates)
     for atom in range(len(structure.atoms)):
         aligned_coords[atom] = structure.coordinates[atom] - centroid
     structure.coordinates = aligned_coords
@@ -551,20 +551,20 @@ def _return_array(var):
 
     if isinstance(var, str):
         if "x" in var.lower():
-            array = np.array([1.0, 0.0, 0.0])
+            array = numpy.array([1.0, 0.0, 0.0])
         elif "y" in var.lower():
-            array = np.array([0.0, 1.0, 0.0])
+            array = numpy.array([0.0, 1.0, 0.0])
         elif "z" in var.lower():
-            array = np.array([0.0, 0.0, 1.0])
+            array = numpy.array([0.0, 0.0, 1.0])
         else:
             raise KeyError(f"Cannot understand the variable: {var}.")
 
     elif isinstance(var, list):
         if len(var) != 3:
             raise ValueError('"var" must be a list with 3 elements.')
-        array = np.array(var)
+        array = numpy.array(var)
 
-    elif isinstance(var, np.ndarray):
+    elif isinstance(var, numpy.ndarray):
         if len(var) != 3:
             raise ValueError('"var" must be a numpy array with 3 elements.')
 
