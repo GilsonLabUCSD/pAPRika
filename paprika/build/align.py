@@ -535,29 +535,17 @@ def translate_to_origin(structure, atom_mask=None, weight="mass", dimension=None
     if weight not in ["mass", "geo"]:
         raise ValueError("`weight` must either be `mass` or `geo`.")
 
+    # Centroid coordinates
+    centroid = get_centroid(structure, atom_mask=atom_mask, weight=weight)
+
     # Dimension mask
     if dimension is None:
-        mask = numpy.array([1, 1, 1])
+        dimension_mask = numpy.array([1, 1, 1])
     else:
-        mask = _return_array(dimension)
+        dimension_mask = _return_array(dimension)
 
-    # Atomic coordinates and masses
-    if atom_mask is None:
-        coordinates = structure.coordinates
-        masses = numpy.asarray([atom.mass for atom in structure.atoms])
-    else:
-        coordinates = structure[atom_mask].coordinates
-        masses = numpy.asarray([atom.mass for atom in structure[atom_mask].atoms])
-
-    # Equal weights if geometric center is preferred
-    if weight == "geo":
-        masses = numpy.ones(len(coordinates))
-
-    # Centroid coordinates
-    centroid = parmed.geometry.center_of_mass(coordinates, masses)
-
-    if mask is not None:
-        centroid *= mask
+    if dimension_mask is not None:
+        centroid *= dimension_mask
 
     # Translate coordinates
     aligned_coords = numpy.empty_like(structure.coordinates)
