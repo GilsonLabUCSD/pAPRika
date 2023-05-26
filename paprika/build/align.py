@@ -500,17 +500,17 @@ def shift_structure(structure, offset, dimension=None):
     return structure
 
 
-def translate_to_origin(structure, weight="mass", atom_mask=None, dimension=None):
+def translate_to_origin(structure, atom_mask=None, weight="mass", dimension=None):
     """Translate a structure to the origin based on the centroid of the whole system or a subset of atom(s).
 
     Parameters
     ----------
     structure : str or :class:`parmed.Structure`
         Molecular structure containing coordinates.
-    weight : str, optional, default="mass"
-        Calculate the centroid based on either atomic masses (``mass`` default) or geometric center (``geo``).
     atom_mask : str, optional, default=None
         Selection of atom(s) if a particular subset is preferred to estimate the centroid.
+    weight : str, optional, default="mass"
+        Calculate the centroid based on either atomic masses (``mass`` default) or geometric center (``geo``).
     dimension : str or list or :class:`numpy.ndarray`, optional, default=None
         A mask that will filter the dimensions to which the translation will be applied (by default the system will
         be translated in all dimensions).
