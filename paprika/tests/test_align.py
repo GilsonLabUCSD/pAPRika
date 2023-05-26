@@ -4,17 +4,17 @@ Tests the alignment of residues to the z axis.
 
 import os
 
-import numpy as np
-import parmed as pmd
+import numpy
+import parmed
 import pytest
 from openff.units import unit as openff_unit
 
 from paprika.build.align import (
     align_principal_axes,
-    check_coordinates,
+    get_centroid,
     get_principal_axis_vector,
     get_theta,
-    offset_structure,
+    shift_structure,
     rotate_around_axis,
     translate_to_origin,
     zalign,
@@ -23,29 +23,37 @@ from paprika.build.align import (
 
 def test_center_mask():
     """Test that the first mask is centered."""
-    cb6 = pmd.load_file(
+    cb6 = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     )
-    aligned_cb6 = zalign(cb6, ":CB6", ":BUT")
-    test_coordinates = check_coordinates(aligned_cb6, ":CB6")
-    assert np.allclose(test_coordinates, np.zeros(3))
+    aligned_cb6 = zalign(cb6, ":CB6", ":BUT", weight="mass")
+    test_coordinates = get_centroid(aligned_cb6, ":CB6", weight="mass")
+    assert numpy.allclose(test_coordinates, numpy.zeros(3))
+    test_coordinates = get_centroid(aligned_cb6, ":CB6", weight="geo")
+    assert numpy.allclose(
+        test_coordinates, numpy.array([-0.0002163, 0.00113288, -0.00072443])
+    )
 
 
 def test_alignment_after_offset():
     """Test that molecule is properly aligned after random offset."""
-    cb6 = pmd.load_file(
+    cb6 = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     )
-    random_coordinates = np.random.randint(10) * np.random.rand(1, 3)
-    cb6_offset = offset_structure(cb6, random_coordinates)
+    random_coordinates = numpy.random.randint(10) * numpy.random.rand(1, 3)
+    cb6_offset = shift_structure(cb6, random_coordinates)
     aligned_cb6 = zalign(cb6_offset, ":CB6", ":BUT")
-    test_coordinates = check_coordinates(aligned_cb6, ":CB6")
-    assert np.allclose(test_coordinates, np.zeros(3))
+    test_coordinates = get_centroid(aligned_cb6, ":CB6", weight="mass")
+    assert numpy.allclose(test_coordinates, numpy.zeros(3))
+    test_coordinates = get_centroid(aligned_cb6, ":CB6", weight="geo")
+    assert numpy.allclose(
+        test_coordinates, numpy.array([-0.0002163, 0.00113288, -0.00072443])
+    )
 
 
 def test_theta_after_alignment():
     """Test that molecule is properly aligned after random offset."""
-    cb6 = pmd.load_file(
+    cb6 = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb")
     )
     aligned_cb6 = zalign(cb6, ":CB6", ":BUT")
@@ -77,7 +85,7 @@ def test_theta_after_alignment():
 
 def test_translate_to_origin():
     """Test that molecule is properly aligned after translated to the origin."""
-    cb6 = pmd.load_file(
+    cb6 = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/vac.pdb"),
         structure=True,
     )
@@ -85,30 +93,30 @@ def test_translate_to_origin():
     # Translate molecule to origin
     translated_cb6 = translate_to_origin(cb6)
     coordinates = translated_cb6.coordinates
-    masses = np.asarray([atom.mass for atom in translated_cb6.atoms])
-    centroid = pmd.geometry.center_of_mass(coordinates, masses)
+    masses = numpy.asarray([atom.mass for atom in translated_cb6.atoms])
+    centroid = parmed.geometry.center_of_mass(coordinates, masses)
 
     assert pytest.approx(centroid[0], abs=1e-3) == 0.0
     assert pytest.approx(centroid[1], abs=1e-3) == 0.0
     assert pytest.approx(centroid[2], abs=1e-3) == 0.0
 
     # Shift then translate only in the z-axis
-    cb6_offset = offset_structure(cb6, np.array([3, 5, 10]))
+    cb6_offset = shift_structure(cb6, numpy.array([3, 5, 10]))
     translated_cb6 = translate_to_origin(cb6_offset, dimension="z")
     coordinates = translated_cb6.coordinates
-    masses = np.asarray([atom.mass for atom in translated_cb6.atoms])
-    centroid = pmd.geometry.center_of_mass(coordinates, masses)
+    masses = numpy.asarray([atom.mass for atom in translated_cb6.atoms])
+    centroid = parmed.geometry.center_of_mass(coordinates, masses)
 
     assert pytest.approx(centroid[0], abs=1e-3) != 0.0
     assert pytest.approx(centroid[1], abs=1e-3) != 0.0
     assert pytest.approx(centroid[2], abs=1e-3) == 0.0
 
     # Randomly shift then translate only in the x- and z-axis
-    cb6_offset = offset_structure(cb6, np.array([3, 5, 10]))
+    cb6_offset = shift_structure(cb6, numpy.array([3, 5, 10]))
     translated_cb6 = translate_to_origin(cb6_offset, dimension=[1, 0, 1])
     coordinates = translated_cb6.coordinates
-    masses = np.asarray([atom.mass for atom in translated_cb6.atoms])
-    centroid = pmd.geometry.center_of_mass(coordinates, masses)
+    masses = numpy.asarray([atom.mass for atom in translated_cb6.atoms])
+    centroid = parmed.geometry.center_of_mass(coordinates, masses)
 
     assert pytest.approx(centroid[0], abs=1e-3) == 0.0
     assert pytest.approx(centroid[1], abs=1e-3) != 0.0
@@ -116,7 +124,7 @@ def test_translate_to_origin():
 
 
 def test_get_principal_axis():
-    cb6 = pmd.load_file(
+    cb6 = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         structure=True,
     )
@@ -128,7 +136,7 @@ def test_get_principal_axis():
 
 
 def test_align_principal_axes():
-    cb6 = pmd.load_file(
+    cb6 = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         structure=True,
     )
@@ -160,7 +168,7 @@ def test_align_principal_axes():
 
 def test_rotate_around_axis():
     # Cartesian axes
-    cb6 = pmd.load_file(
+    cb6 = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         structure=True,
     )
@@ -193,7 +201,7 @@ def test_rotate_around_axis():
     assert pytest.approx(angle, abs=1e-1) == 180.0
 
     # Arbitrary axes
-    cb6 = pmd.load_file(
+    cb6 = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         structure=True,
     )
@@ -214,12 +222,17 @@ def test_rotate_around_axis():
     assert pytest.approx(angle, abs=1e-1) == 54.7
 
 
-def test_check_coordinates():
-    cb6 = pmd.load_file(
+def test_get_centroid():
+    cb6 = parmed.load_file(
         os.path.join(os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"),
         structure=True,
     )
-    com = check_coordinates(cb6, mask=":BUT")
-    assert pytest.approx(com[0], abs=1e-3) == 0.0
-    assert pytest.approx(com[1], abs=1e-3) == 0.0
-    assert pytest.approx(com[2], abs=1e-1) == 1.9
+    centroid = get_centroid(cb6, atom_mask=":BUT", weight="mass")
+    assert pytest.approx(centroid[0], abs=1e-3) == 0.0
+    assert pytest.approx(centroid[1], abs=1e-3) == 0.0
+    assert pytest.approx(centroid[2], abs=1e-3) == 1.918
+
+    centroid = get_centroid(cb6, atom_mask=":BUT", weight="geo")
+    assert pytest.approx(centroid[0], abs=1e-3) == 0.0
+    assert pytest.approx(centroid[1], abs=1e-3) == 0.0
+    assert pytest.approx(centroid[2], abs=1e-3) == 1.918
