@@ -14,8 +14,8 @@ from paprika.build.align import (
     get_centroid,
     get_principal_axis_vector,
     get_theta,
-    shift_structure,
     rotate_around_axis,
+    shift_structure,
     translate_to_origin,
     zalign,
 )
