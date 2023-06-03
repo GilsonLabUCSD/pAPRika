@@ -144,7 +144,7 @@ class PaprikaDecoder(json.JSONDecoder):
         if "@type" in obj:
             if obj["@type"] == "openff.units.unit.Quantity":
                 return deserialize_quantity(obj)
-            elif "paprika.restraints" in obj["@type"]:
+            elif "RestraintType" in obj["@type"] or "BiasPotentialType" in obj["@type"]:
                 return deserialize_enum(obj)
 
         return obj
