@@ -37,6 +37,7 @@ def amber_restraint_line(restraint, window):
         r1=     0.0000, r2=     5.9665, r3=     5.9665, r4=   999.0000,
         rk2=   5.0000000, rk3=   5.0000000, &end
     """
+    from paprika.restraints import RestraintType
 
     window, phase = parse_window(window)
     if (
@@ -86,11 +87,11 @@ def amber_restraint_line(restraint, window):
     energy_unit = openff_unit.kcal / openff_unit.mole
     target_unit = (
         openff_unit.angstrom
-        if restraint.restraint_type == "distance"
+        if restraint.restraint_type == RestraintType.Distance
         else openff_unit.degrees
     )
     force_constant_unit = energy_unit / target_unit**2
-    if not restraint.restraint_type == "distance":
+    if not restraint.restraint_type == RestraintType.Distance:
         force_constant_unit = energy_unit / openff_unit.radians**2
 
     # Prepare AMBER NMR-style restraint

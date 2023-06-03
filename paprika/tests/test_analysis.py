@@ -82,9 +82,6 @@ def setup_free_energy_calculation():
     rest3.pull["num_windows"] = 19
     rest3.initialize()
 
-    # Create window directories
-    restraints.restraints.create_window_list([rest1, rest2, rest3])
-
     seed = 12345
 
     fecalc = analysis.fe_calc()
