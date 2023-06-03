@@ -117,9 +117,7 @@ class PaprikaEncoder(json.JSONEncoder):
             return obj.tolist()
         elif isinstance(obj, openff_unit.Quantity):
             return serialize_quantity(obj)
-        elif isinstance(obj, RestraintType):
-            return serialize_enum(obj)
-        elif isinstance(obj, BiasPotentialType):
+        elif isinstance(obj, Enum):
             return serialize_enum(obj)
 
         # Let the base class default method raise the TypeError
