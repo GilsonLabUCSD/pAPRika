@@ -27,7 +27,7 @@ from paprika.io import (
     load_trajectory,
     read_restraint_data,
 )
-from paprika.utils import check_unit
+from paprika.utils import check_unit, is_file_and_not_empty
 
 logger = logging.getLogger(__name__)
 
@@ -1447,32 +1447,31 @@ class fe_calc(object):
 
         Parameters
         ----------
-        filepath: os.PathLike
+        filepath: str
             The name of the JSON file to write to.
         overwrite: bool
             Option to whether overwrite file if already exist.
         """
-        if overwrite and os.path.isfile(filepath):
+        if not overwrite and is_file_and_not_empty(filepath):
             raise FileExistsError(f"File `{filepath}` exists, will not overwrite.")
 
         with open(filepath, "w") as f:
             dumped = json.dumps(self.results, cls=PaprikaEncoder)
             f.write(dumped)
 
-    @staticmethod
-    def load_results(filepath):
+    def load_results(self, filepath):
         """
         Read in a JSON file for the results.
 
         Parameters
         ----------
-        filepath: os.PathLike
+        filepath: str
             The name of the JSON file to read.
         """
         with open(filepath, "r") as f:
             data = f.read()
 
-        return json.loads(data, cls=PaprikaDecoder)
+        self.results = json.loads(data, cls=PaprikaDecoder)
 
     def save_data(self, filepath="simulation_data.json", overwrite=False):
         """
@@ -1480,12 +1479,12 @@ class fe_calc(object):
 
         Parameters
         ----------
-        filepath: os.PathLike
+        filepath: str
             The name of the JSON file to write to.
         overwrite: bool
             Option to whether overwrite file if already exist.
         """
-        if overwrite and os.path.isfile(filepath):
+        if not overwrite and is_file_and_not_empty(filepath):
             raise FileExistsError(f"File `{filepath}` exists, will not overwrite.")
 
         with open(filepath, "w") as f:
@@ -1498,6 +1497,24 @@ class fe_calc(object):
                 cls=PaprikaEncoder,
             )
             f.write(dumped)
+
+    def load_data(self, filepath):
+        """
+        Load the simulation data (DAT values) from a JSON file.
+
+        Parameters
+        ----------
+        filepath: str
+            The name of the JSON file to read.
+        """
+        with open(filepath, "r") as f:
+            data = f.read()
+
+        simulation_data = json.loads(data, cls=PaprikaDecoder)
+
+        self.simulation_data = simulation_data["simulation_data"]
+        self.changing_restraints = simulation_data["changing_restraints"]
+        self.orders = simulation_data["orders"]
 
 
 def ref_state_work(

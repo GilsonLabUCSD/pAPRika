@@ -120,7 +120,7 @@ def get_subsampled_indices(N, g, conservative=False):
     ----------
     N: int
         The length of the array to be indexed.
-    g: int
+    g: float
         The statistical inefficiency of the data.
     conservative: bool, optional, default=False
         Whether `g` should be rounded up to the nearest integer.
