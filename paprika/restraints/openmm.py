@@ -17,7 +17,6 @@ from openff.units import unit as openff_unit
 from openff.units.openmm import to_openmm
 
 from paprika.restraints import DAT_restraint
-from paprika.restraints.utils import get_bias_potential_type
 
 logger = logging.getLogger(__name__)
 _PI_ = np.pi
@@ -112,27 +111,31 @@ def apply_dat_restraint(
         The force group to add the positional restraints to.
 
     """
+    from paprika.restraints import BiasPotentialType, RestraintType
+    from paprika.restraints.utils import get_bias_potential_type
 
     assert phase in {"attach", "pull", "release"}
 
-    # Get bias potential type - restraint, upper_walls, lower_walls
+    # Get bias potential type - `Harmonic`, `UpperWall`, `LowerWall`
     bias_type, restraint_values = get_bias_potential_type(
         restraint, phase, window_number, return_values=True
     )
+    if bias_type is None:
+        pass
 
     # Distance restraints
-    if restraint.mask2 and not restraint.mask3:
+    if restraint.restraint_type == RestraintType.Distance:
         # colvar values
         r_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
         k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
 
         # Energy expression
         bond_energy_expression = "k_bond * (r - r_0)^2;"
-        if bias_type == "upper_walls":
+        if bias_type == BiasPotentialType.UpperWall:
             bond_energy_expression = "step(r - r_0) * " + bond_energy_expression
             r_0 = to_openmm(restraint_values["r3"])
             k = to_openmm(restraint_values["rk3"])
-        elif bias_type == "lower_walls":
+        elif bias_type == BiasPotentialType.LowerWall:
             bond_energy_expression = "step(r_0 - r) * " + bond_energy_expression
             r_0 = to_openmm(restraint_values["r2"])
             k = to_openmm(restraint_values["rk2"])
@@ -168,20 +171,20 @@ def apply_dat_restraint(
             bond_restraint.setForceGroup(force_group)
 
     # Angle restraints
-    elif restraint.mask3 and not restraint.mask4:
+    elif restraint.restraint_type == RestraintType.Angle:
         # colvar values
         theta_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
         k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
 
         # energy expression
         angle_energy_expression = "k_angle * (theta - theta_0)^2;"
-        if bias_type == "upper_walls":
+        if bias_type == BiasPotentialType.UpperWall:
             angle_energy_expression = (
                 "step(theta - theta_0) * "
             ) + angle_energy_expression
             theta_0 = to_openmm(restraint_values["r3"])
             k = to_openmm(restraint_values["rk3"])
-        elif bias_type == "lower_walls":
+        elif bias_type == BiasPotentialType.LowerWall:
             angle_energy_expression = (
                 "step(theta_0 - theta) * "
             ) + angle_energy_expression
@@ -227,7 +230,7 @@ def apply_dat_restraint(
             angle_restraint.setForceGroup(force_group)
 
     # Torsion restraints
-    elif restraint.mask4:
+    elif restraint.restraint_type == RestraintType.Torsion:
         # colvar values
         theta_0 = to_openmm(restraint.phase[phase]["targets"][window_number])
         k = to_openmm(restraint.phase[phase]["force_constants"][window_number])
@@ -237,13 +240,13 @@ def apply_dat_restraint(
             f"k_torsion * min(min(abs(theta - theta_0), abs(theta - theta_0 + "
             f"2 * {_PI_})), abs(theta - theta_0 - 2 * {_PI_}))^2;"
         )
-        if bias_type == "upper_walls":
+        if bias_type == BiasPotentialType.UpperWall:
             dihedral_energy_expression = (
                 "step(theta - theta_0) * "
             ) + dihedral_energy_expression
             theta_0 = to_openmm(restraint_values["r3"])
             k = to_openmm(restraint_values["rk3"])
-        elif bias_type == "lower_walls":
+        elif bias_type == BiasPotentialType.LowerWall:
             dihedral_energy_expression = (
                 "step(theta_0 - theta) * "
             ) + dihedral_energy_expression

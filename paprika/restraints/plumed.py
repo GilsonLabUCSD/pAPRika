@@ -225,6 +225,7 @@ class Plumed:
         """
         Write the `Plumed`-style restraints to file.
         """
+        from paprika.restraints import BiasPotentialType, RestraintType
 
         self._initialize()
 
@@ -245,17 +246,19 @@ class Plumed:
             self.group_atoms = {}
 
             # Parse each restraint in the list
-            for restraint in self.restraint_list:
+            for i, restraint in enumerate(self.restraint_list):
                 # Skip restraint if the target or force constant is not defined.
-                # Example: wall restraints only used during the attach phase.
+                # Example: wall restraints only used during the `attach` phase.
                 try:
                     target = restraint.phase[phase]["targets"][window_number]
                     force_constant = (
                         restraint.phase[phase]["force_constants"][window_number]
                         * self.k_factor
                     )
-
                 except TypeError:
+                    logger.info(
+                        f"`target` and `force_constant` not set. Skipping restraint number {i} in restraints list."
+                    )
                     continue
 
                 # Convert list to comma-separated string
@@ -266,22 +269,22 @@ class Plumed:
                 bias_type, restraint_values = get_bias_potential_type(
                     restraint, phase, window_number, return_values=True
                 )
-                if bias_type == "upper_walls":
+                if bias_type == BiasPotentialType.UpperWall:
                     target = restraint_values["r3"]
                     force_constant = restraint_values["rk3"] * self.k_factor
-                elif bias_type == "lower_walls":
+                elif bias_type == BiasPotentialType.LowerWall:
                     target = restraint_values["r2"]
                     force_constant = restraint_values["rk2"] * self.k_factor
 
                 # Convert units to the correct type for PLUMED module
-                if restraint.restraint_type == "distance":
-                    target = target.to(openff_unit.angstrom)
+                if restraint.restraint_type == RestraintType.Distance:
+                    target = target.to(self.output_units["length"])
                     force_constant = force_constant.to(
                         self.output_units["energy"] / self.output_units["length"] ** 2
                     )
                 elif (
-                    restraint.restraint_type == "angle"
-                    or restraint.restraint_type == "torsion"
+                    restraint.restraint_type == RestraintType.Angle
+                    or restraint.restraint_type == RestraintType.Torsion
                 ):
                     target = target.to(openff_unit.radians)
                     force_constant = force_constant.to(
@@ -296,10 +299,10 @@ class Plumed:
                     cv_dict[cv_key] = atom_string
 
                     cv_lines.append(
-                        f"{cv_key}: {restraint.restraint_type.upper()} ATOMS={atom_string} NOPBC\n"
+                        f"{cv_key}: {restraint.restraint_type.value.upper()} ATOMS={atom_string} NOPBC\n"
                     )
                     bias_lines.append(
-                        f"{bias_type.upper()} ARG={cv_key} AT={target.magnitude:.4f} KAPPA="
+                        f"{bias_type.value.upper()} ARG={cv_key} AT={target.magnitude:.4f} KAPPA="
                         f"{force_constant.magnitude:.2f}\n"
                     )
                 else:

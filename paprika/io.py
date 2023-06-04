@@ -1,8 +1,10 @@
 import base64
+import importlib
 import json
 import logging
 import os
 import traceback
+from enum import Enum
 
 import numpy as np
 import pytraj as pt
@@ -10,12 +12,48 @@ from openff.units import unit as openff_unit
 from parmed import Structure
 from parmed.amber import AmberParm
 
-from paprika.restraints import DAT_restraint
+from paprika.restraints import BiasPotentialType, DAT_restraint, RestraintType
 
 # https://stackoverflow.com/questions/27909658/json-encoder-and-decoder-for-complex-numpy-arrays
 # https://stackoverflow.com/a/24375113/901925
 # https://stackoverflow.com/questions/3488934/simplejson-and-numpy-array/24375113#24375113
+# https://github.com/openforcefield/openff-evaluator/blob/main/openff/evaluator/utils/serialization.py
 logger = logging.getLogger(__name__)
+
+
+def _type_string_to_object(type_string):
+    last_period_index = type_string.rfind(".")
+
+    if last_period_index < 0 or last_period_index == len(type_string) - 1:
+        raise ValueError(
+            "The type string is invalid - it should be of the form "
+            "module_path.class_name: {}".format(type_string)
+        )
+
+    type_string_split = type_string.split(".")
+
+    class_object = None
+    module_path = None
+
+    while len(type_string_split) > 0:
+        class_name = type_string_split.pop(0)
+
+        try:
+            if module_path is None:
+                module_path = class_name
+            else:
+                module_path = module_path + "." + class_name
+
+            # First try and treat the current string as a module
+            module = importlib.import_module(module_path)
+            class_object = module
+
+        except ImportError:
+            # If we get an import error, try then to treat the string
+            # as the name of a nested class.
+            class_object = getattr(class_object, class_name)
+
+    return class_object
 
 
 class PaprikaEncoder(json.JSONEncoder):
@@ -79,6 +117,8 @@ class PaprikaEncoder(json.JSONEncoder):
             return obj.tolist()
         elif isinstance(obj, openff_unit.Quantity):
             return serialize_quantity(obj)
+        elif isinstance(obj, Enum):
+            return serialize_enum(obj)
 
         # Let the base class default method raise the TypeError
         # return json.JSONEncoder(self, obj)
@@ -102,7 +142,10 @@ class PaprikaDecoder(json.JSONDecoder):
             return np.frombuffer(data, obj["dtype"]).reshape(obj["shape"])
 
         if "@type" in obj:
-            return deserialize_quantity(obj)
+            if obj["@type"] == "openff.units.unit.Quantity":
+                return deserialize_quantity(obj)
+            elif "RestraintType" in obj["@type"] or "BiasPotentialType" in obj["@type"]:
+                return deserialize_enum(obj)
 
         return obj
 
@@ -158,6 +201,37 @@ def deserialize_quantity(serialized):
         value_unit = openff_unit(serialized["unit"])
 
     return serialized["value"] * value_unit
+
+
+def serialize_enum(enum):
+    if not isinstance(enum, Enum):
+        raise ValueError("{} is not an Enum".format(type(enum)))
+
+    object_type = type(enum)
+    qualified_name = object_type.__qualname__
+    enum_type = "{}.{}".format(object_type.__module__, qualified_name)
+
+    return {"@type": enum_type, "value": enum.value}
+
+
+def deserialize_enum(enum_dictionary):
+    if "@type" not in enum_dictionary:
+        raise ValueError(
+            "The serialized enum dictionary must include which type the enum is."
+        )
+
+    if "value" not in enum_dictionary:
+        raise ValueError("The serialized enum dictionary must include the enum value.")
+
+    enum_type_string = enum_dictionary["@type"]
+    enum_value = enum_dictionary["value"]
+
+    enum_class = _type_string_to_object(enum_type_string)
+
+    if not issubclass(enum_class, Enum):
+        raise ValueError("<{}> is not an Enum".format(enum_class))
+
+    return enum_class(enum_value)
 
 
 def save_restraints(restraint_list, filepath="restraints.json"):
