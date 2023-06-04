@@ -1,6 +1,6 @@
 import os as os
 
-import parmed as pmd
+import parmed
 from parmed.structure import Structure as ParmedStructureClass
 
 from paprika import utils
@@ -62,7 +62,7 @@ def add_dummy(
         )
 
     # Create an atom object
-    dum = pmd.topologyobjects.Atom()
+    dum = parmed.topologyobjects.Atom()
     dum.name = atom_name
     dum.mass = mass.to(openff_unit.dalton).magnitude
     dum.atomic_number = atomic_number
