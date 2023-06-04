@@ -127,27 +127,6 @@ def test_setup(clean_files, setup_free_energy_calculation):
     assert setup_free_energy_calculation.exact_sem_each_ti_fraction is False
     assert setup_free_energy_calculation.conservative_subsample is False
 
-    # Test save and load results -- JSON
-    results = deepcopy(setup_free_energy_calculation.results)
-    setup_free_energy_calculation.save_results("tmp/results.json", overwrite=True)
-    assert is_file_and_not_empty("tmp/results.json")
-    setup_free_energy_calculation.results = {}
-    setup_free_energy_calculation.load_results("tmp/results.json")
-    assert len(setup_free_energy_calculation.results) == len(results)
-
-    # Test save and load simulation data -- JSON
-    setup_free_energy_calculation.save_simulation_data_to_json(
-        "tmp/simulation.json", overwrite=True
-    )
-    assert is_file_and_not_empty("tmp/simulation.json")
-    setup_free_energy_calculation.changing_restraints = None
-    setup_free_energy_calculation.orders = None
-    setup_free_energy_calculation.simulation_data = None
-    setup_free_energy_calculation.load_simulation_data_from_json("tmp/simulation.json")
-    assert setup_free_energy_calculation.changing_restraints is not None
-    assert setup_free_energy_calculation.orders is not None
-    assert setup_free_energy_calculation.simulation_data is not None
-
 
 def test_mbar_block(clean_files, setup_free_energy_calculation):
     method = "mbar-block"
@@ -389,28 +368,26 @@ def test_reference_state_work(clean_files, setup_free_energy_calculation):
 
 
 def test_save_and_loading(clean_files, setup_free_energy_calculation):
-    # Save FE results to file
-    setup_free_energy_calculation.save_results("tmp/results.json")
-    assert is_file_and_not_empty("tmp/results.json") is True
+    # Test save and load results -- JSON
+    results = deepcopy(setup_free_energy_calculation.results)
     setup_free_energy_calculation.save_results("tmp/results.json", overwrite=True)
-    assert is_file_and_not_empty("tmp/results.json") is True
+    assert is_file_and_not_empty("tmp/results.json")
+    setup_free_energy_calculation.results = {}
+    setup_free_energy_calculation.load_results("tmp/results.json")
+    assert len(setup_free_energy_calculation.results) == len(results)
 
-    # Load results
-    fe_calc = analysis.fe_calc()
-    fe_calc.load_results("tmp/results.json")
-    assert numpy.isclose(-4.34372240, fe_calc.results["ref_state_work"].magnitude)
-
-    # Save Simulation data to file
-    setup_free_energy_calculation.save_data("tmp/simulation_data.json")
-    assert is_file_and_not_empty("tmp/simulation_data.json") is True
-    setup_free_energy_calculation.save_data("tmp/simulation_data.json", overwrite=True)
-    assert is_file_and_not_empty("tmp/simulation_data.json") is True
-
-    # Load simulation data
-    fe_calc.load_data("tmp/simulation_data.json")
-    assert fe_calc.simulation_data is not None
-    assert fe_calc.changing_restraints is not None
-    assert fe_calc.orders is not None
+    # Test save and load simulation data -- JSON
+    setup_free_energy_calculation.save_simulation_data_to_json(
+        "tmp/simulation.json", overwrite=True
+    )
+    assert is_file_and_not_empty("tmp/simulation.json")
+    setup_free_energy_calculation.changing_restraints = None
+    setup_free_energy_calculation.orders = None
+    setup_free_energy_calculation.simulation_data = None
+    setup_free_energy_calculation.load_simulation_data_from_json("tmp/simulation.json")
+    assert setup_free_energy_calculation.changing_restraints is not None
+    assert setup_free_energy_calculation.orders is not None
+    assert setup_free_energy_calculation.simulation_data is not None
 
 
 def test_temperature(clean_files):
