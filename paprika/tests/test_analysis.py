@@ -398,7 +398,7 @@ def test_save_and_loading(clean_files, setup_free_energy_calculation):
     # Load results
     fe_calc = analysis.fe_calc()
     fe_calc.load_results("tmp/results.json")
-    assert np.isclose(-4.34372240, fe_calc.results["ref_state_work"].magnitude)
+    assert numpy.isclose(-4.34372240, fe_calc.results["ref_state_work"].magnitude)
 
     # Save Simulation data to file
     setup_free_energy_calculation.save_data("tmp/simulation_data.json")
