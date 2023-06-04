@@ -309,7 +309,7 @@ def is_file_and_not_empty(file_path):
 
     Parameters
     ----------
-    file_path: os.PathLike
+    file_path: str
         The file path to check.
 
     Returns

@@ -6,8 +6,7 @@ import pytest
 from openff.units import unit as openff_unit
 
 from paprika import restraints
-from paprika.restraints import amber
-from paprika.restraints.restraints import create_window_list
+from paprika.restraints import amber, create_window_list
 from paprika.simulate import AMBER, GROMACS, NAMD
 from paprika.tests import addons
 from paprika.utils import parse_mden, parse_mdout

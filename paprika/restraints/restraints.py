@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 
 import numpy
 import parmed
@@ -9,6 +10,18 @@ from paprika import utils
 from paprika.utils import check_unit
 
 logger = logging.getLogger(__name__)
+
+
+class BiasPotentialType(Enum):
+    Harmonic = "restraint"
+    UpperWall = "upper_wall"
+    LowerWall = "lower_wall"
+
+
+class RestraintType(Enum):
+    Distance = "distance"
+    Angle = "angle"
+    Torsion = "torsion"
 
 
 class DAT_restraint(object):
@@ -30,7 +43,7 @@ class DAT_restraint(object):
         self._instances = value
 
     @property
-    def restraint_type(self):
+    def restraint_type(self) -> RestraintType:
         """str: The type of restraints for this instance: Distance, Angle or Dihedral."""
         return self._restraint_type
 
@@ -858,19 +871,19 @@ class DAT_restraint(object):
         logger.debug("Assigning atom indices...")
         self.index1 = utils.index_from_mask(self.topology, self.mask1, self.amber_index)
         self.index2 = utils.index_from_mask(self.topology, self.mask2, self.amber_index)
-        self._restraint_type = "distance"
+        self._restraint_type = RestraintType.Distance
         if self.mask3:
             self.index3 = utils.index_from_mask(
                 self.topology, self.mask3, self.amber_index
             )
-            self._restraint_type = "angle"
+            self._restraint_type = RestraintType.Angle
         else:
             self.index3 = None
         if self.mask4:
             self.index4 = utils.index_from_mask(
                 self.topology, self.mask4, self.amber_index
             )
-            self._restraint_type = "torsion"
+            self._restraint_type = RestraintType.Torsion
         else:
             self.index4 = None
         # If any `index` has more than one atom, mark it as a group restraint.
@@ -1124,12 +1137,3 @@ def check_restraints(restraint_list, create_window_list=False):
 
     if create_window_list:
         return window_list
-
-
-def create_window_list(restraint_list):
-    """
-    Create list of APR windows. Runs everything through check_restraints because
-    we need to do that.
-    """
-
-    return check_restraints(restraint_list, create_window_list=True)

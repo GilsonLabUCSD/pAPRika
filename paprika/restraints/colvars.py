@@ -98,6 +98,13 @@ class Colvars(Plumed):
         self._output_freq = 500
         self._colvars_factor = {}
 
+        # NAMD-COLVAR Units
+        self._energy_unit = openff_unit.kcal / openff_unit.mole
+        self._distance_unit = openff_unit.angstrom
+        self._angle_unit = openff_unit.degree
+        self._kdist_unit = self._energy_unit / self._distance_unit**2
+        self._kangle_unit = self._energy_unit / self._angle_unit**2
+
     def _initialize(self):
         # Set factor for spring constant
         if self.uses_legacy_k:
@@ -113,6 +120,7 @@ class Colvars(Plumed):
         """
         Write the `Colvars`-style restraints to file.
         """
+        from paprika.restraints import BiasPotentialType, RestraintType
 
         self._initialize()
 
@@ -130,9 +138,9 @@ class Colvars(Plumed):
             bias_lines = []
 
             # Parse each restraint in the list
-            for restraint in self.restraint_list:
+            for i, restraint in enumerate(self.restraint_list):
                 # Skip restraint if the target or force constant is not defined.
-                # Example: wall restraints only used during the attach phase.
+                # Example: wall restraints only used during the `attach` phase.
                 try:
                     target = restraint.phase[phase]["targets"][window_number]
                     force_constant = (
@@ -140,6 +148,9 @@ class Colvars(Plumed):
                         * self.k_factor
                     )
                 except TypeError:
+                    logger.info(
+                        f"`target` and `force_constant` not set. Skipping restraint number {i} in restraints list."
+                    )
                     continue
 
                 # Get atom indices in space separated string
@@ -150,28 +161,23 @@ class Colvars(Plumed):
                 bias_type, restraint_values = get_bias_potential_type(
                     restraint, phase, window_number, return_values=True
                 )
-                if bias_type == "upper_walls":
+                if bias_type == BiasPotentialType.UpperWall:
                     target = restraint_values["r3"]
                     force_constant = restraint_values["rk3"] * self.k_factor
-                elif bias_type == "lower_walls":
+                elif bias_type == BiasPotentialType.LowerWall:
                     target = restraint_values["r2"]
                     force_constant = restraint_values["rk2"] * self.k_factor
 
-                # Convert units to the correct type for COLVAR module
-                energy_units = openff_unit.kcal / openff_unit.mole
-                if restraint.restraint_type == "distance":
-                    target = target.to(openff_unit.angstrom)
-                    force_constant = force_constant.to(
-                        energy_units / openff_unit.angstrom**2
-                    )
+                # Convert units to the correct type for NAMD-COLVAR module
+                if restraint.restraint_type == RestraintType.Distance:
+                    target = target.to(self._distance_unit)
+                    force_constant = force_constant.to(self._kdist_unit)
                 elif (
-                    restraint.restraint_type == "angle"
-                    or restraint.restraint_type == "torsion"
+                    restraint.restraint_type == RestraintType.Angle
+                    or restraint.restraint_type == RestraintType.Torsion
                 ):
-                    target = target.to(openff_unit.degrees)
-                    force_constant = force_constant.to(
-                        energy_units / openff_unit.degrees**2
-                    )
+                    target = target.to(self._angle_unit)
+                    force_constant = force_constant.to(self._kangle_unit)
 
                 # Append cv to list
                 # The code below prevents duplicate cv definition.
@@ -183,18 +189,18 @@ class Colvars(Plumed):
                     cv_template_lines = [
                         "colvar {",
                         f"  name {cv_key}",
-                        f"  {'dihedral' if restraint.restraint_type == 'torsion' else restraint.restraint_type} {{",
+                        f"  {'dihedral' if restraint.restraint_type == RestraintType.Torsion else restraint.restraint_type.value} {{",
                         "    forceNoPBC yes",
                         f"    group1 {{ atomNumbers {atom_index[0]} }}",
                         f"    group2 {{ atomNumbers {atom_index[1]} }}",
                     ]
 
-                    if restraint.restraint_type == "angle":
+                    if restraint.restraint_type == RestraintType.Angle:
                         cv_template_lines += [
                             f"    group3 {{ atomNumbers {atom_index[2]} }}"
                         ]
 
-                    if restraint.restraint_type == "torsion":
+                    if restraint.restraint_type == RestraintType.Torsion:
                         cv_template_lines += [
                             f"    group3 {{ atomNumbers {atom_index[2]} }}",
                             f"    group4 {{ atomNumbers {atom_index[3]} }}",
@@ -235,9 +241,11 @@ class Colvars(Plumed):
 
     @staticmethod
     def _get_bias_block(bias_type, cv_key, target, force_constant):
+        from paprika.restraints import BiasPotentialType
+
         bias_template_lines = []
 
-        if bias_type == "restraint":
+        if bias_type == BiasPotentialType.Harmonic:
             bias_template_lines = [
                 "harmonic {",
                 f"  colvars {cv_key}",
@@ -245,7 +253,7 @@ class Colvars(Plumed):
                 f"  forceConstant {force_constant.magnitude:.4f}",
                 "}",
             ]
-        elif bias_type == "upper_walls":
+        elif bias_type == BiasPotentialType.UpperWall:
             bias_template_lines = [
                 "harmonicWalls {",
                 f"  colvars {cv_key}",
@@ -253,7 +261,7 @@ class Colvars(Plumed):
                 f"  upperWallConstant {force_constant.magnitude:.4f}",
                 "}",
             ]
-        elif bias_type == "lower_walls":
+        elif bias_type == BiasPotentialType.LowerWall:
             bias_template_lines = [
                 "harmonicWalls {",
                 f"  colvars {cv_key}",

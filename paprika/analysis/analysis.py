@@ -27,7 +27,7 @@ from paprika.io import (
     load_trajectory,
     read_restraint_data,
 )
-from paprika.utils import check_unit
+from paprika.utils import check_unit, is_file_and_not_empty
 
 logger = logging.getLogger(__name__)
 
@@ -1447,12 +1447,12 @@ class fe_calc(object):
 
         Parameters
         ----------
-        filepath: os.PathLike
+        filepath: str
             The name of the JSON file to write to.
         overwrite: bool
             Option to whether overwrite file if already exist.
         """
-        if overwrite and os.path.isfile(filepath):
+        if not overwrite and is_file_and_not_empty(filepath):
             raise FileExistsError(f"File `{filepath}` exists, will not overwrite.")
 
         with open(filepath, "w") as f:
@@ -1465,7 +1465,7 @@ class fe_calc(object):
 
         Parameters
         ----------
-        filepath: os.PathLike
+        filepath: str
             The name of the JSON file to read.
         """
         with open(filepath, "r") as f:
@@ -1481,12 +1481,12 @@ class fe_calc(object):
 
         Parameters
         ----------
-        filepath: os.PathLike
+        filepath: str
             The name of the JSON file to write to.
         overwrite: bool
             Option to whether overwrite file if already exist.
         """
-        if overwrite and os.path.isfile(filepath):
+        if not overwrite and is_file_and_not_empty(filepath):
             raise FileExistsError(f"File `{filepath}` exists, will not overwrite.")
 
         with open(filepath, "w") as f:

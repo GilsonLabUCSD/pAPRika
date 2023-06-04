@@ -3,6 +3,11 @@ import logging
 import numpy
 from openff.units import unit as openff_unit
 
+from paprika.restraints.restraints import (
+    BiasPotentialType,
+    RestraintType,
+    check_restraints,
+)
 from paprika.utils import override_dict
 
 logger = logging.getLogger(__name__)
@@ -61,6 +66,13 @@ def get_restraint_values(restraint, phase, window_number):
         Dictionary containing the Amber NMR-style values
 
     """
+
+    if (
+        restraint.phase[phase]["force_constants"] is None
+        and restraint.phase[phase]["targets"] is None
+    ):
+        return None
+
     # Distance bounds
     lower_bound = 0.0 * openff_unit.angstrom
     upper_bound = 999.0 * openff_unit.angstrom
@@ -113,8 +125,8 @@ def get_bias_potential_type(restraint, phase, window_number, return_values=False
 
     Returns
     -------
-    bias_type: str
-        type of bias potential
+    bias_type: paprika.restraints.restraints.BiasPotentialType
+        type of bias potential (`Harmonic`, `UpperWall`, `LowerWall`)
     amber_restraint_values: dict, optional
         restraint values as a dict in Amber NMR format.
     """
@@ -122,24 +134,26 @@ def get_bias_potential_type(restraint, phase, window_number, return_values=False
     bias_type = None
 
     amber_restraint_values = get_restraint_values(restraint, phase, window_number)
+    if amber_restraint_values is None:
+        return bias_type
 
     if (
         amber_restraint_values["r2"] == amber_restraint_values["r3"]
         and amber_restraint_values["rk2"] == amber_restraint_values["rk3"]
     ):
-        bias_type = "restraint"
+        bias_type = BiasPotentialType.Harmonic
 
     elif (
         amber_restraint_values["r2"] < amber_restraint_values["r3"]
         or amber_restraint_values["r2"] == 0.0
     ) and amber_restraint_values["rk2"] == amber_restraint_values["rk3"]:
-        bias_type = "upper_walls"
+        bias_type = BiasPotentialType.UpperWall
 
     elif amber_restraint_values["r2"] == amber_restraint_values["r3"] and (
         amber_restraint_values["rk2"] < amber_restraint_values["rk3"]
         or amber_restraint_values["rk2"] == 0.0
     ):
-        bias_type = "upper_walls"
+        bias_type = BiasPotentialType.UpperWall
 
     elif (
         amber_restraint_values["r2"] < amber_restraint_values["r3"]
@@ -148,25 +162,25 @@ def get_bias_potential_type(restraint, phase, window_number, return_values=False
         amber_restraint_values["rk2"] <= amber_restraint_values["rk3"]
         or amber_restraint_values["rk2"] == 0.0
     ):
-        bias_type = "upper_walls"
+        bias_type = BiasPotentialType.UpperWall
 
     elif (
         amber_restraint_values["r2"] > amber_restraint_values["r3"]
         or amber_restraint_values["r3"] == 0.0
     ) and amber_restraint_values["rk2"] == amber_restraint_values["rk3"]:
-        bias_type = "lower_walls"
+        bias_type = BiasPotentialType.LowerWall
 
     elif amber_restraint_values["r2"] == amber_restraint_values["r3"] and (
         amber_restraint_values["rk2"] > amber_restraint_values["rk3"]
         or amber_restraint_values["rk3"] == 0.0
     ):
-        bias_type = "lower_walls"
+        bias_type = BiasPotentialType.LowerWall
 
     elif (amber_restraint_values["r2"] < amber_restraint_values["r3"]) and (
         amber_restraint_values["rk2"] > amber_restraint_values["rk3"]
         or amber_restraint_values["rk3"] == 0.0
     ):
-        bias_type = "lower_walls"
+        bias_type = BiasPotentialType.LowerWall
 
     if bias_type is None:
         raise Exception("Could not determine bias potential type from restraint.")
@@ -319,7 +333,11 @@ def extract_guest_restraints(
     return guest_restraints
 
 
-def restraints_from_ascii(filename):
+def restraints_from_ascii(
+    filename,
+    delimiter=",",
+    default_units=None,
+):
     """
     Utility function to read in restraints from a simple ASCII file. This is useful
     for using VMD to define restraints. Since you can mouse-click bonds, angles and
@@ -366,8 +384,13 @@ def restraints_from_ascii(filename):
 
     Parameters
     ----------
-    filename : os.PathLike
+    filename : str
         File name of template file.
+    delimiter: str
+        The delimiter used in the text file.
+    default_units: dict
+        The units that the target and force constant is specified in. The keys needed are
+        `distance`, `angle`, `torsion`, `kdist`, and `kangle`.
 
     Returns
     -------
@@ -377,31 +400,42 @@ def restraints_from_ascii(filename):
     """
     restraints = {"atoms": [], "target": [], "k": [], "type": []}
 
+    if default_units is None:
+        default_units = {
+            "distance": openff_unit.angstrom,
+            "angle": openff_unit.degree,
+            "torsion": openff_unit.degree,
+            "kdist": openff_unit.kcal / openff_unit.mol / openff_unit.angstrom**2,
+            "kangle": openff_unit.kcal / openff_unit.mol / openff_unit.radian**2,
+        }
+
     with open(filename, "r") as file:
         for line in file:
             if not line.startswith("#"):
-                line = line.split(",")
+                line = line.split(delimiter)
 
                 # Distance
                 if len(line) == 4:
                     restraints["atoms"].append([line[0], line[1]])
-                    restraints["target"].append(float(line[2]))
-                    restraints["k"].append(float(line[3]))
-                    restraints["type"].append("bond")
+                    restraints["target"].append(
+                        float(line[2]) * default_units["distance"]
+                    )
+                    restraints["k"].append(float(line[3]) * default_units["kdist"])
+                    restraints["type"].append(RestraintType.Distance)
 
                 # Angle
                 elif len(line) == 5:
                     restraints["atoms"].append([line[0], line[1], line[2]])
-                    restraints["target"].append(float(line[3]))
-                    restraints["k"].append(float(line[4]))
-                    restraints["type"].append("angle")
+                    restraints["target"].append(float(line[3]) * default_units["angle"])
+                    restraints["k"].append(float(line[4]) * default_units["kangle"])
+                    restraints["type"].append(RestraintType.Angle)
 
                 # Torsion
                 elif len(line) == 6:
                     restraints["atoms"].append([line[0], line[1], line[2], line[3]])
-                    restraints["target"].append(float(line[4]))
-                    restraints["k"].append(float(line[5]))
-                    restraints["type"].append("dihedral")
+                    restraints["target"].append(float(line[4]) * default_units["angle"])
+                    restraints["k"].append(float(line[5]) * default_units["kangle"])
+                    restraints["type"].append(RestraintType.Torsion)
 
                 else:
                     logger.info(
@@ -409,3 +443,12 @@ def restraints_from_ascii(filename):
                     )
 
     return restraints
+
+
+def create_window_list(restraint_list):
+    """
+    Create list of APR windows. Runs everything through check_restraints because
+    we need to do that.
+    """
+
+    return check_restraints(restraint_list, create_window_list=True)

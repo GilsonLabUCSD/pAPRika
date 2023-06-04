@@ -19,12 +19,18 @@ import parmed
 import pytest
 from openff.units import unit as openff_unit
 
+from paprika.restraints import create_window_list
 from paprika.restraints.openmm import apply_dat_restraint, apply_positional_restraints
-from paprika.restraints.restraints import DAT_restraint, create_window_list
+from paprika.restraints.restraints import (
+    BiasPotentialType,
+    DAT_restraint,
+    RestraintType,
+)
 from paprika.restraints.utils import (
     extract_guest_restraints,
     get_bias_potential_type,
     get_restraint_values,
+    restraints_from_ascii,
 )
 from paprika.tests.test_tleap import clean_files
 
@@ -59,6 +65,7 @@ def test_DAT_restraint():
 
     target_units = openff_unit.angstrom
     force_constant_units = openff_unit.kcal / openff_unit.mole / target_units**2
+    assert rest1.restraint_type == RestraintType.Distance
     assert rest1.index1 == [13, 31, 49, 67, 85, 103]
     assert rest1.index2 == [119]
     assert rest1.index3 is None
@@ -130,6 +137,7 @@ def test_DAT_restraint():
     force_constant_units = (
         openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
     )
+    assert rest2.restraint_type == RestraintType.Angle
     assert rest2.index1 == [13, 31, 49, 67, 85, 103]
     assert rest2.index2 == [119]
     assert rest2.index3 == [109]
@@ -200,6 +208,7 @@ def test_DAT_restraint():
     force_constant_units = (
         openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
     )
+    assert rest3.restraint_type == RestraintType.Torsion
     assert rest3.index1 == [31]
     assert rest3.index2 == [13]
     assert rest3.index3 == [119]
@@ -746,6 +755,9 @@ def test_get_restraint_values():
     assert restraint_values["rk2"].magnitude == 1.0
     assert restraint_values["rk3"].magnitude == 1.0
 
+    restraint_values = get_restraint_values(wall, "pull", 0)
+    assert restraint_values is None
+
 
 def test_get_bias_potential_type():
     # Test Harmonic restraint
@@ -771,8 +783,9 @@ def test_get_bias_potential_type():
 
     restraint.initialize()
 
-    assert get_bias_potential_type(restraint, "attach", 0) == "restraint"
-    assert get_bias_potential_type(restraint, "pull", 0) == "restraint"
+    assert get_bias_potential_type(restraint, "attach", 0) == BiasPotentialType.Harmonic
+    assert get_bias_potential_type(restraint, "pull", 0) == BiasPotentialType.Harmonic
+    assert get_bias_potential_type(restraint, "release", 0) is None
 
     # Test upper wall restraint (1)
     upper = DAT_restraint()
@@ -795,8 +808,8 @@ def test_get_bias_potential_type():
 
     upper.initialize()
 
-    assert get_bias_potential_type(upper, "attach", 0) == "upper_walls"
-    assert get_bias_potential_type(upper, "attach", 1) == "upper_walls"
+    assert get_bias_potential_type(upper, "attach", 0) == BiasPotentialType.UpperWall
+    assert get_bias_potential_type(upper, "attach", 1) == BiasPotentialType.UpperWall
 
     # Test upper wall restraint (2)
     upper = DAT_restraint()
@@ -819,8 +832,8 @@ def test_get_bias_potential_type():
 
     upper.initialize()
 
-    assert get_bias_potential_type(upper, "attach", 0) == "upper_walls"
-    assert get_bias_potential_type(upper, "attach", 1) == "upper_walls"
+    assert get_bias_potential_type(upper, "attach", 0) == BiasPotentialType.UpperWall
+    assert get_bias_potential_type(upper, "attach", 1) == BiasPotentialType.UpperWall
 
     # Test upper wall restraint (3)
     upper = DAT_restraint()
@@ -843,8 +856,8 @@ def test_get_bias_potential_type():
 
     upper.initialize()
 
-    assert get_bias_potential_type(upper, "attach", 0) == "upper_walls"
-    assert get_bias_potential_type(upper, "attach", 1) == "upper_walls"
+    assert get_bias_potential_type(upper, "attach", 0) == BiasPotentialType.UpperWall
+    assert get_bias_potential_type(upper, "attach", 1) == BiasPotentialType.UpperWall
 
     # Test lower wall restraint (1)
     lower = DAT_restraint()
@@ -867,8 +880,8 @@ def test_get_bias_potential_type():
 
     lower.initialize()
 
-    assert get_bias_potential_type(lower, "attach", 0) == "lower_walls"
-    assert get_bias_potential_type(lower, "attach", 1) == "lower_walls"
+    assert get_bias_potential_type(lower, "attach", 0) == BiasPotentialType.LowerWall
+    assert get_bias_potential_type(lower, "attach", 1) == BiasPotentialType.LowerWall
 
     # Test lower wall restraint (2)
     lower = DAT_restraint()
@@ -891,8 +904,8 @@ def test_get_bias_potential_type():
 
     lower.initialize()
 
-    assert get_bias_potential_type(lower, "attach", 0) == "lower_walls"
-    assert get_bias_potential_type(lower, "attach", 1) == "lower_walls"
+    assert get_bias_potential_type(lower, "attach", 0) == BiasPotentialType.LowerWall
+    assert get_bias_potential_type(lower, "attach", 1) == BiasPotentialType.LowerWall
 
     # Test lower wall restraint (3)
     lower = DAT_restraint()
@@ -915,8 +928,8 @@ def test_get_bias_potential_type():
 
     lower.initialize()
 
-    assert get_bias_potential_type(lower, "attach", 0) == "lower_walls"
-    assert get_bias_potential_type(lower, "attach", 1) == "lower_walls"
+    assert get_bias_potential_type(lower, "attach", 0) == BiasPotentialType.LowerWall
+    assert get_bias_potential_type(lower, "attach", 1) == BiasPotentialType.LowerWall
 
 
 def test_extract_guest_restraints():
@@ -1816,3 +1829,47 @@ def test_openmm_centroid_and_wall(clean_files):
         force for force in system.getForces() if force.getForceGroup() == 9
     ][0]
     assert "step(theta_0 - theta)" in dihedral_wall_force.getEnergyFunction()
+
+
+def test_restraints_from_ascii(clean_files):
+    code_block = [
+        ":1@C12,:2@C4,12.5,5.0",
+        ":1@O11,:1@C2,:1@C3,90.0,50.0",
+        ":1@C12,:1@O13,:1@C14,1@C15,-121.16,6.0",
+    ]
+    tmp_file = "tmp/restraints.txt"
+    with open(tmp_file, "w") as f:
+        for line in code_block:
+            f.writelines(f"{line}\n")
+
+    restraints_dict = restraints_from_ascii(tmp_file)
+
+    energy_unit = openff_unit.kcal / openff_unit.mol
+    distance_unit = openff_unit.angstrom
+    angle_unit = openff_unit.degree
+    kdist_unit = energy_unit / distance_unit**2
+    kangle_unit = energy_unit / openff_unit.radian**2
+
+    # Distance
+    assert restraints_dict["atoms"][0][0] == ":1@C12"
+    assert restraints_dict["atoms"][0][1] == ":2@C4"
+    assert restraints_dict["target"][0] == 12.5 * distance_unit
+    assert restraints_dict["k"][0] == 5.0 * kdist_unit
+    assert restraints_dict["type"][0] == RestraintType.Distance
+
+    # Angle
+    assert restraints_dict["atoms"][1][0] == ":1@O11"
+    assert restraints_dict["atoms"][1][1] == ":1@C2"
+    assert restraints_dict["atoms"][1][2] == ":1@C3"
+    assert restraints_dict["target"][1] == 90.0 * angle_unit
+    assert restraints_dict["k"][1] == 50.0 * kangle_unit
+    assert restraints_dict["type"][1] == RestraintType.Angle
+
+    # Torsion
+    assert restraints_dict["atoms"][2][0] == ":1@C12"
+    assert restraints_dict["atoms"][2][1] == ":1@O13"
+    assert restraints_dict["atoms"][2][2] == ":1@C14"
+    assert restraints_dict["atoms"][2][3] == "1@C15"
+    assert restraints_dict["target"][2] == -121.16 * angle_unit
+    assert restraints_dict["k"][2] == 6.0 * kangle_unit
+    assert restraints_dict["type"][2] == RestraintType.Torsion
