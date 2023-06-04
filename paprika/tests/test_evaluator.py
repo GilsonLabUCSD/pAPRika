@@ -15,11 +15,8 @@ from openff.units import unit as openff_unit
 from paprika.evaluator import Analyze, Setup
 from paprika.evaluator.amber import generate_gaff
 from paprika.restraints import DAT_restraint
-from paprika.restraints.taproom import (
-    convert_string_to_quantity,
-    de_alias,
-    read_yaml_schema,
-)
+from paprika.taproom.taproom import read_yaml_schema
+from paprika.taproom.utils import convert_string_to_quantity, de_alias
 
 logger = logging.getLogger(__name__)
 
