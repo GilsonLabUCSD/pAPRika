@@ -1,10 +1,10 @@
-import logging as log
-import os as os
-import re as re
-import subprocess as sp
+import logging
+import os
+import re
+import subprocess
 
-import numpy as np
-import parmed as pmd
+import numpy
+import parmed
 
 from paprika.build.system.utils import (
     ANGSTROM_CUBED_TO_LITERS,
@@ -12,6 +12,8 @@ from paprika.build.system.utils import (
     ConversionToolkit,
     PBCBox,
 )
+
+logger = logging.getLogger(__name__)
 
 # TODO: refactor TLeap class, implement a build class for PSFGEN, PackMol and add TopoTools/VMD support
 
@@ -405,7 +407,7 @@ class TLeap(object):
             Whether to delete log files after completion.
         """
 
-        log.debug("Running tleap.build() in {}".format(self.output_path))
+        logger.debug("Running tleap.build() in {}".format(self.output_path))
 
         # Check input
         if self.template_file and self.template_lines:
@@ -463,7 +465,7 @@ class TLeap(object):
             elif re.search("combine", line):
                 words = line.rstrip().replace("=", " ").split()
                 self.unit = words[0]
-                log.debug(
+                logger.debug(
                     f"Found `combine` keyword and reassigning `self.unit` to {self.unit}..."
                 )
                 filtered_lines.append(line)
@@ -610,10 +612,10 @@ NONBON
         self.check_for_leap_log()
         file_name = self.output_prefix + ".tleap.in"
 
-        output = sp.Popen(
+        output = subprocess.Popen(
             ["tleap", "-s ", "-f ", file_name],
-            stdout=sp.PIPE,
-            stderr=sp.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             cwd=self.output_path,
         )
         output = output.stdout.read().decode().splitlines()
@@ -631,7 +633,7 @@ NONBON
                     if re.search(
                         "ERROR|WARNING|Warning|duplicate|FATAL|Could|Fatal|Error", line
                     ):
-                        log.warning(
+                        logger.warning(
                             "It appears there was a problem with solvation: check `leap.log`..."
                         )
         except BaseException:
@@ -649,7 +651,7 @@ NONBON
         log_file_path = os.path.join(self.output_path, log_file)
         try:
             os.remove(log_file_path)
-            log.debug("Deleted existing leap logfile: " + log_file_path)
+            logger.debug("Deleted existing leap logfile: " + log_file_path)
         except OSError:
             pass
 
@@ -674,10 +676,10 @@ NONBON
         # to the target_waters. This will control when we can start manually deleting
         # waters rather than adjusting the buffer_value.
         if self.manual_switch_thresh is None:
-            self.manual_switch_thresh = int(np.ceil(self.target_waters ** (1.0 / 3.0)))
+            self.manual_switch_thresh = int(numpy.ceil(self.target_waters ** (1.0 / 3.0)))
             if self.manual_switch_thresh < 12:
                 self.manual_switch_thresh = 12
-            log.debug(
+            logger.debug(
                 "manual_switch_thresh is set to: {:.0f}".format(
                     self.manual_switch_thresh
                 )
@@ -703,7 +705,7 @@ NONBON
             self.waters_added_history.append(waters)
             # noinspection PyTypeChecker
             self.buffer_value_history.append(self.buffer_value)
-            log.debug(
+            logger.debug(
                 "Cycle {:02.0f} {:.0f} {:10.7f} {:6.0f} ({:6.0f})".format(
                     cycle, self.exponent, self.buffer_value, waters, self.target_waters
                 )
@@ -736,7 +738,7 @@ NONBON
                 cycle += 1
 
         if cycle >= self.max_cycles and waters > self.target_waters:
-            log.debug(
+            logger.debug(
                 "The added waters ({}) didn't reach the manual_switch_thresh ({}) with max_cycles ({}), "
                 "but we'll try manual removal anyway.".format(
                     waters, self.target_waters, self.max_cycles
@@ -776,7 +778,7 @@ NONBON
                 raise Exception(
                     "Unable to add the correct waters at 50 cycles during final_solvation_run()"
                 )
-            log.info(
+            logger.info(
                 "The final solvation step added the wrong number of waters. Repeating ..."
             )
 
@@ -832,10 +834,10 @@ NONBON
                     + " Investigate the leap.log for errors."
                 )
 
-        # log.debug(residues)
+        # logger.debug(residues)
         if print_results:
             for key, value in sorted(residues.items()):
-                log.info("{:10s} {:10.0f}".format(key, value))
+                logger.info("{:10s} {:10.0f}".format(key, value))
 
         return residues
 
@@ -869,7 +871,7 @@ NONBON
                 # number to add = (molality) x (number waters) x (kg/mol
                 # solvent)
                 number_to_add = int(
-                    np.ceil(
+                    numpy.ceil(
                         float(amount[:-1])
                         * self.target_waters
                         * self.solvent_molecular_mass
@@ -886,7 +888,7 @@ NONBON
                     )
                 number_of_atoms = float(amount[:-1]) * N_A
                 liters = volume * ANGSTROM_CUBED_TO_LITERS
-                number_to_add = int(np.ceil(number_of_atoms * liters))
+                number_to_add = int(numpy.ceil(number_of_atoms * liters))
                 self.add_ion_residues.append(number_to_add)
             else:
                 raise Exception("Unanticipated error calculating how many ions to add.")
@@ -909,7 +911,7 @@ NONBON
                 match = re.search("Volume(.*)", line)
                 volume = float(match.group(1)[1:-4])
                 return volume
-        log.warning("Could not determine total simulation volume.")
+        logger.warning("Could not determine total simulation volume.")
         return None
 
     def remove_waters_manually(self):
@@ -932,13 +934,13 @@ NONBON
             if cycle > 5:
                 additional_water = int(float(cycle) / 5.0)
                 water_surplus += additional_water
-                log.debug(
+                logger.debug(
                     "Detected trouble with manually removing water. Increasing the number"
                     "of surplus waters by {}".format(additional_water)
                 )
 
             self.waters_to_remove = water_residues[-1 * water_surplus :]
-            log.debug("Manually removing waters... {}".format(self.waters_to_remove))
+            logger.debug("Manually removing waters... {}".format(self.waters_to_remove))
 
             # Get counts for all residues
             residues = self.count_residues()
@@ -999,14 +1001,14 @@ NONBON
             # If its been more than one round since last exponent change,
             # change exponent
             if self.cycles_since_last_exp_change > 1:
-                log.debug("Adjustment loop 1a")
+                logger.debug("Adjustment loop 1a")
                 self.exponent -= 1
                 self.buffer_value = self.buffer_value_history[-1] + -5 * (
                     10 ** self.exponent
                 )
                 self.cycles_since_last_exp_change = 0
             else:
-                log.debug("Adjustment loop 1b")
+                logger.debug("Adjustment loop 1b")
                 self.buffer_value = self.buffer_value_history[-1] + -1 * (
                     10 ** self.exponent
                 )
@@ -1021,14 +1023,14 @@ NONBON
             # If its been more than one round since last exponent change,
             # change exponent
             if self.cycles_since_last_exp_change > 1:
-                log.debug("Adjustment loop 2a")
+                logger.debug("Adjustment loop 2a")
                 self.exponent -= 1
                 self.buffer_value = self.buffer_value_history[-1] + 5 * (
                     10 ** self.exponent
                 )
                 self.cycles_since_last_exp_change = 0
             else:
-                log.debug("Adjustment loop 2b")
+                logger.debug("Adjustment loop 2b")
                 self.buffer_value = self.buffer_value_history[-1] + 1 * (
                     10 ** self.exponent
                 )
@@ -1039,7 +1041,7 @@ NONBON
             self.waters_added_history[-2] > self.target_waters
             and self.waters_added_history[-1] > self.target_waters
         ):
-            log.debug("Adjustment loop 3")
+            logger.debug("Adjustment loop 3")
             self.buffer_value = self.buffer_value_history[-1] + -1 * (
                 10 ** self.exponent
             )
@@ -1050,7 +1052,7 @@ NONBON
             self.waters_added_history[-2] < self.target_waters
             and self.waters_added_history[-1] < self.target_waters
         ):
-            log.debug("Adjustment loop 4")
+            logger.debug("Adjustment loop 4")
             self.buffer_value = self.buffer_value_history[-1] + 1 * (
                 10 ** self.exponent
             )
@@ -1083,10 +1085,10 @@ NONBON
 
         prmtop = os.path.join(self.output_path, self.output_prefix + ".prmtop")
 
-        structure = pmd.load_file(prmtop, structure=True)
+        structure = parmed.load_file(prmtop, structure=True)
 
         # noinspection PyTypeChecker
-        pmd.tools.actions.HMassRepartition(structure, arg_list=options).execute()
+        parmed.tools.actions.HMassRepartition(structure, arg_list=options).execute()
 
         structure.save(prmtop, overwrite=True)
 
@@ -1124,7 +1126,7 @@ NONBON
         file_name = os.path.join(output_path, output_prefix)
 
         # Check if Amber Topology file(s) exist
-        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        topology = numpy.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
         check_topology = [os.path.isfile(file) for file in topology]
         if not any(check_topology):
             raise FileNotFoundError("Cannot find any AMBER topology file.")
@@ -1134,14 +1136,14 @@ NONBON
 
         # Check if Amber Coordinate file(s) exist
         if toolkit == ConversionToolkit.ParmEd:
-            coordinates = np.array(
+            coordinates = numpy.array(
                 [
                     f"{file_name}.{ext}"
                     for ext in ["rst7", "inpcrd", "rst", "crd", "pdb"]
                 ]
             )
         else:  # InterMol does not support PDB for loading Amber files
-            coordinates = np.array(
+            coordinates = numpy.array(
                 [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
             )
         check_coordinates = [os.path.isfile(file) for file in coordinates]
@@ -1158,7 +1160,7 @@ NONBON
         # Convert with ParmEd
         if toolkit == ConversionToolkit.ParmEd:
             # Load Amber files
-            structure = pmd.load_file(prmtop, inpcrd, structure=True)
+            structure = parmed.load_file(prmtop, inpcrd, structure=True)
 
             if overwrite:
                 structure.save(top_file, format="gromacs", overwrite=True)
@@ -1167,12 +1169,12 @@ NONBON
                 if not os.path.isfile(top_file):
                     structure.save(top_file, format="gromacs")
                 else:
-                    log.info(f"Topology file {top_file} exists, skipping writing file.")
+                    logger.info(f"Topology file {top_file} exists, skipping writing file.")
 
                 if not os.path.isfile(gro_file):
                     structure.save(gro_file, format="gro")
                 else:
-                    log.info(
+                    logger.info(
                         f"Coordinates file {gro_file} exists, skipping writing file."
                     )
 
@@ -1228,7 +1230,7 @@ NONBON
         file_name = os.path.join(output_path, output_prefix)
 
         # Check if Amber Topology file(s) exist
-        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        topology = numpy.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
         check_topology = [os.path.isfile(file) for file in topology]
         if not any(check_topology):
             raise FileNotFoundError("Cannot find any AMBER topology file.")
@@ -1238,14 +1240,14 @@ NONBON
 
         # Check if Amber Coordinate file(s) exist
         if toolkit == ConversionToolkit.ParmEd:
-            coordinates = np.array(
+            coordinates = numpy.array(
                 [
                     f"{file_name}.{ext}"
                     for ext in ["rst7", "inpcrd", "rst", "crd", "pdb"]
                 ]
             )
         else:  # InterMol does not support PDB for loading Amber files
-            coordinates = np.array(
+            coordinates = numpy.array(
                 [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
             )
         check_coordinates = [os.path.isfile(file) for file in coordinates]
@@ -1262,7 +1264,7 @@ NONBON
         # Convert with ParmEd
         if toolkit == ConversionToolkit.ParmEd:
             # Load Amber files
-            structure = pmd.load_file(prmtop, inpcrd, structure=True)
+            structure = parmed.load_file(prmtop, inpcrd, structure=True)
 
             if overwrite:
                 structure.save(psf_file, format="psf", overwrite=True)
@@ -1271,12 +1273,12 @@ NONBON
                 if not os.path.isfile(psf_file):
                     structure.save(psf_file, format="psf")
                 else:
-                    log.info(f"Topology file {psf_file} exists, skipping writing file.")
+                    logger.info(f"Topology file {psf_file} exists, skipping writing file.")
 
                 if not os.path.isfile(crd_file):
                     structure.save(crd_file)
                 else:
-                    log.info(
+                    logger.info(
                         f"Coordinates file {crd_file} exists, skipping writing file."
                     )
 
@@ -1328,7 +1330,7 @@ NONBON
         file_name = os.path.join(output_path, output_prefix)
 
         # Check if Amber Topology file(s) exist
-        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        topology = numpy.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
         check_topology = [os.path.isfile(file) for file in topology]
         if not any(check_topology):
             raise FileNotFoundError("Cannot find any AMBER topology file.")
@@ -1337,7 +1339,7 @@ NONBON
         prmtop = topology[check_topology][0]
 
         # Check if Amber Coordinate file(s) exist
-        coordinates = np.array(
+        coordinates = numpy.array(
             [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
         )
         check_coordinates = [os.path.isfile(file) for file in coordinates]
@@ -1397,7 +1399,7 @@ NONBON
         file_name = os.path.join(output_path, output_prefix)
 
         # Check if Amber Topology file(s) exist
-        topology = np.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
+        topology = numpy.array([f"{file_name}.{ext}" for ext in ["prmtop", "parm7"]])
         check_topology = [os.path.isfile(file) for file in topology]
         if not any(check_topology):
             raise FileNotFoundError("Cannot find any AMBER topology file.")
@@ -1406,7 +1408,7 @@ NONBON
         prmtop = topology[check_topology][0]
 
         # Check if Amber Coordinate file(s) exist
-        coordinates = np.array(
+        coordinates = numpy.array(
             [f"{file_name}.{ext}" for ext in ["rst7", "inpcrd", "rst", "crd"]]
         )
         check_coordinates = [os.path.isfile(file) for file in coordinates]
