@@ -1,6 +1,6 @@
+import importlib.metadata
 import logging
 
-import importlib.metadata
 import yaml
 
 from paprika.taproom.utils import convert_string_to_quantity, de_alias
