@@ -1,6 +1,6 @@
 import logging
 
-import pkg_resources
+import importlib.metadata
 import yaml
 
 from paprika.taproom.utils import convert_string_to_quantity, de_alias
@@ -14,7 +14,7 @@ def get_benchmarks():
     """
     installed_benchmarks = {}
 
-    for entry_point in pkg_resources.iter_entry_points(group="taproom.benchmarks"):
+    for entry_point in importlib.metadata.entry_points(group="taproom.benchmarks"):
         installed_benchmarks[entry_point.name] = entry_point.load()
 
     return installed_benchmarks

@@ -7,7 +7,7 @@ from .restraints import (
     RestraintType,
     static_DAT_restraint,
 )
-from .utils import create_window_list
+from .utils import create_window_list, parse_window
 
 __all__ = [
     "BiasPotentialType",
@@ -18,4 +18,5 @@ __all__ = [
     "Plumed",
     "Colvars",
     "create_window_list",
+    "parse_window",
 ]

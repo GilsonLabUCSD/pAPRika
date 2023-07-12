@@ -126,7 +126,7 @@ def index_from_mask(structure, mask, amber_index=False):
 
     Returns
     -------
-    indices : int
+    indices : List[int]
         Atom index or indices corresponding to the mask.
 
     """
