@@ -532,11 +532,13 @@ class BuildTaproomAPR:
             )
 
             # Apply restraints
+            system_path = f"{self._build_folder}/{self._host_code}-{self._guest_code}-dum-solv.xml"
             attach_windows = create_window_list(guest_restraints)
             Parallel(n_jobs=self._n_cpus)(
                 delayed(self._apply_attach_to_system)(
                     window,
                     complex_path,
+                    system_path,
                     attach_folder,
                     static_restraints,
                     conformational_restraints,
@@ -605,11 +607,13 @@ class BuildTaproomAPR:
             )
 
             # Apply restraints
+            system_path = f"{self._build_folder}/{self._host_code}-{self._guest_code}-dum-solv.xml"
             pull_windows = create_window_list(guest_restraints)
             Parallel(n_jobs=self._n_cpus)(
                 delayed(self._apply_pull_to_system)(
                     window,
                     complex_path,
+                    system_path,
                     pull_folder,
                     static_restraints,
                     conformational_restraints,
@@ -678,6 +682,7 @@ class BuildTaproomAPR:
     def _apply_attach_to_system(
         window,
         complex_path,
+        system_path,
         attach_folder,
         static_restraints,
         conformational_restraints,
@@ -691,7 +696,6 @@ class BuildTaproomAPR:
         folder = f"{attach_folder}/{window}"
         os.makedirs(folder, exist_ok=True)
 
-        system_path = f"{folder}/restrained.xml"
         with open(system_path, "r") as file:
             system = openmm.XmlSerializer.deserialize(file.read())
 
@@ -716,6 +720,7 @@ class BuildTaproomAPR:
     def _apply_pull_to_system(
         window,
         complex_path,
+        system_path,
         pull_folder,
         static_restraints,
         conformational_restraints,
@@ -727,7 +732,6 @@ class BuildTaproomAPR:
         folder = f"{pull_folder}/{window}"
         os.makedirs(folder, exist_ok=True)
 
-        system_path = f"{folder}/restrained.xml"
         with open(system_path, "r") as file:
             system = openmm.XmlSerializer.deserialize(file.read())
 
