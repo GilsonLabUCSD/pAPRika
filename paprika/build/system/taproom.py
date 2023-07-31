@@ -408,7 +408,7 @@ class BuildTaproomAPR:
             )
 
         # 04 - Clean up
-        # os.remove(complex_prepared_path)
+        os.remove(complex_prepared_path)
 
     def _build_apr_structures(self):
         """Build and prepare the APR structures and windows."""
