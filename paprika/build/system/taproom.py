@@ -1,7 +1,7 @@
 import json
 import os
 import shutil
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import mdtraj
 import numpy
@@ -26,8 +26,11 @@ from paprika.utils import index_from_mask
 class BuildTaproomAPR:
     """A class to generate APR files from Taproom database in pAPRika.
 
-    TODO: Implement an option to create files with implicit solvent.
-    TODO: Implement an option to use GAFF force field.
+    As of now this class can generate files for a single host-guest pair with
+    explicit and implicit solvent based on OpenFF specifications.
+
+    TODO: Implement an option to build an array of host-guest pairs from Taproom.
+    TODO: Implement an option to use GAFF force field (possible through the OpenMMForceFields package).
 
     Parameters
     ----------
@@ -36,7 +39,7 @@ class BuildTaproomAPR:
     guest_code: str
         The 3-letter Taproom code for the guest molecule.
     n_water: int
-        Number of Water molecules.
+        Number of Water molecules. If set as `0` or `None` then the system will be built without water.
     build_folder: str
         Temporary folder to save intermediate files.
     working_folder: str
@@ -61,6 +64,21 @@ class BuildTaproomAPR:
     >>> system.extend_pull_distance(extend_by=6*unit.angstrom)
     >>> system.build_system()
     >>>
+    >>> # Create APR systems in a vacuum
+    >>> system = BuildTaproomAPR(host_code="bcd", guest_code="hex", n_water=None, force_field=force_field)
+    >>> system.build_system()
+    >>>
+    >>> # Create APR systems in OBC2 implicit solvent
+    >>> from pkg_resources import resource_filename
+    >>> GBSA = resource_filename(
+    >>> "   openff.toolkit",
+    >>>     os.path.join("data", "test_forcefields", "GBSA_OBC2-1.0.offxml"),
+    >>> )
+    >>> force_field = ForceField("openff-2.0.0.offxml", GBSA)
+    >>>
+    >>> system = BuildTaproomAPR(host_code="bcd", guest_code="hex", n_water=None, force_field=force_field)
+    >>> system.build_system()
+    >>>
     >>> # Creating these files can take 10-20 minutes on one core. We can speed things up with more CPU cores
     >>> system.build_system(n_cpus=4)
     """
@@ -69,14 +87,18 @@ class BuildTaproomAPR:
         self,
         host_code: str,
         guest_code: str,
-        n_water: int,
+        n_water: Union[int, None],
         force_field: ForceField,
+        use_taproom_mol2: bool = True,
         build_folder: str = "build_files",
         working_folder: str = "simulations",
     ):
         self._host_code = host_code
         self._guest_code = guest_code
         self._n_water = n_water
+        if n_water == 0 or n_water is None:
+            self._n_water = None
+        self._use_taproom_mol2 = use_taproom_mol2
         self._force_field = force_field
         self._build_folder = build_folder
         self._working_folder = working_folder
@@ -108,11 +130,12 @@ class BuildTaproomAPR:
         self._guest_yaml_schema = read_yaml_schema(self._guest_metadata["yaml"])
 
         # Water Molecule
-        self._water_mol = Molecule.from_smiles("O")
-        self._water_intrcg = Interchange.from_smirnoff(
-            force_field=self._force_field,
-            topology=[self._water_mol] * self._n_water,
-        )
+        if self._n_water is not None:
+            self._water_mol = Molecule.from_smiles("O")
+            self._water_intrcg = Interchange.from_smirnoff(
+                force_field=self._force_field,
+                topology=[self._water_mol] * self._n_water,
+            )
 
         # Load restraints
         self._restraints = {
@@ -203,19 +226,23 @@ class BuildTaproomAPR:
         solute_intrcg = Interchange.from_smirnoff(
             force_field=self._force_field,
             topology=solute_topology,
-            charge_from_molecules=unique_molecules,
+            charge_from_molecules=unique_molecules if self._use_taproom_mol2 else None,
         )
-        solvated_topology = pack_box(
-            molecules=[self._water_mol],
-            number_of_copies=[self._n_water],
-            solute=solute_intrcg.topology,
-            box_shape=rectangular_box,
-            mass_density=0.95 * unit.grams / unit.milliliters,
-            center_solute="ORIGIN",
-        )
-        solute_intrcg.box = solvated_topology.box_vectors
-        self._water_intrcg.box = solvated_topology.box_vectors
-        solvated_topology.to_file(solvated_path)
+        if self._n_water is not None:
+            solvated_topology = pack_box(
+                molecules=[self._water_mol],
+                number_of_copies=[self._n_water],
+                solute=solute_intrcg.topology,
+                box_shape=rectangular_box,
+                mass_density=0.95 * unit.grams / unit.milliliters,
+                center_solute="ORIGIN",
+            )
+            solute_intrcg.box = solvated_topology.box_vectors
+            self._water_intrcg.box = solvated_topology.box_vectors
+            solvated_topology.to_file(solvated_path)
+        else:
+            solute_intrcg.box = None
+            solute_intrcg.topology.to_file(solvated_path)
 
         # 02 - Add Dummy Atoms to PDB
         input_structure = parmed.load_file(solvated_path, structure=True)
@@ -248,8 +275,12 @@ class BuildTaproomAPR:
             )
 
         # 05 - Combine interchange objects
-        system_intrcg = solute_intrcg + self._water_intrcg
-        system_intrcg.box = solvated_topology.box_vectors
+        if self._n_water is not None:
+            system_intrcg = solute_intrcg + self._water_intrcg
+            system_intrcg.box = solvated_topology.box_vectors
+        else:
+            system_intrcg = solute_intrcg
+            system_intrcg.box = None
 
         return system_intrcg
 
