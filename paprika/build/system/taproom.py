@@ -38,6 +38,8 @@ class BuildTaproomAPR:
         The 3-letter Taproom code for the host molecule.
     guest_code: str
         The 3-letter Taproom code for the guest molecule.
+    host_guest_codes: dict
+        Selection of the host-guest pairs as a dictionary.
     n_water: int
         Number of Water molecules. If set as `0` or `None` then the system will be built without water.
     build_folder: str
@@ -86,16 +88,24 @@ class BuildTaproomAPR:
 
     def __init__(
         self,
-        host_code: str,
-        guest_code: str,
-        n_water: Union[int, None],
-        force_field: ForceField,
+        host_code: Union[str, None] = None,
+        guest_code: Union[str, None] = None,
+        host_guest_codes: Union[Dict[str, List[str]], None] = None,
+        n_water: Union[int, None] = None,
+        force_field: Union[ForceField, None] = None,
         use_taproom_mol2: bool = True,
         build_folder: str = "build_files",
         working_folder: str = "simulations",
+        disable_progress: bool = True,
     ):
+        if force_field is None:
+            raise ValueError(
+                "The option `force_field` cannot be a None. Please specify an OpenFF `ForceField` object."
+            )
+
         self._host_code = host_code
         self._guest_code = guest_code
+        self._host_guest_code = host_guest_codes
         self._n_water = n_water
         if n_water == 0 or n_water is None:
             self._n_water = None
@@ -103,6 +113,7 @@ class BuildTaproomAPR:
         self._force_field = force_field
         self._build_folder = build_folder
         self._working_folder = working_folder
+        self._disable_progress = disable_progress
         self._host_metadata = None
         self._guest_metadata = None
         self._orientations = None
@@ -110,10 +121,17 @@ class BuildTaproomAPR:
         self._water_intrcg = None
         self._restraints = None
         self._n_cpus = 1
+        self._build_array = False
 
-        self._initialize()
+        if self._host_code is not None and self._guest_code is not None:
+            self._initialize_single()
+        else:
+            self._build_array = True
+            raise NotImplementedError(
+                "Creating APR files for an array of host-guest pairs is not implemented yet."
+            )
 
-    def _initialize(self):
+    def _initialize_single(self):
         # Create folder
         os.makedirs(self._build_folder, exist_ok=True)
         os.makedirs(self._working_folder, exist_ok=True)
@@ -156,6 +174,10 @@ class BuildTaproomAPR:
                 self._guest_yaml_schema["symmetry_correction"]["restraints"]
             ),
         }
+
+    def _initialize_array(self):
+        """Not implemented yet."""
+        pass
 
     @staticmethod
     def _unnest_restraint_specs(
@@ -437,14 +459,14 @@ class BuildTaproomAPR:
                     n_windows,
                     [host_mol, guest_mol],
                 )
-                for i in tqdm(range(n_windows["pull"]))
+                for i in tqdm(range(n_windows["pull"]), disable=self._disable_progress)
             )
 
             # --------------------------------------------------------------------- #
             # Prepare `attach` windows - Copy PDB from p000
             # --------------------------------------------------------------------- #
             print("Generating files for the `attach` phase.")
-            for i in tqdm(range(n_windows["attach"])):
+            for i in tqdm(range(n_windows["attach"]), disable=self._disable_progress):
                 folder = f"{self._working_folder}/attach-{orient}/a{i:03}"
                 os.makedirs(folder, exist_ok=True)
                 shutil.copy(
@@ -491,7 +513,7 @@ class BuildTaproomAPR:
         # --------------------------------------------------------------------- #
         # Prepare `release` windows - Copy PDB
         # --------------------------------------------------------------------- #
-        for i in tqdm(range(n_windows["release"])):
+        for i in tqdm(range(n_windows["release"]), disable=self._disable_progress):
             folder = f"{self._working_folder}/release/r{i:03}"
             os.makedirs(folder, exist_ok=True)
             shutil.copy(
@@ -578,7 +600,7 @@ class BuildTaproomAPR:
                     symmetry_restraints,
                     wall_restraints,
                 )
-                for window in tqdm(attach_windows)
+                for window in tqdm(attach_windows, disable=self._disable_progress)
             )
 
     def _apply_pull_restraints(self):
@@ -651,7 +673,7 @@ class BuildTaproomAPR:
                     conformational_restraints,
                     guest_restraints,
                 )
-                for window in tqdm(pull_windows)
+                for window in tqdm(pull_windows, disable=self._disable_progress)
             )
 
     def _apply_release_restraints(self):
@@ -707,7 +729,7 @@ class BuildTaproomAPR:
                 static_restraints,
                 conformational_restraints,
             )
-            for window in tqdm(release_windows)
+            for window in tqdm(release_windows, disable=self._disable_progress)
         )
 
     @staticmethod
@@ -854,10 +876,13 @@ class BuildTaproomAPR:
 
         self._n_cpus = n_cpus
 
-        self._build_apr_structures()
-        self._apply_attach_restraints()
-        self._apply_pull_restraints()
-        self._apply_release_restraints()
+        if not self._build_array:
+            self._build_apr_structures()
+            self._apply_attach_restraints()
+            self._apply_pull_restraints()
+            self._apply_release_restraints()
+        else:
+            self._build_apr_structures()
 
         if clean_files:
             shutil.rmtree(self._build_folder)
