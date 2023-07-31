@@ -3,7 +3,6 @@ import os
 import shutil
 from typing import Any, Dict, List, Union
 
-import mdtraj
 import numpy
 import openmm
 import openmm.app as app
@@ -15,6 +14,7 @@ from openff.toolkit import ForceField, Molecule, Topology
 from openff.units import unit
 from tqdm.auto import tqdm
 
+from paprika.build import align
 from paprika.evaluator import Setup
 from paprika.io import PaprikaEncoder, save_restraints
 from paprika.restraints import DAT_restraint, create_window_list, parse_window
@@ -212,8 +212,10 @@ class BuildTaproomAPR:
         self,
         complex_path: str,
         solvated_path: str,
+        host_resname: str,
         unique_molecules: List[Molecule],
         offset: float,
+        G1_mask: Union[str, None] = None,
     ):
         """Solvate a PDB file with PackMol through OpenFF-Interchange.
 
@@ -268,7 +270,20 @@ class BuildTaproomAPR:
             solute_intrcg.topology.to_file(solvated_path)
 
         # 02 - Add Dummy Atoms to PDB
-        input_structure = parmed.load_file(solvated_path, structure=True)
+        input_structure = parmed.load_file(
+            solvated_path if self._n_water is not None else complex_path,
+            structure=True,
+        )
+        if self._n_water is None:
+            input_structure = align.translate_to_origin(
+                input_structure, atom_mask=f":{host_resname}", weight="geo"
+            )
+
+        offset_array = numpy.array([0.0, 0.0, 0.0])
+        if G1_mask is not None:
+            G1_coordinates = input_structure[G1_mask].coordinates
+            offset_array = numpy.array([0.0, 0.0, G1_coordinates[-1][-1]])
+
         Setup.add_dummy_atoms_to_structure(
             input_structure,
             dummy_atom_offsets=[
@@ -276,17 +291,18 @@ class BuildTaproomAPR:
                 numpy.array([0, 0, -3.0 - offset]),
                 numpy.array([0, 2.2, -5.2 - offset]),
             ],
-            offset_coordinates=numpy.zeros(3),
+            offset_coordinates=offset_array,
         )
 
         # 03 - Shift structure to avoid issues with PBC
-        input_structure.coordinates += numpy.array(
-            [
-                input_structure.box[0] * 0.5,
-                input_structure.box[1] * 0.5,
-                -input_structure.coordinates[-1, 2] + 5.0,
-            ]
-        )
+        if self._n_water is not None:
+            input_structure.coordinates += numpy.array(
+                [
+                    input_structure.box[0] * 0.5,
+                    input_structure.box[1] * 0.5,
+                    -input_structure.coordinates[-1, 2] + 5.0,
+                ]
+            )
 
         # 04 - Write PDB for solvated system
         with open(solvated_path, "w") as f:
@@ -342,7 +358,9 @@ class BuildTaproomAPR:
         guest_atom_indices,
         guest_orientation_mask,
         pull_distance,
+        host_resname,
         offset,
+        G1_mask,
         n_windows,
         unique_molecules,
     ):
@@ -376,8 +394,10 @@ class BuildTaproomAPR:
         host_guest_system_intrcg = self._solvate_and_add_dummy(
             complex_prepared_path,
             complex_solvated_path,
+            host_resname=host_resname,
             unique_molecules=unique_molecules,
             offset=offset,
+            G1_mask=G1_mask,
         )
 
         if i == 0:
@@ -388,7 +408,7 @@ class BuildTaproomAPR:
             )
 
         # 04 - Clean up
-        os.remove(complex_prepared_path)
+        # os.remove(complex_prepared_path)
 
     def _build_apr_structures(self):
         """Build and prepare the APR structures and windows."""
@@ -414,7 +434,7 @@ class BuildTaproomAPR:
         # --------------------------------------------------------------------- #
         # Prepare Host-Guest Complex
         # --------------------------------------------------------------------- #
-        print("Generating files for the `pull` phase.")
+        # print("Generating files for the `pull` phase.")
         for orient in self._orientations:
             # 01 - Load complex structure
             complex_path = str(
@@ -455,7 +475,9 @@ class BuildTaproomAPR:
                     guest_atom_indices,
                     guest_orientation_mask,
                     pull_distance,
+                    host_resname,
                     offset,
+                    G1,
                     n_windows,
                     [host_mol, guest_mol],
                 )
@@ -465,7 +487,7 @@ class BuildTaproomAPR:
             # --------------------------------------------------------------------- #
             # Prepare `attach` windows - Copy PDB from p000
             # --------------------------------------------------------------------- #
-            print("Generating files for the `attach` phase.")
+            # print("Generating files for the `attach` phase.")
             for i in tqdm(range(n_windows["attach"]), disable=self._disable_progress):
                 folder = f"{self._working_folder}/attach-{orient}/a{i:03}"
                 os.makedirs(folder, exist_ok=True)
@@ -477,15 +499,32 @@ class BuildTaproomAPR:
         # --------------------------------------------------------------------- #
         # Prepare Host-only Structure
         # --------------------------------------------------------------------- #
-        print("Generating files for the `release` phase.")
-        # 01 - Remove Guest molecule from complex structure
+        # print("Generating files for the `release` phase.")
+        # 01 - Remove Guest molecule and Dummy atoms from complex structure
         complex_solvate_path = f"{self._working_folder}/pull-p/p000/restrained.pdb"
-        complex_structure = parmed.load_file(complex_solvate_path, structure=True)
-        host_atom_indices = index_from_mask(complex_structure, mask=f":{host_resname}")
+        host_pdb = app.PDBFile(
+            str(
+                self._host_metadata["path"].joinpath(
+                    self._host_yaml_schema["structure"]["pdb"]
+                )
+            )
+        )
+        pdbfile = app.PDBFile(complex_solvate_path)
+        modeller = app.Modeller(pdbfile.topology, pdbfile.positions)
+        guest_atoms = [
+            atom
+            for atom in pdbfile.topology.atoms()
+            if atom.residue.name != host_resname
+        ]
+        modeller.delete(guest_atoms)
 
-        mdtraj_trajectory = mdtraj.load_pdb(complex_solvate_path)
-        host_trajectory = mdtraj_trajectory.atom_slice(host_atom_indices)
-        host_trajectory.save(f"{self._build_folder}/host_input.pdb")
+        with open(f"{self._build_folder}/host_input.pdb", "w") as f:
+            app.PDBFile.writeFile(
+                host_pdb.topology,
+                modeller.positions,
+                f,
+                keepIds=False,
+            )
 
         # 02 - Align host molecule
         host_structure = Setup.prepare_host_structure(
@@ -502,8 +541,10 @@ class BuildTaproomAPR:
         host_system_intrcg = self._solvate_and_add_dummy(
             output_coordinate_path,
             host_solvated_path,
+            host_resname=host_resname,
             unique_molecules=[host_mol],
             offset=offset,
+            G1_mask=None,
         )
 
         # 04 - Create Host-only OpenMM System with Dummy Atoms
@@ -524,7 +565,7 @@ class BuildTaproomAPR:
     def _apply_attach_restraints(self):
         """Apply restraints for the `attach` phase."""
 
-        print("Applying restraints for `attach` phase...")
+        # print("Applying restraints for `attach` phase...")
         attach_lambdas = self._host_yaml_schema["calculation"]["lambda"]["attach"]
         n_windows = self._host_yaml_schema["calculation"]["windows"]
 
@@ -606,7 +647,7 @@ class BuildTaproomAPR:
     def _apply_pull_restraints(self):
         """Apply restraints for the `pull` phase."""
 
-        print("Applying restraints for `pull` phase...")
+        # print("Applying restraints for `pull` phase...")
         attach_lambdas = self._host_yaml_schema["calculation"]["lambda"]["attach"]
         n_windows = self._host_yaml_schema["calculation"]["windows"]
 
@@ -679,7 +720,7 @@ class BuildTaproomAPR:
     def _apply_release_restraints(self):
         """Apply restraints for the `release` phase."""
 
-        print("Applying restraints for `release` phase...")
+        # print("Applying restraints for `release` phase...")
         release_lambdas = self._host_yaml_schema["calculation"]["lambda"]["release"]
         n_windows = self._host_yaml_schema["calculation"]["windows"]
 
