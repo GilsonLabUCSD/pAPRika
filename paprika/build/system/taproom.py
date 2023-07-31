@@ -30,7 +30,7 @@ class BuildTaproomAPR:
     explicit and implicit solvent based on OpenFF specifications.
 
     TODO: Implement an option to build an array of host-guest pairs from Taproom.
-    TODO: Implement an option to use GAFF force field (possible through the OpenMMForceFields package).
+    TODO: Implement an option to use the GAFF force field (possible through the OpenMMForceFields package).
 
     Parameters
     ----------
@@ -45,12 +45,12 @@ class BuildTaproomAPR:
     working_folder: str
         The main folder to write the APR structure files.
 
-    Example
-    -------
+    Examples
+    --------
     >>> from paprika.build.system import BuildTaproomAPR
     >>> from openff.toolkit import ForceField
     >>>
-    >>> # Select OpenFF force field version
+    >>> # Select OpenFF force field version 2.0.0
     >>> force_field = ForceField("openff-2.0.0.offxml")
     >>>
     >>> # Initiate system object
@@ -59,16 +59,16 @@ class BuildTaproomAPR:
     >>> # Build APR files
     >>> system.build_system()
     >>>
-    >>> # We can extend the default `r_final` specified in Taproom
+    >>> # We can also extend the default `r_final` specified in Taproom if it's not far enough
     >>> from openff.units import unit
     >>> system.extend_pull_distance(extend_by=6*unit.angstrom)
     >>> system.build_system()
     >>>
-    >>> # Create APR systems in a vacuum
+    >>> # We can create the APR system in a vacuum (useful if you want to add your own custom implicit solvent later on)
     >>> system = BuildTaproomAPR(host_code="bcd", guest_code="hex", n_water=None, force_field=force_field)
     >>> system.build_system()
     >>>
-    >>> # Create APR systems in OBC2 implicit solvent
+    >>> # We can create the APR system with the OBC2 implicit solvent
     >>> from pkg_resources import resource_filename
     >>> GBSA = resource_filename(
     >>> "   openff.toolkit",
@@ -79,7 +79,8 @@ class BuildTaproomAPR:
     >>> system = BuildTaproomAPR(host_code="bcd", guest_code="hex", n_water=None, force_field=force_field)
     >>> system.build_system()
     >>>
-    >>> # Creating these files can take 10-20 minutes on one core. We can speed things up with more CPU cores
+    >>> # Creating these files can take 10-20 minutes on one core (especially with explicit solvent).
+    >>> # We can speed things up running these in parallel.
     >>> system.build_system(n_cpus=4)
     """
 
