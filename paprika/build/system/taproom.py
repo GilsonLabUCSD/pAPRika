@@ -214,8 +214,8 @@ class BuildTaproomAPR:
         solvated_path: str,
         host_resname: str,
         unique_molecules: List[Molecule],
-        offset: float,
-        G1_mask: Union[str, None] = None,
+        initial_distance: float,
+        offset_mask: Union[str, None] = None,
     ):
         """Solvate a PDB file with PackMol through OpenFF-Interchange.
 
@@ -227,8 +227,10 @@ class BuildTaproomAPR:
             The output file path for the solvated complex.
         unique_molecules: List[Molecule]
             List of unique molecules (to generate the OpenFF Topology)
-        offset: float
+        initial_distance: float
             An offset to place the dummy atoms.
+        offset_mask: str
+            The AMBER atom mask for G1 - used for offsetting Dummy atoms
 
         Returns
         -------
@@ -280,16 +282,16 @@ class BuildTaproomAPR:
             )
 
         offset_array = numpy.array([0.0, 0.0, 0.0])
-        if G1_mask is not None:
-            G1_coordinates = input_structure[G1_mask].coordinates
-            offset_array = numpy.array([0.0, 0.0, G1_coordinates[-1][-1]])
+        if offset_mask is not None:
+            coordinates_z = input_structure[offset_mask].coordinates[-1][-1]
+            offset_array = numpy.array([0.0, 0.0, coordinates_z])
 
         Setup.add_dummy_atoms_to_structure(
             input_structure,
             dummy_atom_offsets=[
-                numpy.array([0, 0, -offset]),
-                numpy.array([0, 0, -3.0 - offset]),
-                numpy.array([0, 2.2, -5.2 - offset]),
+                numpy.array([0, 0, -initial_distance]),
+                numpy.array([0, 0, -3.0 - initial_distance]),
+                numpy.array([0, 2.2, -5.2 - initial_distance]),
             ],
             offset_coordinates=offset_array,
         )
@@ -357,10 +359,9 @@ class BuildTaproomAPR:
         complex_path,
         guest_atom_indices,
         guest_orientation_mask,
-        pull_distance,
+        pulling_distance,
         host_resname,
-        offset,
-        G1_mask,
+        initial_distance,
         n_windows,
         unique_molecules,
     ):
@@ -374,7 +375,7 @@ class BuildTaproomAPR:
             complex_path,
             guest_atom_indices,
             guest_orientation_mask,
-            pull_distance=pull_distance,
+            pull_distance=pulling_distance,
             pull_window_index=i,
             n_pull_windows=n_windows["pull"],
         )
@@ -390,14 +391,16 @@ class BuildTaproomAPR:
             )
 
         # 02 - Solvate structure
+        r_i = numpy.linspace(0.0, pulling_distance, n_windows["pull"])[i]
         complex_solvated_path = f"{folder}/restrained.pdb"
+        offset_mask = guest_orientation_mask.split(" ")[0]
         host_guest_system_intrcg = self._solvate_and_add_dummy(
             complex_prepared_path,
             complex_solvated_path,
             host_resname=host_resname,
             unique_molecules=unique_molecules,
-            offset=offset,
-            G1_mask=G1_mask,
+            initial_distance=initial_distance + r_i,
+            offset_mask=offset_mask,
         )
 
         if i == 0:
@@ -459,10 +462,10 @@ class BuildTaproomAPR:
             r_final = self._guest_yaml_schema["restraints"]["guest"][0]["restraint"][
                 "pull"
             ]["target"]
-            pull_distance = (r_final - r_initial).m_as(unit.angstrom)
-            offset = self._guest_yaml_schema["restraints"]["guest"][0]["restraint"][
-                "attach"
-            ]["target"].m_as(unit.angstrom)
+            pulling_distance = (r_final - r_initial).m_as(unit.angstrom)
+            initial_distance = self._guest_yaml_schema["restraints"]["guest"][0][
+                "restraint"
+            ]["attach"]["target"].m_as(unit.angstrom)
 
             # --------------------------------------------------------------------- #
             # Prepare `pull` windows
@@ -474,10 +477,9 @@ class BuildTaproomAPR:
                     complex_path,
                     guest_atom_indices,
                     guest_orientation_mask,
-                    pull_distance,
+                    pulling_distance,
                     host_resname,
-                    offset,
-                    G1,
+                    initial_distance,
                     n_windows,
                     [host_mol, guest_mol],
                 )
@@ -543,8 +545,8 @@ class BuildTaproomAPR:
             host_solvated_path,
             host_resname=host_resname,
             unique_molecules=[host_mol],
-            offset=offset,
-            G1_mask=None,
+            initial_distance=initial_distance,
+            offset_mask=None,
         )
 
         # 04 - Create Host-only OpenMM System with Dummy Atoms
