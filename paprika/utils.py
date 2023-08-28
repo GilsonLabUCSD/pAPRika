@@ -1,12 +1,13 @@
 import logging
-import os as os
+import os
+import re
 import shutil
 from datetime import datetime
 from functools import lru_cache
 
-import numpy as np
-import parmed as pmd
-import pytraj as pt
+import numpy
+import parmed
+import pytraj
 from openff.units import unit as openff_unit
 from parmed.structure import Structure as ParmedStructureClass
 
@@ -102,7 +103,7 @@ def return_parmed_structure(filename):
     # `parmed` can read both PDBs and
     # .inpcrd/.prmtop files with the same function call.
     try:
-        structure = pmd.load_file(filename)
+        structure = parmed.load_file(filename)
         logger.info("Loaded {}...".format(filename))
     except IOError:
         logger.error("Unable to load file: {}".format(filename))
@@ -125,7 +126,7 @@ def index_from_mask(structure, mask, amber_index=False):
 
     Returns
     -------
-    indices : int
+    indices : List[int]
         Atom index or indices corresponding to the mask.
 
     """
@@ -144,7 +145,8 @@ def index_from_mask(structure, mask, amber_index=False):
         )
     # http://parmed.github.io/ParmEd/html/api/parmed/parmed.amber.mask.html?highlight=mask#module-parmed.amber.mask
     indices = [
-        i + index_offset for i in pmd.amber.mask.AmberMask(structure, mask).Selected()
+        i + index_offset
+        for i in parmed.amber.mask.AmberMask(structure, mask).Selected()
     ]
     logger.debug("There are {} atoms in the mask {}  ...".format(len(indices), mask))
     return indices
@@ -199,8 +201,8 @@ def strip_prmtop(prmtop, mask=":WAT,:Na+,:Cl-"):
 
     """
 
-    structure = pt.load_topology(os.path.normpath(prmtop))
-    stripped = pt.strip(mask, structure)
+    structure = pytraj.load_topology(os.path.normpath(prmtop))
+    stripped = pytraj.strip(mask, structure)
     # stripped_name = os.path.join(os.path.splitext(prmtop)[0], '-stripped', os.path.splitext(prmtop)[1])
     # stripped.save(filename=stripped_name)
     # logger.debug('Stripping {} from parameter file and writing {}...'.format(mask, stripped_name))
@@ -345,9 +347,21 @@ def check_unit(variable, base_unit):
             raise KeyError(
                 "Please make my life easier by either specifying a list of all float or all openff.unit.Quantity."
             )
-    elif isinstance(variable, np.ndarray):
+    elif isinstance(variable, numpy.ndarray):
         quantity = openff_unit.Quantity(variable, units=base_unit)
     else:
         raise KeyError("``variable`` should be a float or openff.unit.Quantity.")
 
     return quantity
+
+
+def multiple_replace(dct, text):
+    """
+    Create a regular expression to do multiple find and replace.
+    """
+
+    # Create a regular expression from the dictionary keys
+    regex = re.compile("(%s)" % "|".join(map(re.escape, dct.keys())))
+
+    # For each match, look-up corresponding value in dictionary
+    return regex.sub(lambda mo: dct[mo.string[mo.start() : mo.end()]], text)
