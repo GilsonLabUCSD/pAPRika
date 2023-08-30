@@ -1,7 +1,7 @@
 """A module aimed at applying restraints directly to OpenMM systems."""
 import logging
 
-import numpy as np
+import numpy
 
 try:
     import openmm
@@ -12,14 +12,14 @@ except ImportError:
 
 from typing import Optional, Union
 
-import parmed as pmd
+import parmed
 from openff.units import unit as openff_unit
 from openff.units.openmm import to_openmm
 
 from paprika.restraints import DAT_restraint
 
 logger = logging.getLogger(__name__)
-_PI_ = np.pi
+_PI_ = numpy.pi
 
 
 def apply_positional_restraints(
@@ -50,7 +50,7 @@ def apply_positional_restraints(
     """
 
     # noinspection PyTypeChecker
-    structure: pmd.Structure = pmd.load_file(coordinate_path, structure=True)
+    structure: parmed.Structure = parmed.load_file(coordinate_path, structure=True)
 
     for atom in structure.atoms:
         if atom.name == atom_name:

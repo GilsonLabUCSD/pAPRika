@@ -1267,6 +1267,78 @@ def test_restraints_output_modules(clean_files):
     r.initialize()
     guest_restraints.append(r)
 
+    # Guest - Dihedral
+    r = DAT_restraint()
+    r.amber_index = True
+    r.continuous_apr = True
+    r.auto_apr = True
+    r.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r.mask1 = ":CB6@C13"
+    r.mask2 = ":CB6@C3"
+    r.mask3 = ":CB6@C"
+    r.mask4 = ":BUT@C1"
+    r.attach["target"] = 180.0
+    r.attach["num_windows"] = 15
+    r.attach["fc_initial"] = 0.0
+    r.attach["fc_final"] = 100.0
+    r.pull["fc"] = r.attach["fc_final"]
+    r.pull["num_windows"] = 46
+    r.pull["target_initial"] = r.attach["target"]
+    r.pull["target_final"] = 180.0
+    r.release["target"] = r.pull["target_final"]
+    r.release["num_windows"] = r.attach["num_windows"]
+    r.release["fc_initial"] = r.attach["fc_initial"]
+    r.release["fc_final"] = r.attach["fc_final"]
+    r.initialize()
+    guest_restraints.append(r)
+
+    # Guest - Group
+    r = DAT_restraint()
+    r.amber_index = True
+    r.continuous_apr = True
+    r.auto_apr = True
+    r.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r.mask1 = ":CB6@C13,C12"
+    r.mask2 = ":CB6@C3,C2"
+    r.mask3 = ":CB6@C,C1"
+    r.mask4 = ":BUT@C1,C2"
+    r.attach["target"] = 180.0
+    r.attach["num_windows"] = 15
+    r.attach["fc_initial"] = 0.0
+    r.attach["fc_final"] = 100.0
+    r.pull["fc"] = r.attach["fc_final"]
+    r.pull["num_windows"] = 46
+    r.pull["target_initial"] = r.attach["target"]
+    r.pull["target_final"] = 180.0
+    r.release["target"] = r.pull["target_final"]
+    r.release["num_windows"] = r.attach["num_windows"]
+    r.release["fc_initial"] = r.attach["fc_initial"]
+    r.release["fc_final"] = r.attach["fc_final"]
+    r.initialize()
+    guest_restraints.append(r)
+
+    # Guest - None
+    r_empty = DAT_restraint()
+    r_empty.amber_index = True
+    r_empty.continuous_apr = True
+    r_empty.auto_apr = True
+    r_empty.topology = os.path.join(
+        os.path.dirname(__file__), "../data/cb6-but/cb6-but-dum.pdb"
+    )
+    r_empty.mask1 = ":CB6@C13,C12"
+    r_empty.mask2 = ":CB6@C3,C2"
+    r_empty.mask3 = ":CB6@C,C1"
+    r_empty.mask4 = ":BUT@C1,C2"
+    r_empty.attach["target"] = 180.0
+    r_empty.attach["num_windows"] = 15
+    r_empty.attach["fc_initial"] = 0.0
+    r_empty.attach["fc_final"] = 100.0
+    r_empty.initialize()
+
     # Create OpenMM System
     system = structure.createSystem(
         nonbondedMethod=app.NoCutoff,
@@ -1296,7 +1368,9 @@ def test_restraints_output_modules(clean_files):
         or isinstance(force, openmm.CustomTorsionForce)
     ]
 
+    # ---------------------------------------------------------------- #
     # Test dummy atom positional restraint
+    # ---------------------------------------------------------------- #
     for i, force in enumerate(positional_restraints):
         particle, parameters = force.getParticleParameters(0)
         assert pytest.approx(parameters[0], abs=1e-3) == k_pos.value_in_unit(
@@ -1306,7 +1380,9 @@ def test_restraints_output_modules(clean_files):
         assert pytest.approx(parameters[2], abs=1e-3) == dummy_atoms[i]["y"] / 10
         assert pytest.approx(parameters[3], abs=1e-3) == dummy_atoms[i]["z"] / 10
 
+    # ---------------------------------------------------------------- #
     # Test Amber NMR-style restraints
+    # ---------------------------------------------------------------- #
     atom1, atom2, parameters = DAT_restraint_list[0].getBondParameters(0)
     assert pytest.approx(parameters[0]) == 2092.0
     assert pytest.approx(parameters[1]) == 0.6
@@ -1319,7 +1395,9 @@ def test_restraints_output_modules(clean_files):
     assert pytest.approx(parameters[0]) == 418.4
     assert pytest.approx(parameters[1]) == numpy.pi
 
+    # ---------------------------------------------------------------- #
     # Test Amber restraints
+    # ---------------------------------------------------------------- #
     r_string = amber_restraint_line(guest_restraints[0], window)
     assert r_string.split()[2].split(",")[0] == "123"
     assert r_string.split()[2].split(",")[1] == "119"
@@ -1341,7 +1419,38 @@ def test_restraints_output_modules(clean_files):
     assert float(theta_string.split()[12].split(",")[0]) == 100.0
     assert float(theta_string.split()[14].split(",")[0]) == 100.0
 
+    dihedral_string = amber_restraint_line(guest_restraints[3], window)
+    assert dihedral_string.split()[2].split(",")[0] == "38"
+    assert dihedral_string.split()[2].split(",")[1] == "10"
+    assert dihedral_string.split()[2].split(",")[2] == "1"
+    assert dihedral_string.split()[2].split(",")[3] == "113"
+
+    group_string = amber_restraint_line(guest_restraints[4], window)
+    assert group_string.split()[2].split(",")[0] == "-1"
+    assert group_string.split()[2].split(",")[1] == "-1"
+    assert group_string.split()[2].split(",")[2] == "-1"
+    assert group_string.split()[2].split(",")[3] == "-1"
+    assert float(group_string.split()[4].split(",")[0]) == 0.0
+    assert float(group_string.split()[6].split(",")[0]) == 180.0
+    assert float(group_string.split()[8].split(",")[0]) == 180.0
+    assert float(group_string.split()[10].split(",")[0]) == 360.0
+    assert float(group_string.split()[12].split(",")[0]) == 100.0
+    assert float(group_string.split()[14].split(",")[0]) == 100.0
+    assert group_string.split()[15] == "igr1="
+    assert group_string.split()[16] == "37,38,"
+    assert group_string.split()[17] == "igr2="
+    assert group_string.split()[18] == "9,10,"
+    assert group_string.split()[19] == "igr3="
+    assert group_string.split()[20] == "1,2,"
+    assert group_string.split()[21] == "igr4="
+    assert group_string.split()[22] == "113,115,"
+
+    empty_string = amber_restraint_line(r_empty, window)
+    assert empty_string == ""
+
+    # ---------------------------------------------------------------- #
     # Test Plumed output
+    # ---------------------------------------------------------------- #
     plumed = Plumed()
     plumed.path = "tmp"
     plumed.file_name = "plumed.dat"
@@ -1383,7 +1492,9 @@ def test_restraints_output_modules(clean_files):
                 assert float(restraint_line[2].split("=")[1]) == 3.1416
                 assert float(restraint_line[3].split("=")[1]) == 200.0
 
+    # ---------------------------------------------------------------- #
     # Test Colvar output
+    # ---------------------------------------------------------------- #
     colvar = Colvars()
     colvar.path = "tmp"
     colvar.file_name = "colvars.dat"

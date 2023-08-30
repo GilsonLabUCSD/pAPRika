@@ -7,11 +7,11 @@ import os
 import subprocess
 from typing import Optional
 
-import numpy as np
-import parmed as pmd
+import numpy
+import parmed
 
 logger = logging.getLogger(__name__)
-_PI_ = np.pi
+_PI_ = numpy.pi
 
 
 def generate_gaff(
@@ -59,7 +59,7 @@ def generate_gaff(
             "Checking to see if we have a multi-residue MOL2 file that should be converted "
             "to single-residue..."
         )
-        structure = pmd.load_file(
+        structure = parmed.load_file(
             os.path.join(directory_path, f"{output_name}.{gaff_version}.mol2"),
             structure=True,
         )
@@ -129,7 +129,6 @@ def _generate_gaff_atom_types(
         cwd=directory_path,
     )
     p.communicate()
-    print(p)
 
     remove_files = [
         "ANTECHAMBER_AC.AC",

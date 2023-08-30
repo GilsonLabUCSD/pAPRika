@@ -5,15 +5,14 @@ This class contains a simulation setup wrapper for use with the OpenFF Evaluator
 import logging
 from typing import Any, Dict, List, Optional
 
-import numpy as np
-import parmed as pmd
-from openff.units import unit as openff_unit
+import numpy
+import parmed
 
 from paprika.build import align
 from paprika.restraints import DAT_restraint, static_DAT_restraint
 
 logger = logging.getLogger(__name__)
-_PI_ = np.pi
+_PI_ = numpy.pi
 
 
 class Setup:
@@ -25,7 +24,7 @@ class Setup:
     @classmethod
     def prepare_host_structure(
         cls, coordinate_path: str, host_atom_indices: Optional[List[int]] = None
-    ) -> pmd.Structure:
+    ) -> parmed.Structure:
         """Prepares the coordinates of a host molecule ready for the release phase of
         an APR calculation.
         This currently involves aligning the cavity of the host along the z-axis, and
@@ -53,7 +52,7 @@ class Setup:
         """
 
         # noinspection PyTypeChecker
-        structure = pmd.load_file(coordinate_path, structure=True)
+        structure = parmed.load_file(coordinate_path, structure=True)
 
         # Extract the host from the full structure.
         if not host_atom_indices:
@@ -64,8 +63,9 @@ class Setup:
         ]
 
         # noinspection PyTypeChecker
-        center_of_mass: np.ndarray = pmd.geometry.center_of_mass(
-            host_structure.coordinates, masses=np.ones(len(host_structure.coordinates))
+        center_of_mass: numpy.ndarray = parmed.geometry.center_of_mass(
+            host_structure.coordinates,
+            masses=numpy.ones(len(host_structure.coordinates)),
         )
 
         # Remove the COM from the host coordinates to make alignment easier.
@@ -75,19 +75,21 @@ class Setup:
         # Find the principal components of the host, take the two largest, and find
         # the vector orthogonal to that. Use that vector to align with the z-axis.
         # This may not generalize to non-radially-symmetric host molecules.
-        inertia_tensor = np.dot(
+        inertia_tensor = numpy.dot(
             host_structure.coordinates.transpose(), host_structure.coordinates
         )
 
-        eigenvalues, eigenvectors = np.linalg.eig(inertia_tensor)
-        order = np.argsort(eigenvalues)
+        eigenvalues, eigenvectors = numpy.linalg.eig(inertia_tensor)
+        order = numpy.argsort(eigenvalues)
 
         _, axis_2, axis_1 = eigenvectors[:, order].transpose()
 
-        cavity_axis = np.cross(axis_1, axis_2)
+        cavity_axis = numpy.cross(axis_1, axis_2)
 
         # Add dummy atoms which will be used to align the structure.
-        cls.add_dummy_atoms_to_structure(structure, [np.array([0, 0, 0]), cavity_axis])
+        cls.add_dummy_atoms_to_structure(
+            structure, [numpy.array([0, 0, 0]), cavity_axis]
+        )
 
         # Give atoms uniform mass so that the align code uses the center
         # of geometry rather than the center of mass.
@@ -100,7 +102,7 @@ class Setup:
         # have not been changed and dummy atoms not added.
 
         # noinspection PyTypeChecker
-        structure: pmd.Structure = pmd.load_file(coordinate_path, structure=True)
+        structure: parmed.Structure = parmed.load_file(coordinate_path, structure=True)
         structure.coordinates = aligned_structure["!:DM1&!:DM2"].coordinates
 
         return structure
@@ -114,7 +116,7 @@ class Setup:
         pull_distance: float,
         pull_window_index: int,
         n_pull_windows: int,
-    ) -> pmd.Structure:
+    ) -> parmed.Structure:
         """Prepares the coordinates of a host molecule ready for the pull (+ attach)
         phase of an APR calculation.
 
@@ -158,7 +160,7 @@ class Setup:
         # Align the host-guest complex so the first guest atom is at (0, 0, 0) and the
         # second guest atom lies along the positive z-axis.
         # noinspection PyTypeChecker
-        structure: pmd.Structure = pmd.load_file(coordinate_path, structure=True)
+        structure: parmed.Structure = parmed.load_file(coordinate_path, structure=True)
 
         (
             guest_orientation_mask_0,
@@ -169,7 +171,7 @@ class Setup:
             structure, guest_orientation_mask_0, guest_orientation_mask_1
         )
 
-        target_distance = np.linspace(0.0, pull_distance, n_pull_windows)[
+        target_distance = numpy.linspace(0.0, pull_distance, n_pull_windows)[
             pull_window_index
         ]
         target_difference = target_distance
@@ -181,9 +183,9 @@ class Setup:
 
     @staticmethod
     def add_dummy_atoms_to_structure(
-        structure: pmd.Structure,
-        dummy_atom_offsets: List[np.ndarray],
-        offset_coordinates: Optional[np.ndarray] = None,
+        structure: parmed.Structure,
+        dummy_atom_offsets: List[numpy.ndarray],
+        offset_coordinates: Optional[numpy.ndarray] = None,
     ):
         """A convenience method to add a number of dummy atoms to an existing
         ParmEd structure, and to position those atoms at a specified set of positions.
@@ -201,9 +203,9 @@ class Setup:
         """
 
         if offset_coordinates is None:
-            offset_coordinates = np.zeros(3)
+            offset_coordinates = numpy.zeros(3)
 
-        full_coordinates = np.vstack(
+        full_coordinates = numpy.vstack(
             [
                 structure.coordinates,
                 *[
@@ -214,7 +216,7 @@ class Setup:
         )
 
         for index in range(len(dummy_atom_offsets)):
-            structure.add_atom(pmd.Atom(name="DUM"), f"DM{index + 1}", 1)
+            structure.add_atom(parmed.Atom(name="DUM"), f"DM{index + 1}", 1)
 
         structure.positions = full_coordinates
 
@@ -314,7 +316,7 @@ class Setup:
             The path to the coordinate file which the restraints will be applied to.
             This should contain either the host or the complex, the dummy atoms and solvent.
         attach_lambdas
-            The values 'lambda' being used during the attach phase of the APR
+            The values 'lambda' being used during the 'attach' phase of the APR
             calculation.
         n_pull_windows
             The total number of pull windows being used in the APR calculation.
@@ -389,7 +391,7 @@ class Setup:
             * a ``force_constant`` entry which specifies the force constant of the
               restraint.
 
-        These 'schemas` map directly to the 'restraints -> symmetry_correction
+        These `schemas` map directly to the 'restraints -> symmetry_correction
         -> restraint' dictionaries specified in the `taproom` guest YAML files.
 
         Parameters
@@ -397,7 +399,7 @@ class Setup:
         coordinate_path
             The path to the coordinate file which the restraints will be applied to.
             This should contain either the host or the complex, the dummy atoms and
-            and solvent.
+            solvent.
         n_attach_windows
             The total number of attach windows being used in the APR calculation.
         restraint_schemas
@@ -426,16 +428,24 @@ class Setup:
 
             restraint.attach["fc_final"] = restraint_schema["force_constant"]
             restraint.attach["fraction_list"] = [1.0] * n_attach_windows
+            restraint.attach["target"] = restraint_schema["target"]
 
-            # This target will be overridden by the custom values.
-            restraint.attach["target"] = 91 * openff_unit.degrees
-            restraint.custom_restraint_values["r2"] = 91 * openff_unit.degrees
-            restraint.custom_restraint_values["r3"] = 91 * openff_unit.degrees
-
-            # 0 force constant between 91 degrees and 180 degrees.
-            restraint.custom_restraint_values["rk3"] = (
-                0.0 * openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
+            # Set upper bounds to zero
+            restraint.custom_restraint_values["r3"] = (
+                0 * restraint.attach["target"].units
             )
+            restraint.custom_restraint_values["r4"] = (
+                0 * restraint.attach["target"].units
+            )
+
+            # Harmonic force constant beyond target distance.
+            restraint.custom_restraint_values["rk2"] = restraint_schema[
+                "force_constant"
+            ]
+            restraint.custom_restraint_values["rk3"] = restraint_schema[
+                "force_constant"
+            ]
+
             restraint.initialize()
 
             restraints.append(restraint)
@@ -461,7 +471,7 @@ class Setup:
               restraint.
             * a ``target`` entry which specifies the target value of the restraint.
 
-        These 'schemas` map directly to the 'restraints -> wall_restraints -> restraint'
+        These `schemas` map directly to the 'restraints -> wall_restraints -> restraint'
         dictionaries specified in the `taproom` guest YAML files.
 
         Parameters
@@ -469,7 +479,7 @@ class Setup:
         coordinate_path
             The path to the coordinate file which the restraints will be applied to.
             This should contain either the host or the complex, the dummy atoms and
-            and solvent.
+            solvent.
         n_attach_windows
             The total number of attach windows being used in the APR calculation.
         restraint_schemas
@@ -487,21 +497,29 @@ class Setup:
         restraints = []
 
         for restraint_schema in restraint_schemas:
+            mask = restraint_schema["atoms"].split()
+
             restraint = DAT_restraint()
             restraint.auto_apr = True
             restraint.continuous_apr = False
             restraint.amber_index = use_amber_indices
             restraint.topology = coordinate_path
-            restraint.mask1 = restraint_schema["atoms"].split()[0]
-            restraint.mask2 = restraint_schema["atoms"].split()[1]
+            restraint.mask1 = mask[0]
+            restraint.mask2 = mask[1]
+            restraint.mask3 = mask[2] if len(mask) > 2 else None
+            restraint.mask4 = mask[3] if len(mask) > 3 else None
 
             restraint.attach["fc_final"] = restraint_schema["force_constant"]
             restraint.attach["fraction_list"] = [1.0] * n_attach_windows
             restraint.attach["target"] = restraint_schema["target"]
 
-            # Minimum distance is 0 Angstrom
-            restraint.custom_restraint_values["r1"] = 0 * openff_unit.degrees
-            restraint.custom_restraint_values["r2"] = 0 * openff_unit.degrees
+            # Set lower bounds to zero
+            restraint.custom_restraint_values["r1"] = (
+                0 * restraint.attach["target"].units
+            )
+            restraint.custom_restraint_values["r2"] = (
+                0 * restraint.attach["target"].units
+            )
 
             # Harmonic force constant beyond target distance.
             restraint.custom_restraint_values["rk2"] = restraint_schema[
@@ -539,7 +557,7 @@ class Setup:
               restraint.
             * a ``target`` entry which specifies the target value of the restraint.
 
-        These 'schemas` map directly to the 'restraints -> guest -> restraint'
+        These `schemas` map directly to the 'restraints -> guest -> restraint'
         dictionaries specified in the `taproom` guest YAML files.
 
         Parameters
@@ -547,9 +565,9 @@ class Setup:
         coordinate_path
             The path to the coordinate file which the restraints will be applied to.
             This should contain either the host or the complex, the dummy atoms and
-            and solvent.
+            solvent.
         attach_lambdas
-            The values 'lambda' being used during the attach phase of the APR
+            The values 'lambda' being used during the 'attach' phase of the APR
             calculation.
         n_pull_windows
             The total number of pull windows being used in the APR calculation.

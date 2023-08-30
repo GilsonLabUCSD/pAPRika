@@ -1,4 +1,4 @@
-import numpy as np
+import numpy
 
 
 def get_factors(n):
@@ -17,7 +17,7 @@ def get_factors(n):
 
     """
     factors = []
-    sqrt_n = int(round(np.sqrt(n) + 0.5))
+    sqrt_n = int(round(numpy.sqrt(n) + 0.5))
     i = 1
     while i <= sqrt_n:
         if n % i == 0:
@@ -26,6 +26,7 @@ def get_factors(n):
             if j != i:
                 factors.append(int(j))
         i += 1
+
     return sorted(factors, key=int)
 
 
@@ -45,19 +46,24 @@ def get_nearest_max(n):
 
     """
     max_factors = 0
+
     if n % 2 == 0:
         beg = n - 100
         end = n
     else:
         beg = n - 101
         end = n - 1
+
     if beg < 0:
         beg = 0
+
+    most_factors = 0
     for i in range(beg, end + 2, 2):
         num_factors = len(get_factors(i))
         if num_factors >= max_factors:
             max_factors = num_factors
             most_factors = i
+
     return most_factors
 
 
@@ -72,12 +78,12 @@ def get_block_sem(data_array):
 
     Parameters
     ----------
-    data_array: :class:`np.array`
+    data_array: :class:`numpy.array`
         Array containing data values.
 
     Returns
     -------
-    np.max(sems): float
+    numpy.max(sems): float
         The maximum SEM obtained from te blocking curve.
 
     """
@@ -86,11 +92,11 @@ def get_block_sem(data_array):
     block_sizes = get_factors(len(data_array))
 
     # An array to store means for each block ... make it bigger than we need.
-    block_means = np.zeros([block_sizes[-1]], np.float64)
+    block_means = numpy.zeros([block_sizes[-1]], numpy.float64)
 
     # Store the SEM for each block size, except the last two size for which
     # there will only be two or one blocks total and thus very noisy.
-    sems = np.zeros([len(block_sizes) - 2], np.float64)
+    sems = numpy.zeros([len(block_sizes) - 2], numpy.float64)
 
     # Check each block size except the last two.
     for size_idx in range(len(block_sizes) - 2):
@@ -102,15 +108,15 @@ def get_block_sem(data_array):
             data_beg_idx = blk_idx * block_sizes[size_idx]
             data_end_idx = (blk_idx + 1) * block_sizes[size_idx]
             # Compute the mean of this block and store in array
-            block_means[blk_idx] = np.mean(data_array[data_beg_idx:data_end_idx])
+            block_means[blk_idx] = numpy.mean(data_array[data_beg_idx:data_end_idx])
         # Compute the standard deviation across all blocks, devide by
         # num_blocks-1 for SEM
-        sems[size_idx] = np.std(block_means[0:num_blocks], ddof=0) / np.sqrt(
+        sems[size_idx] = numpy.std(block_means[0:num_blocks], ddof=0) / numpy.sqrt(
             num_blocks - 1
         )
         # Hmm or should ddof=1? I think 0, see Flyvbjerg -----^
 
-    return np.max(sems)
+    return numpy.max(sems)
 
 
 def get_subsampled_indices(N, g, conservative=False):
@@ -138,16 +144,16 @@ def get_subsampled_indices(N, g, conservative=False):
 
     # if conservative, assume integer g and round up
     if conservative:
-        g = np.ceil(g)
+        g = numpy.ceil(g)
 
     # initialize
     indices = [0]
     g_idx = 1.0
-    int_step = int(np.round(g_idx * g))
+    int_step = int(numpy.round(g_idx * g))
 
     while int_step < N:
         indices.append(int_step)
         g_idx += 1.0
-        int_step = int(np.round(g_idx * g))
+        int_step = int(numpy.round(g_idx * g))
 
     return indices

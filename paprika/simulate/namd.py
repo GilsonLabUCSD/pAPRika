@@ -1,12 +1,12 @@
 import abc
 import logging
 import os
-import subprocess as sp
+import subprocess
 from collections import OrderedDict
 from enum import Enum
 
-import numpy as np
-import parmed as pmd
+import numpy
+import parmed
 
 from paprika.utils import get_dict_without_keys
 
@@ -584,14 +584,14 @@ class NAMD(Simulation, abc.ABC):
         """
         Function to calculate the PBC cell basis vectors (needed when running a simulation for the first time).
         """
-        structure = pmd.load_file(
+        structure = parmed.load_file(
             os.path.join(self.path, self.topology),
             os.path.join(self.path, self.coordinates),
             structure=True,
         )
         coordinates = structure.coordinates
-        masses = np.ones(len(coordinates))
-        center = pmd.geometry.center_of_mass(coordinates, masses)
+        masses = numpy.ones(len(coordinates))
+        center = parmed.geometry.center_of_mass(coordinates, masses)
 
         self.cell_basis_vectors["cellOrigin"] = list(center)
 
@@ -878,11 +878,11 @@ class NAMD(Simulation, abc.ABC):
             logger.debug("Exec line: " + " ".join(exec_list))
 
             # Execute
-            namd_output = sp.Popen(
+            namd_output = subprocess.Popen(
                 exec_list,
                 cwd=self.path,
                 stdout=open(os.path.join(self.path, self.logfile), "w"),
-                stderr=sp.PIPE,
+                stderr=subprocess.PIPE,
                 env=os.environ,
             )
             namd_stderr = namd_output.stderr.read().splitlines()

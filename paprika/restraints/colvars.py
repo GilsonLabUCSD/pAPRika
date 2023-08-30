@@ -1,7 +1,7 @@
 import logging
 import os
 
-import numpy as np
+import numpy
 from openff.units import unit as openff_unit
 
 from paprika.restraints.plumed import Plumed
@@ -10,7 +10,7 @@ from paprika.utils import check_unit, get_key
 
 logger = logging.getLogger(__name__)
 
-_PI_ = np.pi
+_PI_ = numpy.pi
 
 
 class Colvars(Plumed):

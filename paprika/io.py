@@ -6,13 +6,13 @@ import os
 import traceback
 from enum import Enum
 
-import numpy as np
-import pytraj as pt
+import numpy
+import pytraj
 from openff.units import unit as openff_unit
 from parmed import Structure
 from parmed.amber import AmberParm
 
-from paprika.restraints import BiasPotentialType, DAT_restraint, RestraintType
+from paprika.restraints import DAT_restraint
 
 # https://stackoverflow.com/questions/27909658/json-encoder-and-decoder-for-complex-numpy-arrays
 # https://stackoverflow.com/a/24375113/901925
@@ -80,11 +80,11 @@ class PaprikaEncoder(json.JSONEncoder):
             logging.warning("Encountered Structure, which does not store filename.")
             return ""
 
-        if isinstance(obj, np.ndarray):
+        if isinstance(obj, numpy.ndarray):
             if obj.flags["C_CONTIGUOUS"]:
                 obj_data = obj.data
             else:
-                cont_obj = np.ascontiguousarray(obj)
+                cont_obj = numpy.ascontiguousarray(obj)
                 assert cont_obj.flags["C_CONTIGUOUS"]
                 obj_data = cont_obj.data
             data_b64 = base64.b64encode(obj_data)
@@ -97,23 +97,25 @@ class PaprikaEncoder(json.JSONEncoder):
         elif isinstance(
             obj,
             (
-                np.int_,
-                np.intc,
-                np.intp,
-                np.int8,
-                np.int16,
-                np.int32,
-                np.int64,
-                np.uint8,
-                np.uint16,
-                np.uint32,
-                np.uint64,
+                numpy.int_,
+                numpy.intc,
+                numpy.intp,
+                numpy.int8,
+                numpy.int16,
+                numpy.int32,
+                numpy.int64,
+                numpy.uint8,
+                numpy.uint16,
+                numpy.uint32,
+                numpy.uint64,
             ),
         ):
             return int(obj)
-        elif isinstance(obj, (np.float_, np.float16, np.float32, np.float64)):
+        elif isinstance(
+            obj, (numpy.float_, numpy.float16, numpy.float32, numpy.float64)
+        ):
             return float(obj)
-        elif isinstance(obj, (np.ndarray,)):
+        elif isinstance(obj, (numpy.ndarray,)):
             return obj.tolist()
         elif isinstance(obj, openff_unit.Quantity):
             return serialize_quantity(obj)
@@ -139,7 +141,7 @@ class PaprikaDecoder(json.JSONDecoder):
     def custom_object_hook(self, obj):
         if "__ndarray__" in obj:
             data = base64.b64decode(obj["__ndarray__"])
-            return np.frombuffer(data, obj["dtype"]).reshape(obj["shape"])
+            return numpy.frombuffer(data, obj["dtype"]).reshape(obj["shape"])
 
         if "@type" in obj:
             if obj["@type"] == "openff.units.unit.Quantity":
@@ -343,7 +345,7 @@ def load_trajectory(window, trajectory, topology, single_topology=False):
             )
         logger.debug(f"Loading {os.path.join(window, topology)} and {trajectory_path}")
         try:
-            traj = pt.iterload(trajectory_path, os.path.join(window, topology))
+            traj = pytraj.iterload(trajectory_path, os.path.join(window, topology))
         except ValueError as e:
             formatted_exception = traceback.format_exception(None, e, e.__traceback__)
             logger.info(
@@ -351,10 +353,10 @@ def load_trajectory(window, trajectory, topology, single_topology=False):
                 f"{formatted_exception}"
             )
     elif isinstance(topology, str) and single_topology:
-        traj = pt.iterload(trajectory_path, os.path.join(topology))
+        traj = pytraj.iterload(trajectory_path, os.path.join(topology))
     else:
         try:
-            traj = pt.iterload(trajectory_path, topology)
+            traj = pytraj.iterload(trajectory_path, topology)
         except BaseException:
             raise Exception("Tried to load `topology` object directly and failed.")
 
@@ -384,7 +386,7 @@ def read_restraint_data(
 
     Returns
     -------
-    data: :class:`np.array`
+    data: :class:`numpy.array`
         The values for this restraint in this window
     """
 
@@ -397,7 +399,7 @@ def read_restraint_data(
         and not restraint.mask4
     ):
         data = openff_unit.Quantity(
-            pt.distance(
+            pytraj.distance(
                 trajectory, " ".join([restraint.mask1, restraint.mask2]), image=True
             ),
             units=openff_unit.angstrom,
@@ -407,7 +409,7 @@ def read_restraint_data(
         restraint.mask1 and restraint.mask2 and restraint.mask3 and not restraint.mask4
     ):
         data = openff_unit.Quantity(
-            pt.angle(
+            pytraj.angle(
                 trajectory,
                 " ".join([restraint.mask1, restraint.mask2, restraint.mask3]),
             ),
@@ -416,7 +418,7 @@ def read_restraint_data(
 
     elif restraint.mask1 and restraint.mask2 and restraint.mask3 and restraint.mask4:
         data = openff_unit.Quantity(
-            pt.dihedral(
+            pytraj.dihedral(
                 trajectory,
                 " ".join(
                     [restraint.mask1, restraint.mask2, restraint.mask3, restraint.mask4]

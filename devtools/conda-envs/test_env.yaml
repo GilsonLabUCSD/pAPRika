@@ -16,6 +16,7 @@ dependencies:
   - pyyaml
   - plumed
   - intermol
+  - openff-interchange >=0.3.7
   - openff-units >=0.2.0
   - openff-utilities
 
