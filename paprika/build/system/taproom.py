@@ -437,7 +437,6 @@ class BuildTaproomAPR:
         # --------------------------------------------------------------------- #
         # Prepare Host-Guest Complex
         # --------------------------------------------------------------------- #
-        # print("Generating files for the `pull` phase.")
         for orient in self._orientations:
             # 01 - Load complex structure
             complex_path = str(
@@ -483,14 +482,21 @@ class BuildTaproomAPR:
                     n_windows,
                     [host_mol, guest_mol],
                 )
-                for i in tqdm(range(n_windows["pull"]), disable=self._disable_progress)
+                for i in tqdm(
+                    range(n_windows["pull"]),
+                    desc=f"generating files `pull-{orient}`",
+                    disable=self._disable_progress,
+                )
             )
 
             # --------------------------------------------------------------------- #
             # Prepare `attach` windows - Copy PDB from p000
             # --------------------------------------------------------------------- #
-            # print("Generating files for the `attach` phase.")
-            for i in tqdm(range(n_windows["attach"]), disable=self._disable_progress):
+            for i in tqdm(
+                range(n_windows["attach"]),
+                desc=f"generating files `attach-{orient}`",
+                disable=self._disable_progress,
+            ):
                 folder = f"{self._working_folder}/attach-{orient}/a{i:03}"
                 os.makedirs(folder, exist_ok=True)
                 shutil.copy(
@@ -501,44 +507,20 @@ class BuildTaproomAPR:
         # --------------------------------------------------------------------- #
         # Prepare Host-only Structure
         # --------------------------------------------------------------------- #
-        # print("Generating files for the `release` phase.")
-        # 01 - Remove Guest molecule and Dummy atoms from complex structure
-        complex_solvate_path = f"{self._working_folder}/pull-p/p000/restrained.pdb"
-        host_pdb = app.PDBFile(
-            str(
-                self._host_metadata["path"].joinpath(
-                    self._host_yaml_schema["structure"]["pdb"]
-                )
+        # 01 - Align host molecule
+        host_pdb_file = str(
+            self._host_metadata["path"].joinpath(
+                self._host_yaml_schema["structure"]["pdb"]
             )
         )
-        pdbfile = app.PDBFile(complex_solvate_path)
-        modeller = app.Modeller(pdbfile.topology, pdbfile.positions)
-        guest_atoms = [
-            atom
-            for atom in pdbfile.topology.atoms()
-            if atom.residue.name != host_resname
-        ]
-        modeller.delete(guest_atoms)
-
-        with open(f"{self._build_folder}/host_input.pdb", "w") as f:
-            app.PDBFile.writeFile(
-                host_pdb.topology,
-                modeller.positions,
-                f,
-                keepIds=False,
-            )
-
-        # 02 - Align host molecule
-        host_structure = Setup.prepare_host_structure(
-            f"{self._build_folder}/host_input.pdb"
-        )
+        host_structure = Setup.prepare_host_structure(host_pdb_file)
         output_coordinate_path = f"{self._build_folder}/host_input_aligned.pdb"
         with open(output_coordinate_path, "w") as file:
             app.PDBFile.writeFile(
                 host_structure.topology, host_structure.positions, file, True
             )
 
-        # 03 - Solvate host molecule and add dummy atoms
+        # 02 - Solvate host molecule and add dummy atoms
         host_solvated_path = f"{self._build_folder}/{self._host_code}-dum-solv.pdb"
         host_system_intrcg = self._solvate_and_add_dummy(
             output_coordinate_path,
@@ -549,14 +531,18 @@ class BuildTaproomAPR:
             offset_mask=None,
         )
 
-        # 04 - Create Host-only OpenMM System with Dummy Atoms
+        # 03 - Create Host-only OpenMM System with Dummy Atoms
         system_output_path = f"{self._build_folder}/{self._host_code}-dum-solv.xml"
         self._create_system_and_add_dummy(host_system_intrcg, system_output_path)
 
         # --------------------------------------------------------------------- #
         # Prepare `release` windows - Copy PDB
         # --------------------------------------------------------------------- #
-        for i in tqdm(range(n_windows["release"]), disable=self._disable_progress):
+        for i in tqdm(
+            range(n_windows["release"]),
+            desc="generating files `release`",
+            disable=self._disable_progress,
+        ):
             folder = f"{self._working_folder}/release/r{i:03}"
             os.makedirs(folder, exist_ok=True)
             shutil.copy(
@@ -643,7 +629,11 @@ class BuildTaproomAPR:
                     symmetry_restraints,
                     wall_restraints,
                 )
-                for window in tqdm(attach_windows, disable=self._disable_progress)
+                for window in tqdm(
+                    attach_windows,
+                    desc=f"applying restraints `attach-{orient}`",
+                    disable=self._disable_progress,
+                )
             )
 
     def _apply_pull_restraints(self):
@@ -716,7 +706,11 @@ class BuildTaproomAPR:
                     conformational_restraints,
                     guest_restraints,
                 )
-                for window in tqdm(pull_windows, disable=self._disable_progress)
+                for window in tqdm(
+                    pull_windows,
+                    desc=f"applying restraints `pull-{orient}`",
+                    disable=self._disable_progress,
+                )
             )
 
     def _apply_release_restraints(self):
@@ -772,7 +766,11 @@ class BuildTaproomAPR:
                 static_restraints,
                 conformational_restraints,
             )
-            for window in tqdm(release_windows, disable=self._disable_progress)
+            for window in tqdm(
+                release_windows,
+                desc="applying restraints `release`",
+                disable=self._disable_progress,
+            )
         )
 
     @staticmethod
