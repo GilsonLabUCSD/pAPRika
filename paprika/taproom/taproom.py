@@ -8,7 +8,7 @@ from paprika.taproom.utils import convert_string_to_quantity, de_alias
 if sys.version_info.minor < 10:
     from pkg_resources import iter_entry_points as entry_points
 else:
-    import importlib.metadata.entry_points as entry_points
+    from importlib.metadata import entry_points
 
 
 logger = logging.getLogger(__name__)
