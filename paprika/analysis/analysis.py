@@ -996,7 +996,7 @@ class fe_calc(object):
         max_force_constants = (
             numpy.array(
                 [
-                    numpy.max(force_constants[r]).magnitude
+                    numpy.max(force_constants[r].m_as(force_units[r]))
                     for r in range(len(active_rest))
                 ]
             )
@@ -1045,8 +1045,7 @@ class fe_calc(object):
                             )
                         ]
                     )
-                    .to(self.energy_unit)
-                    .magnitude
+                    .m_as(self.energy_unit)
                 )
 
                 # this is lambda. assume the same scaling for all restraints
@@ -1061,12 +1060,11 @@ class fe_calc(object):
                             )
                         ]
                     )
-                    .to(self.energy_unit / self.distance_unit)
-                    .magnitude
+                    .m_as(self.energy_unit / self.distance_unit)
                 )
 
                 # Currently assuming a single distance restraint
-                dl_vals[k] = targets_T[k, 0].to(self.distance_unit).magnitude
+                dl_vals[k] = targets_T[k, 0].m_as(self.distance_unit)
 
             # Compute standard deviations and SEMs, unless we're going to do
             # exact_sem_each_ti_fraction
@@ -1165,7 +1163,7 @@ class fe_calc(object):
             else:
                 total_sem_matrix = self.results[phase][method]["fraction_sem_matrix"][
                     max_fraction
-                ].magnitude
+                ].m_as(self.energy_unit)
             self.results[phase][method]["roi"] = numpy.zeros([num_win], numpy.float64)
 
             for k in range(num_win):
