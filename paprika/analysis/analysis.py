@@ -1036,32 +1036,26 @@ class fe_calc(object):
             # Compute forces and store the values of the changing coordinate,
             # either lambda or target
             if phase == "attach" or phase == "release":
-                dU[k, 0 : N_k[k]] = (
-                    sum(
-                        [
-                            (k * (val - eq) ** 2)
-                            for k, val, eq in zip(
-                                max_force_constants, ordered_values[k], targets_T[k]
-                            )
-                        ]
-                    )
-                    .m_as(self.energy_unit)
-                )
+                dU[k, 0 : N_k[k]] = sum(
+                    [
+                        (k * (val - eq) ** 2)
+                        for k, val, eq in zip(
+                            max_force_constants, ordered_values[k], targets_T[k]
+                        )
+                    ]
+                ).m_as(self.energy_unit)
 
                 # this is lambda. assume the same scaling for all restraints
                 dl_vals[k] = force_constants_T[k, 0] / max_force_constants[0]
             else:
-                dU[k, 0 : N_k[k]] = (
-                    sum(
-                        [
-                            2.0 * k * (val - eq)
-                            for k, val, eq in zip(
-                                max_force_constants, ordered_values[k], targets_T[k]
-                            )
-                        ]
-                    )
-                    .m_as(self.energy_unit / self.distance_unit)
-                )
+                dU[k, 0 : N_k[k]] = sum(
+                    [
+                        2.0 * k * (val - eq)
+                        for k, val, eq in zip(
+                            max_force_constants, ordered_values[k], targets_T[k]
+                        )
+                    ]
+                ).m_as(self.energy_unit / self.distance_unit)
 
                 # Currently assuming a single distance restraint
                 dl_vals[k] = targets_T[k, 0].m_as(self.distance_unit)
