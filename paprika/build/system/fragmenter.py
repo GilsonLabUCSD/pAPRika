@@ -6,13 +6,15 @@ import openmm.unit as openmm_unit
 import parmed
 from openff.toolkit.topology import Molecule
 from openff.units import unit
+from openff.units.openmm import to_openmm
+from openmm.app import PDBFile
 from rdkit.Chem import AllChem as Chem
 
 
 class CyclodextrinFragmenter:
     """
-    Class that defines a Cyclodextrin molecule with methods to assign partial charges
-    using a fragment-based approach. This adapted from Tobias Hüfner's code:
+    The class that defines a Cyclodextrin molecule with methods to assign partial charges
+    using a fragment-based approach. This is adapted from Tobias Hüfner's code:
 
     https://github.com/wutobias/collection/blob/master/python/am1bcc-glyco-fragmenter.py
     """
@@ -186,36 +188,41 @@ class CyclodextrinFragmenter:
         """
         off_molecule = Molecule.from_rdkit(self.input_molecule)
 
+        # Set residue name
+        for atom in off_molecule.atoms:
+            atom.metadata["residue_name"] = residue_name
+
+        # Save to file
         if file_format == "SDF":
             off_molecule.to_file(file, file_format=file_format)
 
-        elif file_format == "MOL2" or file_format == "PDB":
-            structure = parmed.openmm.load_topology(
-                off_molecule.to_topology().to_openmm(), xyz=off_molecule.conformers[0]
-            )
-            # Add charges to molecule
-            for atom, charge in zip(structure.atoms, self._partial_charge_list):
-                atom.charge = float(charge)
+        elif file_format == "PDB":
+            with open(file, "w") as f:
+                PDBFile.writeFile(
+                    off_molecule.to_topology().to_openmm(),
+                    to_openmm(off_molecule.conformers[0]),
+                    f,
+                    keepIds=True,
+                )
 
-            # Save current structure to MOL2 file
-            structure.save(file, overwrite=True)
-
-            # Rewrite with residue name and atom type using Antechamber
+        elif file_format == "MOL2":
+            # Convert SDF to MOL2 as boiler plate
+            off_molecule.to_file("temp.sdf", file_format="SDF")
             output = subprocess.Popen(
                 [
                     "antechamber",
                     "-fi",
-                    "mol2",
+                    "sdf",
                     "-fo",
-                    file_format.lower(),
+                    "mol2",
                     "-i",
-                    file,
+                    "temp.sdf",
                     "-o",
-                    file,
+                    "temp1.mol2",
                     "-rn",
                     residue_name,
                     "-at",
-                    atom_type,
+                    "sybyl",
                     "-pf",
                     "y",
                 ],
@@ -224,6 +231,47 @@ class CyclodextrinFragmenter:
                 cwd="./",
             )
             output = output.stdout.read().decode().splitlines()
+
+            # Load temp.mol2 with SYBYL atom types and add charges to atoms
+            structure = parmed.load_file("temp1.mol2", structure=True)
+            for off_atom, atom, charge in zip(
+                off_molecule.atoms, structure.atoms, self._partial_charge_list
+            ):
+                atom.charge = float(charge)
+                atom.name = off_atom.name
+
+            # Save current structure to MOL2 file
+            structure.save("temp2.mol2", overwrite=True)
+
+            # Rewrite with residue name and correct atom type using Antechamber
+            output = subprocess.Popen(
+                [
+                    "antechamber",
+                    "-fi",
+                    "mol2",
+                    "-fo",
+                    "mol2",
+                    "-i",
+                    "temp2.mol2",
+                    "-o",
+                    file,
+                    "-rn",
+                    residue_name,
+                    "-at",
+                    atom_type.lower(),
+                    "-pf",
+                    "y",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd="./",
+            )
+            output = output.stdout.read().decode().splitlines()
+
+            # Clean-up temp file
+            os.remove("./temp.sdf")
+            os.remove("./temp1.mol2")
+            os.remove("./temp2.mol2")
 
     @staticmethod
     def _get_atom_map_number(atom: Chem.Atom) -> int:
