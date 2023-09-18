@@ -2,7 +2,7 @@ import abc
 import glob
 import logging
 import os
-import subprocess as sp
+import subprocess
 from collections import OrderedDict
 from enum import Enum
 
@@ -623,11 +623,11 @@ class GROMACS(Simulation, abc.ABC):
                     grompp_list += ["-n", self.index_file]
 
                 # Run GROMPP
-                grompp_output = sp.Popen(
+                grompp_output = subprocess.Popen(
                     grompp_list,
                     cwd=self.path,
-                    stdout=sp.PIPE,
-                    stderr=sp.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
                     env=os.environ,
                 )
                 grompp_stdout = grompp_output.stdout.read().splitlines()
@@ -707,11 +707,11 @@ class GROMACS(Simulation, abc.ABC):
                     mdrun_list += ["-plumed", self.plumed_file]
 
             # Run MDRUN
-            mdrun_output = sp.Popen(
+            mdrun_output = subprocess.Popen(
                 mdrun_list,
                 cwd=self.path,
-                stdout=sp.PIPE,
-                stderr=sp.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 env=os.environ,
             )
             mdrun_out = mdrun_output.stdout.read().splitlines()
