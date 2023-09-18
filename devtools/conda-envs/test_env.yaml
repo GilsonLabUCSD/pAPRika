@@ -17,10 +17,7 @@ dependencies:
   - plumed
   - intermol
   - openff-interchange >=0.3.7
-<<<<<<< HEAD
   - openff-toolkit >=0.11
-=======
->>>>>>> update_evaluator_modules
   - openff-units >=0.2.0
   - openff-utilities
 
