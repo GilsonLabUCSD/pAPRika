@@ -11,7 +11,7 @@ dependencies:
   - parmed
   - mdtraj
   - pymbar >=4.0.1
-  - openmm >=7.6.0
+  - openmm >=8.0.0
   - ambertools >=22.0
   - pyyaml
   - plumed
