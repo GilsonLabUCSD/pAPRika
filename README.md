@@ -18,6 +18,7 @@ pAPRika is a toolkit for setting up, running, and analyzing free energy molecula
 - Simon Boothroyd (Sloan Kettering Institute, Open Force Field, XtalPi Inc.)
 - Jeff Setiadi (UCSD)
 - Willa Wang (UCSD)
+- Jake Anderson (UCSD)
 
 # Installation
 
