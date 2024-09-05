@@ -23,7 +23,7 @@ dependencies:
   - isort
   - black >=22.1.0
   - flake8
-  - jupyter
+  - jupyter 
   - jupyter_contrib_nbextensions
   - versioneer
 
