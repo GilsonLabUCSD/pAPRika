@@ -23,7 +23,6 @@ dependencies:
   - isort
   - black >=22.1.0
   - flake8
-  - versioneer
 
   # Documentation
   - numpydoc
