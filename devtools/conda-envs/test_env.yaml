@@ -6,7 +6,7 @@ dependencies:
   # Base depends
   - python
   - pip
-  - numpy
+  - numpy <2
   - scipy
   - parmed
   - mdtraj
@@ -23,7 +23,10 @@ dependencies:
   - isort
   - black >=22.1.0
   - flake8
-  
+  - jupyter
+  - jupyter_contrib_nbextensions
+  - versioneer
+
   # Documentation
   - numpydoc
   - pandoc

@@ -38,3 +38,6 @@ if setup is None:
     __all__ = ["setup", "analyze"]
 else:
     __all__ = ["analyze"]
+
+from . import _version
+__version__ = _version.get_versions()['version']
