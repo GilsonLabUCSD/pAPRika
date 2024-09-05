@@ -25,6 +25,7 @@ dependencies:
   - flake8
   - jupyter 
   - jupyter_contrib_nbextensions
+  - notebook
   - versioneer
 
   # Documentation
