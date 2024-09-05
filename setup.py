@@ -2,6 +2,7 @@
 pAPRika
 Advanced toolkit for binding free energy calculations
 """
+
 from setuptools import find_packages, setup
 
 import versioneer
@@ -33,7 +34,7 @@ setup(
     # Extend/modify the list to include/exclude other items as need be
     package_data={"paprika": ["data/*.dat"]},
     include_package_data=True,
-    install_requires=["numpy"]
+    install_requires=["numpy"],
     # Additional entries you may want simply uncomment the lines you want and fill in the data
     # author_email='me@place.org',      # Author email
     # url='http://www.my_package.com',  # Website
