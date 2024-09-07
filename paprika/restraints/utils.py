@@ -1,6 +1,6 @@
 import logging
 
-import numpy as np
+import numpy
 from openff.units import unit as openff_unit
 
 from paprika.restraints.restraints import (
@@ -12,7 +12,7 @@ from paprika.utils import override_dict
 
 logger = logging.getLogger(__name__)
 
-_PI_ = np.pi
+_PI_ = numpy.pi
 
 
 def parse_window(window):
