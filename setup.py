@@ -34,7 +34,10 @@ setup(
     # Extend/modify the list to include/exclude other items as need be
     package_data={"paprika": ["data/*.dat"]},
     include_package_data=True,
-    install_requires=["numpy"],
+    install_requires=[
+        "numpy",
+        "jax<=0.4.28; python_version == '3.9'", # Since python<=3.9 doesn't support `str | None` syntax, pin jax to a version that uses `None` or `Optional[str]`
+    ],
     # Additional entries you may want simply uncomment the lines you want and fill in the data
     # author_email='me@place.org',      # Author email
     # url='http://www.my_package.com',  # Website
