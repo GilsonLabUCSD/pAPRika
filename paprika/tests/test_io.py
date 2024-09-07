@@ -1,6 +1,7 @@
 """
 Test that we can save and load restraints as JSON.
 """
+
 import os
 import shutil
 

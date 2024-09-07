@@ -1272,11 +1272,11 @@ class fe_calc(object):
                         phase
                     ][method]["fraction_fe_matrix"][fraction][0, -1]
 
-                    self.results[phase][method]["fraction_sem"][
-                        fraction
-                    ] = self.results[phase][method]["fraction_sem_matrix"][fraction][
-                        0, -1
-                    ]
+                    self.results[phase][method]["fraction_sem"][fraction] = (
+                        self.results[phase][method]["fraction_sem_matrix"][fraction][
+                            0, -1
+                        ]
+                    )
 
                 # Set these higher level (total) values, which will be slightly
                 # easier to access
@@ -1298,23 +1298,23 @@ class fe_calc(object):
                     # Store convergence values, which are helpful for running
                     # simulations
                     windows = len(self.results[phase][method]["sem_matrix"])
-                    self.results[phase][method][
-                        "largest_neighbor"
-                    ] = openff_unit.Quantity(
-                        np.ones([windows], np.float64) * -1.0,
-                        units=self.energy_unit,
+                    self.results[phase][method]["largest_neighbor"] = (
+                        openff_unit.Quantity(
+                            np.ones([windows], np.float64) * -1.0,
+                            units=self.energy_unit,
+                        )
                     )
                     logger.info(f"{phase}: computing largest_neighbor for {method}...")
 
                     for i in range(windows):
                         if i == 0:
-                            self.results[phase][method]["largest_neighbor"][
-                                i
-                            ] = self.results[phase][method]["sem_matrix"][i][i + 1]
+                            self.results[phase][method]["largest_neighbor"][i] = (
+                                self.results[phase][method]["sem_matrix"][i][i + 1]
+                            )
                         elif i == windows - 1:
-                            self.results[phase][method]["largest_neighbor"][
-                                i
-                            ] = self.results[phase][method]["sem_matrix"][i][i - 1]
+                            self.results[phase][method]["largest_neighbor"][i] = (
+                                self.results[phase][method]["sem_matrix"][i][i - 1]
+                            )
                         else:
                             left = self.results[phase][method]["sem_matrix"][i][i - 1]
                             right = self.results[phase][method]["sem_matrix"][i][i + 1]

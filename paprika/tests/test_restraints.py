@@ -1,6 +1,7 @@
 """
 Tests the restraints utilities.
 """
+
 import logging
 import os
 
@@ -134,9 +135,7 @@ def test_DAT_restraint():
     rest2.initialize()
 
     target_units = openff_unit.degrees
-    force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
-    )
+    force_constant_units = openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
     assert rest2.restraint_type == RestraintType.Angle
     assert rest2.index1 == [13, 31, 49, 67, 85, 103]
     assert rest2.index2 == [119]
@@ -205,9 +204,7 @@ def test_DAT_restraint():
     rest3.initialize()
 
     target_units = openff_unit.degrees
-    force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
-    )
+    force_constant_units = openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
     assert rest3.restraint_type == RestraintType.Torsion
     assert rest3.index1 == [31]
     assert rest3.index2 == [13]
@@ -278,9 +275,7 @@ def test_DAT_restraint():
     rest4.initialize()
 
     target_units = openff_unit.degrees
-    force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
-    )
+    force_constant_units = openff_unit.kcal / openff_unit.mole / openff_unit.radians**2
     assert rest4.index1 == [31]
     assert rest4.index2 == [13]
     assert rest4.index3 == [119]
@@ -348,9 +343,7 @@ def test_DAT_restraint():
     rest5.initialize()
 
     target_units = openff_unit.angstrom
-    force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
-    )
+    force_constant_units = openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
     assert rest5.index1 == [13, 31, 49, 67, 85, 103]
     assert rest5.index2 == [109, 113, 115, 119]
     assert rest5.index3 is None
@@ -417,9 +410,7 @@ def test_DAT_restraint():
     rest6.initialize()
 
     target_units = openff_unit.angstrom
-    force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
-    )
+    force_constant_units = openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
     assert rest6.index1 == [13, 31, 49, 67, 85, 103]
     assert rest6.index2 == [109, 113, 115, 119]
     assert rest6.index3 is None
@@ -484,9 +475,7 @@ def test_DAT_restraint():
     rest7.initialize()
 
     target_units = openff_unit.angstrom
-    force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
-    )
+    force_constant_units = openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
     assert rest7.index1 == [13, 14, 111]
     assert rest7.index2 == [3]
     assert rest7.index3 is None
@@ -547,9 +536,7 @@ def test_DAT_restraint():
     rest8.initialize()
 
     target_units = openff_unit.angstrom
-    force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
-    )
+    force_constant_units = openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
     assert rest8.index1 == [13]
     assert rest8.index2 == [119]
     assert rest8.index3 is None
@@ -587,9 +574,7 @@ def test_DAT_restraint():
     rest9.initialize()
 
     target_units = openff_unit.angstrom
-    force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
-    )
+    force_constant_units = openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
     assert rest9.index1 == [13]
     assert rest9.index2 == [119]
     assert rest9.index3 is None
@@ -627,9 +612,7 @@ def test_DAT_restraint():
     rest10.initialize()
 
     target_units = openff_unit.angstrom
-    force_constant_units = (
-        openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
-    )
+    force_constant_units = openff_unit.kcal / openff_unit.mole / openff_unit.angstrom**2
     assert rest10.index1 == [13]
     assert rest10.index2 == [119]
     assert rest10.index3 is None

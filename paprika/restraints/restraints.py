@@ -612,9 +612,9 @@ class DAT_restraint(object):
                 if phase[key] is not None:
                     phase[key] = check_unit(
                         phase[key],
-                        base_unit=target_unit
-                        if key == "target"
-                        else force_constant_unit,
+                        base_unit=(
+                            target_unit if key == "target" else force_constant_unit
+                        ),
                     )
 
         # Check pull units
@@ -637,9 +637,11 @@ class DAT_restraint(object):
                 if key in self._custom_restraint_values:
                     self._custom_restraint_values[key] = check_unit(
                         self._custom_restraint_values[key],
-                        base_unit=force_constant_unit
-                        if key in ["rk2", "rk3"]
-                        else target_unit,
+                        base_unit=(
+                            force_constant_unit
+                            if key in ["rk2", "rk3"]
+                            else target_unit
+                        ),
                     )
                 else:
                     self._custom_restraint_values[key] = None

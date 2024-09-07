@@ -1,4 +1,5 @@
 """A module aimed at applying restraints directly to OpenMM systems."""
+
 import logging
 
 import numpy as np
@@ -67,11 +68,7 @@ def apply_positional_restraints(
             # But then we can't access atom indices. Using `atom.xx` works for
             # coordinates, but is unitless.
             if isinstance(k_pos, float):
-                k = (
-                    k_pos
-                    * openmm_unit.kilocalories_per_mole
-                    / openmm_unit.angstroms**2
-                )
+                k = k_pos * openmm_unit.kilocalories_per_mole / openmm_unit.angstroms**2
             elif isinstance(k_pos, openmm_unit.Quantity):
                 k = k_pos
             elif isinstance(k_pos, openff_unit.Quantity):
