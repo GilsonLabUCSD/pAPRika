@@ -11,7 +11,6 @@ import logging
 
 from paprika.evaluator import Analyze
 
-from . import _version
 # Handle versioneer
 from ._version import get_versions
 
@@ -20,7 +19,6 @@ versions = get_versions()
 __version__ = versions["version"]
 __git_revision__ = versions["full-revisionid"]
 del get_versions, versions
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +31,9 @@ except ImportError:
     logging.info("`paprika.setup()` requires OpenMM.")
     setup = None
 
-
 analyze = Analyze
 
 if setup is None:
     __all__ = ["setup", "analyze"]
 else:
     __all__ = ["analyze"]
-
-__version__ = _version.get_versions()["version"]
