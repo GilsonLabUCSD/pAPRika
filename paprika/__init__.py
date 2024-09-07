@@ -11,6 +11,7 @@ import logging
 
 from paprika.evaluator import Analyze
 
+from . import _version
 # Handle versioneer
 from ._version import get_versions
 
@@ -39,7 +40,5 @@ if setup is None:
     __all__ = ["setup", "analyze"]
 else:
     __all__ = ["analyze"]
-
-from . import _version
 
 __version__ = _version.get_versions()["version"]
