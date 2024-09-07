@@ -36,7 +36,7 @@ jobs:
         auto-update-conda: true
         auto-activate-base: false
         miniforge-version: latest
-        miniforge-variant: Mambaforge
+        miniforge-variant: Miniforge
         use-mamba: true
         mamba-version: "*"
 
