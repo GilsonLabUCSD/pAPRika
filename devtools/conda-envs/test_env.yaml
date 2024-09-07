@@ -23,7 +23,7 @@ dependencies:
   - isort
   - black >=22.1.0
   - flake8
-  
+
   # Documentation
   - numpydoc
   - pandoc
@@ -39,3 +39,4 @@ dependencies:
   # Pip-only installs
   - pip:
     - codecov
+

@@ -2,6 +2,7 @@
 pAPRika
 Advanced toolkit for binding free energy calculations
 """
+
 # Make Python 2 and 3 imports work the same
 # Safe to remove with Python 3-only code
 from __future__ import absolute_import
@@ -38,3 +39,7 @@ if setup is None:
     __all__ = ["setup", "analyze"]
 else:
     __all__ = ["analyze"]
+
+from . import _version
+
+__version__ = _version.get_versions()["version"]
