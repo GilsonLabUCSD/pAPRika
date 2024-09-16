@@ -17,16 +17,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macOS-latest, ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10"]
+        os: [ubuntu-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     env:
       PYVER: ${{ matrix.python-version }}
       PACKAGE: paprika
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - uses: conda-incubator/setup-miniconda@v2
+    - uses: conda-incubator/setup-miniconda@v3
       with:
         python-version: ${{ matrix.python-version }}
         environment-file: devtools/conda-envs/test_env.yaml
@@ -36,7 +36,7 @@ jobs:
         auto-update-conda: true
         auto-activate-base: false
         miniforge-version: latest
-        miniforge-variant: Mambaforge
+        miniforge-variant: Miniforge3
         use-mamba: true
         mamba-version: "*"
 
@@ -56,7 +56,7 @@ jobs:
     - name: Install package
       shell: bash -l {0}
       run: |
-        python -m pip install --no-deps .
+        python -m pip install .
 
     - name: Run tests
       shell: bash -l {0}

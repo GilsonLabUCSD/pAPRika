@@ -39,4 +39,5 @@ dependencies:
   # Pip-only installs
   - pip:
     - codecov
-
+    - jax<=0.4.28; python_version == '3.9' # Since python<=3.9 doesn't support `str | None` syntax, pin jax to a version that uses `None` or `Optional[str]`
+    - jaxlib<=0.4.28; python_version == '3.9'

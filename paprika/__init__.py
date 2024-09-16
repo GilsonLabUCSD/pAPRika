@@ -20,7 +20,6 @@ __version__ = versions["version"]
 __git_revision__ = versions["full-revisionid"]
 del get_versions, versions
 
-
 logger = logging.getLogger(__name__)
 
 try:
@@ -32,14 +31,9 @@ except ImportError:
     logging.info("`paprika.setup()` requires OpenMM.")
     setup = None
 
-
 analyze = Analyze
 
 if setup is None:
     __all__ = ["setup", "analyze"]
 else:
     __all__ = ["analyze"]
-
-from . import _version
-
-__version__ = _version.get_versions()["version"]
