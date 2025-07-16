@@ -426,7 +426,7 @@ class DAT_restraint(object):
                         restraint_dictionary["fraction_list"]
                     )
                 )
-                raise Exception(
+                raise ValueError(
                     "fraction_list contains values outside the range [0,1]."
                 )
             units = restraint_dictionary["fc_final"].units
