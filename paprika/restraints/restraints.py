@@ -164,7 +164,7 @@ class DAT_restraint(object):
             - ``fc_initial``         : The initial force constant (optional)
             - ``fc_final``           : The final force constant (optional)
             - ``num_windows``        : The number of windows (optional)
-            - ``fraction_increment`` : The force constant fracton increment (unitless) (optional)
+            - ``fraction_increment`` : The force constant fraction increment (unitless) (optional)
             - ``fc_increment``       : The force constant increment (optional)
             - ``fraction_list``      : The list of force constant fraction values (unitless) (optional)
             - ``fc_list``            : The list of force constant values (will be created if not given)
@@ -182,16 +182,16 @@ class DAT_restraint(object):
     @property
     def pull(self):
         """
-        dict: Dictionary specifying the APR parameters during the attach phase. The dictionary keys are as follows:
+        dict: Dictionary specifying the APR parameters during the pull phase. The dictionary keys are as follows:
 
-            - ``target``             : The target value for the restraint (mandatory)
-            - ``fc_initial``         : The initial force constant (optional)
-            - ``fc_final``           : The final force constant (optional)
+            - ``fc``                 : The force constant for the restraint (mandatory)
+            - ``target_initial``     : The initial target value (optional)
+            - ``target_final``       : The final target value (optional)
             - ``num_windows``        : The number of windows (optional)
-            - ``fraction_increment`` : The force constant fracton increment (unitless) (optional)
-            - ``fc_increment``       : The force constant increment (optional)
-            - ``fraction_list``      : The list of force constant fraction values (unitless) (optional)
-            - ``fc_list``            : The list of force constant values (will be created if not given)
+            - ``fraction_increment`` : The target value fraction increment (unitless) (optional)
+            - ``target_increment``   : The target value increment (optional)
+            - ``fraction_list``      : The list of target fraction values (unitless) (optional)
+            - ``target_list``        : The list of target values (will be created if not given)
 
         .. note ::
             This is fragile and this could be hardened by making these ``ENUM`` and doing much more type-checking.
@@ -212,7 +212,7 @@ class DAT_restraint(object):
             - ``fc_initial``         : The initial force constant (optional)
             - ``fc_final``           : The final force constant (optional)
             - ``num_windows``        : The number of windows (optional)
-            - ``fraction_increment`` : The force constant fracton increment (unitless) (optional)
+            - ``fraction_increment`` : The force constant fraction increment (unitless) (optional)
             - ``fc_increment``       : The force constant increment (optional)
             - ``fraction_list``      : The list of force constant fraction values (unitless) (optional)
             - ``fc_list``            : The list of force constant values (will be created if not given)
