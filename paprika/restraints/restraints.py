@@ -416,10 +416,19 @@ class DAT_restraint(object):
 
         # Attach/Release, Force Constant Method 3
         elif phase in ("a", "r") and method == "3":
-            if not numpy.all((restraint_dictionary["fraction_list"] >= 0) & (restraint_dictionary["fraction_list"] <= 1)):
-                logger.error("fraction_list must not include values outside [0,1]!" +
-                             "\nProvided fraction_list: {}".format(restraint_dictionary["fraction_list"]))
-                raise Exception("fraction_list contains values outside the range [0,1].")
+            if not numpy.all(
+                (restraint_dictionary["fraction_list"] >= 0)
+                & (restraint_dictionary["fraction_list"] <= 1)
+            ):
+                logger.error(
+                    "fraction_list must not include values outside [0,1]!"
+                    + "\nProvided fraction_list: {}".format(
+                        restraint_dictionary["fraction_list"]
+                    )
+                )
+                raise Exception(
+                    "fraction_list contains values outside the range [0,1]."
+                )
             units = restraint_dictionary["fc_final"].units
             force_constants = numpy.asarray(
                 [
@@ -517,10 +526,19 @@ class DAT_restraint(object):
 
         # Pull, Target Method 3
         elif phase == "p" and method == "3":
-            if not numpy.all((restraint_dictionary["fraction_list"] >= 0) & (restraint_dictionary["fraction_list"] <= 1)):
-                logger.error("fraction_list must not include values outside [0,1]!" +
-                             "\nProvided fraction_list: {}".format(restraint_dictionary["fraction_list"]))
-                raise Exception("fraction_list contains values outside the range [0,1].")
+            if not numpy.all(
+                (restraint_dictionary["fraction_list"] >= 0)
+                & (restraint_dictionary["fraction_list"] <= 1)
+            ):
+                logger.error(
+                    "fraction_list must not include values outside [0,1]!"
+                    + "\nProvided fraction_list: {}".format(
+                        restraint_dictionary["fraction_list"]
+                    )
+                )
+                raise Exception(
+                    "fraction_list contains values outside the range [0,1]."
+                )
             units = restraint_dictionary["target_final"].units
             targets = (
                 numpy.asarray(
