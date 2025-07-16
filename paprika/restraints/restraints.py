@@ -206,7 +206,7 @@ class DAT_restraint(object):
     @property
     def release(self):
         """
-        dict: Dictionary specifying the APR parameters during the attach phase. The dictionary keys are as follows:
+        dict: Dictionary specifying the APR parameters during the release phase. The dictionary keys are as follows:
 
             - ``target``             : The target value for the restraint (mandatory)
             - ``fc_initial``         : The initial force constant (optional)
