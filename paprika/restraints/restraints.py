@@ -164,10 +164,10 @@ class DAT_restraint(object):
             - ``fc_initial``         : The initial force constant (optional)
             - ``fc_final``           : The final force constant (optional)
             - ``num_windows``        : The number of windows (optional)
+            - ``fraction_increment`` : The force constant fraction increment (unitless) (optional)
             - ``fc_increment``       : The force constant increment (optional)
-            - ``fraction_increment`` : The percentage of the force constant increment (optional)
-            - ``fraction_list``      : The list of force constant percentages (optional)
-            - ``fc_list``            : The list of force constants (will be created if not given)
+            - ``fraction_list``      : The list of force constant fraction values (unitless) (optional)
+            - ``fc_list``            : The list of force constant values (will be created if not given)
 
         .. note ::
             This is fragile and this could be hardened by making these ``ENUM`` and doing much more type-checking.
@@ -188,9 +188,9 @@ class DAT_restraint(object):
             - ``target_initial``     : The initial target value (optional)
             - ``target_final``       : The final target value (optional)
             - ``num_windows``        : The number of windows (optional)
+            - ``fraction_increment`` : The target value fraction increment (unitless) (optional)
             - ``target_increment``   : The target value increment (optional)
-            - ``fraction_increment`` : The percentage of the target value increment (optional)
-            - ``fraction_list``      : The list of target value percentages (optional)
+            - ``fraction_list``      : The list of target fraction values (unitless) (optional)
             - ``target_list``        : The list of target values (will be created if not given)
 
         .. note ::
@@ -212,14 +212,15 @@ class DAT_restraint(object):
             - ``fc_initial``         : The initial force constant (optional)
             - ``fc_final``           : The final force constant (optional)
             - ``num_windows``        : The number of windows (optional)
+            - ``fraction_increment`` : The force constant fraction increment (unitless) (optional)
             - ``fc_increment``       : The force constant increment (optional)
-            - ``fraction_increment`` : The percentage of the force constant increment (optional)
-            - ``fraction_list``      : The list of force constant percentages (optional)
-            - ``fc_list``            : The list of force constants (will be created if not given)
+            - ``fraction_list``      : The list of force constant fraction values (unitless) (optional)
+            - ``fc_list``            : The list of force constant values (will be created if not given)
 
         .. note ::
             This is fragile and this could be hardened by making these ``ENUM`` and doing much more type-checking.
         """
+
         return self._release
 
     @release.setter
@@ -415,6 +416,19 @@ class DAT_restraint(object):
 
         # Attach/Release, Force Constant Method 3
         elif phase in ("a", "r") and method == "3":
+            if not numpy.all(
+                (numpy.array(restraint_dictionary["fraction_list"]) >= 0)
+                & (numpy.array(restraint_dictionary["fraction_list"]) <= 1)
+            ):
+                logger.error(
+                    "fraction_list must not include values outside [0,1]!"
+                    + "\nProvided fraction_list: {}".format(
+                        restraint_dictionary["fraction_list"]
+                    )
+                )
+                raise ValueError(
+                    "fraction_list contains values outside the range [0,1]."
+                )
             units = restraint_dictionary["fc_final"].units
             force_constants = numpy.asarray(
                 [
@@ -512,6 +526,19 @@ class DAT_restraint(object):
 
         # Pull, Target Method 3
         elif phase == "p" and method == "3":
+            if not numpy.all(
+                (numpy.array(restraint_dictionary["fraction_list"]) >= 0)
+                & (numpy.array(restraint_dictionary["fraction_list"]) <= 1)
+            ):
+                logger.error(
+                    "fraction_list must not include values outside [0,1]!"
+                    + "\nProvided fraction_list: {}".format(
+                        restraint_dictionary["fraction_list"]
+                    )
+                )
+                raise ValueError(
+                    "fraction_list contains values outside the range [0,1]."
+                )
             units = restraint_dictionary["target_final"].units
             targets = (
                 numpy.asarray(

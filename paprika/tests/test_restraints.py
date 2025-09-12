@@ -640,6 +640,34 @@ def test_DAT_restraint():
     with pytest.raises(Exception):
         window_list = create_window_list([rest1, rest10])
 
+    # Method 3 with bad fraction_list
+    logger.info("### Testing restraint 11, Method 3 with bad fraction_list")
+    for phasename in ("attach", "pull", "release"):
+        logger.info(phasename)
+        rest11 = DAT_restraint()
+        rest11.amber_index = True
+        rest11.continuous_apr = False
+        rest11.auto_apr = False
+        rest11.topology = os.path.join(
+            os.path.dirname(__file__), "../data/cb6-but/cb6-but-notcentered.pdb"
+        )
+        rest11.mask1 = ":CB6@O,O2,O4,O6,O8,O10"
+        rest11.mask2 = ":BUT@C*"
+        rest11.attach["target"] = 0.0
+        rest11.attach["fraction_list"] = [0.0, 0.2, 0.5, 1.0]
+        rest11.attach["fc_final"] = 5.0
+        rest11.pull["fc"] = rest11.attach["fc_final"]
+        rest11.pull["fraction_list"] = [0.0, 0.5, 1.0]
+        rest11.pull["target_final"] = 1.0
+        rest11.release["target"] = rest11.pull["target_final"]
+        rest11.release["fraction_list"] = [0.0, 0.3, 0.6, 1.0]
+        rest11.release["fc_final"] = rest11.attach["fc_final"]
+
+        # Set a value in the list of fractions to be > 1.0 (incorrect, possibly intemded as percentage)
+        phase = getattr(rest11, phasename)
+        phase["fraction_list"][-1] = 100
+        with pytest.raises(ValueError, match="^fraction_list contains values outside the range \[0,1]\.$"):
+            rest11.initialize()
 
 def test_get_restraint_values():
     # Test Harmonic restraint
